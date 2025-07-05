@@ -12,3 +12,10 @@ chezmoi installs them correctly on macOS, Linux and Windows:
 
 Running `chezmoi apply` will copy the template to the appropriate location on
 whichever OS you're using.
+
+By default chezmoi is configured to create symlinks instead of copying files.
+The setting is defined in `dot_config/chezmoi/chezmoi.toml`:
+
+```toml
+mode = "symlink"
+```
