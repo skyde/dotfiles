@@ -1,0 +1,24 @@
+# LazyVim
+.lazy/
+
+# General
+.DS_Store
+*.swp
+*.swo
+*~
+
+# User-specific
+/data
+/debug
+
+# Logs
+*.log
+
+tt.*
+.tests
+doc/tags
+.repro
+foo.*
+
+# Ignore all files in bin/
+bin/

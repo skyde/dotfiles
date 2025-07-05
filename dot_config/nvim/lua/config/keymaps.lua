@@ -1,0 +1,94 @@
+local map = vim.keymap.set
+
+-- Use screen-line motions for arrow keys in Normal, Visual & Operator-Pending modes
+for _, mode in ipairs({ "n", "v", "o" }) do
+  map(mode, "<Up>", "gk", { noremap = true, desc = "Move up screen-line" })
+  map(mode, "<Down>", "gj", { noremap = true, desc = "Move down screen-line" })
+end
+
+-- And in Insert mode, use <C-o> to invoke a single Normal-mode command
+map("i", "<Up>", "<C-o>gk", { noremap = true, desc = "Move up screen-line (insert)" })
+map("i", "<Down>", "<C-o>gj", { noremap = true, desc = "Move down screen-line (insert)" })
+
+vim.keymap.set("n", "<C-u>", "16k", { noremap = true, desc = "Scroll Up 16 lines" })
+vim.keymap.set("n", "<C-d>", "16j", { noremap = true, desc = "Scroll Down 16 lines" })
+
+-- disable horizontal scroll with mouse/trackpad
+for _, mode in ipairs({ "n", "i", "v", "o", "t" }) do
+  map(mode, "<ScrollWheelLeft>", "<Nop>", { silent = true, desc = "Disable ← scroll" })
+  map(mode, "<ScrollWheelRight>", "<Nop>", { silent = true, desc = "Disable → scroll" })
+end
+
+-- TODO: Move this debug print of current key into another file & make it so that it's disabled by default but on a bool
+-- Log every key pressed in nvim (any mode)
+-- vim.on_key(function(char)
+--   -- You can use vim.fn.mode() to check the current mode if you want to filter
+--   vim.notify("Key pressed: " .. vim.inspect(char))
+-- -- end, vim.api.nvim_create_namespace("log-keys"))
+
+--------------------------------------------------------------------------
+-- Shift+Function key helpers -------------------------------------------
+--------------------------------------------------------------------------
+
+---Map a command to both <S-Fn> and <F(n+12)> so the binding works across
+---different terminal/OS combinations.
+---@param n integer Function key number (1..12)
+---@param rhs string|function Command or callback
+---@param opts table|nil Additional options for `vim.keymap.set`
+local function map_shift_f(n, rhs, opts)
+  opts = opts or {}
+  local modes = opts.mode or "n"
+  opts.mode = nil
+  map(modes, "<S-F" .. n .. ">", rhs, opts)
+  map(modes, "<F" .. (n + 12) .. ">", rhs, opts)
+end
+
+-- TODO: Use the vim.keymap.set style remap for all of these instead of this function call style
+
+-- Scroll up/down 16 lines
+map_shift_f(4, "<C-u>", { desc = "Scroll Up 16 lines", noremap = true })
+map_shift_f(6, "<C-d>", { desc = "Scroll Down 16 lines", noremap = true })
+
+-- Stop current build
+map_shift_f(7, "<cmd>CMakeStop<CR>", { desc = "Stop Build" })
+
+-- Go to LSP definition
+map_shift_f(8, vim.lsp.buf.definition, { desc = "Goto Definition" })
+
+-- Toggle comment on the current line  ── normal mode
+vim.keymap.set("n", "<S-F11>", "gcc", { remap = true, silent = true, desc = "Toggle Comment (line)" })
+
+-- Toggle comment on a visual selection ── visual mode
+vim.keymap.set("x", "<S-F11>", "gc", { remap = true, silent = true, desc = "Toggle Comment (block)" })
+
+-- Reload the current buffer, smart-handling Lua files
+vim.keymap.set("n", "zl", function()
+  if vim.bo.filetype == "lua" then
+    vim.cmd("luafile %") -- executes Lua buffers correctly
+  else
+    vim.cmd("source %") -- everything else
+  end
+end, { desc = "Source current file" })
+
+--------------------------------------------------------------------------
+-- Map normal shortcut (used by macros to NVim) -----------------------------------------------------
+--------------------------------------------------------------------------
+
+-- Save file with Ctrl+S in normal and insert mode
+map({ "n", "i" }, "<D-s>", "<cmd>w<CR>", { desc = "Save file" })
+
+-- Toggle between source and header files (requires clangd)
+map("n", "<A-o>", "<cmd>ClangdSwitchSourceHeader<CR>", { desc = "Switch header/source" })
+
+-- Navigate jump list with Alt+Left/Right
+map("n", "<D-Left>", "<C-o>", { desc = "Jump backward" })
+map("n", "<D-Right>", "<C-i>", { desc = "Jump forward" })
+
+vim.keymap.del("n", "<S-h>")
+vim.keymap.del("n", "<S-l>")
+
+-- These are commented out for now as they are not working. Maybe kitty on Mac does not pick up the event?
+-- Next buffer: Cmd+Shift+]
+-- map("n", "<D-S-]>", ":bnext<CR>", { desc = "Next buffer" })
+-- Previous buffer: Cmd+Shift+[
+-- map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
