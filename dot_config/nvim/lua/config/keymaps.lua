@@ -84,6 +84,14 @@ map("n", "<A-o>", "<cmd>ClangdSwitchSourceHeader<CR>", { desc = "Switch header/s
 map("n", "<D-Left>", "<C-o>", { desc = "Jump backward" })
 map("n", "<D-Right>", "<C-i>", { desc = "Jump forward" })
 
+-- macOS clipboard shortcuts
+map("v", "<D-c>", '"+y', { desc = "Copy selection" })
+map("v", "<D-x>", '"+d', { desc = "Cut selection" })
+map("n", "<D-v>", '"+p', { desc = "Paste" })
+map("v", "<D-v>", '"+p', { desc = "Paste over selection" })
+map("i", "<D-v>", "<C-r>+", { desc = "Paste" })
+map("n", "<D-a>", "ggVG", { desc = "Select all" })
+
 vim.keymap.del("n", "<S-h>")
 vim.keymap.del("n", "<S-l>")
 
