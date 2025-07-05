@@ -24,7 +24,7 @@ function Get-Adv2Drive {
 
 $adv = Get-Adv2Drive
 if (-not $adv) {
-    Write-Warning "No Kinesis Advantage2 v-drive found. Press Prog+Shift+F1 to mount & re-run chezmoi update (if required)."
+    Write-Warning "No Kinesis Advantage2 v-drive found. If you need to sync keyboard layouts press Prog+Shift+Esc to enter power user mode, then Prog+F1 to mount. Then re-run 'chezmoi update'."
     return            # don’t abort the whole chezmoi run
 }
 
