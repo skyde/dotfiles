@@ -1,0 +1,18 @@
+# Requires PowerShell 7+
+$COMMON_APPS = @(
+{{- range (split (include "common_apps.txt") "\n") }}
+'{{ . }}'
+{{- end }}
+)
+$FONT_APP = '{{ (include "font_app.txt") | trim }}'
+
+Write-Host 'Running Windows setup using Scoop...'
+if (!(Get-Command scoop -ErrorAction SilentlyContinue)) {
+    iwr -useb get.scoop.sh | iex
+}
+scoop bucket add extras | Out-Null
+scoop bucket add nerd-fonts | Out-Null
+foreach ($pkg in $COMMON_APPS) {
+    scoop install $pkg
+}
+scoop install $FONT_APP

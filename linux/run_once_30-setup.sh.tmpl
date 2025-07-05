@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -e
+
+COMMON_APPS=(
+{{- range (split (include "common_apps.txt") "\n") }}
+    {{ . }}
+{{- end }}
+)
+FONT_APP="{{ (include "font_app.txt") | trim }}"
+
+echo "Running Linux setup using apt..."
+if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update -y -qq || true
+    for pkg in "${COMMON_APPS[@]}"; do
+        apt_pkg="$pkg"
+        [ "$pkg" = "fd" ] && apt_pkg="fd-find"
+        [ "$pkg" = "nvim" ] && apt_pkg="neovim"
+        sudo apt-get install -y "$apt_pkg" || true
+    done
+    sudo apt-get install -y fonts-firacode || true
+else
+    echo "apt-get not found. Skipping package installs."
+fi

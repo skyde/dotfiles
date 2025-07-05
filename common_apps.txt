@@ -1,0 +1,9 @@
+git
+ripgrep
+fd
+fzf
+bat
+delta
+less
+llvm
+nvim
