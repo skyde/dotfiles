@@ -40,23 +40,17 @@ case "$OS" in
     MINGW*|MSYS*|CYGWIN*)
         echo "Running Windows setup using Scoop..."
         if command -v pwsh >/dev/null 2>&1; then
-            pwsh -NoProfile -Command "iwr -useb get.scoop.sh | iex" || true
+            if ! command -v scoop >/dev/null; then
+              pwsh -NoProfile -Command "iwr -useb get.scoop.sh | iex"
+            fi
             pwsh -NoProfile -Command "scoop bucket add extras" || true
             pwsh -NoProfile -Command "scoop bucket add nerd-fonts" || true
             for pkg in ${COMMON_APPS[*]}; do
                 pwsh -NoProfile -Command "scoop install $pkg" || true
             done
             pwsh -NoProfile -Command "scoop install $FONT_APP" || true
-        elif command -v powershell >/dev/null 2>&1; then
-            powershell -NoProfile -Command "iwr -useb get.scoop.sh | iex" || true
-            powershell -NoProfile -Command "scoop bucket add extras" || true
-            powershell -NoProfile -Command "scoop bucket add nerd-fonts" || true
-            for pkg in ${COMMON_APPS[*]}; do
-                powershell -NoProfile -Command "scoop install $pkg" || true
-            done
-            powershell -NoProfile -Command "scoop install $FONT_APP" || true
         else
-            echo "PowerShell is required to run Scoop but was not found."
+            echo "PowerShell 7 is required to run Scoop but was not found."
         fi
         ;;
     Linux)
