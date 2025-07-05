@@ -1,5 +1,43 @@
 #!/usr/bin/env bash
 set -e
 
-# macOS setup script
-# ...your macOS setup logic here...
+COMMON_APPS=(
+{{- range (split (include "common_apps.txt") "\n") }}
+    {{ . }}
+{{- end }}
+)
+
+echo "Running macOS setup using Homebrew..."
+
+# Check if Homebrew is installed
+if ! command -v brew >/dev/null 2>&1; then
+    echo "Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    
+    # Add Homebrew to PATH for Apple Silicon Macs
+    if [[ $(uname -m) == "arm64" ]]; then
+        echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    fi
+fi
+
+# Update Homebrew
+brew update
+
+# Install common apps
+for pkg in "${COMMON_APPS[@]}"; do
+    echo "Installing $pkg..."
+    brew install "$pkg" || echo "Failed to install $pkg, continuing..."
+done
+
+# Link fd if it's not linked
+if brew list fd >/dev/null 2>&1 && ! brew list --formula | grep -q "^fd$"; then
+    echo "Linking fd..."
+    brew link --overwrite fd || echo "Failed to link fd, continuing..."
+fi
+
+# Install fonts (macOS-specific: font-fira-code-nerd-font)
+echo "Installing fonts..."
+brew install --cask font-fira-code-nerd-font || echo "Failed to install font-fira-code-nerd-font, continuing..."
+
+echo "macOS setup complete!"

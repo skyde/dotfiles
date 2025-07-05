@@ -6,7 +6,6 @@ COMMON_APPS=(
     {{ . }}
 {{- end }}
 )
-FONT_APP="{{ (include "font_app.txt") | trim }}"
 
 echo "Running Linux setup using apt..."
 if command -v apt-get >/dev/null 2>&1; then
@@ -17,6 +16,7 @@ if command -v apt-get >/dev/null 2>&1; then
         [ "$pkg" = "nvim" ] && apt_pkg="neovim"
         sudo apt-get install -y "$apt_pkg" || true
     done
+    # Install fonts (Linux-specific: fonts-firacode)
     sudo apt-get install -y fonts-firacode || true
 else
     echo "apt-get not found. Skipping package installs."
