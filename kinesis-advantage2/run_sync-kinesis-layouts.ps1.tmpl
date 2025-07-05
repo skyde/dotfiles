@@ -1,0 +1,44 @@
+{{- /*  Copy *.txt layouts to the Kinesis Advantage2 v-drive.
+        Works even if the drive label is ADVANTAGE2, KINESIS KB, or blank.
+        Executed automatically by chezmoi on Windows only. */ -}}
+{{- if eq .chezmoi.os "windows" }}
+
+function Get-Adv2Drive {
+    # Look at every mounted removable volume
+    $vols = Get-Volume -ErrorAction SilentlyContinue |                          # docs show DriveType property :contentReference[oaicite:2]{index=2}
+            Where-Object { $_.DriveType -eq 'Removable' }
+
+    foreach ($v in $vols) {
+        # 1️⃣ known labels
+        if ($v.FileSystemLabel -match '^(ADVANTAGE2|KINESIS[\s-]?KB)$') { return $v }
+
+        # 2️⃣ fallback: SmartSet folders
+        $root = "$($v.DriveLetter):\"
+        if ( (Test-Path -LiteralPath (Join-Path $root 'active')) -and            # need parentheses on each Test-Path :contentReference[oaicite:3]{index=3}
+             (Test-Path -LiteralPath (Join-Path $root 'firmware')) ) {
+            return $v
+        }
+    }
+    return $null
+}
+
+$adv = Get-Adv2Drive
+if (-not $adv) {
+    Write-Warning "No Kinesis Advantage2 v-drive found. Press Prog+Shift+F1 to mount & re-run chezmoi update (if required)."
+    return            # don’t abort the whole chezmoi run
+}
+
+$target = Join-Path ("$($adv.DriveLetter):\") 'active'
+New-Item -ItemType Directory -Path $target -Force | Out-Null
+
+$sourceRoot = '{{ .chezmoi.sourceDir }}'
+$source     = Join-Path $sourceRoot 'kinesis-advantage2\layouts'
+
+Write-Host "Syncing Kinesis Advantage 2 layouts -> $target" -ForegroundColor Cyan
+Copy-Item -Path (Join-Path $source '*.txt') -Destination $target -Recurse -Force -ErrorAction Stop
+Write-Host "Sync complete" -ForegroundColor Green
+
+{{- end }}
+
+
+
