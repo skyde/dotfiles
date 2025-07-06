@@ -85,6 +85,7 @@ nnoremap <leader>e :vsc View.SolutionExplorer<CR>
 
 " Goto 
 nnoremap gd :vsc Edit.GoToDefinition<CR>
+nnoremap gp :vsc Edit.PeekDefinition<CR>
 nnoremap gi :vsc Edit.GoToImplementation<CR>
 nnoremap gr :vsc Edit.FindAllReferences<CR>
 nnoremap gk :vsc Edit.PreviousMethod<CR>
@@ -96,6 +97,7 @@ nnoremap gh :vsc EditorContextMenus.CodeWindow.ToggleHeaderCodeFile<CR>
 " Code
 nnoremap <leader>cr :vsc ReSharper.ReSharper_Rename<CR>
 nnoremap <leader>cR :vsc File.Rename<CR>
+nnoremap <leader>ci :vsc Edit.ParameterInfo<CR>
 
 " Git (Version Control)
 nnoremap <leader>gd :vsc P4EditVS.Diff<CR>
