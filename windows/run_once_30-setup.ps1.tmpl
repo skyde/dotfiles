@@ -45,3 +45,22 @@ if (-not $fontInstalled) {
 } else {
     Write-Host "FiraCode-NF font is already installed."
 }
+# Ensure LLVM (clang) is in PATH for C compiler support
+$llvmBin = "$env:ProgramFiles\LLVM\bin"
+if (Test-Path "$llvmBin\clang.exe") {
+    $userPath = [System.Environment]::GetEnvironmentVariable('PATH', 'User')
+    if (-not ($userPath -split ';' | Where-Object { $_ -eq $llvmBin })) {
+        [System.Environment]::SetEnvironmentVariable('PATH', "$userPath;$llvmBin", 'User')
+        Write-Host "Added LLVM to user PATH. You may need to restart your terminal or log out/in for this to take effect."
+    } else {
+        Write-Host "LLVM is already in your user PATH."
+    }
+    if (-not ($env:PATH -split ';' | Where-Object { $_ -eq $llvmBin })) {
+        $env:PATH += ";$llvmBin"
+        Write-Host "Temporarily added LLVM to PATH for this session."
+    }
+    $clangVersion = & "$llvmBin\clang.exe" --version
+    Write-Host "clang is available: $clangVersion"
+} else {
+    Write-Warning "LLVM is installed but clang.exe was not found in $llvmBin. You may need to reinstall or check your LLVM installation."
+}
