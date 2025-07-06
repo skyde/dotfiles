@@ -22,7 +22,7 @@ jobs:
         shell: pwsh
         run: |
           $binDir = "$env:USERPROFILE\bin"
-          iwr -useb https://get.chezmoi.io/ps1 | iex -b $binDir
+          iex "& { $(iwr -useb https://get.chezmoi.io/ps1) } -b $binDir"
           "$binDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
 
