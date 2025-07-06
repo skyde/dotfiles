@@ -19,12 +19,3 @@ The setting is defined in `dot_config/chezmoi/chezmoi.toml`:
 ```toml
 mode = "symlink"
 ```
-
-## Neovim
-
-On macOS, common Command shortcuts work in Neovim:
-
-- **⌘C** copies the current selection to the system clipboard.
-- **⌘X** cuts the selection.
-- **⌘V** pastes the clipboard in Normal, Visual and Insert modes.
-- **⌘A** selects the entire buffer.
