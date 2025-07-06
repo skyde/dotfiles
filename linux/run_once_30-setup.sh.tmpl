@@ -30,20 +30,8 @@ fi
 # Install all packages from common_apps.txt using Homebrew
 echo "Installing packages using Homebrew: ${COMMON_APPS[*]}"
 for pkg in "${COMMON_APPS[@]}"; do
-    case "$pkg" in
-        "fd")
-            echo "Installing fd-find..."
-            brew install fd || true
-            ;;
-        "llvm")
-            echo "Installing llvm..."
-            brew install llvm || true
-            ;;
-        *)
-            echo "Installing $pkg..."
-            brew install "$pkg" || true
-            ;;
-    esac
+    echo "Installing $pkg..."
+    brew install "$pkg" || true
 done
 
 # Install fonts using Homebrew
