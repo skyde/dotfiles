@@ -9,9 +9,7 @@ else
 fi
 
 COMMON_APPS=(
-{{- range (split (include "common_apps.txt") "\n") }}
-    {{ . }}
-{{- end }}
+{{ include "common_apps.txt" | split "\n" | join "\n    " }}
 )
 
 echo "Running Linux setup using apt..."
@@ -28,3 +26,5 @@ if command -v apt-get >/dev/null 2>&1; then
 else
     echo "apt-get not found. Skipping package installs."
 fi
+
+echo "Linux setup complete!"
