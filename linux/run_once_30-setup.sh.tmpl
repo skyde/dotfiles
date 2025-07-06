@@ -22,7 +22,7 @@ $SUDO apt-get install -y build-essential libc6-dev pkg-config || true
 # Install Homebrew if not present
 if ! command -v brew >/dev/null 2>&1; then
     echo "Installing Homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
     
     # Add Homebrew to PATH
     if [ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
