@@ -12,57 +12,9 @@ COMMON_APPS=(
 {{- include "common_apps.txt" -}}
 )
 
-echo "Running Linux setup using apt..."
-if command -v apt-get >/dev/null 2>&1; then
-    $SUDO apt-get update -y -qq || true
-    
-    # Install prerequisites
-    $SUDO apt-get install -y curl wget software-properties-common apt-transport-https ca-certificates gnupg lsb-release build-essential cmake pkg-config || true
-    
-    # Add repositories for latest versions
-    echo "Adding repositories for latest packages..."
-    
-    # Add LLVM repository for latest version
-    if ! grep -q "llvm" /etc/apt/sources.list.d/llvm.list 2>/dev/null; then
-        wget -qO- https://apt.llvm.org/llvm.sh | $SUDO bash -s all || true
-    fi
-    
-    # Update package lists after adding repositories
-    $SUDO apt-get update -y -qq || true
-    
-    # Install all packages from common_apps.txt
-    echo "Installing packages: ${COMMON_APPS[*]}"
-    for pkg in "${COMMON_APPS[@]}"; do
-        case "$pkg" in
-            "fd")
-                echo "Installing fd-find..."
-                $SUDO apt-get install -y fd-find || true
-                ;;
-            "llvm")
-                echo "Installing llvm..."
-                $SUDO apt-get install -y llvm || true
-                ;;
-            *)
-                echo "Installing $pkg..."
-                $SUDO apt-get install -y "$pkg" || true
-                ;;
-        esac
-    done
-    
-    # Install fonts (Linux-specific: fonts-firacode)
-    $SUDO apt-get install -y fonts-firacode || true
-    
-    # Explicitly remove any apt-installed neovim to avoid conflicts
-    echo "Explicitly removing any apt-installed neovim and related binaries..."
-    $SUDO apt-get remove -y neovim neovim-runtime || true
-    $SUDO rm -f /usr/bin/nvim /usr/bin/vim
-    echo "Neovim removal complete"
-else
-    echo "apt-get not found. Skipping package installs."
-fi
+echo "Installing Homebrew and all packages using Homebrew on Debian..."
 
-# --- INSTALL LATEST NEOVIM USING HOMEBREW ---
-echo "Installing Homebrew and latest Neovim..."
+# Install Homebrew if not present
 if ! command -v brew >/dev/null 2>&1; then
     echo "Installing Homebrew..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
@@ -75,34 +27,63 @@ if ! command -v brew >/dev/null 2>&1; then
     fi
 fi
 
-# Install latest Neovim using Homebrew
-echo "Installing latest Neovim using Homebrew..."
-brew install neovim || true
+# Install all packages from common_apps.txt using Homebrew
+echo "Installing packages using Homebrew: ${COMMON_APPS[*]}"
+for pkg in "${COMMON_APPS[@]}"; do
+    case "$pkg" in
+        "fd")
+            echo "Installing fd-find..."
+            brew install fd || true
+            ;;
+        "llvm")
+            echo "Installing llvm..."
+            brew install llvm || true
+            ;;
+        *)
+            echo "Installing $pkg..."
+            brew install "$pkg" || true
+            ;;
+    esac
+done
 
-# Create symlinks to make nvim available system-wide
-echo "Creating symlinks for nvim..."
-$SUDO ln -sf $(brew --prefix)/bin/nvim /usr/local/bin/nvim
-$SUDO ln -sf $(brew --prefix)/bin/nvim /usr/local/bin/vim
+# Install fonts using Homebrew
+echo "Installing Fira Code font using Homebrew..."
+brew tap homebrew/cask-fonts || true
+brew install --cask font-fira-code || true
 
-# Remove any /usr/bin/nvim that may have been recreated
-$SUDO rm -f /usr/bin/nvim
+# Install additional development tools using Homebrew
+echo "Installing additional development tools..."
+brew install cmake pkg-config || true
 
-# Use dpkg-divert to prevent apt from overwriting /usr/bin/nvim
-echo "Using dpkg-divert to prevent apt from overwriting /usr/bin/nvim..."
-$SUDO dpkg-divert --add --rename --divert /usr/bin/nvim.apt /usr/bin/nvim || true
+# Create symlinks to make packages available system-wide
+echo "Creating symlinks for packages..."
+$SUDO ln -sf $(brew --prefix)/bin/* /usr/local/bin/ || true
 
-# Symlink the latest nvim to /usr/bin/nvim so any call uses the latest
-echo "Symlinking latest nvim to /usr/bin/nvim..."
-$SUDO ln -sf /usr/local/bin/nvim /usr/bin/nvim
+# Remove any apt-installed versions to avoid conflicts
+echo "Removing any apt-installed versions to avoid conflicts..."
+$SUDO apt-get remove -y neovim neovim-runtime ripgrep fd-find fzf bat delta less llvm || true
+$SUDO rm -f /usr/bin/nvim /usr/bin/vim /usr/bin/rg /usr/bin/fd /usr/bin/fzf /usr/bin/bat /usr/bin/delta /usr/bin/llvm-config || true
+
+# Use dpkg-divert to prevent apt from overwriting our binaries
+echo "Using dpkg-divert to prevent apt from overwriting our binaries..."
+for binary in nvim vim rg fd fzf bat delta llvm-config; do
+    $SUDO dpkg-divert --add --rename --divert /usr/bin/$binary.apt /usr/bin/$binary || true
+    $SUDO ln -sf /usr/local/bin/$binary /usr/bin/$binary || true
+done
 
 # Prepend /usr/local/bin to PATH for this session
 export PATH="/usr/local/bin:$PATH"
 
 # Final debug check
-echo "=== FINAL NVIM DEBUG ==="
+echo "=== FINAL DEBUG ==="
 echo "which nvim: $(which nvim)"
-echo "ls -l /usr/local/bin/nvim: $(ls -l /usr/local/bin/nvim)"
-echo "ls -l /usr/bin/nvim: $(ls -l /usr/bin/nvim 2>/dev/null || echo not present)"
+echo "which rg: $(which rg)"
+echo "which fd: $(which fd)"
+echo "which fzf: $(which fzf)"
+echo "which bat: $(which bat)"
+echo "which delta: $(which delta)"
+echo "which llvm-config: $(which llvm-config)"
+echo "nvim --version:"
 nvim --version
 
-echo "Linux setup complete!"
+echo "Linux setup complete using Homebrew!"
