@@ -1,6 +1,8 @@
 # Requires PowerShell 7+
 $COMMON_APPS = @(
-{{- include "common_apps.txt" -}}
+{{- range (split (include "common_apps.txt") "\n") }}
+'{{ . }}'
+{{- end }}
 )
 
 Write-Host 'Running Windows setup using Scoop...'
