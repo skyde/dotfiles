@@ -1,17 +1,69 @@
 name: CI
-
 on:
   push:
   pull_request:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      - name: Install chezmoi
+
+      - name: Install chezmoi (Unix)
+        if: runner.os != 'Windows'
         run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
+
+      - name: Install chezmoi (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: iwr -useb https://get.chezmoi.io/ps1 | iex
+
+      - name: Install lint tools (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck luarocks
+          sudo luarocks install luacheck
+          curl -fsSLo stylua.tar.gz https://github.com/JohnnyMorganz/StyLua/releases/download/v0.17.1/stylua-linux-x86_64.tar.gz
+          tar -xzf stylua.tar.gz -C /usr/local/bin stylua
+
+      - name: Install lint tools (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install shellcheck luarocks stylua
+          luarocks install luacheck
+
+      - name: Install PSScriptAnalyzer
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: Shellcheck
+        if: runner.os != 'Windows'
+        run: shellcheck $(git ls-files '*.sh.tmpl')
+
+      - name: Luacheck
+        if: runner.os != 'Windows'
+        run: luacheck dot_config/nvim
+
+      - name: Stylua
+        if: runner.os != 'Windows'
+        run: stylua --check dot_config/nvim
+
+      - name: PSScriptAnalyzer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path . -Recurse -Filter *.ps1.tmpl | Select-Object -ExpandProperty FullName
+          Invoke-ScriptAnalyzer -Path $files
+
       - name: Dry-run apply
         run: chezmoi apply --dry-run -S .
+
       - name: Doctor
         run: chezmoi doctor -S .
