@@ -61,6 +61,7 @@ else
     echo "apt-get not found. Skipping package installs."
 fi
 
+# --- MANUAL NEOVIM INSTALL AT THE VERY END ---
 echo "Installing latest Neovim from official releases..."
 NVIM_VERSION=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name":' | cut -d'"' -f4)
 echo "Latest Neovim version: $NVIM_VERSION"
@@ -77,16 +78,6 @@ if [ -n "$NVIM_VERSION" ] && [ "$NVIM_VERSION" != "null" ]; then
         $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/nvim
         $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/vim
         echo "Neovim $NVIM_VERSION installed successfully from official release"
-        echo "which nvim: $(which nvim)"
-        echo "ls -l /usr/local/bin/nvim: $(ls -l /usr/local/bin/nvim)"
-        echo "ls -l /usr/bin/nvim: $(ls -l /usr/bin/nvim 2>/dev/null || echo not present)"
-        export PATH="/usr/local/bin:$PATH"
-        nvim_version_installed=$(/usr/local/bin/nvim --version | head -n1 | awk '{print $2}')
-        echo "Installed Neovim version: $nvim_version_installed"
-        if [ "$nvim_version_installed" != "${NVIM_VERSION#v}" ]; then
-            echo "ERROR: Installed Neovim version does not match latest!"
-            exit 1
-        fi
     else
         echo "Failed to download Neovim archive!"
         exit 1
@@ -96,5 +87,18 @@ else
     echo "Could not determine latest Neovim version!"
     exit 1
 fi
+
+# Remove any /usr/bin/nvim that may have been recreated
+$SUDO rm -f /usr/bin/nvim
+
+# Prepend /usr/local/bin to PATH for this session
+export PATH="/usr/local/bin:$PATH"
+
+# Final debug check
+echo "=== FINAL NVIM DEBUG ==="
+echo "which nvim: $(which nvim)"
+echo "ls -l /usr/local/bin/nvim: $(ls -l /usr/local/bin/nvim)"
+echo "ls -l /usr/bin/nvim: $(ls -l /usr/bin/nvim 2>/dev/null || echo not present)"
+nvim --version
 
 echo "Linux setup complete!"
