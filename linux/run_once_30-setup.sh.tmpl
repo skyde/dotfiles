@@ -14,6 +14,11 @@ COMMON_APPS=(
 
 echo "Installing Homebrew and all packages using Homebrew on Debian..."
 
+# Install essential development packages for compilation
+echo "Installing essential development packages..."
+$SUDO apt-get update -y -qq || true
+$SUDO apt-get install -y build-essential libc6-dev pkg-config || true
+
 # Install Homebrew if not present
 if ! command -v brew >/dev/null 2>&1; then
     echo "Installing Homebrew..."
