@@ -40,17 +40,28 @@ if command -v apt-get >/dev/null 2>&1; then
             "nvim")
                 # Install neovim from official releases (latest version)
                 echo "Installing latest Neovim from official releases..."
+                # Get the latest version from GitHub API
                 NVIM_VERSION=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name":' | cut -d'"' -f4)
-                if [ -n "$NVIM_VERSION" ]; then
+                echo "Latest Neovim version: $NVIM_VERSION"
+                
+                if [ -n "$NVIM_VERSION" ] && [ "$NVIM_VERSION" != "null" ]; then
+                    echo "Downloading and installing Neovim $NVIM_VERSION..."
                     $SUDO apt-get install -y ninja-build gettext cmake unzip curl || true
                     cd /tmp
-                    wget -q https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux64.tar.gz
-                    $SUDO tar xzf nvim-linux64.tar.gz -C /opt
-                    $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/nvim
-                    $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/vim
+                    # Download the latest release
+                    wget -q "https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux64.tar.gz"
+                    if [ -f "nvim-linux64.tar.gz" ]; then
+                        $SUDO tar xzf nvim-linux64.tar.gz -C /opt
+                        $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/nvim
+                        $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/vim
+                        echo "Neovim $NVIM_VERSION installed successfully from official release"
+                    else
+                        echo "Failed to download Neovim, falling back to package manager version"
+                        $SUDO apt-get install -y neovim || true
+                    fi
                     cd -
                 else
-                    # Fallback to package manager version
+                    echo "Could not determine latest Neovim version, falling back to package manager version"
                     $SUDO apt-get install -y neovim || true
                 fi
                 ;;
