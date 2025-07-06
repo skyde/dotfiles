@@ -53,6 +53,10 @@ if command -v apt-get >/dev/null 2>&1; then
     
     # Install fonts (Linux-specific: fonts-firacode)
     $SUDO apt-get install -y fonts-firacode || true
+    
+    # Remove any apt-installed neovim to avoid conflicts
+    $SUDO apt-get remove -y neovim neovim-runtime || true
+    $SUDO rm -f /usr/bin/nvim /usr/bin/vim
 else
     echo "apt-get not found. Skipping package installs."
 fi
@@ -69,6 +73,10 @@ if [ -n "$NVIM_VERSION" ] && [ "$NVIM_VERSION" != "null" ]; then
         $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/nvim
         $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/vim
         echo "Neovim $NVIM_VERSION installed successfully from official release"
+        echo "which nvim: $(which nvim)"
+        echo "ls -l /usr/local/bin/nvim: $(ls -l /usr/local/bin/nvim)"
+        echo "ls -l /usr/bin/nvim: $(ls -l /usr/bin/nvim 2>/dev/null || echo not present)"
+        export PATH="/usr/local/bin:$PATH"
         nvim_version_installed=$(/usr/local/bin/nvim --version | head -n1 | awk '{print $2}')
         echo "Installed Neovim version: $nvim_version_installed"
         if [ "$nvim_version_installed" != "${NVIM_VERSION#v}" ]; then
