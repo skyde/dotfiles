@@ -9,8 +9,11 @@ else
 fi
 
 COMMON_APPS=(
-{{- range $line := (split (include "common_apps.txt") "\n") -}}
+{{- $content := include "common_apps.txt" -}}
+{{- range $line := split $content "\n" -}}
+{{- if ne $line "" -}}
     {{ $line }}
+{{- end -}}
 {{- end -}}
 )
 
