@@ -51,27 +51,9 @@ $SUDO rm -f /usr/bin/nvim /usr/bin/vim /usr/bin/rg /usr/bin/fd /usr/bin/fzf /usr
 # Use dpkg-divert to prevent apt from overwriting our binaries
 echo "Using dpkg-divert to prevent apt from overwriting our binaries..."
 for pkg in "${COMMON_APPS[@]}"; do
-    case "$pkg" in
-        "fd")
-            binary="fd"
-            ;;
-        "ripgrep")
-            binary="rg"
-            ;;
-        "git-delta")
-            binary="delta"
-            ;;
-        "llvm")
-            binary="llvm-config"
-            ;;
-        *)
-            binary="$pkg"
-            ;;
-    esac
-    
-    if [ -f "/usr/local/bin/$binary" ]; then
-        $SUDO dpkg-divert --add --rename --divert /usr/bin/$binary.apt /usr/bin/$binary || true
-        $SUDO ln -sf /usr/local/bin/$binary /usr/bin/$binary || true
+    if [ -f "/usr/local/bin/$pkg" ]; then
+        $SUDO dpkg-divert --add --rename --divert /usr/bin/$pkg.apt /usr/bin/$pkg || true
+        $SUDO ln -sf /usr/local/bin/$pkg /usr/bin/$pkg || true
     fi
 done
 
@@ -81,25 +63,7 @@ export PATH="/usr/local/bin:$PATH"
 # Final debug check
 echo "=== FINAL DEBUG ==="
 for pkg in "${COMMON_APPS[@]}"; do
-    case "$pkg" in
-        "fd")
-            binary="fd"
-            ;;
-        "ripgrep")
-            binary="rg"
-            ;;
-        "git-delta")
-            binary="delta"
-            ;;
-        "llvm")
-            binary="llvm-config"
-            ;;
-        *)
-            binary="$pkg"
-            ;;
-    esac
-    
-    echo "which $binary: $(which $binary 2>/dev/null || echo 'not found')"
+    echo "which $pkg: $(which $pkg 2>/dev/null || echo 'not found')"
 done
 
 echo "nvim --version:"
