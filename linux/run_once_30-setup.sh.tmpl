@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
+# Use sudo only if not running as root
+if [ "$(id -u)" -eq 0 ]; then
+    SUDO=""
+else
+    SUDO="sudo"
+fi
+
 COMMON_APPS=(
 {{- range (split (include "common_apps.txt") "\n") }}
     {{ . }}
@@ -9,15 +16,15 @@ COMMON_APPS=(
 
 echo "Running Linux setup using apt..."
 if command -v apt-get >/dev/null 2>&1; then
-    sudo apt-get update -y -qq || true
+    $SUDO apt-get update -y -qq || true
     for pkg in "${COMMON_APPS[@]}"; do
         apt_pkg="$pkg"
         [ "$pkg" = "fd" ] && apt_pkg="fd-find"
         [ "$pkg" = "nvim" ] && apt_pkg="neovim"
-        sudo apt-get install -y "$apt_pkg" || true
+        $SUDO apt-get install -y "$apt_pkg" || true
     done
     # Install fonts (Linux-specific: fonts-firacode)
-    sudo apt-get install -y fonts-firacode || true
+    $SUDO apt-get install -y fonts-firacode || true
 else
     echo "apt-get not found. Skipping package installs."
 fi
