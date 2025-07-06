@@ -17,20 +17,10 @@ if command -v apt-get >/dev/null 2>&1; then
     $SUDO apt-get update -y -qq || true
     
     # Install prerequisites
-    $SUDO apt-get install -y curl wget software-properties-common apt-transport-https ca-certificates gnupg lsb-release || true
+    $SUDO apt-get install -y curl wget software-properties-common apt-transport-https ca-certificates gnupg lsb-release build-essential cmake pkg-config || true
     
     # Add repositories for latest versions
     echo "Adding repositories for latest packages..."
-    
-    # Add Neovim PPA for latest version
-    if ! grep -q "neovim" /etc/apt/sources.list.d/neovim.list 2>/dev/null; then
-        $SUDO add-apt-repository ppa:neovim-ppa/stable -y || true
-    fi
-    
-    # Add Git PPA for latest version
-    if ! grep -q "git-core" /etc/apt/sources.list.d/git-core.list 2>/dev/null; then
-        $SUDO add-apt-repository ppa:git-core/ppa -y || true
-    fi
     
     # Add LLVM repository for latest version
     if ! grep -q "llvm" /etc/apt/sources.list.d/llvm.list 2>/dev/null; then
@@ -48,8 +38,21 @@ if command -v apt-get >/dev/null 2>&1; then
                 $SUDO apt-get install -y fd-find || true
                 ;;
             "nvim")
-                # Install neovim from PPA
-                $SUDO apt-get install -y neovim || true
+                # Install neovim from official releases (latest version)
+                echo "Installing latest Neovim from official releases..."
+                NVIM_VERSION=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name":' | cut -d'"' -f4)
+                if [ -n "$NVIM_VERSION" ]; then
+                    $SUDO apt-get install -y ninja-build gettext cmake unzip curl || true
+                    cd /tmp
+                    wget -q https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux64.tar.gz
+                    $SUDO tar xzf nvim-linux64.tar.gz -C /opt
+                    $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/nvim
+                    $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/vim
+                    cd -
+                else
+                    # Fallback to package manager version
+                    $SUDO apt-get install -y neovim || true
+                fi
                 ;;
             "ripgrep")
                 # Install ripgrep from default repos (latest available)
@@ -76,7 +79,7 @@ if command -v apt-get >/dev/null 2>&1; then
                 $SUDO apt-get install -y llvm || true
                 ;;
             "git")
-                # Install git from PPA
+                # Install git from default repos (latest available)
                 $SUDO apt-get install -y git || true
                 ;;
             *)
