@@ -1,17 +1,35 @@
 # Requires PowerShell 7+
-$COMMON_APPS = @(
-{{- range (split (include "common_apps.txt") "\n") }}
-{{- if . | trim }}'{{ . }}'{{ end }}
-{{- end }}
-)
+
+# Build $COMMON_APPS array correctly from file lines
+$COMMON_APPS = Get-Content "{{ .chezmoi.sourceDir }}/common_apps.txt" | Where-Object { $_.Trim() -ne "" }
+
+Write-Host "COMMON_APPS:"
+$COMMON_APPS | ForEach-Object { Write-Host $_ }
 
 Write-Host 'Running Windows setup using Scoop...'
 if (!(Get-Command scoop -ErrorAction SilentlyContinue)) {
-    iwr -useb get.scoop.sh | iex
+    try {
+        iwr -useb get.scoop.sh | iex
+    } catch {
+        Write-Error "Failed to install Scoop: $_"
+        exit 1
+    }
 }
+# Validate Scoop is working
+if (!(Get-Command scoop -ErrorAction SilentlyContinue)) {
+    Write-Error "Scoop is not available after installation. Aborting setup."
+    exit 1
+}
+else
+{   
+    Write-Host 'Validation successful that scoop command is available'
+}
+
 scoop bucket add extras | Out-Null
 scoop bucket add nerd-fonts | Out-Null
-foreach ($pkg in $COMMON_APPS) {
+foreach ($pkg in $COMMON_APPS)
+{
+    Write-Host "Installing $pkg"
     scoop install $pkg
 }
 # Install fonts (Windows-specific: FiraCode-NF)
