@@ -91,6 +91,14 @@ fi
 # Remove any /usr/bin/nvim that may have been recreated
 $SUDO rm -f /usr/bin/nvim
 
+# Use dpkg-divert to prevent apt from overwriting /usr/bin/nvim
+echo "Using dpkg-divert to prevent apt from overwriting /usr/bin/nvim..."
+$SUDO dpkg-divert --add --rename --divert /usr/bin/nvim.apt /usr/bin/nvim || true
+
+# Symlink the latest nvim to /usr/bin/nvim so any call uses the latest
+echo "Symlinking latest nvim to /usr/bin/nvim..."
+$SUDO ln -sf /usr/local/bin/nvim /usr/bin/nvim
+
 # Prepend /usr/local/bin to PATH for this session
 export PATH="/usr/local/bin:$PATH"
 
