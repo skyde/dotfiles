@@ -13,16 +13,50 @@ COMMON_APPS=(
 )
 
 echo "Running Linux setup using apt..."
+
 if command -v apt-get >/dev/null 2>&1; then
+    # Update package lists
     $SUDO apt-get update -y -qq || true
+    
+    # Install latest Neovim from official PPA
+    echo "Installing latest Neovim..."
+    $SUDO apt-get install -y software-properties-common || true
+    $SUDO add-apt-repository -y ppa:neovim-ppa/stable || true
+    $SUDO apt-get update -y -qq || true
+    $SUDO apt-get install -y neovim || true
+    
+    # Install other packages with latest versions
+    echo "Installing latest versions of other packages..."
     for pkg in "${COMMON_APPS[@]}"; do
-        apt_pkg="$pkg"
-        [ "$pkg" = "fd" ] && apt_pkg="fd-find"
-        [ "$pkg" = "nvim" ] && apt_pkg="neovim"
+        case "$pkg" in
+            "nvim")
+                # Already installed above
+                continue
+                ;;
+            "fd")
+                apt_pkg="fd-find"
+                ;;
+            *)
+                apt_pkg="$pkg"
+                ;;
+        esac
+        
+        echo "Installing latest $apt_pkg..."
         $SUDO apt-get install -y "$apt_pkg" || true
     done
+    
     # Install fonts (Linux-specific: fonts-firacode)
+    echo "Installing Fira Code font..."
     $SUDO apt-get install -y fonts-firacode || true
+    
+    # Optional: Install additional development tools for latest versions
+    echo "Installing additional development tools..."
+    $SUDO apt-get install -y build-essential cmake pkg-config || true
+    
+    # Clean up
+    $SUDO apt-get autoremove -y || true
+    $SUDO apt-get autoclean || true
+    
 else
     echo "apt-get not found. Skipping package installs."
 fi
