@@ -12,6 +12,12 @@ COMMON_APPS=(
 {{- include "common_apps.txt" -}}
 )
 
+# Remove nvim from COMMON_APPS for apt install
+APT_APPS=()
+for pkg in "${COMMON_APPS[@]}"; do
+    [ "$pkg" != "nvim" ] && APT_APPS+=("$pkg")
+done
+
 echo "Running Linux setup using apt..."
 if command -v apt-get >/dev/null 2>&1; then
     $SUDO apt-get update -y -qq || true
@@ -30,71 +36,16 @@ if command -v apt-get >/dev/null 2>&1; then
     # Update package lists after adding repositories
     $SUDO apt-get update -y -qq || true
     
-    # Install packages with latest versions
-    for pkg in "${COMMON_APPS[@]}"; do
+    # Install all other packages except nvim
+    for pkg in "${APT_APPS[@]}"; do
         case "$pkg" in
             "fd")
-                # Install fd-find from default repos (latest available)
                 $SUDO apt-get install -y fd-find || true
                 ;;
-            "nvim")
-                # Install neovim from official releases (latest version)
-                echo "Installing latest Neovim from official releases..."
-                # Get the latest version from GitHub API
-                NVIM_VERSION=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name":' | cut -d'"' -f4)
-                echo "Latest Neovim version: $NVIM_VERSION"
-                
-                if [ -n "$NVIM_VERSION" ] && [ "$NVIM_VERSION" != "null" ]; then
-                    echo "Downloading and installing Neovim $NVIM_VERSION..."
-                    $SUDO apt-get install -y ninja-build gettext cmake unzip curl || true
-                    cd /tmp
-                    # Download the latest release
-                    wget -q "https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux64.tar.gz"
-                    if [ -f "nvim-linux64.tar.gz" ]; then
-                        $SUDO tar xzf nvim-linux64.tar.gz -C /opt
-                        $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/nvim
-                        $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/vim
-                        echo "Neovim $NVIM_VERSION installed successfully from official release"
-                    else
-                        echo "Failed to download Neovim, falling back to package manager version"
-                        $SUDO apt-get install -y neovim || true
-                    fi
-                    cd -
-                else
-                    echo "Could not determine latest Neovim version, falling back to package manager version"
-                    $SUDO apt-get install -y neovim || true
-                fi
-                ;;
-            "ripgrep")
-                # Install ripgrep from default repos (latest available)
-                $SUDO apt-get install -y ripgrep || true
-                ;;
-            "fzf")
-                # Install fzf from default repos (latest available)
-                $SUDO apt-get install -y fzf || true
-                ;;
-            "bat")
-                # Install bat from default repos (latest available)
-                $SUDO apt-get install -y bat || true
-                ;;
-            "delta")
-                # Install git-delta from default repos (latest available)
-                $SUDO apt-get install -y git-delta || true
-                ;;
-            "less")
-                # Install less from default repos
-                $SUDO apt-get install -y less || true
-                ;;
             "llvm")
-                # Install LLVM from official repository
                 $SUDO apt-get install -y llvm || true
                 ;;
-            "git")
-                # Install git from default repos (latest available)
-                $SUDO apt-get install -y git || true
-                ;;
             *)
-                # Try to install any other packages
                 $SUDO apt-get install -y "$pkg" || true
                 ;;
         esac
@@ -104,6 +55,34 @@ if command -v apt-get >/dev/null 2>&1; then
     $SUDO apt-get install -y fonts-firacode || true
 else
     echo "apt-get not found. Skipping package installs."
+fi
+
+echo "Installing latest Neovim from official releases..."
+NVIM_VERSION=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name":' | cut -d'"' -f4)
+echo "Latest Neovim version: $NVIM_VERSION"
+if [ -n "$NVIM_VERSION" ] && [ "$NVIM_VERSION" != "null" ]; then
+    $SUDO apt-get install -y ninja-build gettext cmake unzip curl || true
+    cd /tmp
+    wget -q "https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux64.tar.gz"
+    if [ -f "nvim-linux64.tar.gz" ]; then
+        $SUDO tar xzf nvim-linux64.tar.gz -C /opt
+        $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/nvim
+        $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/vim
+        echo "Neovim $NVIM_VERSION installed successfully from official release"
+        nvim_version_installed=$(/usr/local/bin/nvim --version | head -n1 | awk '{print $2}')
+        echo "Installed Neovim version: $nvim_version_installed"
+        if [ "$nvim_version_installed" != "${NVIM_VERSION#v}" ]; then
+            echo "ERROR: Installed Neovim version does not match latest!"
+            exit 1
+        fi
+    else
+        echo "Failed to download Neovim archive!"
+        exit 1
+    fi
+    cd -
+else
+    echo "Could not determine latest Neovim version!"
+    exit 1
 fi
 
 echo "Linux setup complete!"
