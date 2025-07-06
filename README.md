@@ -12,3 +12,7 @@ Try it yourself in a Docker container.
 docker run --rm -it debian bash -c 'apt update && apt install -y curl git && curl -fsSL get.chezmoi.io | bash -s -- init --apply skyde && exec bash'
 
 ```
+
+# CI
+
+This repository uses GitHub Actions to run a dry-run `chezmoi apply` and `chezmoi doctor` on each push and pull request.
