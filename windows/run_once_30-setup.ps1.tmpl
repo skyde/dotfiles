@@ -7,38 +7,60 @@ Write-Host "COMMON_APPS:"
 $COMMON_APPS | ForEach-Object { Write-Host $_ }
 
 Write-Host 'Running Windows setup using Scoop...'
-if (!(Get-Command scoop -ErrorAction SilentlyContinue)) {
-    try {
-        iwr -useb get.scoop.sh | iex
-    } catch {
-        Write-Error "Failed to install Scoop: $_"
-        exit 1
+# Install common apps using winget if available
+if (Get-Command winget -ErrorAction SilentlyContinue) {
+    # Map app names to winget IDs
+    $wingetAppMap = @{
+        'git'      = 'Git.Git'
+        'ripgrep'  = 'BurntSushi.ripgrep'
+        'fd'       = 'sharkdp.fd'
+        'fzf'      = 'junegunn.fzf'
+        'bat'      = 'sharkdp.bat'
+        'delta'    = 'dandavison.delta'
+        'less'     = 'jftuga.less'
+        'llvm'     = 'LLVM.LLVM'
+        'nvim'     = 'Neovim.Neovim'
     }
-}
-# Validate Scoop is working
-if (!(Get-Command scoop -ErrorAction SilentlyContinue)) {
-    Write-Error "Scoop is not available after installation. Aborting setup."
-    exit 1
-}
-else
-{   
-    Write-Host 'Validation successful that scoop command is available'
-}
-
-scoop bucket add extras | Out-Null
-scoop bucket add nerd-fonts | Out-Null
-foreach ($pkg in $COMMON_APPS)
-{
-    Write-Host "Installing $pkg"
-    scoop install $pkg
-}
-# Install fonts (Windows-specific: FiraCode-NF)
-if (Get-Command Get-FileHash -ErrorAction SilentlyContinue) {
-    try {
-        scoop install FiraCode-NF
-    } catch {
-        Write-Warning "Failed to install FiraCode-NF: $_"
+    foreach ($pkg in $COMMON_APPS) {
+        if ($wingetAppMap.ContainsKey($pkg)) {
+            $wingetId = $wingetAppMap[$pkg]
+            Write-Host "Installing $pkg with winget ($wingetId)"
+            $wingetArgs = @('--id', $wingetId, '--exact', '--accept-source-agreements', '--accept-package-agreements')
+            if ($pkg -eq 'git') {
+                $wingetArgs += '--silent'
+            }
+            winget install @wingetArgs
+        } else {
+            Write-Host "No winget mapping for $pkg, skipping."
+        }
     }
 } else {
-    Write-Warning "Get-FileHash cmdlet not found. Skipping FiraCode-NF install."
+    Write-Warning "winget is not available. Skipping winget app installs."
+}
+# Install fonts (Windows-specific: FiraCode-NF)
+$fontName = "FiraCode Nerd Font"
+$fontInstalled = (Get-ChildItem -Path "$env:WINDIR\Fonts" -Include "*FiraCode*NF*.ttf" -Recurse -ErrorAction SilentlyContinue | Measure-Object).Count -gt 0
+if (-not $fontInstalled) {
+    Write-Warning "FiraCode-NF font is not installed. Please install it manually from https://github.com/ryanoasis/nerd-fonts/releases."
+} else {
+    Write-Host "FiraCode-NF font is already installed."
+}
+# Ensure LLVM (clang) is in PATH for C compiler support
+$llvmBin = "$env:ProgramFiles\LLVM\bin"
+if (Test-Path "$llvmBin\clang.exe") {
+    $userPath = [System.Environment]::GetEnvironmentVariable('PATH', 'User')
+    if (-not ($userPath -split ';' | Where-Object { $_ -eq $llvmBin })) {
+        [System.Environment]::SetEnvironmentVariable('PATH', "$userPath;$llvmBin", 'User')
+        Write-Host "Added LLVM to user PATH. You may need to restart your terminal or log out/in for this to take effect."
+    } else {
+        Write-Host "LLVM is already in your user PATH."
+    }
+    if (-not ($env:PATH -split ';' | Where-Object { $_ -eq $llvmBin })) {
+        $env:PATH += ";$llvmBin"
+        Write-Host "Temporarily added LLVM to PATH for this session."
+    }
+    $clangVersion = & "$llvmBin\clang.exe" --version
+    Write-Host "clang is available: $clangVersion"
+} else {
+    Write-Warning "LLVM is installed but clang.exe was not found in $llvmBin. You may need to reinstall or check your LLVM installation."
 }
