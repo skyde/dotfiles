@@ -1,7 +1,5 @@
 # Install
 
-Use a single chezmoi command to install the config.
-
 ```sh
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply skyde
 ```
