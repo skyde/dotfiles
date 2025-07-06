@@ -43,11 +43,6 @@ brew install --cask font-fira-code || true
 echo "Creating symlinks for packages..."
 $SUDO ln -sf $(brew --prefix)/bin/* /usr/local/bin/ || true
 
-# Remove any apt-installed versions to avoid conflicts
-echo "Removing any apt-installed versions to avoid conflicts..."
-$SUDO apt-get remove -y neovim neovim-runtime ripgrep fd-find fzf bat delta less llvm || true
-$SUDO rm -f /usr/bin/nvim /usr/bin/vim /usr/bin/rg /usr/bin/fd /usr/bin/fzf /usr/bin/bat /usr/bin/delta /usr/bin/llvm-config || true
-
 # Use dpkg-divert to prevent apt from overwriting our binaries
 echo "Using dpkg-divert to prevent apt from overwriting our binaries..."
 for pkg in "${COMMON_APPS[@]}"; do
