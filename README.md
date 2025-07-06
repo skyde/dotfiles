@@ -9,5 +9,6 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply skyde
 Try it yourself in a Docker container.
 
 ```sh
-docker run --rm -it debian:latest bash -c "apt-get update && apt-get install -y curl git && sh -c \"\$(curl -fsLS get.chezmoi.io)\" -- init --apply skyde && bash"
+docker run --rm -it debian bash -c 'apt update && apt install -y curl git && curl -fsSL get.chezmoi.io | bash -s -- init --apply skyde && exec bash'
+
 ```
