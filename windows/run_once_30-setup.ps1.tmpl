@@ -1,7 +1,7 @@
 # Requires PowerShell 7+
 $COMMON_APPS = @(
 {{- range (split (include "common_apps.txt") "\n") }}
-'{{ . }}'
+{{- if . | trim }}'{{ . }}'{{ end }}
 {{- end }}
 )
 
@@ -15,4 +15,12 @@ foreach ($pkg in $COMMON_APPS) {
     scoop install $pkg
 }
 # Install fonts (Windows-specific: FiraCode-NF)
-scoop install FiraCode-NF
+if (Get-Command Get-FileHash -ErrorAction SilentlyContinue) {
+    try {
+        scoop install FiraCode-NF
+    } catch {
+        Write-Warning "Failed to install FiraCode-NF: $_"
+    }
+} else {
+    Write-Warning "Get-FileHash cmdlet not found. Skipping FiraCode-NF install."
+}
