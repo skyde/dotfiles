@@ -52,8 +52,8 @@ if command -v apt-get >/dev/null 2>&1; then
     # Install fonts (Linux-specific: fonts-firacode)
     $SUDO apt-get install -y fonts-firacode || true
     
-    # Remove any apt-installed neovim to avoid conflicts
-    echo "Removing any apt-installed neovim..."
+    # Explicitly remove any apt-installed neovim to avoid conflicts
+    echo "Explicitly removing any apt-installed neovim and related binaries..."
     $SUDO apt-get remove -y neovim neovim-runtime || true
     $SUDO rm -f /usr/bin/nvim /usr/bin/vim
     echo "Neovim removal complete"
