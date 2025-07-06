@@ -12,17 +12,6 @@ COMMON_APPS=(
 {{- include "common_apps.txt" -}}
 )
 
-# Remove nvim from COMMON_APPS for apt install
-APT_APPS=()
-for pkg in "${COMMON_APPS[@]}"; do
-    if [ "$pkg" != "nvim" ]; then
-        APT_APPS+=("$pkg")
-        echo "Adding $pkg to apt install list"
-    else
-        echo "Skipping nvim from apt install list"
-    fi
-done
-
 echo "Running Linux setup using apt..."
 if command -v apt-get >/dev/null 2>&1; then
     $SUDO apt-get update -y -qq || true
@@ -41,9 +30,9 @@ if command -v apt-get >/dev/null 2>&1; then
     # Update package lists after adding repositories
     $SUDO apt-get update -y -qq || true
     
-    # Install all other packages except nvim
-    echo "Installing packages: ${APT_APPS[*]}"
-    for pkg in "${APT_APPS[@]}"; do
+    # Install all packages from common_apps.txt
+    echo "Installing packages: ${COMMON_APPS[*]}"
+    for pkg in "${COMMON_APPS[@]}"; do
         case "$pkg" in
             "fd")
                 echo "Installing fd-find..."
