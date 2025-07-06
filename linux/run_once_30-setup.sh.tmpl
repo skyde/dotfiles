@@ -12,53 +12,56 @@ COMMON_APPS=(
 {{- include "common_apps.txt" -}}
 )
 
-echo "Running Linux setup using apt..."
+echo "Installing Homebrew and all packages using Homebrew on Debian..."
 
-if command -v apt-get >/dev/null 2>&1; then
-    # Update package lists
-    $SUDO apt-get update -y -qq || true
+# Install Homebrew if not present
+if ! command -v brew >/dev/null 2>&1; then
+    echo "Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
     
-    # Install latest Neovim from official PPA
-    echo "Installing latest Neovim..."
-    $SUDO apt-get install -y software-properties-common || true
-    $SUDO add-apt-repository -y ppa:neovim-ppa/stable || true
-    $SUDO apt-get update -y -qq || true
-    $SUDO apt-get install -y neovim || true
-    
-    # Install other packages with latest versions
-    echo "Installing latest versions of other packages..."
-    for pkg in "${COMMON_APPS[@]}"; do
-        case "$pkg" in
-            "nvim")
-                # Already installed above
-                continue
-                ;;
-            "fd")
-                apt_pkg="fd-find"
-                ;;
-            *)
-                apt_pkg="$pkg"
-                ;;
-        esac
-        
-        echo "Installing latest $apt_pkg..."
-        $SUDO apt-get install -y "$apt_pkg" || true
-    done
-    
-    # Install fonts (Linux-specific: fonts-firacode)
-    echo "Installing Fira Code font..."
-    $SUDO apt-get install -y fonts-firacode || true
-    
-    # Optional: Install additional development tools for latest versions
-    echo "Installing additional development tools..."
-    $SUDO apt-get install -y build-essential cmake pkg-config || true
-    
-    # Clean up
-    $SUDO apt-get autoremove -y || true
-    $SUDO apt-get autoclean || true
-    
-else
-    echo "apt-get not found. Skipping package installs."
+    # Add Homebrew to PATH
+    if [ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    elif [ -f "/opt/homebrew/bin/brew" ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    fi
 fi
 
-echo "Linux setup complete!"
+# Install all packages from common_apps.txt using Homebrew
+echo "Installing packages using Homebrew: ${COMMON_APPS[*]}"
+for pkg in "${COMMON_APPS[@]}"; do
+    echo "Installing $pkg..."
+    brew install "$pkg" || true
+done
+
+# Install fonts using Homebrew
+echo "Installing Fira Code font using Homebrew..."
+brew tap homebrew/cask-fonts || true
+brew install --cask font-fira-code || true
+
+# Create symlinks to make packages available system-wide
+echo "Creating symlinks for packages..."
+$SUDO ln -sf $(brew --prefix)/bin/* /usr/local/bin/ || true
+
+# Use dpkg-divert to prevent apt from overwriting our binaries
+echo "Using dpkg-divert to prevent apt from overwriting our binaries..."
+for pkg in "${COMMON_APPS[@]}"; do
+    if [ -f "/usr/local/bin/$pkg" ]; then
+        $SUDO dpkg-divert --add --rename --divert /usr/bin/$pkg.apt /usr/bin/$pkg || true
+        $SUDO ln -sf /usr/local/bin/$pkg /usr/bin/$pkg || true
+    fi
+done
+
+# Prepend /usr/local/bin to PATH for this session
+export PATH="/usr/local/bin:$PATH"
+
+# Final debug check
+echo "=== FINAL DEBUG ==="
+for pkg in "${COMMON_APPS[@]}"; do
+    echo "which $pkg: $(which $pkg 2>/dev/null || echo 'not found')"
+    if command -v $pkg >/dev/null 2>&1; then
+        echo "$pkg version: $($pkg --version 2>/dev/null | head -1 || echo 'version not available')"
+    fi
+done
+
+echo "Linux setup complete using Homebrew!"
