@@ -20,7 +20,10 @@ jobs:
       - name: Install chezmoi (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: iwr -useb https://get.chezmoi.io/ps1 | iex
+        run: |
+          $binDir = "$env:USERPROFILE\bin"
+          iwr -useb https://get.chezmoi.io/ps1 | iex -b $binDir
+          "$binDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Install lint tools (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
