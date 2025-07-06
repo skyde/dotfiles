@@ -9,7 +9,9 @@ else
 fi
 
 COMMON_APPS=(
-{{ include "common_apps.txt" | split "\n" | join "\n    " }}
+{{- range $line := (split (include "common_apps.txt") "\n") -}}
+    {{ $line }}
+{{- end -}}
 )
 
 echo "Running Linux setup using apt..."
