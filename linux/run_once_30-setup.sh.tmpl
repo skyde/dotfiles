@@ -61,32 +61,28 @@ else
     echo "apt-get not found. Skipping package installs."
 fi
 
-# --- MANUAL NEOVIM INSTALL AT THE VERY END ---
-echo "Installing latest Neovim from official releases..."
-NVIM_VERSION=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name":' | cut -d'"' -f4)
-echo "Latest Neovim version: $NVIM_VERSION"
-if [ -n "$NVIM_VERSION" ] && [ "$NVIM_VERSION" != "null" ]; then
-    echo "Installing build dependencies..."
-    $SUDO apt-get install -y ninja-build gettext cmake unzip curl || true
-    cd /tmp
-    echo "Downloading Neovim $NVIM_VERSION..."
-    wget -q "https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux64.tar.gz"
-    if [ -f "nvim-linux64.tar.gz" ]; then
-        echo "Extracting Neovim..."
-        $SUDO tar xzf nvim-linux64.tar.gz -C /opt
-        echo "Creating symlinks..."
-        $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/nvim
-        $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/vim
-        echo "Neovim $NVIM_VERSION installed successfully from official release"
-    else
-        echo "Failed to download Neovim archive!"
-        exit 1
+# --- INSTALL LATEST NEOVIM USING HOMEBREW ---
+echo "Installing Homebrew and latest Neovim..."
+if ! command -v brew >/dev/null 2>&1; then
+    echo "Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
+    
+    # Add Homebrew to PATH
+    if [ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    elif [ -f "/opt/homebrew/bin/brew" ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
     fi
-    cd -
-else
-    echo "Could not determine latest Neovim version!"
-    exit 1
 fi
+
+# Install latest Neovim using Homebrew
+echo "Installing latest Neovim using Homebrew..."
+brew install neovim || true
+
+# Create symlinks to make nvim available system-wide
+echo "Creating symlinks for nvim..."
+$SUDO ln -sf $(brew --prefix)/bin/nvim /usr/local/bin/nvim
+$SUDO ln -sf $(brew --prefix)/bin/nvim /usr/local/bin/vim
 
 # Remove any /usr/bin/nvim that may have been recreated
 $SUDO rm -f /usr/bin/nvim
