@@ -13,50 +13,81 @@ COMMON_APPS=(
 )
 
 echo "Running Linux setup using apt..."
-
 if command -v apt-get >/dev/null 2>&1; then
-    # Update package lists
     $SUDO apt-get update -y -qq || true
     
-    # Install latest Neovim from official PPA
-    echo "Installing latest Neovim..."
-    $SUDO apt-get install -y software-properties-common || true
-    $SUDO add-apt-repository -y ppa:neovim-ppa/stable || true
-    $SUDO apt-get update -y -qq || true
-    $SUDO apt-get install -y neovim || true
+    # Install prerequisites
+    $SUDO apt-get install -y curl wget software-properties-common apt-transport-https ca-certificates gnupg lsb-release || true
     
-    # Install other packages with latest versions
-    echo "Installing latest versions of other packages..."
+    # Add repositories for latest versions
+    echo "Adding repositories for latest packages..."
+    
+    # Add Neovim PPA for latest version
+    if ! grep -q "neovim" /etc/apt/sources.list.d/neovim.list 2>/dev/null; then
+        $SUDO add-apt-repository ppa:neovim-ppa/stable -y || true
+    fi
+    
+    # Add Git PPA for latest version
+    if ! grep -q "git-core" /etc/apt/sources.list.d/git-core.list 2>/dev/null; then
+        $SUDO add-apt-repository ppa:git-core/ppa -y || true
+    fi
+    
+    # Add LLVM repository for latest version
+    if ! grep -q "llvm" /etc/apt/sources.list.d/llvm.list 2>/dev/null; then
+        wget -qO- https://apt.llvm.org/llvm.sh | $SUDO bash -s all || true
+    fi
+    
+    # Update package lists after adding repositories
+    $SUDO apt-get update -y -qq || true
+    
+    # Install packages with latest versions
     for pkg in "${COMMON_APPS[@]}"; do
         case "$pkg" in
-            "nvim")
-                # Already installed above
-                continue
-                ;;
             "fd")
-                apt_pkg="fd-find"
+                # Install fd-find from default repos (latest available)
+                $SUDO apt-get install -y fd-find || true
+                ;;
+            "nvim")
+                # Install neovim from PPA
+                $SUDO apt-get install -y neovim || true
+                ;;
+            "ripgrep")
+                # Install ripgrep from default repos (latest available)
+                $SUDO apt-get install -y ripgrep || true
+                ;;
+            "fzf")
+                # Install fzf from default repos (latest available)
+                $SUDO apt-get install -y fzf || true
+                ;;
+            "bat")
+                # Install bat from default repos (latest available)
+                $SUDO apt-get install -y bat || true
+                ;;
+            "delta")
+                # Install git-delta from default repos (latest available)
+                $SUDO apt-get install -y git-delta || true
+                ;;
+            "less")
+                # Install less from default repos
+                $SUDO apt-get install -y less || true
+                ;;
+            "llvm")
+                # Install LLVM from official repository
+                $SUDO apt-get install -y llvm || true
+                ;;
+            "git")
+                # Install git from PPA
+                $SUDO apt-get install -y git || true
                 ;;
             *)
-                apt_pkg="$pkg"
+                # Try to install any other packages
+                $SUDO apt-get install -y "$pkg" || true
                 ;;
         esac
-        
-        echo "Installing latest $apt_pkg..."
-        $SUDO apt-get install -y "$apt_pkg" || true
     done
     
     # Install fonts (Linux-specific: fonts-firacode)
-    echo "Installing Fira Code font..."
     $SUDO apt-get install -y fonts-firacode || true
-    
-    # Optional: Install additional development tools for latest versions
-    echo "Installing additional development tools..."
-    $SUDO apt-get install -y build-essential cmake pkg-config || true
-    
-    # Clean up
-    $SUDO apt-get autoremove -y || true
-    $SUDO apt-get autoclean || true
-    
 else
     echo "apt-get not found. Skipping package installs."
 fi
