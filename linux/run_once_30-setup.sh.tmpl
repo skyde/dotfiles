@@ -15,7 +15,12 @@ COMMON_APPS=(
 # Remove nvim from COMMON_APPS for apt install
 APT_APPS=()
 for pkg in "${COMMON_APPS[@]}"; do
-    [ "$pkg" != "nvim" ] && APT_APPS+=("$pkg")
+    if [ "$pkg" != "nvim" ]; then
+        APT_APPS+=("$pkg")
+        echo "Adding $pkg to apt install list"
+    else
+        echo "Skipping nvim from apt install list"
+    fi
 done
 
 echo "Running Linux setup using apt..."
@@ -37,15 +42,19 @@ if command -v apt-get >/dev/null 2>&1; then
     $SUDO apt-get update -y -qq || true
     
     # Install all other packages except nvim
+    echo "Installing packages: ${APT_APPS[*]}"
     for pkg in "${APT_APPS[@]}"; do
         case "$pkg" in
             "fd")
+                echo "Installing fd-find..."
                 $SUDO apt-get install -y fd-find || true
                 ;;
             "llvm")
+                echo "Installing llvm..."
                 $SUDO apt-get install -y llvm || true
                 ;;
             *)
+                echo "Installing $pkg..."
                 $SUDO apt-get install -y "$pkg" || true
                 ;;
         esac
@@ -55,8 +64,10 @@ if command -v apt-get >/dev/null 2>&1; then
     $SUDO apt-get install -y fonts-firacode || true
     
     # Remove any apt-installed neovim to avoid conflicts
+    echo "Removing any apt-installed neovim..."
     $SUDO apt-get remove -y neovim neovim-runtime || true
     $SUDO rm -f /usr/bin/nvim /usr/bin/vim
+    echo "Neovim removal complete"
 else
     echo "apt-get not found. Skipping package installs."
 fi
@@ -65,11 +76,15 @@ echo "Installing latest Neovim from official releases..."
 NVIM_VERSION=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name":' | cut -d'"' -f4)
 echo "Latest Neovim version: $NVIM_VERSION"
 if [ -n "$NVIM_VERSION" ] && [ "$NVIM_VERSION" != "null" ]; then
+    echo "Installing build dependencies..."
     $SUDO apt-get install -y ninja-build gettext cmake unzip curl || true
     cd /tmp
+    echo "Downloading Neovim $NVIM_VERSION..."
     wget -q "https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux64.tar.gz"
     if [ -f "nvim-linux64.tar.gz" ]; then
+        echo "Extracting Neovim..."
         $SUDO tar xzf nvim-linux64.tar.gz -C /opt
+        echo "Creating symlinks..."
         $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/nvim
         $SUDO ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/vim
         echo "Neovim $NVIM_VERSION installed successfully from official release"
