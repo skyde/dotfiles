@@ -1,7 +1,17 @@
 # Install
 
+### Mac / Linux
+
 ```sh
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply skyde
+```
+
+### Windows
+
+
+```ps
+winget install twpayne.chezmoi
+chezmoi init --apply skyde
 ```
 
 # Linux Container
