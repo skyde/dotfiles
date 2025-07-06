@@ -6,3 +6,4 @@ bat
 delta
 less
 llvm
+nvim
