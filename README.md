@@ -1,21 +1,15 @@
-# Dotfiles
+# Install
 
-This repository contains configuration files for multiple platforms.
+Use a single chezmoi command to install the config.
 
-The VS Code settings and keybindings are defined in `.chezmoitemplates`. Copies of
-these templates are placed under each platform's default settings directory so
-chezmoi installs them correctly on macOS, Linux and Windows:
+```sh
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply skyde
+```
 
-- `Library/Application Support/Code/User/` (macOS)
-- `dot_config/Code/User/` (Linux)
-- `AppData/Roaming/Code/User/` (Windows)
+# Linux Container
 
-Running `chezmoi apply` will copy the template to the appropriate location on
-whichever OS you're using.
+You can try running the config in a container (in progress).
 
-By default chezmoi is configured to create symlinks instead of copying files.
-The setting is defined in `dot_config/chezmoi/chezmoi.toml`:
-
-```toml
-mode = "symlink"
+```sh
+docker run --rm -it debian:latest bash -c "apt-get update && apt-get install -y curl git && sh -c \"\$(curl -fsLS get.chezmoi.io)\" -- init --apply skyde && bash"
 ```
