@@ -2,3 +2,37 @@ if [[ -o interactive ]]; then
   stty -ixon -ixoff
 fi
 
+# Path setup (add custom bins before system paths)
+export PATH="$HOME/bin:/usr/local/bin:$PATH"
+
+# Shell Options
+setopt autocd             # Enter directory just by typing its name
+setopt correct            # Auto correct command typos
+setopt nocaseglob         # Case insensitive globbing
+setopt extended_glob      # Extended globbing
+setopt hist_ignore_all_dups  # Don’t store duplicate history
+setopt share_history         # Share command history between sessions
+
+# History
+HISTSIZE=5000
+SAVEHIST=5000
+HISTFILE=~/.zsh_history
+
+# Key Bindings
+bindkey -e                # Use emacs keybindings
+bindkey '^[[1;5C' forward-word     # Ctrl+Right
+bindkey '^[[1;5D' backward-word    # Ctrl+Left
+
+# Bootstrap Starship
+eval "$(starship init zsh)"
+
+# Inline suggestions
+source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# Autocomplete
+autoload -Uz compinit && compinit
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+
+# Syntax highlighting
+source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
