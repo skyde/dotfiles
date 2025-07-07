@@ -31,3 +31,38 @@ jobs:
 
       - name: Doctor
         run: chezmoi doctor -S .
+
+      - name: Run installed tools (Unix)
+        if: runner.os != 'Windows'
+        run: |
+            tools=(nvim git rg fd fzf bat delta less clang)
+            for tool in "${tools[@]}"; do
+              echo "Checking $tool"
+              if ! command -v "$tool" >/dev/null 2>&1; then
+                echo "$tool not found" >&2
+                exit 1
+              fi
+              if [ "$tool" = nvim ]; then
+                "$tool" --headless +qall
+              else
+                "$tool" --version >/dev/null
+              fi
+            done
+
+      - name: Run installed tools (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+            $tools = @('nvim','git','rg','fd','fzf','bat','delta','less','clang')
+            foreach ($tool in $tools) {
+              Write-Host "Checking $tool"
+              if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+                Write-Error "$tool not found"
+                exit 1
+              }
+              if ($tool -eq 'nvim') {
+                & $tool --headless +qall
+              } else {
+                & $tool --version | Out-Null
+              }
+            }
