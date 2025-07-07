@@ -124,6 +124,9 @@ nnoremap <leader>ep :vsc View.PreviousError<CR>
 " Tabs
 nnoremap ]b :vsc Window.NextTab<CR>
 nnoremap [b :vsc Window.PreviousTab<CR>
+" Switch tabs with Shift+Left/Right arrows
+nnoremap <S-Left> :vsc Window.PreviousTab<CR>
+nnoremap <S-Right> :vsc Window.NextTab<CR>
 nnoremap <leader>bd :vsc Window.CloseDocumentWindow<CR>
 nnoremap <leader>bp :vsc Window.PinTab<CR>
 nnoremap <leader>bP :vsc Window.CloseAllButPinned<CR>
