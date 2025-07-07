@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Update chezmoi configuration if chezmoi is available
+if command -v chezmoi >/dev/null 2>&1; then
+  chezmoi update --init
+fi

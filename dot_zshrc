@@ -36,3 +36,6 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
 # Syntax highlighting
 source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+# Auto update dotfiles
+[ -x "$HOME/bin/chezmoi-auto-update" ] && "$HOME/bin/chezmoi-auto-update"
