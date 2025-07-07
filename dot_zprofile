@@ -1,0 +1,5 @@
+# Automatically update dotfiles using chezmoi on each login
+if command -v chezmoi >/dev/null 2>&1; then
+  # Perform a quiet update in the background to avoid delaying shell startup
+  chezmoi update --init &> /dev/null &
+fi
