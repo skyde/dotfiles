@@ -6,7 +6,7 @@ $COMMON_APPS = Get-Content "{{ .chezmoi.sourceDir }}/common_apps.txt" | Where-Ob
 Write-Host "COMMON_APPS:"
 $COMMON_APPS | ForEach-Object { Write-Host $_ }
 
-Write-Host 'Running Windows setup using Scoop...'
+Write-Host 'Running Windows setup using winget...'
 # Install common apps using winget if available
 if (Get-Command winget -ErrorAction SilentlyContinue) {
     # Map app names to winget IDs
@@ -20,6 +20,7 @@ if (Get-Command winget -ErrorAction SilentlyContinue) {
         'less'     = 'jftuga.less'
         'llvm'     = 'LLVM.LLVM'
         'nvim'     = 'Neovim.Neovim'
+        'zoxide'   = 'AjeetDSouza.Zoxide'
     }
     foreach ($pkg in $COMMON_APPS) {
         if ($wingetAppMap.ContainsKey($pkg)) {
