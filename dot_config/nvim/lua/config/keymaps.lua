@@ -106,5 +106,5 @@ vim.keymap.del("n", "<S-l>")
 -- map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
 
 -- Navigate buffers with Shift+Arrow keys
-map("n", "<S-Left>", ":bprevious<CR>", { desc = "Previous buffer" })
-map("n", "<S-Right>", ":bnext<CR>", { desc = "Next buffer" })
+map("n", "<S-Left>", "<cmd>bprevious<CR>", { desc = "Previous buffer", silent = true })
+map("n", "<S-Right>", "<cmd>bnext<CR>", { desc = "Next buffer", silent = true })
