@@ -1,0 +1,4 @@
+if [[ -o interactive ]]; then
+  stty -ixon -ixoff
+fi
+
