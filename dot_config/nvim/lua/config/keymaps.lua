@@ -56,6 +56,9 @@ vim.keymap.set("n", "<leader>uk", print_keys.toggle, {
   desc = "Toggle Key Print",
 })
 
+-- Open a terminal
+vim.keymap.set("n", "<leader>r", "<cmd>terminal<CR>", { desc = "Open terminal" })
+
 -- Toggle comment on the current line  ── normal mode
 vim.keymap.set("n", "<S-F11>", "gcc", { remap = true, silent = true, desc = "Toggle Comment (line)" })
 
