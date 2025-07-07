@@ -19,9 +19,54 @@
     // Increase terminal scrollback similar to using a terminal split in Neovim
     "terminal.integrated.scrollback": 10000,
 
-    // Custom scroll mappings to mirror Neovim keybinds
+    // Editor UI to match Vim configuration
+    "editor.lineNumbers": "relative",
+    "editor.renderLineHighlight": "line",
+    "editor.cursorSurroundingLines": 8,
+
+    // Search behaviour like Vim
+    "vim.ignorecase": true,
+    "vim.smartcase": true,
+    "vim.incsearch": true,
+    "vim.hlsearch": true,
+    "vim.startofline": false,
+
+    // Leader key and custom key mappings
+    "vim.leader": "<space>",
     "vim.normalModeKeyBindingsNonRecursive": [
         { "before": ["<C-u>"], "after": ["16k"] },
-        { "before": ["<C-d>"], "after": ["16j"] }
+        { "before": ["<C-d>"], "after": ["16j"] },
+        { "before": ["<Left>"], "after": ["h"] },
+        { "before": ["<Down>"], "after": ["j"] },
+        { "before": ["<Up>"], "after": ["k"] },
+        { "before": ["<Right>"], "after": ["l"] },
+        { "before": ["<C-o>"], "commands": ["workbench.action.navigateBack"] },
+        { "before": ["<C-i>"], "commands": ["workbench.action.navigateForward"] },
+        { "before": ["<C-h>"], "commands": ["workbench.action.focusLeftGroup"] },
+        { "before": ["<C-j>"], "commands": ["workbench.action.focusBelowGroup"] },
+        { "before": ["<C-k>"], "commands": ["workbench.action.focusAboveGroup"] },
+        { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] },
+        { "before": ["<leader>", "<leader>"], "commands": ["workbench.action.quickOpen"] },
+        { "before": ["<leader>", "f", "m"], "commands": ["revealFileInOS"] },
+        { "before": ["<leader>", "r"], "commands": ["workbench.action.terminal.toggleTerminal"] },
+        { "before": ["<leader>", "e"], "commands": ["workbench.view.explorer"] },
+        { "before": ["g", "d"], "commands": ["editor.action.revealDefinition"] },
+        { "before": ["g", "p"], "commands": ["editor.action.peekDefinition"] },
+        { "before": ["g", "i"], "commands": ["editor.action.goToImplementation"] },
+        { "before": ["g", "r"], "commands": ["editor.action.goToReferences"] },
+        { "before": ["g", "c"], "commands": ["editor.action.commentLine"] },
+        { "before": ["g", "h"], "commands": ["C_Cpp.SwitchHeaderSource"] },
+        { "before": ["<leader>", "c", "r"], "commands": ["editor.action.rename"] },
+        { "before": ["<leader>", "c", "i"], "commands": ["editor.action.triggerParameterHints"] },
+        { "before": ["<leader>", "e", "e"], "commands": ["workbench.actions.view.problems"] },
+        { "before": ["<leader>", "e", "n"], "commands": ["editor.action.marker.next"] },
+        { "before": ["<leader>", "e", "p"], "commands": ["editor.action.marker.prev"] },
+        { "before": ["]", "b"], "commands": ["workbench.action.nextEditor"] },
+        { "before": ["[", "b"], "commands": ["workbench.action.previousEditor"] },
+        { "before": ["<leader>", "b", "d"], "commands": ["workbench.action.closeActiveEditor"] },
+        { "before": ["<leader>", "b", "o"], "commands": ["workbench.action.closeOtherEditors"] }
+    ],
+    "vim.insertModeKeyBindingsNonRecursive": [
+        { "before": ["<C-s>"], "commands": ["editor.action.formatDocument", "workbench.action.files.save"] }
     ]
 }
