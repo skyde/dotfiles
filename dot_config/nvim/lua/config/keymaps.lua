@@ -1,4 +1,5 @@
 local map = vim.keymap.set
+local print_keys = require("config.print_keys")
 
 -- Use screen-line motions for arrow keys in Normal, Visual & Operator-Pending modes
 for _, mode in ipairs({ "n", "v", "o" }) do
@@ -19,12 +20,7 @@ for _, mode in ipairs({ "n", "i", "v", "o", "t" }) do
   map(mode, "<ScrollWheelRight>", "<Nop>", { silent = true, desc = "Disable → scroll" })
 end
 
--- TODO: Move this debug print of current key into another file & make it so that it's disabled by default but on a bool
--- Log every key pressed in nvim (any mode)
--- vim.on_key(function(char)
---   -- You can use vim.fn.mode() to check the current mode if you want to filter
---   vim.notify("Key pressed: " .. vim.inspect(char))
--- -- end, vim.api.nvim_create_namespace("log-keys"))
+
 
 --------------------------------------------------------------------------
 -- Shift+Function key helpers -------------------------------------------
@@ -54,6 +50,11 @@ map_shift_f(7, "<cmd>CMakeStop<CR>", { desc = "Stop Build" })
 
 -- Go to LSP definition
 map_shift_f(8, vim.lsp.buf.definition, { desc = "Goto Definition" })
+
+-- Leader-based toggle for key print debugging
+vim.keymap.set("n", "<leader>uk", print_keys.toggle, {
+  desc = "Toggle Key Print",
+})
 
 -- Toggle comment on the current line  ── normal mode
 vim.keymap.set("n", "<S-F11>", "gcc", { remap = true, silent = true, desc = "Toggle Comment (line)" })
