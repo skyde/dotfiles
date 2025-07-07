@@ -8,3 +8,4 @@ less
 llvm
 nvim
 zoxide
+starship
