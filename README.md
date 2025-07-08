@@ -3,8 +3,9 @@
 ### Mac
 
 ```sh
-sudo apt update
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply skyde
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew install chezmoi
+chezmoi init --apply skyde
 ```
 
 ### Linux
