@@ -33,7 +33,6 @@ docker run --rm -it debian:testing bash -c 'apt update && apt install -y curl gi
 
 ### WSL Installation
 
-```
-wsl --install -d Debian; wsl -d Debian -- bash -lc "sudo sed -i 's/bookworm/trixie/g' /etc/apt/sources.list && sudo apt update && sudo apt full-upgrade -y"
-wsl --set-default Debian
+```ps
+wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc 'sudo sed -i "s/bookworm/trixie/g" /etc/apt/sources.list && sudo apt update && sudo apt full-upgrade -y && curl -fsLS get.chezmoi.io | bash -s -- init --apply skyde'
 ```
