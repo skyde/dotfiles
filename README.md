@@ -1,13 +1,22 @@
 # Install
 
-### Mac / Linux
+### Mac
 
 ```sh
+sudo apt update
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply skyde
 ```
 
-### Windows
+### Linux
 
+```
+sudo apt-get update -qq && sudo apt-get install -y curl && \
+mkdir -p ~/.local/bin && \
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && export PATH="$HOME/.local/bin:$PATH" && \
+curl -fsSL get.chezmoi.io | BINDIR="$HOME/.local/bin" bash -s -- init --apply skyde
+```
+
+### Windows
 
 ```ps
 winget install twpayne.chezmoi
@@ -19,10 +28,11 @@ chezmoi init --apply skyde
 Try it yourself in a Docker container.
 
 ```sh
-docker run --rm -it debian bash -c 'apt update && apt install -y curl git && curl -fsSL get.chezmoi.io | bash -s -- init --apply skyde && exec bash'
-
+docker run --rm -it debian:testing bash -c 'apt update && apt install -y curl git && curl -fsSL get.chezmoi.io | bash -s -- init --apply skyde && exec bash'
 ```
 
-# CI
+### WSL Installation
 
-This repository uses GitHub Actions to run a dry-run `chezmoi apply` and `chezmoi doctor` on each push and pull request.
+```ps
+wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc 'sudo sed -i "s/bookworm/trixie/g" /etc/apt/sources.list && sudo apt update && sudo apt full-upgrade -y && curl -fsLS get.chezmoi.io | bash -s -- init --apply skyde'
+```
