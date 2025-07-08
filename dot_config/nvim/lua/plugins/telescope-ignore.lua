@@ -98,6 +98,7 @@ return {
     opts = opts or {}
     opts.defaults = opts.defaults or {}
     opts.defaults.file_ignore_patterns = vim.list_extend(opts.defaults.file_ignore_patterns or {}, ignore)
+    opts.defaults.hidden = true
 
     ---------------------------------------------------------------------------
     -- 3. (Optional) Speed up live_grep even more ------------------------------
@@ -105,6 +106,7 @@ return {
     --    faster than post-filtering. You can add or remove globs as needed.
     ---------------------------------------------------------------------------
     local speedup_globs = {
+      "--hidden",
       "--glob=!build/**",
       "--glob=!out/**",
       "--glob=!bin/**",
@@ -129,6 +131,7 @@ return {
   config = function()
     -- Add <leader>se to run live_grep_args with --type=cpp and --type=py, but exclude any *.blob.* files
     local speedup_globs = {
+      "--hidden",
       "--glob=!build/**",
       "--glob=!out/**",
       "--glob=!bin/**",
