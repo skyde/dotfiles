@@ -38,9 +38,13 @@
         { "before": ["<C-d>"], "after": ["16j"] },
         { "before": ["<S-F4>"], "after": ["<C-u>"] },
         { "before": ["<S-F6>"], "after": ["<C-d>"] },
+        { "before": ["<C-s>"], "commands": ["editor.action.formatDocument", "workbench.action.files.save"] },
+        { "before": ["<D-s>"], "commands": ["workbench.action.files.save"] },
+        { "before": ["<D-Left>"], "commands": ["workbench.action.navigateBack"] },
+        { "before": ["<D-Right>"], "commands": ["workbench.action.navigateForward"] },
         { "before": ["<Left>"], "after": ["h"] },
-        { "before": ["<Down>"], "after": ["j"] },
-        { "before": ["<Up>"], "after": ["k"] },
+        { "before": ["<Down>"], "after": ["gj"] },
+        { "before": ["<Up>"], "after": ["gk"] },
         { "before": ["<Right>"], "after": ["l"] },
         { "before": ["<C-o>"], "commands": ["workbench.action.navigateBack"] },
         { "before": ["<C-i>"], "commands": ["workbench.action.navigateForward"] },
@@ -70,10 +74,12 @@
     ],
     "vim.visualModeKeyBindingsNonRecursive": [
         { "before": ["<S-F4>"], "after": ["<C-c>", "<C-u>", "g", "v"] },
-        { "before": ["<S-F6>"], "after": ["<C-c>", "<C-d>", "g", "v"] }
+        { "before": ["<S-F6>"], "after": ["<C-c>", "<C-d>", "g", "v"] },
+        { "before": ["<C-s>"], "commands": ["editor.action.formatDocument", "workbench.action.files.save"] }
     ],
     "vim.insertModeKeyBindingsNonRecursive": [
         { "before": ["<C-s>"], "commands": ["editor.action.formatDocument", "workbench.action.files.save"] },
+        { "before": ["<D-s>"], "commands": ["workbench.action.files.save"] },
         { "before": ["<S-F4>"], "after": ["<C-o>", "<C-u>"] },
         { "before": ["<S-F6>"], "after": ["<C-o>", "<C-d>"] },
     ]
