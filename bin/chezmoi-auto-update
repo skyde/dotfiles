@@ -1,0 +1,5 @@
+#!/bin/sh
+
+if command -v chezmoi >/dev/null 2>&1; then
+  chezmoi update --init >/dev/null 2>&1
+fi
