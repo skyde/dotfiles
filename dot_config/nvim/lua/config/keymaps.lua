@@ -108,3 +108,10 @@ vim.keymap.del("n", "<S-l>")
 -- Navigate buffers with Shift+Arrow keys
 map("n", "<S-Left>", "<cmd>bprevious<CR>", { desc = "Previous buffer", silent = true })
 map("n", "<S-Right>", "<cmd>bnext<CR>", { desc = "Next buffer", silent = true })
+
+-- Print the current file name and full path
+vim.keymap.set("n", "<leader>fl", function()
+  local file = vim.fn.expand("%:p")
+  local name = vim.fn.expand("%:t")
+  print(string.format("%s\n%s", name, file))
+end, { desc = "Print file path" })
