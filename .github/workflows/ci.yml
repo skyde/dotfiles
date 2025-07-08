@@ -31,3 +31,11 @@ jobs:
 
       - name: Doctor
         run: chezmoi doctor -S .
+
+      - name: Install bats (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y bats
+
+      - name: Run shell tests
+        if: runner.os == 'Linux'
+        run: bats -r tests
