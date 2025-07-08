@@ -124,6 +124,8 @@ return {
       return speedup_globs
     end
     opts.pickers.find_files = opts.pickers.find_files or {}
+    -- Include hidden files when searching with Telescope
+    opts.pickers.find_files.hidden = true
     opts.pickers.find_files.additional_args = function()
       return speedup_globs
     end
