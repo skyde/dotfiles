@@ -1,8 +1,5 @@
-{{/* vscode-settings.json template for chezmoi */}}
-{
-    // Use system clipboard in Vim extension
-    "vim.useSystemClipboard": true,
 
+{
     // Copilot Chat configuration
     "github.copilot.chat.agent.thinkingTool": true,
     "chat.agent.enabled": true,
@@ -14,15 +11,29 @@
     // Always open files from untrusted workspaces
     "security.workspace.trust.untrustedFiles": "open",
 
-    // ----- Vim -----
-
     // Increase terminal scrollback similar to using a terminal split in Neovim
     "terminal.integrated.scrollback": 10000,
 
+    // Cursor Shape & Style
+    "editor.cursorStyle": "line",           // options: "line", "block", "underline", "line-thin", "block-outline", "underline-thin"
+    "editor.cursorWidth": 3,                // only applies when cursorStyle is "line" (default is 2px)
+    "workbench.colorCustomizations":
+    {
+        "editorCursor.foreground": "#FF5000"
+    },
+
+    // Blinking & Animation
+    "editor.cursorBlinking": "solid",       // options: "blink", "smooth", "phase", "expand", "solid"
+    "editor.cursorSmoothCaretAnimation": "off",  // only with "smooth" blinking
+
     // Editor UI to match Vim configuration
     "editor.lineNumbers": "relative",
-    "editor.renderLineHighlight": "line",
+    "editor.renderLineHighlight": "none",
     "editor.cursorSurroundingLines": 8,
+
+    // Use system clipboard in Vim extension
+    "vim.useSystemClipboard": true,
+    "vim.useCtrlKeys": true,
 
     // Search behaviour like Vim
     "vim.ignorecase": true,
@@ -31,27 +42,39 @@
     "vim.hlsearch": true,
     "vim.startofline": false,
 
+    // Highlighted Yank
+    "vim.highlightedyank.enable": true,
+    "vim.highlightedyank.duration": 125,
+    
+    // Easy Motion
+    "vim.easymotion": true,
+    // "vim.easymotion": true,
+    // "vim.sneak": true,
+    // "vim.sneakCaseSensitive": false,
+
     // Leader key and custom key mappings
     "vim.leader": "<space>",
     "vim.normalModeKeyBindingsNonRecursive": [
+        {
+            "before": ["s"],
+            "after": ["<leader>", "<leader>", "2", "s"]
+        },
+        {
+            "before": ["S"],
+            "after": ["<leader>", "<leader>", "2", "S"]
+        },
         { "before": ["<C-u>"], "after": ["16k"] },
         { "before": ["<C-d>"], "after": ["16j"] },
-        { "before": ["<S-F4>"], "after": ["<C-u>"] },
-        { "before": ["<S-F6>"], "after": ["<C-d>"] },
-        { "before": ["<C-s>"], "commands": ["editor.action.formatDocument", "workbench.action.files.save"] },
-        { "before": ["<D-s>"], "commands": ["workbench.action.files.save"] },
+        // { "before": ["<S-F4>"], "after": ["16k"] },
+        // { "before": ["<S-F6>"], "after": ["16j"] },
         { "before": ["<D-Left>"], "commands": ["workbench.action.navigateBack"] },
         { "before": ["<D-Right>"], "commands": ["workbench.action.navigateForward"] },
-        { "before": ["<Left>"], "after": ["h"] },
-        { "before": ["<Down>"], "after": ["gj"] },
-        { "before": ["<Up>"], "after": ["gk"] },
-        { "before": ["<Right>"], "after": ["l"] },
-        { "before": ["<C-o>"], "commands": ["workbench.action.navigateBack"] },
-        { "before": ["<C-i>"], "commands": ["workbench.action.navigateForward"] },
-        { "before": ["<C-h>"], "commands": ["workbench.action.focusLeftGroup"] },
-        { "before": ["<C-j>"], "commands": ["workbench.action.focusBelowGroup"] },
-        { "before": ["<C-k>"], "commands": ["workbench.action.focusAboveGroup"] },
-        { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] },
+        // { "before": ["<C-o>"], "commands": ["workbench.action.navigateBack"] },
+        // { "before": ["<C-i>"], "commands": ["workbench.action.navigateForward"] },
+        // { "before": ["<C-h>"], "commands": ["workbench.action.focusLeftGroup"] },
+        // { "before": ["<C-j>"], "commands": ["workbench.action.focusBelowGroup"] },
+        // { "before": ["<C-k>"], "commands": ["workbench.action.focusAboveGroup"] },
+        // { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] },
         { "before": ["<leader>", "<leader>"], "commands": ["workbench.action.quickOpen"] },
         { "before": ["<leader>", "f", "m"], "commands": ["revealFileInOS"] },
         { "before": ["<leader>", "r"], "commands": ["workbench.action.terminal.toggleTerminal"] },
@@ -72,15 +95,15 @@
         { "before": ["<leader>", "b", "d"], "commands": ["workbench.action.closeActiveEditor"] },
         { "before": ["<leader>", "b", "o"], "commands": ["workbench.action.closeOtherEditors"] }
     ],
-    "vim.visualModeKeyBindingsNonRecursive": [
-        { "before": ["<S-F4>"], "after": ["<C-c>", "<C-u>", "g", "v"] },
-        { "before": ["<S-F6>"], "after": ["<C-c>", "<C-d>", "g", "v"] },
-        { "before": ["<C-s>"], "commands": ["editor.action.formatDocument", "workbench.action.files.save"] }
-    ],
-    "vim.insertModeKeyBindingsNonRecursive": [
-        { "before": ["<C-s>"], "commands": ["editor.action.formatDocument", "workbench.action.files.save"] },
-        { "before": ["<D-s>"], "commands": ["workbench.action.files.save"] },
-        { "before": ["<S-F4>"], "after": ["<C-o>", "<C-u>"] },
-        { "before": ["<S-F6>"], "after": ["<C-o>", "<C-d>"] },
-    ]
+    // "vim.visualModeKeyBindingsNonRecursive": [
+    //     { "before": ["<C-s>"], "commands": ["editor.action.formatDocument", "workbench.action.files.save"] }
+    // ],
+    // "vim.insertModeKeyBindingsNonRecursive": [
+    //     { "before": ["<C-s>"], "commands": ["editor.action.formatDocument", "workbench.action.files.save"] },
+    // ],
+    // To improve performance
+    "extensions.experimental.affinity": {
+        "vscodevim.vim": 1
+    },
+    "workbench.colorTheme": "Tokyo Night"
 }
