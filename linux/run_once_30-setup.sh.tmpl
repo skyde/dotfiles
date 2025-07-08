@@ -32,11 +32,24 @@ for pkg in "${COMMON_APPS[@]}"; do
     APT_PACKAGES+=("$apt_pkg")
 done
 
+# Install zsh and helpful plugins
+APT_PACKAGES+=(zsh zsh-autosuggestions zsh-syntax-highlighting)
+
 echo "Installing: ${APT_PACKAGES[*]}"
 $SUDO apt-get install -y "${APT_PACKAGES[@]}" || true
 
 # Install Fira Code font using apt
 $SUDO apt-get install -y fonts-firacode || true
+
+# Set zsh as the default shell if available
+if command -v zsh >/dev/null 2>&1; then
+    ZSH_PATH=$(command -v zsh)
+    CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
+    if [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
+        echo "Changing default shell to $ZSH_PATH"
+        $SUDO chsh -s "$ZSH_PATH" "$USER" || true
+    fi
+fi
 
 # Final debug check
 echo "=== FINAL DEBUG ==="
