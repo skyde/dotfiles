@@ -10,6 +10,7 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply skyde
 
 ```
 wsl --install -d Debian; wsl -d Debian -- bash -lc "sudo sed -i 's/bookworm/trixie/g' /etc/apt/sources.list && sudo apt update && sudo apt full-upgrade -y"
+wsl --set-default Debian
 ```
 
 ### Windows (non WSL)
