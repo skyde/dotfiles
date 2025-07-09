@@ -291,6 +291,14 @@
     "vscodevim.vim": 1
   },
   "workbench.colorTheme": "Tokyo Night",
+  "workbench.colorCustomizations":
+  {
+    "editor.background": "#000000",
+    "editorGutter.background": "#000000",
+    "sideBar.background": "#000000",
+    "activityBar.background": "#000000",
+    "statusBar.background": "#000000"
+  },
   "editor.minimap.enabled": false,
   "editor.fontSize": 16,
   "[json]": {
