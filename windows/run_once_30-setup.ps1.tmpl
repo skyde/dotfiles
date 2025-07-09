@@ -65,3 +65,16 @@ if (Test-Path "$llvmBin\clang.exe") {
 } else {
     Write-Warning "LLVM is installed but clang.exe was not found in $llvmBin. You may need to reinstall or check your LLVM installation."
 }
+
+# Configure key repeat behavior for Vim and general usage
+Write-Host "Setting Windows key repeat registry values..."
+try {
+    $keyboardRegPath = "HKCU:\\Control Panel\\Keyboard"
+    # Shorter delay before key repeat starts (0 = shortest)
+    Set-ItemProperty -Path $keyboardRegPath -Name "KeyboardDelay" -Value "0"
+    # Faster repeat rate (31 = fastest)
+    Set-ItemProperty -Path $keyboardRegPath -Name "KeyboardSpeed" -Value "31"
+    Write-Host "Key repeat settings applied. You may need to sign out and back in for changes to take effect."
+} catch {
+    Write-Warning "Failed to update key repeat settings: $_"
+}
