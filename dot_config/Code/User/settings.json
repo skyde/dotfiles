@@ -187,6 +187,10 @@
       "commands": ["workbench.action.toggleZenMode"]
     },
     {
+      "before": ["<leader>", "w", "F"],
+      "commands": ["workbench.action.toggleFullScreen"]
+    },
+    {
       "before": ["<S-h>"],
       "commands": [":bprevious"]
     },
