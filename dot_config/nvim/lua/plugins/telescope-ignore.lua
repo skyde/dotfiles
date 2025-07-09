@@ -123,6 +123,13 @@ return {
     opts.pickers.live_grep.additional_args = function()
       return speedup_globs
     end
+    -- Ensure `grep_string` also searches hidden files.  LazyVim maps
+    -- <leader>sg to `grep_string`, so we configure it with the same flags
+    -- as `live_grep`.
+    opts.pickers.grep_string = opts.pickers.grep_string or {}
+    opts.pickers.grep_string.additional_args = function()
+      return speedup_globs
+    end
     opts.pickers.find_files = opts.pickers.find_files or {}
     -- Include hidden files when searching with Telescope
     opts.pickers.find_files.hidden = true
