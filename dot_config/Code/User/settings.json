@@ -247,7 +247,7 @@
       "before": ["]", "d"],
       "commands": ["editor.action.marker.next"]
     },
-    // TODO: Should be ctrl a? (ie. next fix.. mostly just easier to press)
+    // TODO: Should be <leader> c e? (ie. next fix.. mostly just easier to press)
     {
       "before": ["<leader>", "c", "a"],
       "commands": ["editor.action.quickFix"]
@@ -295,15 +295,15 @@
   "extensions.experimental.affinity": {
     "vscodevim.vim": 1
   },
-  "workbench.colorTheme": "Tokyo Night",
-  "workbench.colorCustomizations":
-  {
-    "editor.background": "#000000",
-    "editorGutter.background": "#000000",
-    "sideBar.background": "#000000",
-    "activityBar.background": "#000000",
-    "statusBar.background": "#000000"
-  },
+  "workbench.colorTheme": "Tokyo Night Frameless",
+  // "workbench.colorCustomizations":
+  // {
+  //   "editor.background": "#000000",
+  //   "editorGutter.background": "#000000",
+  //   "sideBar.background": "#000000",
+  //   "activityBar.background": "#000000",
+  //   "statusBar.background": "#000000"
+  // },
   "editor.minimap.enabled": false,
   "editor.fontSize": 16,
   "[json]": {
