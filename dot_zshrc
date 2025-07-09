@@ -13,11 +13,6 @@ done
 export EDITOR="nvim"
 export VISUAL="$EDITOR"
 
-# # Auto-update dotfiles on login using helper script
-# if command -v chezmoi-auto-update >/dev/null 2>&1; then
-#   chezmoi-auto-update
-# fi
-
 # Shell Options
 setopt autocd             # Enter directory just by typing its name
 setopt correct            # Auto correct command typos
