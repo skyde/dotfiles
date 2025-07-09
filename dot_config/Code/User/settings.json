@@ -108,12 +108,17 @@
     },
     {
       "before": ["<leader>", "f", "m"],
-      "commands": ["revealFileInOS"]
+      "commands": ["workbench.files.action.focusFilesExplorer"]
     },
-    {
-      "before": ["<leader>", "r"],
-      "commands": ["workbench.action.terminal.toggleTerminal"]
-    },
+    //     {
+    //   "command": "workbench.files.action.focusFilesExplorer",
+    //     "key": "ctrl+e",
+    //     "when": "editorTextFocus"
+    // },
+    // {
+    //   "before": ["<leader>", "r"],
+    //   "commands": ["workbench.action.terminal.toggleTerminal"]
+    // },
     {
       "before": ["<leader>", "e"],
       "commands": ["workbench.view.explorer"]
@@ -316,5 +321,6 @@
   "zenMode.centerLayout": false,
   "zenMode.hideLineNumbers": true,
   "window.commandCenter": false,
-  "workbench.layoutControl.enabled": false
+  "workbench.layoutControl.enabled": false,
+  "C_Cpp.intelliSenseEngine": "disabled"
 }

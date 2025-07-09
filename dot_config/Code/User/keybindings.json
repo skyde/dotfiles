@@ -1,5 +1,6 @@
 // Place your key bindings in this file to override the defaults
 [
+    // Page Down - workround to make cursor movement match Nvim
     {
         "key": "pagedown",
         "command": "runCommands",
@@ -27,7 +28,8 @@
         ]
         }
     },
-
+    
+    // Page Up - workround to make cursor movement match Nvim
     {
         "key": "pageup",
         "command": "runCommands",
@@ -55,17 +57,18 @@
         ]
         }
     },
-
+    // Build
     {
         "key": "shift+f2",
         "command": "workbench.action.tasks.build",
         "when": "taskCommandsRegistered"
     },
+    // Fuzzy find class / file by name
     {
         "key": "shift+f3",
         "command": "workbench.action.quickOpen"
     },
-    // Scroll up 16
+    // Scroll up 16 Lines
     {
     "key": "shift+f4",
     "command": "runCommands",
@@ -108,7 +111,7 @@
         }
     },
 
-    // Scroll down 16
+    // Scroll down 16 Lines
     {
     "key": "shift+f6",
     "command": "runCommands",
@@ -150,88 +153,68 @@
             ]
         }
     },
-
+    // Stop Build / Stop Debugging
     {
         "key": "shift+f7",
         "command": "cmake.outline.stop"
     },
+    // Goto Definition
     {
         "key": "shift+f8",
         "command": "editor.action.revealDefinition",
         "when": "editorHasDefinitionProvider && editorTextFocus"
     },
+    // Toggle Comment 
     {
         "key": "shift+f11",
         "command": "editor.action.commentLine",
         "when": "editorTextFocus"
     },
-    // Terminal navigation
+    // Terminal
     {
-        "key": "ctrl+shift+a",
-        "command": "workbench.action.terminal.focusNext",
-        "when": "terminalFocus"
-    },
-    {
-        "key": "ctrl+shift+b",
-        "command": "workbench.action.terminal.focusPrevious",
-        "when": "terminalFocus"
-    },
-    {
-        "key": "ctrl+shift+j",
-        "command": "workbench.action.togglePanel"
-    },
-    {
-        "key": "ctrl+shift+n",
-        "command": "workbench.action.terminal.new",
-        "when": "terminalFocus"
-    },
-    {
-        "key": "ctrl+shift+w",
-        "command": "workbench.action.terminal.kill",
-        "when": "terminalFocus"
+      "key": "ctrl+/",
+      "command": "workbench.action.terminal.toggleTerminal"
     },
     // File explorer
     {
         "command": "workbench.action.toggleSidebarVisibility",
-        "key": "ctrl+e"
+        "key": "escape",
+        "when": "filesExplorerFocus && !inputFocus"
     },
+    // {
+    //     "command": "workbench.files.action.focusFilesExplorer",
+    //     "key": "ctrl+e",
+    //     "when": "editorTextFocus"
+    // },
     {
-        "command": "workbench.files.action.focusFilesExplorer",
-        "key": "ctrl+e",
-        "when": "editorTextFocus"
-    },
-    {
-        "key": "n",
+        "key": "o",
         "command": "explorer.newFile",
         "when": "filesExplorerFocus && !inputFocus"
     },
     {
         "command": "renameFile",
-        "key": "r",
+        "key": "c",
         "when": "filesExplorerFocus && !inputFocus"
     },
     {
-        "key": "shift+n",
+        "key": "shift+O",
         "command": "explorer.newFolder",
         "when": "explorerViewletFocus"
     },
-    {
-        "key": "shift+n",
-        "command": "workbench.action.newWindow",
-        "when": "!explorerViewletFocus"
-    },
+    // {
+    //     "key": "shift+n",
+    //     "command": "workbench.action.newWindow",
+    //     "when": "!explorerViewletFocus"
+    // },
     {
         "command": "deleteFile",
         "key": "d",
         "when": "filesExplorerFocus && !inputFocus"
     },
-    // Extra
-    {
-        "key": "ctrl+shift+5",
-        "command": "editor.emmet.action.matchTag"
-    },
-    {
-        "key": "ctrl+z",
-        "command": "workbench.action.toggleZenMode"
-    }
+    // // Extra
+    // {
+    //     "key": "ctrl+shift+5",
+    //     "command": "editor.emmet.action.matchTag"
+    // },
+ //
 ]

@@ -56,9 +56,6 @@ vim.keymap.set("n", "<leader>uk", print_keys.toggle, {
   desc = "Toggle Key Print",
 })
 
--- Open a terminal
-vim.keymap.set("n", "<leader>r", "<cmd>terminal<CR>", { desc = "Open terminal" })
-
 -- Toggle comment on the current line  ── normal mode
 vim.keymap.set("n", "<S-F11>", "gcc", { remap = true, silent = true, desc = "Toggle Comment (line)" })
 
@@ -104,14 +101,3 @@ vim.keymap.del("n", "<S-l>")
 -- map("n", "<D-S-]>", ":bnext<CR>", { desc = "Next buffer" })
 -- Previous buffer: Cmd+Shift+[
 -- map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
-
--- Navigate buffers with Shift+Arrow keys
-map("n", "<S-Left>", "<cmd>bprevious<CR>", { desc = "Previous buffer", silent = true })
-map("n", "<S-Right>", "<cmd>bnext<CR>", { desc = "Next buffer", silent = true })
-
--- Print the current file name and full path
-vim.keymap.set("n", "<leader>fl", function()
-  local file = vim.fn.expand("%:p")
-  local name = vim.fn.expand("%:t")
-  print(string.format("%s\n%s", name, file))
-end, { desc = "Print file path" })
