@@ -22,4 +22,4 @@
 [end]>[lalt]
 [delete]>[rmouse]
 [bspace]>[space]
-{end}>{speed5}{-lalt}{tab}{+lalt}
+{end}>{speed9}{-lalt}{tab}{+lalt}
