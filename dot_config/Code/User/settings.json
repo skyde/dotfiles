@@ -1,5 +1,3 @@
-
-
 {
   // Cursor navigation settings
   "editor.cursorSurroundingLines": 8,
@@ -308,6 +306,3 @@
   "window.commandCenter": false,
   "workbench.layoutControl.enabled": false
 }
-
-
-
