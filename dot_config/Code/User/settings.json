@@ -1,0 +1,308 @@
+{
+  // Cursor navigation settings
+  "editor.cursorSurroundingLines": 8,
+  "editor.cursorSurroundingLinesStyle": "all",
+  "editor.scrollBeyondLastLine": false,
+  "editor.stickyScroll.enabled": false,
+  // Copilot Chat configuration
+  "github.copilot.chat.agent.thinkingTool": true,
+  "chat.agent.enabled": true,
+  "github.copilot.chat.codesearch.enabled": true,
+  "chat.agent.maxRequests": 10000,
+  "chat.editing.confirmEditRequestRemoval": false,
+  "chat.editing.confirmEditRequestRetry": false,
+  // Always open files from untrusted workspaces
+  "security.workspace.trust.untrustedFiles": "open",
+  // Increase terminal scrollback similar to using a terminal split in Neovim
+  "terminal.integrated.scrollback": 10000,
+  "editor.fontFamily": "FiraCode Nerd Font, Fira Code, monospace",
+  "editor.fontLigatures": true,
+  "terminal.integrated.fontFamily": "FiraCode Nerd Font, Fira Code, monospace",
+  "terminal.integrated.defaultProfile.linux": "zsh",
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.defaultProfile.windows": "pwsh",
+  "editor.formatOnSave": true,
+  "window.zoomLevel": 0.2,
+  // Cursor Shape & Style
+  "editor.cursorStyle": "block-outline", // options: "line", "block", "underline", "line-thin", "block-outline", "underline-thin"
+  "editor.cursorWidth": 3, // only applies when cursorStyle is "line" (default is 2px)
+  "workbench.colorCustomizations": {
+    "editorCursor.foreground": "#FF5000"
+  },
+  // Blinking & Animation
+  "editor.cursorBlinking": "solid", // options: "blink", "smooth", "phase", "expand", "solid"
+  "editor.cursorSmoothCaretAnimation": "off", // only with "smooth" blinking
+  // Editor UI to match Vim configuration
+  "editor.lineNumbers": "relative",
+  "editor.renderLineHighlight": "none",
+  // Use system clipboard in Vim extension
+  "vim.useSystemClipboard": true,
+  "vim.useCtrlKeys": true,
+  "vim.handleKeys": {
+    "<tab>": false,
+    "<S-tab>": false
+  },
+  // Search behaviour like Vim
+  "vim.ignorecase": true,
+  "vim.smartcase": true,
+  "vim.incsearch": true,
+  "vim.hlsearch": true,
+  "vim.startofline": false,
+  // Highlighted Yank
+  "vim.highlightedyank.enable": true,
+  "vim.highlightedyank.duration": 125,
+  // Easy Motion
+  "vim.easymotion": true,
+  // Leader key and custom key mappings
+  "vim.leader": "<space>",
+  "vim.normalModeKeyBindingsNonRecursive": [
+    {
+      "before": ["s"],
+      "after": ["<leader>", "<leader>", "2", "s"]
+    },
+    {
+      "before": ["S"],
+      "after": ["<leader>", "<leader>", "2", "S"]
+    },
+    {
+      "before": ["<tab>"],
+      "commands": ["editor.action.indentLines"]
+    },
+    {
+      "before": ["<S-tab>"],
+      "commands": ["editor.action.outdentLines"]
+    },
+    {
+      "before": ["<C-u>"],
+      "after": ["16k"]
+    },
+    {
+      "before": ["<C-d>"],
+      "after": ["16j"]
+    },
+    // {
+    //   "before": ["<S-F4>"],
+    //   "after": ["1", "6", "<C-e>"]
+    // },
+    // {
+    //   "before": ["<S-F6>"],
+    //   "after": ["1", "6", "<C-y>"]
+    // },
+    {
+      "before": ["<D-Left>"],
+      "commands": ["workbench.action.navigateBack"]
+    },
+    {
+      "before": ["<D-Right>"],
+      "commands": ["workbench.action.navigateForward"]
+    },
+    // { "before": ["<C-o>"], "commands": ["workbench.action.navigateBack"] },
+    // { "before": ["<C-i>"], "commands": ["workbench.action.navigateForward"] },
+    // { "before": ["<C-h>"], "commands": ["workbench.action.focusLeftGroup"] },
+    // { "before": ["<C-j>"], "commands": ["workbench.action.focusBelowGroup"] },
+    // { "before": ["<C-k>"], "commands": ["workbench.action.focusAboveGroup"] },
+    // { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] },
+    {
+      "before": ["<leader>", "<leader>"],
+      "commands": ["workbench.action.quickOpen"]
+    },
+    {
+      "before": ["<leader>", "f", "m"],
+      "commands": ["revealFileInOS"]
+    },
+    {
+      "before": ["<leader>", "r"],
+      "commands": ["workbench.action.terminal.toggleTerminal"]
+    },
+    {
+      "before": ["<leader>", "e"],
+      "commands": ["workbench.view.explorer"]
+    },
+    {
+      "before": ["v", "i", "g"],
+      "after": ["g", "g", "V", "G"]
+    },
+    {
+      "before": ["g", "d"],
+      "commands": ["editor.action.revealDefinition"]
+    },
+    {
+      "before": ["g", "p"],
+      "commands": ["editor.action.peekDefinition"]
+    },
+    {
+      "before": ["g", "i"],
+      "commands": ["editor.action.goToImplementation"]
+    },
+    {
+      "before": ["g", "r"],
+      "commands": ["editor.action.goToReferences"]
+    },
+    {
+      "before": ["g", "c"],
+      "commands": ["editor.action.commentLine"]
+    },
+    {
+      "before": ["g", "h"],
+      "commands": ["C_Cpp.SwitchHeaderSource"]
+    },
+    {
+      "before": ["<leader>", "c", "r"],
+      "commands": ["editor.action.rename"]
+    },
+    {
+      "before": ["<leader>", "c", "i"],
+      "commands": ["editor.action.triggerParameterHints"]
+    },
+    {
+      "before": ["<leader>", "e", "e"],
+      "commands": ["workbench.actions.view.problems"]
+    },
+    {
+      "before": ["<leader>", "e", "n"],
+      "commands": ["editor.action.marker.next"]
+    },
+    {
+      "before": ["<leader>", "e", "p"],
+      "commands": ["editor.action.marker.prev"]
+    },
+    {
+      "before": ["]", "b"],
+      "commands": ["workbench.action.nextEditor"]
+    },
+    {
+      "before": ["[", "b"],
+      "commands": ["workbench.action.previousEditor"]
+    },
+    {
+      "before": ["<leader>", "b", "d"],
+      "commands": ["workbench.action.closeActiveEditor"]
+    },
+    {
+      "before": ["<leader>", "b", "o"],
+      "commands": ["workbench.action.closeOtherEditors"]
+    },
+    {
+      "before": ["<leader>", "w", "f"],
+      "commands": ["workbench.action.toggleZenMode"]
+    },
+    {
+      "before": ["<S-h>"],
+      "commands": [":bprevious"]
+    },
+    {
+      "before": ["<S-l>"],
+      "commands": [":bnext"]
+    },
+    {
+      "before": ["leader", "w", "v"],
+      "commands": [":vsplit"]
+    },
+    {
+      "before": ["leader", "w", "s"],
+      "commands": [":split"]
+    },
+    {
+      "before": ["leader", "w", "h"],
+      "commands": ["workbench.action.focusLeftGroup"]
+    },
+    {
+      "before": ["leader", "w", "j"],
+      "commands": ["workbench.action.focusBelowGroup"]
+    },
+    {
+      "before": ["leader", "w", "k"],
+      "commands": ["workbench.action.focusAboveGroup"]
+    },
+    {
+      "before": ["leader", "w", "l"],
+      "commands": ["workbench.action.focusRightGroup"]
+    },
+    // {
+    //   "before": ["w"],
+    //   "commands": [":w!"]
+    // },
+    {
+      "before": ["leader", "q", "q"],
+      "commands": [":q!"]
+    },
+    // {
+    //   "before": ["leader", "x"],
+    //   "commands": [":x!"]
+    // },
+    {
+      "before": ["[", "d"],
+      "commands": ["editor.action.marker.prev"]
+    },
+    {
+      "before": ["]", "d"],
+      "commands": ["editor.action.marker.next"]
+    },
+    // TODO: Should be ctrl a? (ie. next fix.. mostly just easier to press)
+    {
+      "before": ["<leader>", "c", "a"],
+      "commands": ["editor.action.quickFix"]
+    },
+    // {
+    //   "before": ["<leader>", "p"],
+    //   "commands": ["editor.action.formatDocument"]
+    // },
+    {
+      "before": ["g", "h"],
+      "commands": ["editor.action.showDefinitionPreviewHover"]
+    }
+  ],
+  "vim.visualModeKeyBindings": [
+    {
+      "before": ["<tab>"],
+      "commands": ["editor.action.indentLines"]
+    },
+    {
+      "before": ["<S-tab>"],
+      "commands": ["editor.action.outdentLines"]
+    },
+    {
+      "before": ["<"],
+      "commands": ["editor.action.outdentLines"]
+    },
+    {
+      "before": [">"],
+      "commands": ["editor.action.indentLines"]
+    },
+    // {
+    //   "before": ["J"],
+    //   "commands": ["editor.action.moveLinesDownAction"]
+    // },
+    // {
+    //   "before": ["K"],
+    //   "commands": ["editor.action.moveLinesUpAction"]
+    // },
+    {
+      "before": ["g", "c"],
+      "commands": ["editor.action.commentLine"]
+    }
+  ],
+  // To improve performance
+  "extensions.experimental.affinity": {
+    "vscodevim.vim": 1
+  },
+  "workbench.colorTheme": "Tokyo Night",
+  "editor.minimap.enabled": false,
+  "editor.fontSize": 16,
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  // Zen Mode
+  "zenMode.fullScreen": true,
+  // "zenMode.showTabs": "none",
+  "zenMode.hideStatusBar": false,
+  "zenMode.hideActivityBar": true,
+  "zenMode.centerLayout": false,
+  "zenMode.hideLineNumbers": true,
+  "window.commandCenter": false,
+  "workbench.layoutControl.enabled": false
+}
