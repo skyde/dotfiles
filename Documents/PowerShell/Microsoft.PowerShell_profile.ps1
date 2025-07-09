@@ -11,10 +11,6 @@ Set-PSReadLineOption -HistorySavePath "$HOME\.powershell_history"
 Set-PSReadLineKeyHandler -Key Ctrl+RightArrow  -Function ForwardWord
 Set-PSReadLineKeyHandler -Key Ctrl+LeftArrow   -Function BackwardWord
 
-# Auto-update dotfiles on startup using helper script
-$updateScript = "$HOME/bin/chezmoi-auto-update.ps1"
-if (Test-Path $updateScript) { & $updateScript }
-
 # Starship prompt (only if installed)
 if (Get-Command starship -ErrorAction SilentlyContinue) {
     Invoke-Expression (& starship init powershell)
