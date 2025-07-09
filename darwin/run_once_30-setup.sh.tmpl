@@ -48,3 +48,12 @@ echo "Installing fonts..."
 brew install --cask font-fira-code-nerd-font || echo "Failed to install font-fira-code-nerd-font, continuing..."
 
 echo "macOS setup complete!"
+
+# Configure key repeat behavior for Vim and general usage
+echo "Setting macOS key repeat defaults..."
+defaults write -g ApplePressAndHoldEnabled -bool false
+# Shorter delay before key repeat starts (default is 68)
+defaults write -g InitialKeyRepeat -int 15
+# Faster repeat rate (default is 6)
+defaults write -g KeyRepeat -int 2
+echo "Key repeat settings applied. You may need to log out and back in for changes to take effect."
