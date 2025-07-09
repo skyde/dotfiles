@@ -13,42 +13,10 @@ done
 export EDITOR="nvim"
 export VISUAL="$EDITOR"
 
-# Language-specific bin directories
-# Rust/Cargo
-if [[ -d $HOME/.cargo/bin ]]; then
-  export PATH="$HOME/.cargo/bin:$PATH"
-fi
-
-# Go
-if [[ -d $HOME/go/bin ]]; then
-  export GOPATH="$HOME/go"
-  export PATH="$GOPATH/bin:$PATH"
-fi
-
-# Python via pyenv (if installed)
-if /usr/bin/command -v pyenv &>/dev/null; then
-  export PYENV_ROOT="$HOME/.pyenv"
-  export PATH="$PYENV_ROOT/bin:$PATH"
-  eval "$(pyenv init --path)"
-  eval "$(pyenv init -)"
-fi
-
-# Node via NVM (if installed)
-if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
-  export NVM_DIR="$HOME/.nvm"
-  source "$NVM_DIR/nvm.sh"
-fi
-
-# Locale and less settings
-export LANG="en_US.UTF-8"
-export LC_ALL="$LANG"
-export LESS="-RFX"
-
-# Auto-update dotfiles on login using helper script
-if command -v chezmoi-auto-update >/dev/null 2>&1; then
-  chezmoi-auto-update
-fi
-
+# # Auto-update dotfiles on login using helper script
+# if command -v chezmoi-auto-update >/dev/null 2>&1; then
+#   chezmoi-auto-update
+# fi
 
 # Shell Options
 setopt autocd             # Enter directory just by typing its name
@@ -59,8 +27,8 @@ setopt hist_ignore_all_dups  # Don’t store duplicate history
 setopt share_history         # Share command history between sessions
 
 # History
-HISTSIZE=5000
-SAVEHIST=5000
+HISTSIZE=50000
+SAVEHIST=50000
 HISTFILE=~/.zsh_history
 
 # Key Bindings
