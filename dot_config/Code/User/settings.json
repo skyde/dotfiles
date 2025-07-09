@@ -259,6 +259,11 @@
     {
       "before": ["g", "h"],
       "commands": ["editor.action.showDefinitionPreviewHover"]
+    },
+    {
+      "before": ["<Esc>"],
+      "after": ["<Esc>"],
+      "commands": [":nohl"]
     }
   ],
   "vim.visualModeKeyBindings": [
