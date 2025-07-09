@@ -1,4 +1,5 @@
 
+
 {
   // Cursor navigation settings
   "editor.cursorSurroundingLines": 8,
@@ -66,6 +67,14 @@
       "after": ["<leader>", "<leader>", "2", "S"]
     },
     {
+      "before": ["<tab>"],
+      "commands": ["editor.action.indentLines"]
+    },
+    {
+      "before": ["<S-tab>"],
+      "commands": ["editor.action.outdentLines"]
+    },
+    {
       "before": ["<C-u>"],
       "after": ["16k"]
     },
@@ -73,14 +82,14 @@
       "before": ["<C-d>"],
       "after": ["16j"]
     },
-    {
-      "before": ["<S-F4>"],
-      "after": ["1", "6", "<C-e>"]
-    },
-    {
-      "before": ["<S-F6>"],
-      "after": ["1", "6", "<C-y>"]
-    },
+    // {
+    //   "before": ["<S-F4>"],
+    //   "after": ["1", "6", "<C-e>"]
+    // },
+    // {
+    //   "before": ["<S-F6>"],
+    //   "after": ["1", "6", "<C-y>"]
+    // },
     {
       "before": ["<D-Left>"],
       "commands": ["workbench.action.navigateBack"]
@@ -113,7 +122,7 @@
     },
     {
       "before": ["v", "i", "g"],
-      "after":  ["g", "g", "V", "G"]
+      "after": ["g", "g", "V", "G"]
     },
     {
       "before": ["g", "d"],
@@ -177,7 +186,7 @@
     },
     {
       "before": ["<leader>", "w", "f"],
-      "commands": ["workbench.action.toggleFullScreen"]
+      "commands": ["workbench.action.toggleZenMode"]
     },
     {
       "before": ["<S-h>"],
@@ -188,41 +197,41 @@
       "commands": [":bnext"]
     },
     {
-      "before": ["leader", "v"],
+      "before": ["leader", "w", "v"],
       "commands": [":vsplit"]
     },
     {
-      "before": ["leader", "s"],
+      "before": ["leader", "w", "s"],
       "commands": [":split"]
     },
     {
-      "before": ["leader", "h"],
+      "before": ["leader", "w", "h"],
       "commands": ["workbench.action.focusLeftGroup"]
     },
     {
-      "before": ["leader", "j"],
+      "before": ["leader", "w", "j"],
       "commands": ["workbench.action.focusBelowGroup"]
     },
     {
-      "before": ["leader", "k"],
+      "before": ["leader", "w", "k"],
       "commands": ["workbench.action.focusAboveGroup"]
     },
     {
-      "before": ["leader", "l"],
+      "before": ["leader", "w", "l"],
       "commands": ["workbench.action.focusRightGroup"]
     },
+    // {
+    //   "before": ["w"],
+    //   "commands": [":w!"]
+    // },
     {
-      "before": ["leader", "w"],
-      "commands": [":w!"]
-    },
-    {
-      "before": ["leader", "q"],
+      "before": ["leader", "q", "q"],
       "commands": [":q!"]
     },
-    {
-      "before": ["leader", "x"],
-      "commands": [":x!"]
-    },
+    // {
+    //   "before": ["leader", "x"],
+    //   "commands": [":x!"]
+    // },
     {
       "before": ["[", "d"],
       "commands": ["editor.action.marker.prev"]
@@ -231,20 +240,29 @@
       "before": ["]", "d"],
       "commands": ["editor.action.marker.next"]
     },
+    // TODO: Should be ctrl a? (ie. next fix.. mostly just easier to press)
     {
       "before": ["<leader>", "c", "a"],
       "commands": ["editor.action.quickFix"]
     },
-    {
-      "before": ["<leader>", "p"],
-      "commands": ["editor.action.formatDocument"]
-    },
+    // {
+    //   "before": ["<leader>", "p"],
+    //   "commands": ["editor.action.formatDocument"]
+    // },
     {
       "before": ["g", "h"],
       "commands": ["editor.action.showDefinitionPreviewHover"]
     }
   ],
   "vim.visualModeKeyBindings": [
+    {
+      "before": ["<tab>"],
+      "commands": ["editor.action.indentLines"]
+    },
+    {
+      "before": ["<S-tab>"],
+      "commands": ["editor.action.outdentLines"]
+    },
     {
       "before": ["<"],
       "commands": ["editor.action.outdentLines"]
@@ -253,16 +271,16 @@
       "before": [">"],
       "commands": ["editor.action.indentLines"]
     },
+    // {
+    //   "before": ["J"],
+    //   "commands": ["editor.action.moveLinesDownAction"]
+    // },
+    // {
+    //   "before": ["K"],
+    //   "commands": ["editor.action.moveLinesUpAction"]
+    // },
     {
-      "before": ["J"],
-      "commands": ["editor.action.moveLinesDownAction"]
-    },
-    {
-      "before": ["K"],
-      "commands": ["editor.action.moveLinesUpAction"]
-    },
-    {
-      "before": ["leader", "c"],
+      "before": ["g", "c"],
       "commands": ["editor.action.commentLine"]
     }
   ],
@@ -277,6 +295,19 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
   },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  // Zen Mode
+  "zenMode.fullScreen": true,
+  // "zenMode.showTabs": "none",
+  "zenMode.hideStatusBar": false,
+  "zenMode.hideActivityBar": true,
+  "zenMode.centerLayout": false,
+  "zenMode.hideLineNumbers": true,
+  "window.commandCenter": false,
+  "workbench.layoutControl.enabled": false
 }
+
 
 
