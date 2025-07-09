@@ -18,7 +18,8 @@ set hlsearch
 set nostartofline
 
 " Clipboard and backspace support
-set clipboard=unnamed
+" Sync both * and + registers with the system clipboard
+set clipboard=unnamed,unnamedplus
 set backspace=indent,eol,start
 
 " Reload vimrc
