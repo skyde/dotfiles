@@ -292,6 +292,14 @@
       "commands": ["editor.action.showDefinitionPreviewHover"]
     },
     {
+      "before": ["b", "p"],
+      "commands": ["workbench.action.pinEditor"]
+    },
+    {
+      "before": ["b", "P"],
+      "commands": ["workbench.action.closeOtherEditors"]
+    },
+    {
       "before": ["<Esc>"],
       "after": ["<Esc>"],
       "commands": [":nohl"]
