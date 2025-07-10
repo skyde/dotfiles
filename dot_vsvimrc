@@ -40,6 +40,8 @@ nnoremap <Right> l
 
 " Select the entire buffer
 nnoremap vig ggVG
+" Copy the entire buffer to the clipboard
+nnoremap yig ggVGy
 
 " Half page scroll is fixed size
 nnoremap <C-u> 16k
