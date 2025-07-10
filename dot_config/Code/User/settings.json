@@ -159,6 +159,10 @@
       "after": ["g", "g", "V", "G"]
     },
     {
+      "before": ["y", "i", "g"],
+      "after": ["g", "g", "V", "G", "y"]
+    },
+    {
       "before": ["g", "d"],
       "commands": ["editor.action.revealDefinition"]
     },
