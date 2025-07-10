@@ -78,6 +78,8 @@
   "vim.highlightedyank.duration": 125,
   // Easy Motion
   "vim.easymotion": true,
+  // Optimized for Colemak-Mod-DH
+  "vim.easymotionKeys": "tsraneiodhgmplfuc,bjvk",
   // Leader key and custom key mappings
   "vim.leader": "<space>",
   "vim.normalModeKeyBindingsNonRecursive": [
