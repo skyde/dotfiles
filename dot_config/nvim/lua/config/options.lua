@@ -48,5 +48,3 @@ vim.api.nvim_create_autocmd("ColorScheme", {
   pattern = "*",
   callback = set_black_background,
 })
-
-set_black_background()
