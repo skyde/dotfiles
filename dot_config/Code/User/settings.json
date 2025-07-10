@@ -292,11 +292,18 @@
       "commands": ["editor.action.showDefinitionPreviewHover"]
     },
     {
-      "before": ["b", "p"],
-      "commands": ["workbench.action.pinEditor"]
+      "before": ["<leader>", "b", "p"],
+      // TODO: This is not working for some reason - fix it
+      "commands": ["workbench.action.unpinEditor"],
+      "when": "activeEditorPinned"
     },
     {
-      "before": ["b", "P"],
+      "before": ["<leader>", "b", "p"],
+      "commands": ["workbench.action.pinEditor"],
+      "when": "!activeEditorIsPinned"
+    },
+    {
+      "before": ["<leader>", "b", "P"],
       "commands": ["workbench.action.closeOtherEditors"]
     },
     {
