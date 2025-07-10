@@ -78,6 +78,10 @@
   "vim.highlightedyank.duration": 125,
   // Easy Motion
   "vim.easymotion": true,
+  // Surround
+  "vim.surround": true,
+  // Camel Case Motion - disabed for now as conflicts with other bindings
+  // "vim.camelCaseMotion.enable": true,
   // Optimized for Colemak-Mod-DH
   "vim.easymotionKeys": "tsraneiodhgmplfuc,bjvk",
   // Leader key and custom key mappings
