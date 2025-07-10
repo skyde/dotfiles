@@ -27,7 +27,32 @@
   "editor.cursorStyle": "block-outline", // options: "line", "block", "underline", "line-thin", "block-outline", "underline-thin"
   "editor.cursorWidth": 3, // only applies when cursorStyle is "line" (default is 2px)
   "workbench.colorCustomizations": {
-    "editorCursor.foreground": "#FF5000"
+    "editorCursor.foreground": "#FF5000",
+
+    // Black background
+    "editor.background": "#000000",
+    "editorGutter.background": "#000000",
+    "sideBar.background": "#000000",
+    "activityBar.background": "#000000",
+    "statusBar.background": "#000000",
+    "titleBar.activeBackground": "#000000",
+    "titleBar.inactiveBackground": "#000000",
+    "editorGroupHeader.tabsBackground": "#000000",
+    "tab.activeBackground": "#000000",
+    "tab.inactiveBackground": "#000000",
+    "panel.background": "#000000",
+    "quickInput.background": "#000000",
+    "breadcrumb.background": "#000000",
+    "breadcrumbPicker.background": "#000000",
+    "sideBar.border": "#000000",
+    "activityBar.border": "#000000",
+    "panel.border": "#000000",
+    "statusBar.border": "#000000",
+    "editorGroup.border": "#000000",
+    "editorGroupHeader.tabsBorder": "#000000",
+    "tab.border": "#000000",
+    "sideBySideEditor.verticalBorder": "#000000",
+    "sideBySideEditor.horizontalBorder": "#000000"
   },
   // Blinking & Animation
   "editor.cursorBlinking": "solid", // options: "blink", "smooth", "phase", "expand", "solid"
@@ -53,6 +78,8 @@
   "vim.highlightedyank.duration": 125,
   // Easy Motion
   "vim.easymotion": true,
+  // Optimized for Colemak-Mod-DH
+  "vim.easymotionKeys": "tsraneiodhgmplfuc,bjvk",
   // Leader key and custom key mappings
   "vim.leader": "<space>",
   "vim.normalModeKeyBindingsNonRecursive": [
@@ -301,14 +328,8 @@
     "vscodevim.vim": 1
   },
   "workbench.colorTheme": "Tokyo Night Frameless",
-  // "workbench.colorCustomizations":
-  // {
-  //   "editor.background": "#000000",
-  //   "editorGutter.background": "#000000",
-  //   "sideBar.background": "#000000",
-  //   "activityBar.background": "#000000",
-  //   "statusBar.background": "#000000"
-  // },
+  "window.titleBarStyle": "custom",
+
   "editor.minimap.enabled": false,
   "editor.fontSize": 16,
   "[json]": {
