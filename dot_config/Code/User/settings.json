@@ -297,9 +297,9 @@
     },
     {
       "before": ["<leader>", "b", "p"],
-      // TODO: This is not working for some reason - fix it
+      // Toggle pin/unpin on the active editor
       "commands": ["workbench.action.unpinEditor"],
-      "when": "activeEditorPinned"
+      "when": "activeEditorIsPinned"
     },
     {
       "before": ["<leader>", "b", "p"],
