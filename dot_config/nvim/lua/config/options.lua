@@ -34,3 +34,13 @@ if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 or vim.fn.has("win32unix
 end
 
 vim.opt.clipboard:append("unnamedplus")
+
+-- Force a black background
+vim.opt.background = "dark"
+vim.api.nvim_create_autocmd("ColorScheme", {
+  pattern = "*",
+  callback = function()
+    vim.api.nvim_set_hl(0, "Normal", { bg = "#000000" })
+  end,
+})
+vim.api.nvim_set_hl(0, "Normal", { bg = "#000000" })
