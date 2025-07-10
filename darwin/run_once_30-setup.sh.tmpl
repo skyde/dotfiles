@@ -36,6 +36,7 @@ echo "Installing macOS-specific apps..."
 brew install --cask fluor || echo "Failed to install fluor, continuing..."
 brew install --cask hammerspoon || echo "Failed to install hammerspoon, continuing..."
 brew install --cask alt-tab || echo "Failed to install alt-tab, continuing..."
+brew install --cask betterdisplay || echo "Failed to install betterdisplay, continuing..."
 
 # Link fd if it's not linked
 if brew list fd >/dev/null 2>&1 && ! brew list --formula | grep -q "^fd$"; then
