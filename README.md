@@ -131,3 +131,7 @@ The pedal config:
 - Left is Escape
 - Middle is Left Click
 - Right is Right Click
+
+The method to open V-Drive is either:
+- Flip the switch on the bottom of the pedal
+- Hold the pedal down briefly while connecting to the computer (waterproof version)
