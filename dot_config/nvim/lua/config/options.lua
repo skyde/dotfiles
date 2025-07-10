@@ -37,10 +37,14 @@ vim.opt.clipboard:append("unnamedplus")
 
 -- Force a black background
 vim.opt.background = "dark"
+
+local function set_black_background()
+  for _, group in ipairs({ "Normal", "NormalNC", "NormalFloat", "SignColumn", "MsgArea" }) do
+    vim.api.nvim_set_hl(0, group, { bg = "#000000" })
+  end
+end
+
 vim.api.nvim_create_autocmd("ColorScheme", {
   pattern = "*",
-  callback = function()
-    vim.api.nvim_set_hl(0, "Normal", { bg = "#000000" })
-  end,
+  callback = set_black_background,
 })
-vim.api.nvim_set_hl(0, "Normal", { bg = "#000000" })
