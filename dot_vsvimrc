@@ -38,8 +38,9 @@ nnoremap <Down> j
 nnoremap <Up> k
 nnoremap <Right> l
 
-" Select the entire buffer
-nnoremap vig ggVG
+" Text object for the entire buffer
+xnoremap ig ggVG
+onoremap ig <Cmd>normal! ggVG<CR>
 
 " Half page scroll is fixed size
 nnoremap <C-u> 16k
