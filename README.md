@@ -117,7 +117,7 @@ Use this since it's nicer than the default one.
 
 ## Perforce
 
-Ensure you set the set the correct environment variable to allow the diff to work:
+Ensure you set the correct environment variable to allow the diff to work:
 
 ```
 P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe" /Diff %1 %2
