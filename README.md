@@ -43,6 +43,11 @@ wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc
 All setup scripts install the [Starship](https://starship.rs) prompt for a consistent shell experience.
 On Windows this is installed via winget using the `Starship.Starship` package ID.
 
+## tmux theme
+
+The tmux configuration now includes a powerline-inspired status bar. A Nerd Font
+or Powerline font is recommended to see the separators correctly.
+
 # Mac
 
 ## Custom Alt Tab
