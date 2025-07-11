@@ -92,10 +92,10 @@ alias z='cd'
 alias grep="grep --color=auto"
 # Use modern replacements if available
 command -v bat >/dev/null && alias cat='bat'
-if command -v exa >/dev/null; then
-  alias ls='exa --color=auto --group-directories-first'
-  alias ll='exa -al --color=auto --group-directories-first'
-  alias la='exa -a --color=auto --group-directories-first'
+if command -v eza >/dev/null; then
+  alias ls='eza --color=auto --group-directories-first'
+  alias ll='eza -al --color=auto --group-directories-first'
+  alias la='eza -a --color=auto --group-directories-first'
 fi
 if [[ -z $(command -v fd 2>/dev/null) && -n $(command -v fdfind 2>/dev/null) ]]; then
   alias fd='fdfind'
