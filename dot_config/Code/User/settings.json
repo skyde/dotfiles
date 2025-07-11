@@ -52,7 +52,52 @@
     "editorGroupHeader.tabsBorder": "#000000",
     "tab.border": "#000000",
     "sideBySideEditor.verticalBorder": "#000000",
-    "sideBySideEditor.horizontalBorder": "#000000"
+    "sideBySideEditor.horizontalBorder": "#000000",
+    "editorGroup.emptyBackground": "#000000",
+    "editorGroupHeader.noTabsBackground": "#000000",
+    "editorPane.background": "#000000",
+    "panelSection.background": "#000000",
+    // // Scroll bars
+    "scrollbarSlider.background": "#00000080",
+    // "scrollbarSlider.hoverBackground": "#000000A0",
+    // "scrollbarSlider.activeBackground": "#000000",
+
+    // Minimap
+    "minimap.background": "#000000",
+    "minimap.selectionHighlight": "#222222",
+    "minimap.errorHighlight": "#000000",
+    "minimap.warningHighlight": "#000000",
+    "minimap.findMatchHighlight": "#222222",
+
+    // Editor line highlight/gutter (for subtlety, optional)
+    "editorLineHighlightBackground": "#000000",
+    "editorWhitespace.foreground": "#222222",
+
+    // Search/Find Widget
+    "editorWidget.background": "#000000",
+    "peekViewEditor.background": "#000000",
+    "peekViewResult.background": "#000000",
+    "peekViewTitle.background": "#000000",
+
+    // Popups & notifications
+    "widget.shadow": "#00000000",
+    "notification.background": "#000000",
+    "notification.toast.background": "#000000",
+    "notifications.background": "#000000",
+    "notifications.border": "#000000",
+
+    // Dropdowns, pickers
+    "dropdown.background": "#000000",
+    "dropdown.border": "#000000",
+    "input.background": "#000000",
+    "input.border": "#000000",
+
+    // Context/right-click menus
+    "menu.background": "#000000",
+    "menu.selectionBackground": "#222222",
+
+    // Terminal
+    "terminal.background": "#000000"
   },
   // Blinking & Animation
   "editor.cursorBlinking": "solid", // options: "blink", "smooth", "phase", "expand", "solid"
@@ -378,10 +423,16 @@
   // "zenMode.showTabs": "none",
   "zenMode.hideStatusBar": false,
   "zenMode.hideActivityBar": true,
-  "zenMode.centerLayout": false,
+  "zenMode.centerLayout": true,
   "zenMode.hideLineNumbers": true,
   "window.commandCenter": false,
   "workbench.layoutControl.enabled": false,
   "workbench.activityBar.location": "hidden",
-  "C_Cpp.intelliSenseEngine": "disabled"
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "github.copilot.enable": {
+    "*": false,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false
+  }
 }
