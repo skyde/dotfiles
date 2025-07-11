@@ -1,3 +1,4 @@
+# shellcheck shell=zsh
 if [[ -o interactive ]]; then
   stty -ixon -ixoff
 fi
@@ -57,3 +58,4 @@ eval "$(zoxide init zsh)"
 alias z='cd'
 alias ll='ls -alh --color=auto'
 alias la='ls -A'
+alias grep="grep --color=auto"
