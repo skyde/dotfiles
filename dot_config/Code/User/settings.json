@@ -325,6 +325,9 @@
       "commands": [":nohl"]
     }
   ],
+  "vim.insertModeKeyBindings": [
+    { "before": ["<Esc>"], "after": ["<Esc>", "<C-g>u"] }
+  ],
   "vim.visualModeKeyBindings": [
     {
       "before": ["<tab>"],
