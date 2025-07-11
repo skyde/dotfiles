@@ -365,6 +365,30 @@
       "commands": ["workbench.action.closeOtherEditors"]
     },
     {
+      "before": ["<leader>", "d", "b"],
+      "commands": ["editor.debug.action.toggleBreakpoint"]
+    },
+    {
+      "before": ["<leader>", "d", "d"],
+      "commands": ["workbench.debug.viewlet.action.disableAllBreakpoints"]
+    },
+    {
+      "before": ["<leader>", "d", "e"],
+      "commands": ["workbench.debug.viewlet.action.enableAllBreakpoints"]
+    },
+    {
+      "before": ["<leader>", "d", "r"],
+      "commands": ["workbench.debug.viewlet.action.removeAllBreakpoints"]
+    },
+    {
+      "before": ["<leader>", "d", "a"],
+      "commands": ["workbench.debug.viewlet.action.focusBreakpointsView"]
+    },
+    {
+      "before": ["<leader>", "d", "c"],
+      "commands": ["workbench.action.debug.continue"]
+    },
+    {
       "before": ["<Esc>"],
       "after": ["<Esc>"],
       "commands": [":nohl"]
