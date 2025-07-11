@@ -394,6 +394,15 @@
       "before": ["<Esc>"],
       "after": ["<Esc>"],
       "commands": [":nohl"]
+    },
+    // Use Visual Studio code undo rather than VSVim
+    {
+      "before": ["u"],
+      "commands": [{ "command": "undo" }]
+    },
+    {
+      "before": ["<C-r>"],
+      "commands": [{ "command": "redo" }]
     }
   ],
   "vim.insertModeKeyBindings": [
@@ -440,7 +449,8 @@
     "editor.formatOnSave": true
   },
   "[jsonc]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
   },
   // Fuzzy Finder
   // "find-it-faster.general.useTerminalInEditor": true,
