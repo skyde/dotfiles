@@ -228,6 +228,10 @@
       "commands": ["workbench.action.closeOtherEditors"]
     },
     {
+      "before": ["<leader>", "b", "b"],
+      "after": ["<C-6>"]
+    },
+    {
       "before": ["<leader>", "w", "f"],
       "commands": ["workbench.action.toggleZenMode"]
     },
