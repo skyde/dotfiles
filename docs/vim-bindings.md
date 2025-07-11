@@ -1,6 +1,9 @@
 # VSVim Bindings Cheat Sheet
 
-This guide lists all custom key mappings defined in [`dot_vsvimrc`](../dot_vsvimrc). The `Space` key is the leader and `,` is the local leader.
+This guide lists all custom key mappings defined in [`dot_vsvimrc`](../dot_vsvimrc).
+The `Space` key is the leader and `,` is the local leader.
+Equivalent mappings are configured for the VSCodeVim extension via
+[`dot_config/Code/User/settings.json`](../dot_config/Code/User/settings.json).
 
 ## General
 - `zl` – reload `.vsvimrc`.
