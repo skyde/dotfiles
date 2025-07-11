@@ -14,6 +14,9 @@ map("i", "<Down>", "<C-o>gj", { noremap = true, desc = "Move down screen-line (i
 vim.keymap.set("n", "<C-u>", "16k", { noremap = true, desc = "Scroll Up 16 lines" })
 vim.keymap.set("n", "<C-d>", "16j", { noremap = true, desc = "Scroll Down 16 lines" })
 
+-- Enter block visual mode with <leader>v
+vim.keymap.set("n", "<leader>v", "<C-v>", { noremap = true, desc = "Block Visual Mode" })
+
 -- disable horizontal scroll with mouse/trackpad
 for _, mode in ipairs({ "n", "i", "v", "o", "t" }) do
   map(mode, "<ScrollWheelLeft>", "<Nop>", { silent = true, desc = "Disable ← scroll" })
