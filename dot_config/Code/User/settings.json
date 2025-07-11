@@ -110,7 +110,9 @@
   "vim.useCtrlKeys": true,
   "vim.handleKeys": {
     "<tab>": false,
-    "<S-tab>": false
+    "<S-tab>": false,
+    "<C-o>": true,
+    "<C-i>": true
   },
   // Search behaviour like Vim
   "vim.ignorecase": true,
