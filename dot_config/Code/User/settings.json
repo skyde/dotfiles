@@ -28,6 +28,7 @@
   "editor.cursorWidth": 3, // only applies when cursorStyle is "line" (default is 2px)
   "editor.semanticHighlighting.enabled": true,
   "workbench.colorCustomizations": {
+    // Custom cursor color - do not change
     "editorCursor.foreground": "#FF5000",
 
     // Editor line highlight/gutter (for subtlety, optional)
@@ -73,10 +74,8 @@
     "editorGroupHeader.noTabsBackground": "#000000",
     "editorPane.background": "#000000",
     "panelSection.background": "#000000",
-    // // Scroll bars
+    // Scroll bars
     "scrollbarSlider.background": "#00000080",
-    // "scrollbarSlider.hoverBackground": "#000000A0",
-    // "scrollbarSlider.activeBackground": "#000000",
 
     // Minimap
     "minimap.background": "#000000",
@@ -111,14 +110,11 @@
     // Terminal
     "terminal.background": "#000000"
   },
+  // Custom color scheme
   "editor.tokenColorCustomizations": {
     "textMateRules": [
       { "scope": "source", "settings": { "foreground": "#D4D4D4" } },
       { "scope": "keyword", "settings": { "foreground": "#86C9EF" } },
-      // {
-      //   "scope": "keyword.control",
-      //   "settings": { "foreground": "#CCA0CD" }
-      // },
       {
         "scope": "entity.name.function.preprocessor",
         "settings": { "foreground": "#C255C5" }
@@ -176,10 +172,6 @@
         "scope": "meta.head.namespace",
         "settings": { "foreground": "#7BCFE6" }
       },
-      // {
-      //   "scope": "entity.name.scope-resolution",
-      //   "settings": { "foreground": "#ADD5CD" }
-      // },
       // Built in types
       {
         "scope": [
@@ -205,26 +197,10 @@
         "scope": "variable.other.object",
         "settings": { "foreground": "#DD9DC2" }
       },
-      // {
-      //   "scope": "type",
-      //   "settings": { "foreground": "#ff0000" }
-      // },
-      // {
-      //   "scope": ["support.type", "entity.name.type"],
-      //   "settings": {
-      //     "foreground": "#FF0000"
-      //     // "fontStyle": "bold"
-      //   }
-      // },
       {
         "scope": "markup.underline.link",
-        // "settings": { "foreground": "#8FAFDF", "fontStyle": "bold" }
         "settings": { "foreground": "#8FAFDF" }
       }
-      // {
-      //   "scope": "variable", // fallback for non-semantic tokens
-      //   "settings": { "foreground": "#EFC986" }
-      // }
     ]
   },
   // "editor.semanticTokenColorCustomizations": {
@@ -252,7 +228,7 @@
   //     // "type": "#00FFCC italic" // fallback for other types
   //   }
   // },
-  // Blinking & Animation
+  // Cursor
   "editor.cursorBlinking": "solid", // options: "blink", "smooth", "phase", "expand", "solid"
   "editor.cursorSmoothCaretAnimation": "off", // only with "smooth" blinking
   // Editor UI to match Vim configuration
@@ -260,6 +236,7 @@
   "editor.renderLineHighlight": "none",
   // Use system clipboard in Vim extension
   "vim.useSystemClipboard": true,
+  // Control select keys in Vim
   "vim.useCtrlKeys": true,
   "vim.handleKeys": {
     "<tab>": false,
@@ -609,11 +586,11 @@
   // Fuzzy Finder
   // "find-it-faster.general.useTerminalInEditor": true,
   // Zen Mode
-  "zenMode.fullScreen": true,
+  // "zenMode.centerLayout": false,
   // "zenMode.showTabs": "none",
+  "zenMode.fullScreen": true,
   "zenMode.hideStatusBar": false,
   "zenMode.hideActivityBar": true,
-  "zenMode.centerLayout": true,
   "zenMode.hideLineNumbers": true,
   "window.commandCenter": false,
   "workbench.layoutControl.enabled": false,
