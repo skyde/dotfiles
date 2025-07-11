@@ -4,6 +4,7 @@ fd
 fzf
 bat
 delta
+exa
 less
 llvm
 nvim

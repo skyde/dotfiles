@@ -43,6 +43,15 @@ wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc
 All setup scripts install the [Starship](https://starship.rs) prompt for a consistent shell experience.
 On Windows this is installed via winget using the `Starship.Starship` package ID.
 
+## Fast CLI Tools
+
+The setup scripts also install speedy alternatives for common commands:
+
+- `ripgrep` for searching directories quickly
+- `fd` as a faster `find`
+- `bat` as a colorful `cat`
+- `exa` as an improved `ls`
+
 # Mac
 
 ## Custom Alt Tab
