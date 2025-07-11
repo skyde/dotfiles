@@ -96,6 +96,10 @@
       "after": ["<leader>", "<leader>", "2", "S"]
     },
     {
+      "before": ["<leader>", "v"],
+      "after": ["<C-v>"]
+    },
+    {
       "before": ["<tab>"],
       "commands": ["editor.action.indentLines"]
     },

@@ -31,6 +31,9 @@ nnoremap <leader> <NOP>
 " Esc removes search highlights automatically
 nnoremap <Esc> :nohl<CR>
 
+" Enter block visual mode with <leader>v
+nnoremap <leader>v <C-v>
+
 " Using arrow keys as they are ok on Kinesis keyboard & use Colemak so hjkl
 " are not in a nice spot
 nnoremap <Left> h
