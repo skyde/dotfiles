@@ -115,14 +115,6 @@
       "before": ["<C-d>"],
       "after": ["16j"]
     },
-    // {
-    //   "before": ["<S-F4>"],
-    //   "after": ["1", "6", "<C-e>"]
-    // },
-    // {
-    //   "before": ["<S-F6>"],
-    //   "after": ["1", "6", "<C-y>"]
-    // },
     {
       "before": ["<D-Left>"],
       "commands": ["workbench.action.navigateBack"]
@@ -145,14 +137,27 @@
       "before": ["<leader>", "f", "m"],
       "commands": ["workbench.files.action.focusFilesExplorer"]
     },
+    // Fuzzy finder
+    {
+      "before": ["<leader>", "s", "g"],
+      "commands": ["find-it-faster.findWithinFiles"]
+    },
+    {
+      "before": ["<leader>", "s", "f"],
+      "commands": ["find-it-faster.findFiles"]
+    },
+    {
+      "before": ["<leader>", "s", "t"],
+      "commands": ["find-it-faster.findWithinFilesWithTypeFilter"]
+    },
+    {
+      "before": ["<leader>", "s", "r"],
+      "commands": ["find-it-faster.resumeSearch"]
+    },
     //     {
     //   "command": "workbench.files.action.focusFilesExplorer",
     //     "key": "ctrl+e",
     //     "when": "editorTextFocus"
-    // },
-    // {
-    //   "before": ["<leader>", "r"],
-    //   "commands": ["workbench.action.terminal.toggleTerminal"]
     // },
     {
       "before": ["<leader>", "e"],
@@ -358,6 +363,8 @@
   "[jsonc]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+  // Fuzzy Finder
+  // "find-it-faster.general.useTerminalInEditor": true,
   // Zen Mode
   "zenMode.fullScreen": true,
   // "zenMode.showTabs": "none",
