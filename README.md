@@ -38,6 +38,11 @@ docker run --rm -it debian:testing bash -c 'apt update && apt install -y curl gi
 wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc 'sudo sed -i "s/bookworm/trixie/g" /etc/apt/sources.list && sudo apt update && sudo apt full-upgrade -y && curl -fsLS get.chezmoi.io | bash -s -- init --apply skyde'
 ```
 
+## Starship Prompt
+
+All setup scripts install the [Starship](https://starship.rs) prompt for a consistent shell experience.
+On Windows this is installed via winget using the `Starship.Starship` package ID.
+
 # Mac
 
 ## Custom Alt Tab
