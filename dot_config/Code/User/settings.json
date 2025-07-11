@@ -15,9 +15,9 @@
   "security.workspace.trust.untrustedFiles": "open",
   // Increase terminal scrollback similar to using a terminal split in Neovim
   "terminal.integrated.scrollback": 10000,
-  "editor.fontFamily": "FiraCode Nerd Font, Fira Code, monospace",
+  "editor.fontFamily": "Fira Code Retina, JetBrains Mono, Cascadia Code, monospace",
   "editor.fontLigatures": true,
-  "terminal.integrated.fontFamily": "FiraCode Nerd Font, Fira Code, monospace",
+  "terminal.integrated.fontFamily": "Fira Code Retina, JetBrains Mono, Cascadia Code, monospace",
   "terminal.integrated.defaultProfile.linux": "zsh",
   "terminal.integrated.defaultProfile.osx": "zsh",
   "terminal.integrated.defaultProfile.windows": "pwsh",
@@ -27,10 +27,11 @@
   "editor.cursorStyle": "block-outline", // options: "line", "block", "underline", "line-thin", "block-outline", "underline-thin"
   "editor.cursorWidth": 3, // only applies when cursorStyle is "line" (default is 2px)
   "workbench.colorCustomizations": {
-    "editorCursor.foreground": "#FF5000",
+    "editorCursor.foreground": "#FFFFFF",
 
     // Black background
     "editor.background": "#000000",
+    "editor.foreground": "#D4D4D4",
     "editorGutter.background": "#000000",
     "sideBar.background": "#000000",
     "activityBar.background": "#000000",
@@ -70,8 +71,17 @@
     "minimap.findMatchHighlight": "#222222",
 
     // Editor line highlight/gutter (for subtlety, optional)
-    "editorLineHighlightBackground": "#000000",
+    "editor.lineHighlightBackground": "#202020",
     "editorWhitespace.foreground": "#222222",
+    "editor.selectionBackground": "#656A48",
+    "editor.inactiveSelectionBackground": "#505050",
+    "editor.selectionHighlightBackground": "#505050",
+    "editorBracketMatch.background": "#505050",
+    "editorBracketMatch.border": "#505050",
+    "editor.wordHighlightBackground": "#505050",
+    "editorLineNumber.foreground": "#868686",
+    "editorIndentGuide.background": "#515C6A",
+    "editorIndentGuide.activeBackground": "#515C6A",
 
     // Search/Find Widget
     "editorWidget.background": "#000000",
@@ -98,6 +108,49 @@
 
     // Terminal
     "terminal.background": "#000000"
+  },
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      { "scope": "source", "settings": { "foreground": "#D4D4D4" } },
+      { "scope": "keyword", "settings": { "foreground": "#86C9EF" } },
+      { "scope": "keyword.control", "settings": { "fontStyle": "bold", "foreground": "#86C9EF" } },
+      { "scope": "keyword.operator", "settings": { "foreground": "#000000", "fontStyle": "bold" } },
+      { "scope": "constant.numeric", "settings": { "foreground": "#BE966E" } },
+      { "scope": "string", "settings": { "foreground": "#8FAFDF" } },
+      { "scope": "constant.character.escape", "settings": { "foreground": "#D7BA7D" } },
+      { "scope": "comment", "settings": { "foreground": "#7A987A" } },
+      { "scope": "comment.documentation", "settings": { "foreground": "#7A987A" } },
+      { "scope": "punctuation.definition.tag", "settings": { "foreground": "#808080" } },
+      { "scope": "entity.name.type", "settings": { "foreground": "#4EC9B0" } },
+      { "scope": "entity.name.type.interface", "settings": { "foreground": "#B8D7A3" } },
+      { "scope": "variable.other.enummember", "settings": { "foreground": "#4FC1FF" } },
+      { "scope": "entity.name.function", "settings": { "foreground": "#9CDCFE" } },
+      { "scope": "punctuation", "settings": { "foreground": "#D4D4D4" } },
+      { "scope": "markup.underline.link", "settings": { "foreground": "#8FAFDF", "fontStyle": "bold" } }
+    ]
+  },
+  "editor.semanticTokenColorCustomizations": {
+    "enabled": true,
+    "rules": {
+      "variable": "#D4D4D4",
+      "variable.readonly": "#D4D4D4",
+      "parameter": "#D4D4D4",
+      "property": "#D4D4D4",
+      "enumMember": "#4FC1FF",
+      "function": "#9CDCFE",
+      "method": "#9CDCFE",
+      "class": "#4EC9B0",
+      "struct": "#4EC9B0",
+      "interface": "#B8D7A3",
+      "typeParameter": "#4EC9B0",
+      "type": "#4EC9B0",
+      "number": "#BE966E",
+      "string": "#8FAFDF",
+      "comment": "#7A987A",
+      "keyword": "#86C9EF",
+      "operator": "#000000",
+      "namespace": "#4EC9B0"
+    }
   },
   // Blinking & Animation
   "editor.cursorBlinking": "solid", // options: "blink", "smooth", "phase", "expand", "solid"
@@ -439,11 +492,11 @@
   "extensions.experimental.affinity": {
     "vscodevim.vim": 1
   },
-  "workbench.colorTheme": "Tokyo Night Frameless",
+  "workbench.colorTheme": "Visual Studio Dark",
   "window.titleBarStyle": "custom",
 
   "editor.minimap.enabled": false,
-  "editor.fontSize": 16,
+  "editor.fontSize": 11,
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
