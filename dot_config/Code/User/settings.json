@@ -325,6 +325,10 @@
       "commands": [":nohl"]
     }
   ],
+  "vim.insertModeKeyBindings": [
+    // Manually create undo stack
+    { "before": ["<Esc>"], "after": ["<Esc>", "<C-g>u"] }
+  ],
   "vim.visualModeKeyBindings": [
     {
       "before": ["<tab>"],
