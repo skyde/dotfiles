@@ -45,8 +45,9 @@ On Windows this is installed via winget using the `Starship.Starship` package ID
 
 ## tmux theme
 
-The tmux configuration now includes a powerline-inspired status bar. A Nerd Font
-or Powerline font is recommended to see the separators correctly.
+The tmux configuration sports a simple powerline-style status bar showing the
+session name, current user, host and time. Use a Nerd Font (or any Powerline
+font) to render the separators correctly.
 
 # Mac
 
