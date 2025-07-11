@@ -97,6 +97,13 @@ Ensure you set the correct environment variable to allow the diff to work:
 
 ```
 P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe" /Diff %1 %2
+
+# Visual Studio Code
+
+I'm using a few plugins:
+- Vim
+- Find it Faster (hooks into fzf, rg & bat)
+- Tokyo Night Frameless (nice theme)
 ```
 
 # Keyboard
