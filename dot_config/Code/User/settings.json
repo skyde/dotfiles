@@ -26,11 +26,27 @@
   // Cursor Shape & Style
   "editor.cursorStyle": "block-outline", // options: "line", "block", "underline", "line-thin", "block-outline", "underline-thin"
   "editor.cursorWidth": 3, // only applies when cursorStyle is "line" (default is 2px)
+  "editor.semanticHighlighting.enabled": true,
   "workbench.colorCustomizations": {
     "editorCursor.foreground": "#FF5000",
 
+    // Editor line highlight/gutter (for subtlety, optional)
+    "editor.lineHighlightBackground": "#202020",
+    "editorWhitespace.foreground": "#222222",
+    "editor.selectionBackground": "#656A48",
+    "editor.inactiveSelectionBackground": "#505050",
+    "editor.selectionHighlightBackground": "#505050",
+    "editorBracketMatch.background": "#505050",
+    "editorBracketMatch.border": "#505050",
+    "editor.wordHighlightBackground": "#505050",
+    "editorLineNumber.foreground": "#222222",
+    "editorLineNumber.activeForeground": "#666666",
+    "editorIndentGuide.background": "#515C6A",
+    "editorIndentGuide.activeBackground": "#515C6A",
+
     // Black background
     "editor.background": "#000000",
+    "editor.foreground": "#D4D4D4",
     "editorGutter.background": "#000000",
     "sideBar.background": "#000000",
     "activityBar.background": "#000000",
@@ -69,10 +85,6 @@
     "minimap.warningHighlight": "#000000",
     "minimap.findMatchHighlight": "#222222",
 
-    // Editor line highlight/gutter (for subtlety, optional)
-    "editorLineHighlightBackground": "#000000",
-    "editorWhitespace.foreground": "#222222",
-
     // Search/Find Widget
     "editorWidget.background": "#000000",
     "peekViewEditor.background": "#000000",
@@ -99,6 +111,147 @@
     // Terminal
     "terminal.background": "#000000"
   },
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      { "scope": "source", "settings": { "foreground": "#D4D4D4" } },
+      { "scope": "keyword", "settings": { "foreground": "#86C9EF" } },
+      // {
+      //   "scope": "keyword.control",
+      //   "settings": { "foreground": "#CCA0CD" }
+      // },
+      {
+        "scope": "entity.name.function.preprocessor",
+        "settings": { "foreground": "#C255C5" }
+      },
+      {
+        "scope": "string.quoted",
+        "settings": { "foreground": "#DFA67C" }
+      },
+      {
+        "scope": "keyword.control",
+        "settings": { "foreground": "#ECBC6F" }
+      },
+      {
+        "scope": "keyword.operator",
+        "settings": { "foreground": "#DFDFBE" }
+      },
+      {
+        "scope": ["constant.numeric", "keyword.other.unit.suffix"],
+        "settings": { "foreground": "#5796BE" }
+      },
+      { "scope": "string", "settings": { "foreground": "#8FAFDF" } },
+      {
+        "scope": "constant.character.escape",
+        "settings": { "foreground": "#D7BA7D" }
+      },
+      { "scope": "punctuation", "settings": { "foreground": "#DFDDB9" } },
+      {
+        "scope": ["comment", "punctuation.definition.comment"],
+        "settings": { "foreground": "#7A987A" }
+      },
+      {
+        "scope": "punctuation.section.arguments",
+        "settings": { "foreground": "#F89500" }
+      },
+      {
+        "scope": "punctuation.definition.tag",
+        "settings": { "foreground": "#808080" }
+      },
+      { "scope": "entity.name.type", "settings": { "foreground": "#4EC9B0" } },
+      {
+        "scope": "entity.name.type.interface",
+        "settings": { "foreground": "#B8D7A3" }
+      },
+      {
+        "scope": "variable.other.enummember",
+        "settings": { "foreground": "#4FC1FF" }
+      },
+      // Functions
+      {
+        "scope": "entity.name.function",
+        "settings": { "foreground": "#DCDCAA" }
+      },
+      // Namespace
+      {
+        "scope": "meta.head.namespace",
+        "settings": { "foreground": "#7BCFE6" }
+      },
+      // {
+      //   "scope": "entity.name.scope-resolution",
+      //   "settings": { "foreground": "#ADD5CD" }
+      // },
+      // Built in types
+      {
+        "scope": [
+          "storage.type",
+          "storage.type.built-in",
+          "keyword.type",
+          "support.type"
+        ],
+        "settings": { "foreground": "#ECB763" }
+      },
+      // Casts
+      {
+        "scope": "keyword.operator.cast",
+        "settings": { "foreground": "#ECB763" }
+      },
+      // Local variable
+      {
+        "scope": "variable",
+        "settings": { "foreground": "#9CDCFE" }
+      },
+      // Class member variable
+      {
+        "scope": "variable.other.object",
+        "settings": { "foreground": "#DD9DC2" }
+      },
+      // {
+      //   "scope": "type",
+      //   "settings": { "foreground": "#ff0000" }
+      // },
+      // {
+      //   "scope": ["support.type", "entity.name.type"],
+      //   "settings": {
+      //     "foreground": "#FF0000"
+      //     // "fontStyle": "bold"
+      //   }
+      // },
+      {
+        "scope": "markup.underline.link",
+        // "settings": { "foreground": "#8FAFDF", "fontStyle": "bold" }
+        "settings": { "foreground": "#8FAFDF" }
+      }
+      // {
+      //   "scope": "variable", // fallback for non-semantic tokens
+      //   "settings": { "foreground": "#EFC986" }
+      // }
+    ]
+  },
+  // "editor.semanticTokenColorCustomizations": {
+  //   "enabled": true,
+  //   "rules": {
+  //     // "variable.local": "#EFC986",
+  //     "variable.readonly": "#D4D4D4",
+  //     "parameter": "#D4D4D4",
+  //     "property": "#D4D4D4",
+  //     "enumMember": "#4FC1FF",
+  //     "function": "#9CDCFE",
+  //     "method": "#9CDCFE",
+  //     "class": "#4EC9B0",
+  //     "struct": "#4EC9B0",
+  //     "interface": "#B8D7A3",
+  //     "typeParameter": "#4EC9B0",
+  //     "type": "#4EC9B0",
+  //     "number": "#BE966E",
+  //     "string": "#8FAFDF",
+  //     "comment": "#7A987A",
+  //     "keyword": "#86C9EF",
+  //     "operator": "#666666",
+  //     "namespace": "#4EC9B0"
+  //     // "type.defaultLibrary": "#00FFCC bold" // built-in types like float
+  //     // "type": "#00FFCC italic" // fallback for other types
+  //   }
+  // },
   // Blinking & Animation
   "editor.cursorBlinking": "solid", // options: "blink", "smooth", "phase", "expand", "solid"
   "editor.cursorSmoothCaretAnimation": "off", // only with "smooth" blinking
@@ -170,12 +323,12 @@
       "before": ["<D-Right>"],
       "commands": ["workbench.action.navigateForward"]
     },
-    // { "before": ["<C-o>"], "commands": ["workbench.action.navigateBack"] },
-    // { "before": ["<C-i>"], "commands": ["workbench.action.navigateForward"] },
-    // { "before": ["<C-h>"], "commands": ["workbench.action.focusLeftGroup"] },
-    // { "before": ["<C-j>"], "commands": ["workbench.action.focusBelowGroup"] },
-    // { "before": ["<C-k>"], "commands": ["workbench.action.focusAboveGroup"] },
-    // { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] },
+    { "before": ["<C-o>"], "commands": ["workbench.action.navigateBack"] },
+    { "before": ["<C-i>"], "commands": ["workbench.action.navigateForward"] },
+    { "before": ["<C-h>"], "commands": ["workbench.action.focusLeftGroup"] },
+    { "before": ["<C-j>"], "commands": ["workbench.action.focusBelowGroup"] },
+    { "before": ["<C-k>"], "commands": ["workbench.action.focusAboveGroup"] },
+    { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] },
     {
       "before": ["<leader>", "<leader>"],
       "commands": ["workbench.action.quickOpen"]
@@ -425,21 +578,22 @@
     {
       "before": [">"],
       "commands": ["editor.action.indentLines"]
+    },
+    {
+      "before": ["H"],
+      "commands": ["editor.action.moveLinesDownAction"]
+    },
+    {
+      "before": ["L"],
+      "commands": ["editor.action.moveLinesUpAction"]
     }
-    // {
-    //   "before": ["J"],
-    //   "commands": ["editor.action.moveLinesDownAction"]
-    // },
-    // {
-    //   "before": ["K"],
-    //   "commands": ["editor.action.moveLinesUpAction"]
-    // },
   ],
   // To improve performance
   "extensions.experimental.affinity": {
     "vscodevim.vim": 1
   },
-  "workbench.colorTheme": "Tokyo Night Frameless",
+  "workbench.colorTheme": "Visual Studio Dark",
+  // "workbench.colorTheme": "Tokyo Night Frameless",
   "window.titleBarStyle": "custom",
 
   "editor.minimap.enabled": false,
