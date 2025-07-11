@@ -50,7 +50,7 @@ The setup scripts also install speedy alternatives for common commands:
 - `ripgrep` for searching directories quickly
 - `fd` as a faster `find`
 - `bat` as a colorful `cat`
-- `exa` as an improved `ls`
+- `eza` as an improved `ls`
 
 # Mac
 
