@@ -21,6 +21,9 @@ setopt nocaseglob         # Case insensitive globbing
 setopt extended_glob      # Extended globbing
 setopt hist_ignore_all_dups  # Don’t store duplicate history
 setopt share_history         # Share command history between sessions
+setopt inc_append_history     # Append to history file immediately
+setopt hist_ignore_space      # Ignore commands starting with spaces
+setopt globdots               # Include dotfiles in globbing
 
 # History
 HISTSIZE=50000
@@ -53,6 +56,36 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
 # zoxide
 eval "$(zoxide init zsh)"
+
+# FZF integration
+if command -v fzf >/dev/null; then
+  for dir in \
+    "/usr/share/fzf" \
+    "/usr/local/opt/fzf/shell" \
+    "/opt/homebrew/opt/fzf/shell" \
+    "/usr/share/doc/fzf/examples" \
+    "$HOME/.fzf"; do
+    if [[ -r "$dir/key-bindings.zsh" ]]; then
+      source "$dir/key-bindings.zsh"
+      break
+    fi
+  done
+  for dir in \
+    "/usr/share/fzf" \
+    "/usr/local/opt/fzf/shell" \
+    "/opt/homebrew/opt/fzf/shell" \
+    "/usr/share/doc/fzf/examples" \
+    "$HOME/.fzf"; do
+    if [[ -r "$dir/completion.zsh" ]]; then
+      source "$dir/completion.zsh"
+      break
+    fi
+  done
+  if command -v fd >/dev/null; then
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+  fi
+fi
 
 # Aliases
 alias z='cd'
