@@ -11,7 +11,7 @@ chezmoi init --apply skyde
 ### Linux
 
 ```
-sudo apt-get update -qq && sudo apt-get install -y curl && \
+sudo apt-get update -qq && sudo apt-get install -y curl git && \
 mkdir -p ~/.local/bin && \
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && export PATH="$HOME/.local/bin:$PATH" && \
 curl -fsSL get.chezmoi.io | BINDIR="$HOME/.local/bin" bash -s -- init --apply skyde
