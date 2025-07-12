@@ -79,9 +79,9 @@ Allows increased brightness when viewing SDR content on an HDR monitor.
 ```
 - To get the Alt Tab switcher to work better
     - Go to Accessibility -> Visual Effects -> Animation effects & turn them off
-    - Without this moves to another tab will not work without waiting a split second.
+    - Without this, moving to another tab requires waiting a split second.
 - Set cursor blink rate to 0
-- Set cursor thinkness to 6
+- Set cursor thickness to 6
 ```
 
 ## Powershell 7
@@ -139,8 +139,8 @@ toggle comment - Shift F11
 
 ## Platforms
 
-Press Pgrm 1 to active on Mac
-Press Pgrm qwerty to active on Windows
+Press Pgrm 1 to activate on Mac
+Press Pgrm qwerty to activate on Windows
 
 Note you should always leave the keyboard in 'Windows' mode as the bindings have been manually translated.
 
