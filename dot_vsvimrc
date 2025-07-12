@@ -206,11 +206,11 @@ nnoremap <Leader>dw :vsc Debug.QuickWatch<CR>
 " TODO: Look into how these debug commands are setup - maybe Ctrl+ArrowKey
 " would be a better way to do it?
 
-" Up runs the program to the highlighted line
-nnoremap <Leader>de :vsc Debug.SetNextStatement<CR>
-" Down steps the program once
-nnoremap <Leader>dn :vsc Debug.StepOver<CR>
-" Right steps into the current statement
-nnoremap <Leader>di :vsc Debug.StepInto<CR>
-" Left steps out of the current context
-nnoremap <Leader>dm :vsc Debug.StepOut<CR>
+" J runs the program to the highlighted line
+nnoremap J :vsc Debug.SetNextStatement<CR>
+" H steps the program once
+nnoremap H :vsc Debug.StepOver<CR>
+" L steps into the current statement
+nnoremap L :vsc Debug.StepInto<CR>
+" K steps out of the current context
+nnoremap K :vsc Debug.StepOut<CR>
