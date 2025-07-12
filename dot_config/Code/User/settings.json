@@ -682,7 +682,7 @@
   "extensions.experimental.affinity": {
     "vscodevim.vim": 1
   },
-  "workbench.colorTheme": "Visual Studio Dark",
+  "workbench.colorTheme": "Visual Studio Dark - C++",
   "window.titleBarStyle": "custom",
 
   "editor.minimap.enabled": false,
