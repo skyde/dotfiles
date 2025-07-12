@@ -113,7 +113,8 @@ I'm using a few plugins:
 - Vim
 - Find it Faster (hooks into fzf, rg & bat)
 Extensions listed in `vscode_extensions.txt` will be installed automatically
-when these dotfiles are applied.
+when these dotfiles are applied. Custom keybindings are documented in
+[`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
 ```
 
 # Keyboard
