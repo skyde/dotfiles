@@ -5,7 +5,7 @@
 
 function Get-Adv2Drive {
     # Look at every mounted removable volume
-    $vols = Get-Volume -ErrorAction SilentlyContinue |                          # docs show DriveType property :contentReference[oaicite:2]{index=2}
+    $vols = Get-Volume -ErrorAction SilentlyContinue |                          # docs show DriveType property 
             Where-Object { $_.DriveType -eq 'Removable' }
 
     foreach ($v in $vols) {
@@ -14,7 +14,7 @@ function Get-Adv2Drive {
 
         # 2️⃣ fallback: SmartSet folders
         $root = "$($v.DriveLetter):\"
-        if ( (Test-Path -LiteralPath (Join-Path $root 'active')) -and            # need parentheses on each Test-Path :contentReference[oaicite:3]{index=3}
+        if ( (Test-Path -LiteralPath (Join-Path $root 'active')) -and            # need parentheses on each Test-Path 
              (Test-Path -LiteralPath (Join-Path $root 'firmware')) ) {
             return $v
         }
