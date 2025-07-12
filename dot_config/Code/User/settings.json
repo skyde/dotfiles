@@ -24,92 +24,95 @@
   "editor.formatOnSave": true,
   "window.zoomLevel": 0.2,
   // Cursor Shape & Style
-  "editor.cursorStyle": "block-outline", // options: "line", "block", "underline", "line-thin", "block-outline", "underline-thin"
-  "editor.cursorWidth": 3, // only applies when cursorStyle is "line" (default is 2px)
+  "editor.cursorStyle": "block-outline",
+  "editor.cursorWidth": 3, // only applies when cursorStyle is "line"
   "editor.semanticHighlighting.enabled": true,
+  "editor.selectionHighlight": false,
+  "editor.occurrencesHighlight": "off",
   "workbench.colorCustomizations": {
     // Custom cursor color - do not change
     "editorCursor.foreground": "#FF5000",
-    "editorCursor.background": "#000000",
+    "editorCursor.background": "#000000"
 
-    // Editor line highlight/gutter (for subtlety, optional)
-    "editor.lineHighlightBackground": "#202020",
-    "editorWhitespace.foreground": "#222222",
-    "editor.selectionBackground": "#656A48",
-    "editor.inactiveSelectionBackground": "#505050",
-    "editor.selectionHighlightBackground": "#505050",
-    "editorBracketMatch.background": "#505050",
-    "editorBracketMatch.border": "#505050",
-    "editor.wordHighlightBackground": "#505050",
-    "editorLineNumber.foreground": "#222222",
-    "editorLineNumber.activeForeground": "#666666",
-    "editorIndentGuide.background": "#515C6A",
-    "editorIndentGuide.activeBackground": "#515C6A",
+    // ---- START BLACK BACKGROUND ----
+    // // Editor line highlight/gutter (for subtlety, optional)
+    // "editor.lineHighlightBackground": "#202020",
+    // "editorWhitespace.foreground": "#222222",
+    // "editor.selectionBackground": "#656A48",
+    // "editor.inactiveSelectionBackground": "#505050",
+    // "editor.selectionHighlightBackground": "#505050",
+    // "editorBracketMatch.background": "#505050",
+    // "editorBracketMatch.border": "#505050",
+    // "editor.wordHighlightBackground": "#505050",
+    // "editorLineNumber.foreground": "#222222",
+    // "editorLineNumber.activeForeground": "#666666",
+    // "editorIndentGuide.background1": "#515C6A",
+    // "editorIndentGuide.activeBackground1": "#515C6A"
+    // // Black background
+    // "editor.background": "#000000",
+    // "editor.foreground": "#D4D4D4",
+    // "editorGutter.background": "#000000",
+    // "sideBar.background": "#000000",
+    // "activityBar.background": "#000000",
+    // "statusBar.background": "#000000",
+    // "titleBar.activeBackground": "#000000",
+    // "titleBar.inactiveBackground": "#000000",
+    // "editorGroupHeader.tabsBackground": "#000000",
+    // "tab.activeBackground": "#000000",
+    // "tab.inactiveBackground": "#000000",
+    // "panel.background": "#000000",
+    // "quickInput.background": "#000000",
+    // "breadcrumb.background": "#000000",
+    // "breadcrumbPicker.background": "#000000",
+    // "sideBar.border": "#000000",
+    // "activityBar.border": "#000000",
+    // "panel.border": "#000000",
+    // "statusBar.border": "#000000",
+    // "editorGroup.border": "#000000",
+    // "editorGroupHeader.tabsBorder": "#000000",
+    // "tab.border": "#000000",
+    // "sideBySideEditor.verticalBorder": "#000000",
+    // "sideBySideEditor.horizontalBorder": "#000000",
+    // "editorGroup.emptyBackground": "#000000",
+    // "editorGroupHeader.noTabsBackground": "#000000",
+    // "editorPane.background": "#000000",
+    // "panelSection.background": "#000000",
+    // // Scroll bars
+    // "scrollbarSlider.background": "#00000080",
 
-    // Black background
-    "editor.background": "#000000",
-    "editor.foreground": "#D4D4D4",
-    "editorGutter.background": "#000000",
-    "sideBar.background": "#000000",
-    "activityBar.background": "#000000",
-    "statusBar.background": "#000000",
-    "titleBar.activeBackground": "#000000",
-    "titleBar.inactiveBackground": "#000000",
-    "editorGroupHeader.tabsBackground": "#000000",
-    "tab.activeBackground": "#000000",
-    "tab.inactiveBackground": "#000000",
-    "panel.background": "#000000",
-    "quickInput.background": "#000000",
-    "breadcrumb.background": "#000000",
-    "breadcrumbPicker.background": "#000000",
-    "sideBar.border": "#000000",
-    "activityBar.border": "#000000",
-    "panel.border": "#000000",
-    "statusBar.border": "#000000",
-    "editorGroup.border": "#000000",
-    "editorGroupHeader.tabsBorder": "#000000",
-    "tab.border": "#000000",
-    "sideBySideEditor.verticalBorder": "#000000",
-    "sideBySideEditor.horizontalBorder": "#000000",
-    "editorGroup.emptyBackground": "#000000",
-    "editorGroupHeader.noTabsBackground": "#000000",
-    "editorPane.background": "#000000",
-    "panelSection.background": "#000000",
-    // Scroll bars
-    "scrollbarSlider.background": "#00000080",
+    // // Minimap
+    // "minimap.background": "#000000",
+    // "minimap.selectionHighlight": "#222222",
+    // "minimap.errorHighlight": "#000000",
+    // "minimap.warningHighlight": "#000000",
+    // "minimap.findMatchHighlight": "#222222",
 
-    // Minimap
-    "minimap.background": "#000000",
-    "minimap.selectionHighlight": "#222222",
-    "minimap.errorHighlight": "#000000",
-    "minimap.warningHighlight": "#000000",
-    "minimap.findMatchHighlight": "#222222",
+    // // Search/Find Widget
+    // "editorWidget.background": "#000000",
+    // "peekViewEditor.background": "#000000",
+    // "peekViewResult.background": "#000000",
+    // "peekViewTitle.background": "#000000",
 
-    // Search/Find Widget
-    "editorWidget.background": "#000000",
-    "peekViewEditor.background": "#000000",
-    "peekViewResult.background": "#000000",
-    "peekViewTitle.background": "#000000",
+    // // Popups & notifications
+    // "widget.shadow": "#00000000",
+    // "notification.background": "#000000",
+    // "notification.toast.background": "#000000",
+    // "notifications.background": "#000000",
+    // "notifications.border": "#000000",
 
-    // Popups & notifications
-    "widget.shadow": "#00000000",
-    "notification.background": "#000000",
-    "notification.toast.background": "#000000",
-    "notifications.background": "#000000",
-    "notifications.border": "#000000",
+    // // Dropdowns, pickers
+    // "dropdown.background": "#000000",
+    // "dropdown.border": "#000000",
+    // "input.background": "#000000",
+    // "input.border": "#000000",
 
-    // Dropdowns, pickers
-    "dropdown.background": "#000000",
-    "dropdown.border": "#000000",
-    "input.background": "#000000",
-    "input.border": "#000000",
+    // // Context/right-click menus
+    // "menu.background": "#000000",
+    // "menu.selectionBackground": "#222222",
 
-    // Context/right-click menus
-    "menu.background": "#000000",
-    "menu.selectionBackground": "#222222",
-
-    // Terminal
-    "terminal.background": "#000000"
+    // // Terminal
+    // "terminal.background": "#000000"
+    // ---- END BLACK BACKGROUND ----
   },
   // Custom color scheme
   "editor.tokenColorCustomizations": {
@@ -479,7 +482,7 @@
     //   "commands": ["editor.action.formatDocument"]
     // },
     {
-      "before": ["g", "h"],
+      "before": ["g", "n"],
       "commands": ["editor.action.showDefinitionPreviewHover"]
     },
     {
@@ -534,6 +537,62 @@
     {
       "before": ["<C-r>"],
       "commands": [{ "command": "redo" }]
+    },
+    { "before": ["g", "k"], "commands": ["editor.action.marker.prev"] },
+    { "before": ["g", "j"], "commands": ["editor.action.marker.next"] },
+    {
+      "before": ["g", "u"],
+      "commands": ["editor.action.referenceSearch.trigger"]
+    },
+    { "before": ["<leader>", "c", "R"], "commands": ["renameFile"] },
+    // {"before": ["<leader>", "g", "d"], "commands": ["git.openFileDiff"]},
+    { "before": ["<leader>", "g", "o"], "commands": ["git.openFile"] },
+    { "before": ["<leader>", "g", "r"], "commands": ["git.clean"] },
+    {
+      "before": ["<leader>", "g", "R"],
+      "commands": ["git.revertSelectedRanges"]
+    },
+    { "before": ["<leader>", "g", "a"], "commands": ["git.stage"] },
+    { "before": ["<leader>", "g", "D"], "commands": ["git.unstage"] },
+    {
+      "before": ["<leader>", "g", "h"],
+      "commands": ["git.showQuickCommitFileDetails"]
+    },
+    { "before": ["<leader>", "g", "t"], "commands": ["git.openFileTimeline"] },
+    { "before": ["<S-Left>"], "commands": ["workbench.action.previousEditor"] },
+    { "before": ["<S-Right>"], "commands": ["workbench.action.nextEditor"] },
+    { "before": ["<leader>", "."], "commands": ["editor.action.quickFix"] },
+    {
+      "before": ["<leader>", "t", "r"],
+      "commands": ["testing.runCurrentTest"]
+    },
+    {
+      "before": ["<leader>", "t", "d"],
+      "commands": ["testing.debugCurrentTest"]
+    },
+    { "before": ["<leader>", "t", "a"], "commands": ["testing.runAll"] },
+    { "before": ["<leader>", "t", "l"], "commands": ["testing.reRunLastRun"] },
+    {
+      "before": ["<leader>", "t", "t"],
+      "commands": ["testing.showMostRecentOutput"]
+    },
+    { "before": ["<leader>", "e"], "commands": ["editor.action.marker.next"] },
+    { "before": ["<leader>", "E"], "commands": ["editor.action.marker.prev"] },
+    {
+      "before": ["<leader>", "m", "b"],
+      "commands": ["workbench.action.tasks.build"]
+    },
+    {
+      "before": ["<leader>", "m", "c"],
+      "commands": ["workbench.action.tasks.terminate"]
+    },
+    {
+      "before": ["<leader>", "m", "r"],
+      "commands": ["workbench.action.debug.start"]
+    },
+    {
+      "before": ["<leader>", "m", "s"],
+      "commands": ["workbench.action.debug.stop"]
     }
   ],
   "vim.insertModeKeyBindings": [
@@ -586,7 +645,7 @@
   // Fuzzy Finder
   // "find-it-faster.general.useTerminalInEditor": true,
   // Zen Mode
-  // "zenMode.centerLayout": false,
+  "zenMode.centerLayout": false,
   // "zenMode.showTabs": "none",
   "zenMode.fullScreen": true,
   "zenMode.hideStatusBar": false,
