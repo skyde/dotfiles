@@ -1,4 +1,3 @@
 vscodevim.vim
 jellydn.find-it-faster
-enkia.tokyo-night
 esbenp.prettier-vscode

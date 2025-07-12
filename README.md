@@ -112,7 +112,6 @@ P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\d
 I'm using a few plugins:
 - Vim
 - Find it Faster (hooks into fzf, rg & bat)
-- Tokyo Night Frameless (nice theme)
 Extensions listed in `vscode_extensions.txt` will be installed automatically
 when these dotfiles are applied.
 ```

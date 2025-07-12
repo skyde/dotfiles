@@ -571,7 +571,6 @@
     "vscodevim.vim": 1
   },
   "workbench.colorTheme": "Visual Studio Dark",
-  // "workbench.colorTheme": "Tokyo Night Frameless",
   "window.titleBarStyle": "custom",
 
   "editor.minimap.enabled": false,
