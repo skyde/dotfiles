@@ -44,7 +44,7 @@ for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
   for dir in "/usr/local/share/$plugin" "/opt/homebrew/share/$plugin" "/usr/share/$plugin"; do
     if [[ -r "$dir/$plugin.zsh" ]]; then
       source "$dir/$plugin.zsh"
-      break 2
+      break
     fi
   done
 done
