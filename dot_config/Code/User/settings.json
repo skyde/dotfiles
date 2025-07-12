@@ -301,6 +301,21 @@
     { "before": ["<C-h>"], "commands": ["workbench.action.focusLeftGroup"] },
     { "before": ["<C-j>"], "commands": ["workbench.action.focusBelowGroup"] },
     { "before": ["<C-k>"], "commands": ["workbench.action.focusAboveGroup"] },
+    {
+      "before": ["<Esc>"],
+      "after": ["<Esc>"],
+      "commands": [":nohl"]
+    },
+    {
+      // Use Visual Studio code undo rather than VSVim
+      "before": ["u"],
+      "commands": [{ "command": "undo" }]
+    },
+    {
+      // Use Visual Studio code redo rather than VSVim
+      "before": ["<C-r>"],
+      "commands": [{ "command": "redo" }]
+    },
     { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] },
     // Fuzzy Find
     {
@@ -353,15 +368,6 @@
       "before": ["<leader>", "b", "P"],
       "commands": ["workbench.action.closeOtherEditors"]
     },
-    // Windows
-    {
-      "before": ["<leader>", "w", "f"],
-      "commands": ["workbench.action.toggleZenMode"]
-    },
-    {
-      "before": ["<leader>", "w", "F"],
-      "commands": ["workbench.action.toggleFullScreen"]
-    },
     {
       "before": ["<S-h>"],
       "commands": [":bprevious"]
@@ -372,12 +378,26 @@
     },
     // Windows
     {
+      // Memonic is 'fullscreen'
+      "before": ["<leader>", "w", "f"],
+      "commands": ["workbench.action.toggleZenMode"]
+    },
+    {
+      // This actually just toggles fullscreen if you need it
+      "before": ["<leader>", "w", "F"],
+      "commands": ["workbench.action.toggleFullScreen"]
+    },
+    {
       "before": ["leader", "w", "v"],
       "commands": [":vsplit"]
     },
     {
       "before": ["leader", "w", "s"],
       "commands": [":split"]
+    },
+    {
+      "before": ["leader", "w", "d"],
+      "commands": ["workbench.action.closeActiveEditor"]
     },
     {
       "before": ["leader", "w", "h"],
@@ -493,6 +513,7 @@
       "before": ["<leader>", "e", "p"],
       "commands": ["editor.action.marker.prev"]
     },
+    // Debug
     {
       "before": ["<leader>", "d", "b"],
       "commands": ["editor.debug.action.toggleBreakpoint"]
@@ -517,41 +538,51 @@
       "before": ["<leader>", "d", "c"],
       "commands": ["workbench.action.debug.continue"]
     },
-    {
-      "before": ["<Esc>"],
-      "after": ["<Esc>"],
-      "commands": [":nohl"]
-    },
-    // Use Visual Studio code undo rather than VSVim
-    {
-      "before": ["u"],
-      "commands": [{ "command": "undo" }]
-    },
-    {
-      "before": ["<C-r>"],
-      "commands": [{ "command": "redo" }]
-    },
-    // { "before": ["g", "k"], "commands": ["editor.action.marker.prev"] },
-    // { "before": ["g", "j"], "commands": ["editor.action.marker.next"] },
+    // Git
+    { "before": ["<leader>", "g", "d"], "commands": ["git.openChange"] }, // [EDIT][SCM]
+    // ── 1. Stage / Unstage ────────────────────────────────────────────────────
+    // (s)tage - adds the whole file OR just the highlighted hunks to the index.
+    // Works from editor, diff view, or the SCM list.
+    { "before": ["<leader>", "g", "s"], "commands": ["git.stage"] }, // [SCM][DIFF][EDIT]
 
-    { "before": ["<leader>", "c", "R"], "commands": ["renameFile"] },
-    // {"before": ["<leader>", "g", "d"], "commands": ["git.openFileDiff"]},
-    { "before": ["<leader>", "g", "o"], "commands": ["git.openFile"] },
-    { "before": ["<leader>", "g", "r"], "commands": ["git.clean"] },
+    // (u)nstage – the inverse of stage. Same context rules.
+    { "before": ["<leader>", "g", "u"], "commands": ["git.unstage"] }, // [SCM][DIFF][EDIT]
+
+    // ── 2. Jump between working tree & diff ──────────────────────────────────
+    // (d)iff – open or toggle the Git diff against HEAD for the current file.
+    { "before": ["<leader>", "g", "d"], "commands": ["git.openChange"] }, // [DIFF][EDIT]
+
+    // (w)orktree – when you’re *in* that diff, switch back to the live file.
+    { "before": ["<leader>", "g", "w"], "commands": ["git.openFile"] }, // [DIFF]
+
+    // ── 3. Throw-away changes ───────────────────────────────────────────────
+    // (r)evert – inside a diff, discard ONLY the selected lines/hunks.
     {
-      "before": ["<leader>", "g", "R"],
+      "before": ["<leader>", "g", "r"],
       "commands": ["git.revertSelectedRanges"]
-    },
-    { "before": ["<leader>", "g", "a"], "commands": ["git.stage"] },
-    { "before": ["<leader>", "g", "D"], "commands": ["git.unstage"] },
+    }, // [DIFF]
+
+    // (c)lean – run `git clean -xdf` after a safety prompt to wipe ALL
+    // untracked files. Irreversible, so keep the mnemonic sharp!
+    // { "before": ["<leader>", "g", "C"], "commands": ["git.clean"] }, // [ANY]
+
+    // ── 4. Inspect history ───────────────────────────────────────────────────
+    // (h)istory popup – GitLens quick view of the last commit touching
+    // the current line/file.
     {
       "before": ["<leader>", "g", "h"],
-      "commands": ["git.showQuickCommitFileDetails"]
-    },
-    { "before": ["<leader>", "g", "t"], "commands": ["git.openFileTimeline"] },
-    { "before": ["<S-Left>"], "commands": ["workbench.action.previousEditor"] },
-    { "before": ["<S-Right>"], "commands": ["workbench.action.nextEditor"] },
-    { "before": ["<leader>", "."], "commands": ["editor.action.quickFix"] },
+      "commands": ["gitlens.showQuickCommitFileDetails"]
+    }, // [EDIT]
+
+    // (l)og timeline – opens the Timeline side-pane with full commit history,
+    // file-saves, and extension events.
+    { "before": ["<leader>", "g", "l"], "commands": ["files.openTimeline"] }, // [EDIT]
+
+    // ── 5. File maintenance ─────────────────────────────────────────────────
+    // re(n)ame – triggers the Explorer rename (same as F2) or, if focus is on
+    // the editor tab header, renames the file on disk and updates the buffer.
+    { "before": ["<leader>", "g", "n"], "commands": ["renameFile"] }, // [EXPL][EDIT]
+    // Testing
     {
       "before": ["<leader>", "t", "r"],
       "commands": ["testing.runCurrentTest"]
@@ -560,12 +591,27 @@
       "before": ["<leader>", "t", "d"],
       "commands": ["testing.debugCurrentTest"]
     },
-    { "before": ["<leader>", "t", "a"], "commands": ["testing.runAll"] },
-    { "before": ["<leader>", "t", "l"], "commands": ["testing.reRunLastRun"] },
     {
-      "before": ["<leader>", "t", "t"],
+      "before": ["<leader>", "t", "a"],
+      "commands": ["testing.runAll"]
+    },
+    {
+      "before": ["<leader>", "t", "R"],
+      "commands": ["testing.reRunLastRun"]
+    },
+    {
+      "before": ["<leader>", "t", "o"],
       "commands": ["testing.showMostRecentOutput"]
     },
+    {
+      "before": ["<leader>", "t", "f"],
+      "commands": ["testing.runCurrentFile"]
+    },
+    {
+      "before": ["<leader>", "t", "e"],
+      "commands": ["testing.openTestView"] // focuses the Test Explorer
+    },
+    // Make (Build)
     {
       "before": ["<leader>", "m", "b"],
       "commands": ["workbench.action.tasks.build"]
@@ -582,21 +628,23 @@
       "before": ["<leader>", "m", "s"],
       "commands": ["workbench.action.debug.stop"]
     },
-    // Debug navigation
+    // Debug Navigation
     {
-      "before": ["<Leader>", "d", "e"],
+      // Goto specified spot
+      // "before": ["<Leader>", "d", "g"],
+      "before": ["J"],
       "commands": ["workbench.action.debug.setNextStatement"]
     },
     {
-      "before": ["<Leader>", "d", "n"],
+      "before": ["H"],
       "commands": ["workbench.action.debug.stepOver"]
     },
     {
-      "before": ["<Leader>", "d", "i"],
+      "before": ["L"],
       "commands": ["workbench.action.debug.stepInto"]
     },
     {
-      "before": ["<Leader>", "d", "m"],
+      "before": ["K"],
       "commands": ["workbench.action.debug.stepOut"]
     }
   ],
