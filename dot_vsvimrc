@@ -92,7 +92,7 @@ nnoremap <leader>r :vsc View.Terminal<CR>
 " Solution Explorer and Terminal
 nnoremap <leader>e :vsc View.SolutionExplorer<CR>
 
-" Goto 
+" Goto
 nnoremap gd :vsc Edit.GoToDefinition<CR>
 nnoremap gp :vsc Edit.PeekDefinition<CR>
 nnoremap gi :vsc Edit.GoToImplementation<CR>
