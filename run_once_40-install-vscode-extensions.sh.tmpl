@@ -2,13 +2,17 @@
 #!/usr/bin/env bash
 set -e
 EXT_FILE="{{ .chezmoi.sourceDir }}/vscode_extensions.txt"
-if ! command -v code >/dev/null 2>&1; then
-    echo "VS Code 'code' command not found, skipping extension install"
+if command -v code >/dev/null 2>&1; then
+    CODE_CMD="code"
+elif command -v cursor >/dev/null 2>&1; then
+    CODE_CMD="cursor"
+else
+    echo "VS Code 'code' or 'cursor' command not found, skipping extension install"
     exit 0
 fi
 while IFS= read -r ext || [ -n "$ext" ]; do
     [ -z "$ext" ] && continue
     echo "Installing VS Code extension: $ext"
-    code --install-extension "$ext" --force || true
+    "$CODE_CMD" --install-extension "$ext" --force || true
 done < "$EXT_FILE"
 {{ end -}}
