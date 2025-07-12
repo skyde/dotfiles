@@ -30,6 +30,7 @@
   "workbench.colorCustomizations": {
     // Custom cursor color - do not change
     "editorCursor.foreground": "#FF5000",
+    "editorCursor.background": "#000000",
 
     // Editor line highlight/gutter (for subtlety, optional)
     "editor.lineHighlightBackground": "#202020",
@@ -601,5 +602,6 @@
     "plaintext": false,
     "markdown": false,
     "scminput": false
-  }
+  },
+  "breadcrumbs.enabled": false
 }
