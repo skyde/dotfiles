@@ -28,7 +28,7 @@
         ]
         }
     },
-    
+
     // Page Up - workround to make cursor movement match Nvim
     {
         "key": "pageup",
@@ -164,7 +164,7 @@
         "command": "editor.action.revealDefinition",
         "when": "editorHasDefinitionProvider && editorTextFocus"
     },
-    // Toggle Comment 
+    // Toggle Comment
     {
         "key": "shift+f11",
         "command": "editor.action.commentLine",

@@ -66,7 +66,7 @@ Custom shortcut to open Spotlight Search with a keyboard macro. To avoid overwri
 
 ## Fluor
 
-Automatically switches mode of fn keys per program. Important as keyboard macros use F... keys. 
+Automatically switches mode of fn keys per program. Important as keyboard macros use F... keys.
 
 ## Better Display
 
