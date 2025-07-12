@@ -113,6 +113,8 @@ I'm using a few plugins:
 - Vim
 - Find it Faster (hooks into fzf, rg & bat)
 - Tokyo Night Frameless (nice theme)
+Extensions listed in `vscode_extensions.txt` will be installed automatically
+when these dotfiles are applied.
 ```
 
 # Keyboard
