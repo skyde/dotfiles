@@ -630,6 +630,7 @@
       "commands": ["workbench.action.debug.stop"]
     },
     // Debug Navigation
+    // Note these are optimized for Colemak so you may want to use a different order on QWERTY
     {
       // Goto specified spot
       // "before": ["<Leader>", "d", "g"],
