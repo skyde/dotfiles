@@ -1,3 +1,5 @@
 vscodevim.vim
-jellydn.find-it-faster
+tomrijndorp.find-it-faster
+jeff-hykin.better-cpp-syntax
+ms-vscode.cpptools-themes
 esbenp.prettier-vscode
