@@ -461,7 +461,7 @@
     },
     {
       "before": ["g", "h"],
-      "commands": ["C_Cpp.SwitchHeaderSource"]
+      "commands": ["clangd.switchSourceHeader"]
     },
     {
       "before": ["g", "u"],
