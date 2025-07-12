@@ -32,7 +32,8 @@
   "workbench.colorCustomizations": {
     // Custom cursor color - do not change
     "editorCursor.foreground": "#FF5000",
-    "editorCursor.background": "#000000"
+    "editorCursor.background": "#000000",
+    "statusBar.background": "#1E1E1E"
 
     // ---- START BLACK BACKGROUND ----
     // // Editor line highlight/gutter (for subtlety, optional)
