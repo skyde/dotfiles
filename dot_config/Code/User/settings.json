@@ -269,14 +269,6 @@
   "vim.leader": "<space>",
   "vim.normalModeKeyBindingsNonRecursive": [
     {
-      "before": ["s"],
-      "after": ["<leader>", "<leader>", "2", "s"]
-    },
-    {
-      "before": ["S"],
-      "after": ["<leader>", "<leader>", "2", "S"]
-    },
-    {
       "before": ["<leader>", "v"],
       "after": ["<C-v>"]
     },
@@ -310,88 +302,22 @@
     { "before": ["<C-j>"], "commands": ["workbench.action.focusBelowGroup"] },
     { "before": ["<C-k>"], "commands": ["workbench.action.focusAboveGroup"] },
     { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] },
+    // Fuzzy Find
     {
       "before": ["<leader>", "<leader>"],
       "commands": ["workbench.action.quickOpen"]
     },
+    // File
     {
       "before": ["<leader>", "f", "m"],
       "commands": ["workbench.files.action.focusFilesExplorer"]
     },
-    // Fuzzy finder
-    {
-      "before": ["<leader>", "s", "g"],
-      "commands": ["find-it-faster.findWithinFiles"]
-    },
-    {
-      "before": ["<leader>", "s", "f"],
-      "commands": ["find-it-faster.findFiles"]
-    },
-    {
-      "before": ["<leader>", "s", "t"],
-      "commands": ["find-it-faster.findWithinFilesWithTypeFilter"]
-    },
-    {
-      "before": ["<leader>", "s", "r"],
-      "commands": ["find-it-faster.resumeSearch"]
-    },
-    //     {
-    //   "command": "workbench.files.action.focusFilesExplorer",
-    //     "key": "ctrl+e",
-    //     "when": "editorTextFocus"
-    // },
+    // Explorer
     {
       "before": ["<leader>", "e"],
       "commands": ["workbench.view.explorer"]
     },
-    {
-      "before": ["v", "i", "g"],
-      "after": ["g", "g", "V", "G"]
-    },
-    {
-      "before": ["y", "i", "g"],
-      "after": ["g", "g", "V", "G", "y"]
-    },
-    {
-      "before": ["g", "d"],
-      "commands": ["editor.action.revealDefinition"]
-    },
-    {
-      "before": ["g", "p"],
-      "commands": ["editor.action.peekDefinition"]
-    },
-    {
-      "before": ["g", "i"],
-      "commands": ["editor.action.goToImplementation"]
-    },
-    {
-      "before": ["g", "r"],
-      "commands": ["editor.action.goToReferences"]
-    },
-    {
-      "before": ["g", "h"],
-      "commands": ["C_Cpp.SwitchHeaderSource"]
-    },
-    {
-      "before": ["<leader>", "c", "r"],
-      "commands": ["editor.action.rename"]
-    },
-    {
-      "before": ["<leader>", "c", "i"],
-      "commands": ["editor.action.triggerParameterHints"]
-    },
-    {
-      "before": ["<leader>", "e", "e"],
-      "commands": ["workbench.actions.view.problems"]
-    },
-    {
-      "before": ["<leader>", "e", "n"],
-      "commands": ["editor.action.marker.next"]
-    },
-    {
-      "before": ["<leader>", "e", "p"],
-      "commands": ["editor.action.marker.prev"]
-    },
+    // Buffers
     {
       "before": ["]", "b"],
       "commands": ["workbench.action.nextEditor"]
@@ -413,6 +339,22 @@
       "after": ["<C-6>"]
     },
     {
+      // TODO: Ideally <leader>bp is a toggle, but non trival to get this to work
+      "before": ["<leader>", "b", "u"],
+      "commands": ["workbench.action.unpinEditor"],
+      "when": "activeEditorIsPinned"
+    },
+    {
+      "before": ["<leader>", "b", "p"],
+      "commands": ["workbench.action.pinEditor"],
+      "when": "!activeEditorIsPinned"
+    },
+    {
+      "before": ["<leader>", "b", "P"],
+      "commands": ["workbench.action.closeOtherEditors"]
+    },
+    // Windows
+    {
       "before": ["<leader>", "w", "f"],
       "commands": ["workbench.action.toggleZenMode"]
     },
@@ -428,6 +370,7 @@
       "before": ["<S-l>"],
       "commands": [":bnext"]
     },
+    // Windows
     {
       "before": ["leader", "w", "v"],
       "commands": [":vsplit"]
@@ -452,53 +395,103 @@
       "before": ["leader", "w", "l"],
       "commands": ["workbench.action.focusRightGroup"]
     },
-    // {
-    //   "before": ["w"],
-    //   "commands": [":w!"]
-    // },
+    // Search
     {
-      "before": ["leader", "q", "q"],
-      "commands": [":q!"]
-    },
-    // {
-    //   "before": ["leader", "x"],
-    //   "commands": [":x!"]
-    // },
-    {
-      "before": ["[", "d"],
-      "commands": ["editor.action.marker.prev"]
+      "before": ["<leader>", "s", "g"],
+      "commands": ["find-it-faster.findWithinFiles"]
     },
     {
-      "before": ["]", "d"],
-      "commands": ["editor.action.marker.next"]
+      "before": ["<leader>", "s", "f"],
+      "commands": ["find-it-faster.findFiles"]
     },
-    // TODO: Should be <leader> c e? (ie. next fix.. mostly just easier to press)
     {
-      "before": ["<leader>", "c", "e"],
-      "commands": ["editor.action.quickFix"]
+      "before": ["<leader>", "s", "t"],
+      "commands": ["find-it-faster.findWithinFilesWithTypeFilter"]
     },
-    // {
-    //   "before": ["<leader>", "p"],
-    //   "commands": ["editor.action.formatDocument"]
-    // },
+    {
+      "before": ["<leader>", "s", "r"],
+      "commands": ["find-it-faster.resumeSearch"]
+    },
+    // Easy Motion
+    {
+      "before": ["s"],
+      "after": ["<leader>", "<leader>", "2", "s"]
+    },
+    {
+      "before": ["S"],
+      "after": ["<leader>", "<leader>", "2", "S"]
+    },
+    // Goto
+    {
+      "before": ["g", "d"],
+      "commands": ["editor.action.revealDefinition"]
+    },
+    {
+      "before": ["g", "p"],
+      "commands": ["editor.action.peekDefinition"]
+    },
+    {
+      "before": ["g", "i"],
+      "commands": ["editor.action.goToImplementation"]
+    },
+    {
+      "before": ["g", "r"],
+      "commands": ["editor.action.goToReferences"]
+    },
+    {
+      "before": ["g", "h"],
+      "commands": ["C_Cpp.SwitchHeaderSource"]
+    },
+    {
+      "before": ["g", "u"],
+      "commands": ["editor.action.referenceSearch.trigger"]
+    },
     {
       "before": ["g", "n"],
       "commands": ["editor.action.showDefinitionPreviewHover"]
     },
     {
-      "before": ["<leader>", "b", "p"],
-      // Toggle pin/unpin on the active editor
-      "commands": ["workbench.action.unpinEditor"],
-      "when": "activeEditorIsPinned"
+      "before": ["v", "i", "g"],
+      "after": ["g", "g", "V", "G"]
     },
     {
-      "before": ["<leader>", "b", "p"],
-      "commands": ["workbench.action.pinEditor"],
-      "when": "!activeEditorIsPinned"
+      "before": ["y", "i", "g"],
+      "after": ["g", "g", "V", "G", "y"]
     },
     {
-      "before": ["<leader>", "b", "P"],
-      "commands": ["workbench.action.closeOtherEditors"]
+      "before": ["d", "i", "g"],
+      "after": ["g", "g", "V", "G", "d"]
+    },
+    // Code
+    {
+      // Rename a variable, method, etc..
+      "before": ["<leader>", "c", "r"],
+      "commands": ["editor.action.rename"]
+    },
+    {
+      // Pops up parameter hints when you are calling another method
+      "before": ["<leader>", "c", "i"],
+      "commands": ["editor.action.triggerParameterHints"]
+    },
+    {
+      "before": ["<leader>", "c", "e"],
+      "commands": ["editor.action.quickFix"]
+    },
+    // Errors
+    {
+      // Global view if problems / errors
+      "before": ["<leader>", "e", "e"],
+      "commands": ["workbench.actions.view.problems"]
+    },
+    {
+      // Goto next error
+      "before": ["<leader>", "e", "n"],
+      "commands": ["editor.action.marker.next"]
+    },
+    {
+      // Goto previous error
+      "before": ["<leader>", "e", "p"],
+      "commands": ["editor.action.marker.prev"]
     },
     {
       "before": ["<leader>", "d", "b"],
@@ -538,12 +531,9 @@
       "before": ["<C-r>"],
       "commands": [{ "command": "redo" }]
     },
-    { "before": ["g", "k"], "commands": ["editor.action.marker.prev"] },
-    { "before": ["g", "j"], "commands": ["editor.action.marker.next"] },
-    {
-      "before": ["g", "u"],
-      "commands": ["editor.action.referenceSearch.trigger"]
-    },
+    // { "before": ["g", "k"], "commands": ["editor.action.marker.prev"] },
+    // { "before": ["g", "j"], "commands": ["editor.action.marker.next"] },
+
     { "before": ["<leader>", "c", "R"], "commands": ["renameFile"] },
     // {"before": ["<leader>", "g", "d"], "commands": ["git.openFileDiff"]},
     { "before": ["<leader>", "g", "o"], "commands": ["git.openFile"] },
@@ -576,8 +566,6 @@
       "before": ["<leader>", "t", "t"],
       "commands": ["testing.showMostRecentOutput"]
     },
-    { "before": ["<leader>", "e"], "commands": ["editor.action.marker.next"] },
-    { "before": ["<leader>", "E"], "commands": ["editor.action.marker.prev"] },
     {
       "before": ["<leader>", "m", "b"],
       "commands": ["workbench.action.tasks.build"]
@@ -593,6 +581,23 @@
     {
       "before": ["<leader>", "m", "s"],
       "commands": ["workbench.action.debug.stop"]
+    },
+    // Debug navigation
+    {
+      "before": ["<Leader>", "d", "e"],
+      "commands": ["workbench.action.debug.setNextStatement"]
+    },
+    {
+      "before": ["<Leader>", "d", "n"],
+      "commands": ["workbench.action.debug.stepOver"]
+    },
+    {
+      "before": ["<Leader>", "d", "i"],
+      "commands": ["workbench.action.debug.stepInto"]
+    },
+    {
+      "before": ["<Leader>", "d", "m"],
+      "commands": ["workbench.action.debug.stepOut"]
     }
   ],
   "vim.insertModeKeyBindings": [
