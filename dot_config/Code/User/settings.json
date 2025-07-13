@@ -497,6 +497,14 @@
       "commands": ["editor.action.revealDefinition"]
     },
     {
+      "before": ["g", "y"],
+      "commands": ["editor.action.goToTypeDefinition"]
+    },
+    {
+      "before": ["g", "Y"],
+      "commands": ["editor.action.peekTypeDefinition"]
+    },
+    {
       "before": ["g", "p"],
       "commands": ["editor.action.peekDefinition"]
     },
