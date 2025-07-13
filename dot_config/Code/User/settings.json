@@ -684,6 +684,7 @@
 
   "editor.minimap.enabled": false,
   "editor.fontSize": 16,
+  "terminal.integrated.fontSize": 16,
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
@@ -693,7 +694,8 @@
     "editor.formatOnSave": true
   },
   // Fuzzy Finder
-  // "find-it-faster.general.useTerminalInEditor": true,
+  "find-it-faster.general.useTerminalInEditor": true,
+  "find-it-faster.general.killTerminalAfterUse": true,
   // Zen Mode
   "zenMode.centerLayout": false,
   // "zenMode.showTabs": "none",

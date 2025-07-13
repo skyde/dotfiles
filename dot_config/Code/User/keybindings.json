@@ -176,6 +176,28 @@
     "command": "editor.action.commentLine",
     "when": "editorTextFocus"
   },
+  {
+    "key": "shift+cmd+f",
+    "command": "find-it-faster.findWithinFiles"
+  },
+  // // OPEN  (runs when we're **not** already sitting in a terminal)
+  // {
+  //   "key": "shift+cmd+f",
+  //   "command": "find-it-faster.findWithinFiles",
+  //   "when": "!terminalFocus"
+  // },
+
+  // // CLOSE (runs when the cursor *is* inside a terminal – the one the
+  // //           extension just opened – so we safely kill that tab)
+  // {
+  //   "key": "shift+cmd+f",
+  //   "command": "workbench.action.terminal.kill",
+  //   "when": "terminalFocus"
+  // },
+  // {
+  //   "before": ["<leader>", "s", "g"],
+  //   "commands": ["find-it-faster.findWithinFiles"]
+  // },
   // Terminal
   {
     "key": "ctrl+/",
