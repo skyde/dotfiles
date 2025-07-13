@@ -279,10 +279,4 @@
     "command": "workbench.action.debug.stepOut",
     "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
   }
-  // // Extra
-  // {
-  //     "key": "ctrl+shift+5",
-  //     "command": "editor.emmet.action.matchTag"
-  // },
-  //
 ]
