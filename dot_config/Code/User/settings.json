@@ -686,8 +686,9 @@
   "editor.fontSize": 16,
   "terminal.integrated.fontSize": 16,
   "terminal.integrated.enableVisualBell": false,
-  "accessibility.signals.terminalBell": { "sound": "off" },
-  "audioCues.terminalBell": false,
+  "accessibility.signals.terminalBell": {
+    "sound": false
+  },
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
