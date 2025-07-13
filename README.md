@@ -112,6 +112,7 @@ P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\d
 I'm using a few plugins:
 - Vim
 - Find it Faster (hooks into fzf, rg & bat)
+- clangd for C++ language features
 Extensions listed in `vscode_extensions.txt` will be installed automatically
 when these dotfiles are applied. Custom keybindings are documented in
 [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
