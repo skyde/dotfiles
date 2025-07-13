@@ -96,10 +96,10 @@ which is also symlinked for use by the Cursor editor.
 - `<leader>da` – list breakpoints.
 - `<leader>dc` – continue debugging.
 - `<leader>dw` – QuickWatch dialog.
-- `<Leader>de` – set next statement.
-- `<Leader>dn` – step over.
-- `<Leader>di` – step into.
-- `<Leader>dm` – step out.
+- `J` – set next statement.
+- `H` – step over.
+- `L` – step into.
+- `K` – step out.
 
 ## Hardware Macro Keys
 These key combinations are implemented via keyboard macros rather than in `dot_vsvimrc`:
