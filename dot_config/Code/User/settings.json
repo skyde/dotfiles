@@ -25,7 +25,9 @@
   "window.zoomLevel": 0.2,
   // Cursor Shape & Style
   "editor.cursorStyle": "block-outline",
-  "editor.cursorWidth": 3, // only applies when cursorStyle is "line"
+  // Used when VIM is disabled
+  "editor.cursorWidth": 3,
+  // Highlighting
   "editor.semanticHighlighting.enabled": true,
   "editor.selectionHighlight": false,
   "editor.occurrencesHighlight": "off",
