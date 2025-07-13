@@ -1,220 +1,290 @@
 // Place your key bindings in this file to override the defaults
 [
-    // Page Down - workround to make cursor movement match Nvim
-    {
-        "key": "pagedown",
-        "command": "runCommands",
-        "when": "textInputFocus",
-        "args": {
-        "commands": [
-                "scrollPageDown",
-                { "command": "cursorMove", "args": { "to": "viewPortTop", "by": "line" } },
-                "scrollLineDown",
-                "cursorDown",
-                "scrollLineDown",
-                "cursorDown",
-                "scrollLineDown",
-                "cursorDown",
-                "scrollLineDown",
-                "cursorDown",
-                "scrollLineDown",
-                "cursorDown",
-                "scrollLineDown",
-                "cursorDown",
-                "scrollLineDown",
-                "cursorDown",
-                "scrollLineDown",
-                "cursorDown"
-        ]
-        }
-    },
+  // Page Down - workround to make cursor movement match Nvim
+  {
+    "key": "pagedown",
+    "command": "runCommands",
+    "when": "textInputFocus",
+    "args": {
+      "commands": [
+        "scrollPageDown",
+        {
+          "command": "cursorMove",
+          "args": { "to": "viewPortTop", "by": "line" }
+        },
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown"
+      ]
+    }
+  },
 
-    // Page Up - workround to make cursor movement match Nvim
-    {
-        "key": "pageup",
-        "command": "runCommands",
-        "when": "textInputFocus",
-        "args": {
-        "commands": [
-                "scrollPageUp",
-                { "command": "cursorMove", "args": { "to": "viewPortBottom", "by": "line" } },
-                "scrollLineUp",
-                "cursorUp",
-                "scrollLineUp",
-                "cursorUp",
-                "scrollLineUp",
-                "cursorUp",
-                "scrollLineUp",
-                "cursorUp",
-                "scrollLineUp",
-                "cursorUp",
-                "scrollLineUp",
-                "cursorUp",
-                "scrollLineUp",
-                "cursorUp",
-                "scrollLineUp",
-                "cursorUp"
-        ]
-        }
-    },
-    // Build
-    {
-        "key": "shift+f2",
-        "command": "workbench.action.tasks.build",
-        "when": "taskCommandsRegistered"
-    },
-    // Fuzzy find class / file by name
-    {
-        "key": "shift+f3",
-        "command": "workbench.action.quickOpen"
-    },
-    // Scroll up 16 Lines
-    {
+  // Page Up - workround to make cursor movement match Nvim
+  {
+    "key": "pageup",
+    "command": "runCommands",
+    "when": "textInputFocus",
+    "args": {
+      "commands": [
+        "scrollPageUp",
+        {
+          "command": "cursorMove",
+          "args": { "to": "viewPortBottom", "by": "line" }
+        },
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp"
+      ]
+    }
+  },
+  // Build
+  {
+    "key": "shift+f2",
+    "command": "workbench.action.tasks.build",
+    "when": "taskCommandsRegistered"
+  },
+  // Fuzzy find class / file by name
+  {
+    "key": "shift+f3",
+    "command": "workbench.action.quickOpen"
+  },
+  // Scroll up 16 Lines
+  {
     "key": "shift+f4",
     "command": "runCommands",
     "when": "textInputFocus",
     "args": {
-            "commands": [
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp",
-            "scrollLineUp",
-            "cursorUp"
-            ]
-        }
-    },
+      "commands": [
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp"
+      ]
+    }
+  },
 
-    // Scroll down 16 Lines
-    {
+  // Scroll down 16 Lines
+  {
     "key": "shift+f6",
     "command": "runCommands",
     "when": "textInputFocus",
     "args": {
-            "commands": [
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown",
-            "scrollLineDown",
-            "cursorDown"
-            ]
-        }
-    },
-    // Stop Build / Stop Debugging
-    {
-        "key": "shift+f7",
-        "command": "cmake.outline.stop"
-    },
-    // Goto Definition
-    {
-        "key": "shift+f8",
-        "command": "editor.action.revealDefinition",
-        "when": "editorHasDefinitionProvider && editorTextFocus"
-    },
-    // Toggle Comment
-    {
-        "key": "shift+f11",
-        "command": "editor.action.commentLine",
-        "when": "editorTextFocus"
-    },
-    // Terminal
-    {
-      "key": "ctrl+/",
-      "command": "workbench.action.terminal.toggleTerminal"
-    },
-    // File explorer
-    {
-        "command": "workbench.action.toggleSidebarVisibility",
-        "key": "escape",
-        "when": "filesExplorerFocus && !inputFocus"
-    },
-    // {
-    //     "command": "workbench.files.action.focusFilesExplorer",
-    //     "key": "ctrl+e",
-    //     "when": "editorTextFocus"
-    // },
-    {
-        "key": "o",
-        "command": "explorer.newFile",
-        "when": "filesExplorerFocus && !inputFocus"
-    },
-    {
-        "command": "renameFile",
-        "key": "c",
-        "when": "filesExplorerFocus && !inputFocus"
-    },
-    {
-        "key": "shift+O",
-        "command": "explorer.newFolder",
-        "when": "explorerViewletFocus"
-    },
-    // {
-    //     "key": "shift+n",
-    //     "command": "workbench.action.newWindow",
-    //     "when": "!explorerViewletFocus"
-    // },
-    {
-        "command": "deleteFile",
-        "key": "d",
-        "when": "filesExplorerFocus && !inputFocus"
+      "commands": [
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown"
+      ]
     }
-    // // Extra
-    // {
-    //     "key": "ctrl+shift+5",
-    //     "command": "editor.emmet.action.matchTag"
-    // },
- //
+  },
+  // Stop Build / Stop Debugging
+  {
+    "key": "shift+f7",
+    "command": "cmake.outline.stop"
+  },
+  // Goto Definition
+  {
+    "key": "shift+f8",
+    "command": "editor.action.revealDefinition",
+    "when": "editorHasDefinitionProvider && editorTextFocus"
+  },
+  // Toggle Comment
+  {
+    "key": "shift+f11",
+    "command": "editor.action.commentLine",
+    "when": "editorTextFocus"
+  },
+  // Terminal
+  {
+    "key": "ctrl+/",
+    "command": "workbench.action.terminal.toggleTerminal"
+  },
+  // File explorer
+  {
+    "command": "workbench.action.toggleSidebarVisibility",
+    "key": "escape",
+    "when": "filesExplorerFocus && !inputFocus"
+  },
+  // {
+  //     "command": "workbench.files.action.focusFilesExplorer",
+  //     "key": "ctrl+e",
+  //     "when": "editorTextFocus"
+  // },
+  {
+    "key": "o",
+    "command": "explorer.newFile",
+    "when": "filesExplorerFocus && !inputFocus"
+  },
+  {
+    "command": "renameFile",
+    "key": "c",
+    "when": "filesExplorerFocus && !inputFocus"
+  },
+  {
+    "key": "shift+O",
+    "command": "explorer.newFolder",
+    "when": "explorerViewletFocus"
+  },
+  // {
+  //     "key": "shift+n",
+  //     "command": "workbench.action.newWindow",
+  //     "when": "!explorerViewletFocus"
+  // },
+  {
+    "command": "deleteFile",
+    "key": "d",
+    "when": "filesExplorerFocus && !inputFocus"
+  },
+  // Merging
+  {
+    "key": "alt+m",
+    "command": "merge-conflict.accept.current",
+    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+  },
+  {
+    "key": "shift+alt+m",
+    "command": "merge-conflict.accept.all-current",
+    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+  },
+  {
+    "key": "alt+i",
+    "command": "merge-conflict.accept.incoming",
+    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+  },
+  {
+    "key": "shift+alt+i",
+    "command": "merge-conflict.accept.all-incoming",
+    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+  },
+  {
+    "key": "alt+n",
+    "command": "merge.goToNextUnhandledConflict",
+    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+  },
+  {
+    "key": "shift+alt+n",
+    "command": "merge-conflict.next",
+    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+  },
+  {
+    "key": "shift+alt+e",
+    "command": "merge-conflict.previous",
+    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+  },
+  {
+    "key": "alt+e",
+    "command": "merge.goToPreviousUnhandledConflict",
+    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+  },
+  // Debug Navigation
+  // Note these are optimized for Colemak so you may want to use a different order on QWERTY
+  //   {
+  //     // Goto specified spot
+  //     // "before": ["<Leader>", "d", "g"],
+  //     "before": ["shift-alt-e"],
+  //     "commands": ["workbench.action.debug.setNextStatement"]
+  //   },
+  {
+    "key": "alt-n",
+    "commands": ["workbench.action.debug.stepOver"],
+    "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
+  },
+  {
+    "key": "alt-i",
+    "commands": ["workbench.action.debug.stepInto"],
+    "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
+  },
+  {
+    "key": "alt-m",
+    "commands": ["workbench.action.debug.stepOut"],
+    "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
+  }
+  // // Extra
+  // {
+  //     "key": "ctrl+shift+5",
+  //     "command": "editor.emmet.action.matchTag"
+  // },
+  //
 ]
