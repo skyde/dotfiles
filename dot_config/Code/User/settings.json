@@ -37,7 +37,10 @@
 
     // Simple Black Background
     "statusBar.background": "#000000",
-    "editor.background": "#000000"
+    "editor.background": "#000000",
+    "tab.activeBackground": "#191919",
+    "tab.inactiveBackground": "#000000",
+    "editorGroupHeader.tabsBackground": "#000000"
 
     // ---- START PURE BLACK BACKGROUND ----
     // // Editor line highlight/gutter (for subtlety, optional)
