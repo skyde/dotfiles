@@ -105,6 +105,14 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> g h` – gitlens.showQuickCommitFileDetails
 - `<leader> g l` – files.openTimeline
 - `<leader> g n` – renameFile
+- `Alt+K` – accept current change during merge.
+- `Shift+Alt+K` – accept all current changes.
+- `Alt+J` – accept incoming change.
+- `Shift+Alt+J` – accept all incoming changes.
+- `Alt+H` – go to next unhandled conflict.
+- `Shift+Alt+H` – go to next conflict region.
+- `Alt+L` – go to previous unhandled conflict.
+- `Shift+Alt+L` – go to previous conflict region.
 - `<leader> t r` – testing.runCurrentTest
 - `<leader> t d` – testing.debugCurrentTest
 - `<leader> t a` – testing.runAll
@@ -116,10 +124,10 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> m c` – workbench.action.tasks.terminate
 - `<leader> m r` – workbench.action.debug.start
 - `<leader> m s` – workbench.action.debug.stop
-- `J` – workbench.action.debug.setNextStatement
-- `H` – workbench.action.debug.stepOver
-- `L` – workbench.action.debug.stepInto
-- `K` – workbench.action.debug.stepOut
+- `<leader> d g` – workbench.action.debug.setNextStatement
+- `Alt+H` – step over.
+- `Alt+L` – step into.
+- `Alt+K` – step out.
 ### Insert Mode
 
 - `<Esc>` – <Esc> <C-g>u
