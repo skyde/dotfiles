@@ -116,10 +116,10 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> m c` – workbench.action.tasks.terminate
 - `<leader> m r` – workbench.action.debug.start
 - `<leader> m s` – workbench.action.debug.stop
-- `J` – workbench.action.debug.setNextStatement
-- `H` – workbench.action.debug.stepOver
-- `L` – workbench.action.debug.stepInto
-- `K` – workbench.action.debug.stepOut
+- `J` – debug.setNextStatement / merge-conflict.accept.incoming / cursorDown
+- `H` – debug.stepOver / merge.goToNextUnhandledConflict / cursorLeft
+- `L` – debug.stepInto / merge.goToPreviousUnhandledConflict / cursorRight
+- `K` – debug.stepOut / merge-conflict.accept.current / cursorUp
 ### Insert Mode
 
 - `<Esc>` – <Esc> <C-g>u
