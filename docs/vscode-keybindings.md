@@ -25,6 +25,17 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 - `Shift+O` – create a new folder.
 - `d` – delete the selected file.
 
+## Merge Conflicts
+- `Alt+K` – accept current change.
+- `Shift+Alt+K` – accept all current changes.
+- `Alt+J` – accept incoming change.
+- `Shift+Alt+J` – accept all incoming changes.
+- `Alt+H` – go to next unhandled conflict.
+- `Shift+Alt+H` – go to next conflict.
+- `Shift+Alt+L` – go to previous conflict.
+- `Alt+L` – go to previous unhandled conflict.
+
+
 ## Vim Extension Mappings
 
 The following shortcuts are configured through the VS Code Vim extension via [`settings.json`](../dot_config/Code/User/settings.json).
