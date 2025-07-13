@@ -254,8 +254,11 @@
     "<tab>": false,
     "<S-tab>": false,
     "<C-o>": true,
-    "<C-i>": true
+    "<C-i>": true //,
+    // "M-n": false
   },
+  // Use physical key codes so Alt based shortcuts work on custom layouts
+  "keyboard.dispatch": "keyCode",
   // Search behaviour like Vim
   "vim.ignorecase": true,
   "vim.smartcase": true,
@@ -546,6 +549,11 @@
       "before": ["<leader>", "d", "c"],
       "commands": ["workbench.action.debug.continue"]
     },
+    {
+      // Goto
+      "before": ["<leader>", "d", "g"],
+      "commands": ["workbench.action.debug.setNextStatement"]
+    },
     // Git
     { "before": ["<leader>", "g", "d"], "commands": ["git.openChange"] }, // [EDIT][SCM]
     // ── 1. Stage / Unstage ────────────────────────────────────────────────────
@@ -635,26 +643,6 @@
     {
       "before": ["<leader>", "m", "s"],
       "commands": ["workbench.action.debug.stop"]
-    },
-    // Debug Navigation
-    // Note these are optimized for Colemak so you may want to use a different order on QWERTY
-    {
-      // Goto specified spot
-      // "before": ["<Leader>", "d", "g"],
-      "before": ["J"],
-      "commands": ["workbench.action.debug.setNextStatement"]
-    },
-    {
-      "before": ["H"],
-      "commands": ["workbench.action.debug.stepOver"]
-    },
-    {
-      "before": ["L"],
-      "commands": ["workbench.action.debug.stepInto"]
-    },
-    {
-      "before": ["K"],
-      "commands": ["workbench.action.debug.stepOut"]
     }
   ],
   "vim.insertModeKeyBindings": [

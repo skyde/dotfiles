@@ -219,66 +219,59 @@
   },
   // Merging
   {
-    "key": "alt+m",
+    "key": "alt+k",
     "command": "merge-conflict.accept.current",
     "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
   },
   {
-    "key": "shift+alt+m",
+    "key": "shift+alt+k",
     "command": "merge-conflict.accept.all-current",
     "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
   },
   {
-    "key": "alt+i",
+    "key": "alt+j",
     "command": "merge-conflict.accept.incoming",
     "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
   },
   {
-    "key": "shift+alt+i",
+    "key": "shift+alt+j",
     "command": "merge-conflict.accept.all-incoming",
     "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
   },
   {
-    "key": "alt+n",
+    "key": "alt-h",
     "command": "merge.goToNextUnhandledConflict",
     "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
   },
   {
-    "key": "shift+alt+n",
+    "key": "shift+alt+h",
     "command": "merge-conflict.next",
     "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
   },
   {
-    "key": "shift+alt+e",
+    "key": "shift+alt+l",
     "command": "merge-conflict.previous",
     "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
   },
   {
-    "key": "alt+e",
+    "key": "alt+l",
     "command": "merge.goToPreviousUnhandledConflict",
     "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
   },
   // Debug Navigation
-  // Note these are optimized for Colemak so you may want to use a different order on QWERTY
-  //   {
-  //     // Goto specified spot
-  //     // "before": ["<Leader>", "d", "g"],
-  //     "before": ["shift-alt-e"],
-  //     "commands": ["workbench.action.debug.setNextStatement"]
-  //   },
   {
-    "key": "alt-n",
-    "commands": ["workbench.action.debug.stepOver"],
+    "key": "alt+h",
+    "command": "workbench.action.debug.stepOver",
     "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
   },
   {
-    "key": "alt-i",
-    "commands": ["workbench.action.debug.stepInto"],
+    "key": "alt+l",
+    "command": "workbench.action.debug.stepInto",
     "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
   },
   {
-    "key": "alt-m",
-    "commands": ["workbench.action.debug.stepOut"],
+    "key": "alt+k",
+    "command": "workbench.action.debug.stepOut",
     "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
   }
   // // Extra
