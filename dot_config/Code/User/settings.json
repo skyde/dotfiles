@@ -340,6 +340,10 @@
       "before": ["<leader>", "f", "m"],
       "commands": ["workbench.files.action.focusFilesExplorer"]
     },
+    {
+      "before": ["<leader>", "f", "r"],
+      "commands": ["workbench.action.openRecent"]
+    },
     // Explorer
     {
       "before": ["<leader>", "e"],
@@ -449,10 +453,6 @@
     {
       "before": ["s"],
       "after": ["<leader>", "<leader>", "2", "s"]
-    },
-    {
-      "before": ["S"],
-      "commands": ["workbench.action.openRecent"]
     },
     // Goto
     {
