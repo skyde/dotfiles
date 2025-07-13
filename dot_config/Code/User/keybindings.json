@@ -210,6 +210,69 @@
         "command": "deleteFile",
         "key": "d",
         "when": "filesExplorerFocus && !inputFocus"
+    },
+    // ─── Debug navigation (active only when paused) ─────────
+    {
+        "key": "J",
+        "command": "workbench.action.debug.setNextStatement",
+        "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
+    },
+    {
+        "key": "H",
+        "command": "workbench.action.debug.stepOver",
+        "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
+    },
+    {
+        "key": "L",
+        "command": "workbench.action.debug.stepInto",
+        "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
+    },
+    {
+        "key": "K",
+        "command": "workbench.action.debug.stepOut",
+        "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
+    },
+    // ─── Merge-editor helpers (only inside a conflict) ──────
+    {
+        "key": "J",
+        "command": "merge-conflict.accept.incoming",
+        "when": "mergeConflict && editorTextFocus"
+    },
+    {
+        "key": "K",
+        "command": "merge-conflict.accept.current",
+        "when": "mergeConflict && editorTextFocus"
+    },
+    {
+        "key": "H",
+        "command": "merge.goToNextUnhandledConflict",
+        "when": "mergeConflict && editorTextFocus"
+    },
+    {
+        "key": "L",
+        "command": "merge.goToPreviousUnhandledConflict",
+        "when": "mergeConflict && editorTextFocus"
+    },
+    // ─── Fallback cursor movement ─────────
+    {
+        "key": "J",
+        "command": "cursorDown",
+        "when": "!inDebugMode && !mergeConflict && vim.mode == 'Normal'"
+    },
+    {
+        "key": "K",
+        "command": "cursorUp",
+        "when": "!inDebugMode && !mergeConflict && vim.mode == 'Normal'"
+    },
+    {
+        "key": "H",
+        "command": "cursorLeft",
+        "when": "!inDebugMode && !mergeConflict && vim.mode == 'Normal'"
+    },
+    {
+        "key": "L",
+        "command": "cursorRight",
+        "when": "!inDebugMode && !mergeConflict && vim.mode == 'Normal'"
     }
     // // Extra
     // {

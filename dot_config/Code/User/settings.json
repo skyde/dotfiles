@@ -254,7 +254,11 @@
     "<tab>": false,
     "<S-tab>": false,
     "<C-o>": true,
-    "<C-i>": true
+    "<C-i>": true,
+    "J": false,
+    "H": false,
+    "K": false,
+    "L": false
   },
   // Search behaviour like Vim
   "vim.ignorecase": true,
@@ -635,27 +639,8 @@
     {
       "before": ["<leader>", "m", "s"],
       "commands": ["workbench.action.debug.stop"]
-    },
-    // Debug Navigation
-    // Note these are optimized for Colemak so you may want to use a different order on QWERTY
-    {
-      // Goto specified spot
-      // "before": ["<Leader>", "d", "g"],
-      "before": ["J"],
-      "commands": ["workbench.action.debug.setNextStatement"]
-    },
-    {
-      "before": ["H"],
-      "commands": ["workbench.action.debug.stepOver"]
-    },
-    {
-      "before": ["L"],
-      "commands": ["workbench.action.debug.stepInto"]
-    },
-    {
-      "before": ["K"],
-      "commands": ["workbench.action.debug.stepOut"]
     }
+    // Debug Navigation removed; handled via keybindings.json
   ],
   "vim.insertModeKeyBindings": [
     // Manually create undo stack
