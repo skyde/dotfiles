@@ -221,42 +221,42 @@
   {
     "key": "alt+k",
     "command": "merge-conflict.accept.current",
-    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   {
     "key": "shift+alt+k",
     "command": "merge-conflict.accept.all-current",
-    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   {
     "key": "alt+j",
     "command": "merge-conflict.accept.incoming",
-    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   {
     "key": "shift+alt+j",
     "command": "merge-conflict.accept.all-incoming",
-    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   {
-    "key": "alt-h",
+    "key": "alt+h",
     "command": "merge.goToNextUnhandledConflict",
-    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   {
     "key": "shift+alt+h",
     "command": "merge-conflict.next",
-    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   {
     "key": "shift+alt+l",
     "command": "merge-conflict.previous",
-    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   {
     "key": "alt+l",
     "command": "merge.goToPreviousUnhandledConflict",
-    "when": "(mergeConflict || inMergeEditor) && editorTextFocus"
+    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   // Debug Navigation
   {
