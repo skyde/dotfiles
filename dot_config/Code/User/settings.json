@@ -452,7 +452,7 @@
     },
     {
       "before": ["S"],
-      "after": ["<leader>", "<leader>", "2", "S"]
+      "commands": ["workbench.action.openRecent"]
     },
     // Goto
     {
@@ -723,5 +723,6 @@
   "gitlens.ai.model": "vscode",
   "gitlens.ai.vscode.model": "copilot:gpt-4.1",
   "gitlens.graph.minimap.enabled": false,
-  "git.mergeEditor": true
+  "git.mergeEditor": true,
+  "workbench.iconTheme": "material-icon-theme"
 }
