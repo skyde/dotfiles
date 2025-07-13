@@ -33,9 +33,13 @@
     // Custom cursor color - do not change
     "editorCursor.foreground": "#FF5000",
     "editorCursor.background": "#000000",
-    "statusBar.background": "#1E1E1E"
+    // "statusBar.background": "#1E1E1E"
 
-    // ---- START BLACK BACKGROUND ----
+    // Simple Black Background
+    "statusBar.background": "#000000",
+    "editor.background": "#000000"
+
+    // ---- START PURE BLACK BACKGROUND ----
     // // Editor line highlight/gutter (for subtlety, optional)
     // "editor.lineHighlightBackground": "#202020",
     // "editorWhitespace.foreground": "#222222",
@@ -113,7 +117,7 @@
 
     // // Terminal
     // "terminal.background": "#000000"
-    // ---- END BLACK BACKGROUND ----
+    // ---- END PURE BLACK BACKGROUND ----
   },
   // Custom color scheme
   "editor.tokenColorCustomizations": {
@@ -551,7 +555,7 @@
 
     // ── 2. Jump between working tree & diff ──────────────────────────────────
     // (d)iff – open or toggle the Git diff against HEAD for the current file.
-    { "before": ["<leader>", "g", "d"], "commands": ["git.openChange"] }, // [DIFF][EDIT]
+    // { "before": ["<leader>", "g", "d"], "commands": ["git.openChange"] }, // [DIFF][EDIT]
 
     // (w)orktree – when you’re *in* that diff, switch back to the live file.
     { "before": ["<leader>", "g", "w"], "commands": ["git.openFile"] }, // [DIFF]
@@ -718,5 +722,6 @@
   },
   "breadcrumbs.enabled": false,
   "gitlens.ai.model": "vscode",
-  "gitlens.ai.vscode.model": "copilot:gpt-4.1"
+  "gitlens.ai.vscode.model": "copilot:gpt-4.1",
+  "gitlens.graph.minimap.enabled": false
 }
