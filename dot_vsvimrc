@@ -206,11 +206,21 @@ nnoremap <Leader>dw :vsc Debug.QuickWatch<CR>
 " TODO: Look into how these debug commands are setup - maybe Ctrl+ArrowKey
 " would be a better way to do it?
 
-" J runs the program to the highlighted line
-nnoremap J :vsc Debug.SetNextStatement<CR>
-" H steps the program once
-nnoremap H :vsc Debug.StepOver<CR>
-" L steps into the current statement
-nnoremap L :vsc Debug.StepInto<CR>
-" K steps out of the current context
-nnoremap K :vsc Debug.StepOut<CR>
+" Run to cursor
+nnoremap <leader>dg :vsc Debug.SetNextStatement<CR>
+" Step over / next difference
+nnoremap <A-h> :vsc Debug.StepOver<CR>:vsc Diff.NextDifference<CR>
+" Step into / previous difference
+nnoremap <A-l> :vsc Debug.StepInto<CR>:vsc Diff.PreviousDifference<CR>
+" Step out / accept current change
+nnoremap <A-k> :vsc Debug.StepOut<CR>:vsc TeamFoundationContextMenus.MergeContextMenu.AcceptYours<CR>
+" Accept incoming change
+nnoremap <A-j> :vsc TeamFoundationContextMenus.MergeContextMenu.AcceptTheirs<CR>
+" Accept all current changes
+nnoremap <S-A-k> :vsc TeamFoundationContextMenus.MergeContextMenu.AcceptAllYours<CR>
+" Accept all incoming changes
+nnoremap <S-A-j> :vsc TeamFoundationContextMenus.MergeContextMenu.AcceptAllTheirs<CR>
+" Next conflict region
+nnoremap <S-A-h> :vsc Diff.NextDifference<CR>
+" Previous conflict region
+nnoremap <S-A-l> :vsc Diff.PreviousDifference<CR>

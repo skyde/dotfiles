@@ -50,6 +50,16 @@ which is also symlinked for use by the Cursor editor.
 - `<leader>gh` – file history.
 - `<leader>gt` – timelapse view.
 
+## Merge Conflicts
+- `Alt+K` – accept current change.
+- `Shift+Alt+K` – accept all current changes.
+- `Alt+J` – accept incoming change.
+- `Shift+Alt+J` – accept all incoming changes.
+- `Alt+H` – go to next unhandled conflict.
+- `Shift+Alt+H` – go to next conflict region.
+- `Alt+L` – go to previous unhandled conflict.
+- `Shift+Alt+L` – go to previous conflict region.
+
 ## Refactoring and Errors
 - `<leader>ce` – Resharper quick fix.
 - `<leader>.` – quick actions for position.
@@ -96,10 +106,10 @@ which is also symlinked for use by the Cursor editor.
 - `<leader>da` – list breakpoints.
 - `<leader>dc` – continue debugging.
 - `<leader>dw` – QuickWatch dialog.
-- `J` – set next statement.
-- `H` – step over.
-- `L` – step into.
-- `K` – step out.
+- `<leader>dg` – run to cursor.
+- `Alt+H` – step over.
+- `Alt+L` – step into.
+- `Alt+K` – step out.
 
 ## Hardware Macro Keys
 These key combinations are implemented via keyboard macros rather than in `dot_vsvimrc`:
