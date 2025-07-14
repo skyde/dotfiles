@@ -190,7 +190,7 @@
   {
     "command": "workbench.action.toggleSidebarVisibility",
     "key": "escape",
-    "when": "filesExplorerFocus && !inputFocus"
+    "when": "sideBarVisible"
   },
   // {
   //     "command": "workbench.files.action.focusFilesExplorer",
