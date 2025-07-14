@@ -763,7 +763,7 @@
   "window.commandCenter": false,
   "workbench.layoutControl.enabled": false,
   "workbench.activityBar.location": "hidden",
-  "C_Cpp.intelliSenseEngine": "disabled",
+  // "C_Cpp.intelliSenseEngine": "disabled",
   "github.copilot.enable": {
     "*": false,
     "plaintext": false,
