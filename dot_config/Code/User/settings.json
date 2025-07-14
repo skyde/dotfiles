@@ -357,22 +357,39 @@
     },
     // Buffers
     {
+      // Next tab
       "before": ["]", "b"],
       "commands": ["workbench.action.nextEditor"]
     },
     {
+      // Previous tab
       "before": ["[", "b"],
       "commands": ["workbench.action.previousEditor"]
     },
     {
+      // Close current tab
       "before": ["<leader>", "b", "d"],
-      "commands": ["workbench.action.closeActiveEditor"]
+      "commands": [
+        "workbench.action.unpinEditor",
+        "workbench.action.closeActiveEditor"
+      ]
     },
     {
+      // Close all tabs
+      "before": ["<leader>", "b", "D"],
+      "commands": ["workbench.action.closeAllGroups"]
+    },
+    {
+      // Close other tabs
       "before": ["<leader>", "b", "o"],
-      "commands": ["workbench.action.closeOtherEditors"]
+      "commands": [
+        "workbench.action.closeAllGroups",
+        "workbench.action.reopenClosedEditor",
+        "workbench.action.pinEditor"
+      ]
     },
     {
+      // Goto 'other' tab (switch to the last active tab)
       "before": ["<leader>", "b", "b"],
       "after": ["<C-6>"]
     },
