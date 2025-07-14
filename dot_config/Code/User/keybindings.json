@@ -179,7 +179,13 @@
   // Fuzzy find with files (rg)
   {
     "key": "shift+cmd+f",
-    "command": "find-it-faster.findWithinFiles"
+    "command": "runCommands",
+    "args": {
+      "commands": [
+        "editor.action.smartSelect.expand",
+        "find-it-faster.findWithinFiles"
+      ]
+    }
   },
   // Terminal
   {

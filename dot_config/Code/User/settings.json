@@ -441,7 +441,10 @@
     // Search
     {
       "before": ["<leader>", "s", "g"],
-      "commands": ["find-it-faster.findWithinFiles"]
+      "commands": [
+        "editor.action.smartSelect.expand",
+        "find-it-faster.findWithinFiles"
+      ]
     },
     {
       "before": ["<leader>", "s", "f"],
@@ -449,7 +452,10 @@
     },
     {
       "before": ["<leader>", "s", "t"],
-      "commands": ["find-it-faster.findWithinFilesWithTypeFilter"]
+      "commands": [
+        "editor.action.smartSelect.expand",
+        "find-it-faster.findWithinFiles"
+      ]
     },
     {
       "before": ["<leader>", "s", "r"],
