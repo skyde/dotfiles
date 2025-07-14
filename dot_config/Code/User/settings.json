@@ -775,5 +775,6 @@
   "gitlens.ai.vscode.model": "copilot:gpt-4.1",
   "gitlens.graph.minimap.enabled": false,
   "git.mergeEditor": true,
-  "workbench.iconTheme": "material-icon-theme"
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.editor.empty.hint": "hidden"
 }

@@ -192,11 +192,11 @@
     "key": "escape",
     "when": "sideBarVisible"
   },
-  // {
-  //     "command": "workbench.files.action.focusFilesExplorer",
-  //     "key": "ctrl+e",
-  //     "when": "editorTextFocus"
-  // },
+  {
+    "command": "workbench.action.toggleSidebarVisibility",
+    "key": "e",
+    "when": "sideBarVisible"
+  },
   {
     "key": "o",
     "command": "explorer.newFile",
@@ -222,6 +222,58 @@
     "key": "d",
     "when": "filesExplorerFocus && !inputFocus"
   },
+  // Diff
+  {
+    // Goto next change
+    "key": "alt+l",
+    "command": "workbench.action.compareEditor.previousChange",
+    "when": "textCompareEditorVisible && editorTextFocus"
+  },
+  {
+    // Goto previous change
+    "key": "alt+h",
+    "command": "workbench.action.compareEditor.nextChange",
+    "when": "textCompareEditorVisible && editorTextFocus"
+  },
+
+  {
+    // Revert the selected hunk
+    "key": "alt+k",
+    "command": "git.revertSelectedRanges",
+    "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
+  },
+  {
+    // Stage the selected hunk
+    "key": "ctrl+j",
+    "command": "git.stageSelectedRanges",
+    "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
+  },
+  {
+    // Unstage the selected hunk - this is not working for some reason but maybe would in some context
+    "key": "ctrl+alt+j",
+    "command": "git.unstageSelectedRanges",
+    "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
+  },
+
+  {
+    // Fallback revert
+    "key": "alt+shift+k",
+    "command": "diffEditor.revert",
+    "when": "isInDiffEditor && editorTextFocus"
+  },
+
+  {
+    // Pop up an in place 'peek' of the next diff in any file you are editing
+    "key": "alt+l",
+    "command": "editor.action.dirtydiff.previous",
+    "when": "editorTextFocus && !isInDiffEditor"
+  },
+  {
+    // Pop up an in place 'peek' of the previous diff in any file you are editing
+    "key": "alt+h",
+    "command": "editor.action.dirtydiff.next",
+    "when": "editorTextFocus && !isInDiffEditor"
+  },
   // Merging
   {
     "key": "alt+k",
@@ -229,7 +281,7 @@
     "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   {
-    "key": "shift+alt+k",
+    "key": "ctrl+alt+k",
     "command": "merge-conflict.accept.all-current",
     "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
@@ -239,7 +291,7 @@
     "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   {
-    "key": "shift+alt+j",
+    "key": "ctrl+alt+j",
     "command": "merge-conflict.accept.all-incoming",
     "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
@@ -249,12 +301,12 @@
     "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   {
-    "key": "shift+alt+h",
+    "key": "ctrl+alt+h",
     "command": "merge-conflict.next",
     "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
   {
-    "key": "shift+alt+l",
+    "key": "ctrl+alt+l",
     "command": "merge-conflict.previous",
     "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
   },
@@ -279,4 +331,15 @@
     "command": "workbench.action.debug.stepOut",
     "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
   }
+  // {
+  //   "key": "alt+o",
+  //   "command": "scrollLineDown"
+  //   // "command": "C_Cpp.SwitchHeaderSource",
+  //   // "when": "editorTextFocus && editorLangId =~ /^(c|(cuda-)?cpp)$/ && !(config.C_Cpp.intelliSenseEngine =~ /^[dD]isabled$/)"
+  // },
+  // {
+  //   "key": "alt+o",
+  //   "command": "-C_Cpp.SwitchHeaderSource",
+  //   "when": "editorTextFocus && editorLangId =~ /^(c|(cuda-)?cpp)$/ && !(config.C_Cpp.intelliSenseEngine =~ /^[dD]isabled$/)"
+  // }
 ]
