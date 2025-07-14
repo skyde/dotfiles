@@ -190,12 +190,12 @@
   {
     "command": "workbench.action.toggleSidebarVisibility",
     "key": "escape",
-    "when": "sideBarVisible"
+    "when": "explorerViewletVisible && !inputFocus"
   },
   {
     "command": "workbench.action.toggleSidebarVisibility",
     "key": "e",
-    "when": "sideBarVisible"
+    "when": "explorerViewletVisible && !inputFocus"
   },
   {
     "key": "o",
