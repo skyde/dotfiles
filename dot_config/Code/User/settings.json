@@ -409,14 +409,14 @@
       "before": ["<leader>", "b", "P"],
       "commands": ["workbench.action.closeOtherEditors"]
     },
-    {
-      "before": ["<S-h>"],
-      "commands": [":bprevious"]
-    },
-    {
-      "before": ["<S-l>"],
-      "commands": [":bnext"]
-    },
+    // {
+    //   "before": ["<S-h>"],
+    //   "commands": [":bprevious"]
+    // },
+    // {
+    //   "before": ["<S-l>"],
+    //   "commands": [":bnext"]
+    // },
     // Windows
     {
       // Memonic is 'fullscreen'
