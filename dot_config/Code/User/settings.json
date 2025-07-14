@@ -461,7 +461,7 @@
       "before": ["<leader>", "s", "g"],
       "commands": [
         // Automatically search for the word under the cursor
-        "editor.action.smartSelect.expand",
+        "editor.action.addSelectionToNextFindMatch",
         "find-it-faster.findWithinFiles"
       ]
     },
