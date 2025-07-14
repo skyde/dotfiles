@@ -119,7 +119,7 @@
 {kp6}>{speed9}{-lshift}{9}{+lshift}
 {kpplus}>{speed9}{-lshift}{0}{+lshift}
 {kp-'}>{speed9}{-lshift}{\}{+lshift}
-{kp-z}>{kp-f11}
+{kp-z}>{speed9}{kp-f11}
 {kp-x}>{speed9}{-lwin}{z}{+lwin}
 {kp-home}>{speed9}{space}{-lshift}{;}{+lshift}{-rshift}{p}{+rshift}
 {kp-pup}>{speed9}{space}{-lshift}{;}{+lshift}{space}{-lshift}{d}{+lshift}
@@ -135,9 +135,9 @@
 {kp-left}>{speed9}{-lwin}{c}{+lwin}
 {kp-right}>{speed9}{-lwin}{v}{+lwin}
 {kp-pdown}>{speed9}{space}{-lshift}{;}{0}{+lshift}
-{kp-up}>{-kp-lwin}{-kp-lshift}{obrack}{+kp-lwin}{+kp-lshift}
-{kp-down}>{-lwin}{-lshift}{cbrack}{+lshift}{+lwin}
-{f11}>{f11}
+{kp-up}>{speed9}{-kp-lwin}{-kp-lshift}{obrack}{+kp-lwin}{+kp-lshift}
+{kp-down}>{speed9}{-lwin}{-lshift}{cbrack}{+lshift}{+lwin}
+{f11}>{speed9}{f11}
 {intl-\}>{speed9}{-lshift}{f9}{+lshift}
 {kp-4}>{speed9}{-lwin}{-lshift}{4}{+lshift}{+lwin}
 {kp-3}>{speed9}{-lshift}{f8}{+lshift}
