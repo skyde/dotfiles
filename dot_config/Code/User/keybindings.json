@@ -336,44 +336,44 @@
     "key": "alt+k",
     "command": "workbench.action.debug.stepOut",
     "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
-  },
-  // Terminal
-  {
-    // There is an issue with the find it faster plugin where it does not focus your last editor when you press escape, so this fixes that
-    "key": "escape",
-    "command": "runCommands",
-    // This only activates when the 'editor as a tab' mode is active. Would be better to use a context set by the find it faster plugin
-    "when": "terminalFocus && terminalEditorActive",
-    "args": {
-      "commands": [
-        {
-          "command": "workbench.action.terminal.sendSequence",
-          // Escape keycode
-          "args": { "text": "\u001b" }
-        },
-        "workbench.action.focusActiveEditorGroup",
-        "workbench.action.navigateBack",
-        "extension.vim_escape"
-      ]
-    }
-  },
-  {
-    // There is an issue in the find it faster plugin where it does not clear your last selection when you do a search, so this fixes that
-    "key": "enter",
-    "command": "runCommands",
-    // This only activates when the 'editor as a tab' mode is active. Would be better to use a context set by the find it faster plugin
-    "when": "terminalFocus && terminalEditorActive",
-    "args": {
-      "commands": [
-        {
-          "command": "workbench.action.terminal.sendSequence",
-          // Enter keycode
-          "args": { "text": "\u000D" }
-        },
-        "workbench.action.focusActiveEditorGroup",
-        "workbench.action.navigateBack",
-        "extension.vim_escape"
-      ]
-    }
   }
+  // Terminal
+  // {
+  //   // There is an issue with the find it faster plugin where it does not focus your last editor when you press escape, so this fixes that
+  //   "key": "escape",
+  //   "command": "runCommands",
+  //   // This only activates when the 'editor as a tab' mode is active. Would be better to use a context set by the find it faster plugin
+  //   "when": "terminalFocus && terminalEditorActive",
+  //   "args": {
+  //     "commands": [
+  //       {
+  //         "command": "workbench.action.terminal.sendSequence",
+  //         // Escape keycode
+  //         "args": { "text": "\u001b" }
+  //       },
+  //       "workbench.action.focusActiveEditorGroup",
+  //       "workbench.action.navigateBack",
+  //       "extension.vim_escape"
+  //     ]
+  //   }
+  // },
+  // {
+  //   // There is an issue in the find it faster plugin where it does not clear your last selection when you do a search, so this fixes that
+  //   "key": "enter",
+  //   "command": "runCommands",
+  //   // This only activates when the 'editor as a tab' mode is active. Would be better to use a context set by the find it faster plugin
+  //   "when": "terminalFocus && terminalEditorActive",
+  //   "args": {
+  //     "commands": [
+  //       {
+  //         "command": "workbench.action.terminal.sendSequence",
+  //         // Enter keycode
+  //         "args": { "text": "\u000D" }
+  //       },
+  //       "workbench.action.focusActiveEditorGroup",
+  //       "workbench.action.navigateBack",
+  //       "extension.vim_escape"
+  //     ]
+  //   }
+  // }
 ]
