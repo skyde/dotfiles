@@ -338,7 +338,7 @@
     // File
     {
       "before": ["<leader>", "f", "m"],
-      "commands": ["workbench.files.action.focusFilesExplorer"]
+      "commands": ["revealFileInOS"]
     },
     {
       "before": ["<leader>", "f", "r"],
@@ -347,7 +347,13 @@
     // Explorer
     {
       "before": ["<leader>", "e"],
-      "commands": ["workbench.view.explorer"]
+      "commands": [
+        // ️Ensure the Explorer is visible / takes focus
+        "workbench.view.explorer",
+
+        // Scroll-to-and-select the file open in the active editor
+        "workbench.files.action.showActiveFileInExplorer"
+      ]
     },
     // Buffers
     {
