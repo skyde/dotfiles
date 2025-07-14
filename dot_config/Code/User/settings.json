@@ -460,13 +460,9 @@
     {
       "before": ["<leader>", "s", "g"],
       "commands": [
-        {
-          "command": "setContext",
-          "args": ["findItFasterActive", true]
-        },
+        // Automatically search for the word under the cursor
         "editor.action.smartSelect.expand",
         "find-it-faster.findWithinFiles"
-        // "cancelSelection"
       ]
     },
     {
