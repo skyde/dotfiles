@@ -40,8 +40,9 @@
     // Simple Black Background
     "statusBar.background": "#000000",
     "editor.background": "#000000",
-    "tab.activeBackground": "#191919",
+    "tab.activeBackground": "#301000",
     "tab.inactiveBackground": "#000000",
+    "tab.activeBorderTop": "#AA4000",
     "editorGroupHeader.tabsBackground": "#000000"
 
     // ---- START PURE BLACK BACKGROUND ----
@@ -459,8 +460,13 @@
     {
       "before": ["<leader>", "s", "g"],
       "commands": [
+        {
+          "command": "setContext",
+          "args": ["findItFasterActive", true]
+        },
         "editor.action.smartSelect.expand",
         "find-it-faster.findWithinFiles"
+        // "cancelSelection"
       ]
     },
     {

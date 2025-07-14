@@ -336,16 +336,47 @@
     "key": "alt+k",
     "command": "workbench.action.debug.stepOut",
     "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
+  },
+  // Terminal
+  {
+    // Ensure that when you go from terminal back to editor you don't
+    "key": "escape",
+    "command": "runCommands",
+    "when": "terminalFocus && terminalEditorActive",
+    "args": {
+      "commands": [
+        {
+          "command": "workbench.action.terminal.sendSequence",
+          "args": { "text": "\u001b" }
+        },
+        "workbench.action.focusActiveEditorGroup",
+        "workbench.action.navigateBack",
+        "extension.vim_escape",
+        {
+          "command": "setContext",
+          "args": ["findItFasterActive", false]
+        }
+      ]
+    }
+  },
+  {
+    "key": "enter",
+    "command": "runCommands",
+    "when": "terminalFocus && terminalEditorActive",
+    "args": {
+      "commands": [
+        {
+          "command": "workbench.action.terminal.sendSequence",
+          "args": { "text": "\u000D" }
+        },
+        "workbench.action.focusActiveEditorGroup",
+        "workbench.action.navigateBack",
+        "extension.vim_escape",
+        {
+          "command": "setContext",
+          "args": ["findItFasterActive", false]
+        }
+      ]
+    }
   }
-  // {
-  //   "key": "alt+o",
-  //   "command": "scrollLineDown"
-  //   // "command": "C_Cpp.SwitchHeaderSource",
-  //   // "when": "editorTextFocus && editorLangId =~ /^(c|(cuda-)?cpp)$/ && !(config.C_Cpp.intelliSenseEngine =~ /^[dD]isabled$/)"
-  // },
-  // {
-  //   "key": "alt+o",
-  //   "command": "-C_Cpp.SwitchHeaderSource",
-  //   "when": "editorTextFocus && editorLangId =~ /^(c|(cuda-)?cpp)$/ && !(config.C_Cpp.intelliSenseEngine =~ /^[dD]isabled$/)"
-  // }
 ]
