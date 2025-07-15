@@ -238,10 +238,12 @@
   },
   // Copilot Chat
   {
-    "command": "workbench.action.toggleAuxiliaryBar",
+    // Close Copilot Chat when Esc is pressed
     "key": "escape",
-    "when": "interactiveSessionFocus && auxiliaryBarVisible && !inputFocus"
+    "command": "workbench.action.toggleAuxiliaryBar",
+    "when": "auxiliaryBarVisible"
   },
+  // Explorer
   {
     "key": "o",
     "command": "explorer.newFile",
