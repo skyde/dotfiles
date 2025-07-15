@@ -176,6 +176,21 @@
     "command": "editor.action.commentLine",
     "when": "editorTextFocus"
   },
+  // Change within current file
+  {
+    "key": "cmd+f",
+    "command": "runCommands",
+    "when": "editorTextFocus",
+    "args": {
+      "commands": [
+        "extension.vim_escape",
+        {
+          "command": "vim.remap",
+          "args": { "after": ["/"] }
+        }
+      ]
+    }
+  },
   // Fuzzy find with files (rg)
   {
     "key": "shift+cmd+f",
