@@ -236,6 +236,12 @@
     "key": "e",
     "when": "explorerViewletVisible && !inputFocus"
   },
+  // Copilot Chat
+  {
+    "command": "workbench.action.toggleAuxiliaryBar",
+    "key": "escape",
+    "when": "interactiveSessionFocus && auxiliaryBarVisible && !inputFocus"
+  },
   {
     "key": "o",
     "command": "explorer.newFile",

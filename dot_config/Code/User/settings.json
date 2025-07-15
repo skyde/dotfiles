@@ -338,6 +338,11 @@
       "before": ["<leader>", "<leader>"],
       "commands": ["workbench.action.quickOpen"]
     },
+    // Copilot Chat
+    {
+      "before": ["<leader>", "a"],
+      "commands": ["workbench.action.chat.open"]
+    },
     // File
     {
       "before": ["<leader>", "f", "m"],

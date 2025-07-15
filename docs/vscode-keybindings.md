@@ -25,6 +25,9 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 - `Shift+O` – create a new folder.
 - `d` – delete the selected file.
 
+## Copilot Chat
+- `Escape` – close Copilot Chat when focused.
+
 ## Merge Conflicts
 - `Alt+K` – accept current change.
 - `Shift+Alt+K` – accept all current changes.
@@ -58,6 +61,7 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<C-r>` – redo
 - `<C-l>` – workbench.action.focusRightGroup
 - `<leader> <leader>` – workbench.action.quickOpen
+- `<leader> a` – workbench.action.chat.open
 - `<leader> f m` – workbench.files.action.focusFilesExplorer
 - `<leader> e` – workbench.view.explorer
 - `] b` – workbench.action.nextEditor
