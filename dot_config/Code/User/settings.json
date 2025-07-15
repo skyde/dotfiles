@@ -347,6 +347,10 @@
       "before": ["<leader>", "f", "r"],
       "commands": ["workbench.action.openRecent"]
     },
+    {
+      "before": ["<leader>", "f", "l"],
+      "commands": ["copyFilePath"]
+    },
     // Explorer
     {
       "before": ["<leader>", "e"],
