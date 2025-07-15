@@ -194,7 +194,10 @@
     "command": "runCommands",
     "args": {
       "commands": [
-        "workbench.action.terminal.toggleTerminal",
+        // Fullscreen terminal
+        "workbench.action.toggleMaximizedPanel",
+        // Use this if you want the terminal just to pop up partially at the bottom
+        // "workbench.action.terminal.toggleTerminal",
         // When opening a terminal ensure we focus terminal 1 - as the Find it Faster plugin opens other terminals
         "workbench.action.terminal.focusAtIndex1"
       ]
