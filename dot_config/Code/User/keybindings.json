@@ -182,8 +182,10 @@
     "command": "runCommands",
     "args": {
       "commands": [
-        "editor.action.smartSelect.expand",
-        "find-it-faster.findWithinFiles"
+        // Automatically search for the word under the cursor
+        "editor.action.addSelectionToNextFindMatch",
+        "find-it-faster.findWithinFiles",
+        "extension.vim_escape"
       ]
     }
   },
