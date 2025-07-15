@@ -806,7 +806,7 @@
   // "workbench.statusBar.visible": false, // Hide status bar (your custom black theme already tweaks it; this fully removes it for terminal purity)
   // Minimal Terminal
   // "terminal.integrated.shellIntegration.enabled": true, // Better shell integration (e.g., prompt detection like Neovim)
-  // "terminal.integrated.tabs.enabled": false, // Hide terminal tabs for minimalism
+  "terminal.integrated.tabs.enabled": false, // Hide terminal tabs for minimalism
   // "terminal.integrated.cursorStyle": "block", // Block cursor in terminal (matches your editor.cursorStyle)
   // "terminal.integrated.cursorBlinking": false, // No blinking in terminal (solid like Neovim)
   // "terminal.integrated.commandsToSkipShell": [
