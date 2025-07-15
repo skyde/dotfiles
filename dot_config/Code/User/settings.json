@@ -411,14 +411,6 @@
       "before": ["<leader>", "b", "P"],
       "commands": ["workbench.action.closeOtherEditors"]
     },
-    // {
-    //   "before": ["<S-h>"],
-    //   "commands": [":bprevious"]
-    // },
-    // {
-    //   "before": ["<S-l>"],
-    //   "commands": [":bnext"]
-    // },
     // Windows
     {
       // Memonic is 'fullscreen'
@@ -460,15 +452,6 @@
     },
     // Search
     {
-      "before": ["<leader>", "s", "g"],
-      "commands": [
-        // Automatically search for the word under the cursor
-        "editor.action.addSelectionToNextFindMatch",
-        "find-it-faster.findWithinFiles",
-        "extension.vim_escape"
-      ]
-    },
-    {
       "before": ["<leader>", "s", "f"],
       "commands": ["find-it-faster.findFiles"]
     },
@@ -477,7 +460,19 @@
       "commands": [
         // Automatically search for the word under the cursor
         "editor.action.addSelectionToNextFindMatch",
+        // If you want you can search everything
         "find-it-faster.findWithinFiles",
+        "extension.vim_escape"
+      ]
+    },
+    {
+      "before": ["<leader>", "S", "T"],
+      "commands": [
+        // Automatically search for the word under the cursor
+        "editor.action.addSelectionToNextFindMatch",
+        // By default we filter & only search relavant files
+        "find-it-faster.findWithinFilesWithType",
+        // Escape to Vim normal mode
         "extension.vim_escape"
       ]
     },
@@ -781,8 +776,13 @@
     "editor.formatOnSave": true
   },
   // Fuzzy Finder
-  // "find-it-faster.general.useTerminalInEditor": true,
-  // "find-it-faster.general.killTerminalAfterUse": true,
+  "search.exclude": {
+    // Ignore hidden folders
+    "**/\\.*": true
+  },
+  "search.useGlobalIgnoreFiles": true,
+  "search.useParentIgnoreFiles": true,
+  "find-it-faster.general.useGitIgnoreExcludes": true,
   // "terminal.integrated.env.linux": {
   //   "FZF_DEFAULT_OPTS": "--delimiter : --with-nth 1,4.. --ansi --no-hscroll --keep-right --hscroll-off=60"
   // },
@@ -794,8 +794,6 @@
   // },
   // Minimalism
   "editor.guides.indentation": false,
-  // "workbench.sideBar.location": "hidden", // Hide sidebar by default (toggle with <leader>e as you have)
-  // "workbench.editor.showTabs": false, // Hide editor tabs entirely (use your buffer keybindings instead)
   "editor.hideCursorInOverviewRuler": true, // Hide cursor in scrollbar for a cleaner look
   "editor.overviewRulerBorder": false, // No border on scrollbar
   // "editor.glyphMargin": false, // Hide glyph margin (e.g., no debug icons next to line numbers)
@@ -803,19 +801,11 @@
   // "breadcrumbs.enabled": false, // Already in your config, but reinforcing
   // "zenMode.hideTabs": true, // Uncomment and adjust your existing zenMode; hides tabs in Zen mode
   // "zenMode.restore": true, // Auto-restore previous layout when exiting Zen mode
-  // "workbench.statusBar.visible": false, // Hide status bar (your custom black theme already tweaks it; this fully removes it for terminal purity)
+  // "workbench.statusBar.visible": false
   // Minimal Terminal
-  // "terminal.integrated.shellIntegration.enabled": true, // Better shell integration (e.g., prompt detection like Neovim)
   "terminal.integrated.tabs.enabled": false, // Hide terminal tabs for minimalism
-  // "terminal.integrated.cursorStyle": "block", // Block cursor in terminal (matches your editor.cursorStyle)
-  // "terminal.integrated.cursorBlinking": false, // No blinking in terminal (solid like Neovim)
-  // "terminal.integrated.commandsToSkipShell": [
-  //   // Let Vim handle these in integrated terminal
-  //   "editor.action.toggleTabFocusMode"
-  // ],
   "vim.autoindent": true, // Auto-indent like Neovim
   // "vim.timeout": 500, // Faster key sequence timeout (Neovim default is 1000ms)
-  // "vim.visualMulti": true, // Enable multiple cursors in visual mode (like Neovim's ctrl-v block mode)
   // "extensions.ignoreRecommendations": true, // Hide extension suggestions (less GUI noise)
   // Zen Mode
   "zenMode.centerLayout": false,
