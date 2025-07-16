@@ -259,8 +259,7 @@
     "<tab>": false,
     "<S-tab>": false,
     "<C-o>": true,
-    "<C-i>": true //,
-    // "M-n": false
+    "<C-i>": true
   },
   // Use physical key codes so Alt based shortcuts work on custom layouts
   "keyboard.dispatch": "keyCode",
@@ -295,14 +294,6 @@
     {
       "before": ["<S-tab>"],
       "commands": ["editor.action.outdentLines"]
-    },
-    {
-      "before": ["<C-u>"],
-      "after": ["16k"]
-    },
-    {
-      "before": ["<C-d>"],
-      "after": ["16j"]
     },
     {
       "before": ["<D-Left>"],
