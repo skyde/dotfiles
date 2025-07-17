@@ -592,7 +592,7 @@
     },
     {
       "before": ["<leader>", "c", "e"],
-      "commands": ["editor.action.quickFix"]
+      "commands": ["editor.action.triggerSuggest"]
     },
     // Errors
     {
