@@ -102,7 +102,7 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `d i g` – g g V G d
 - `<leader> c r` – editor.action.rename
 - `<leader> c i` – editor.action.triggerParameterHints
-- `<leader> c e` – editor.action.quickFix
+- `<leader> c e` – editor.action.triggerSuggest
 - `<leader> e e` – workbench.actions.view.problems
 - `<leader> e n` – editor.action.marker.next
 - `<leader> e p` – editor.action.marker.prev
