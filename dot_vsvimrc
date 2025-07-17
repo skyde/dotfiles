@@ -41,6 +41,26 @@ nnoremap <Down> j
 nnoremap <Up> k
 nnoremap <Right> l
 
+" Toggle Hard Mode: disable arrow keys
+function! ToggleHardMode()
+  if exists('g:hard_mode_enabled') && g:hard_mode_enabled
+    let g:hard_mode_enabled = 0
+    nnoremap <Left> h
+    nnoremap <Down> j
+    nnoremap <Up> k
+    nnoremap <Right> l
+    echo "Hard mode disabled"
+  else
+    let g:hard_mode_enabled = 1
+    nnoremap <Left> <NOP>
+    nnoremap <Down> <NOP>
+    nnoremap <Up> <NOP>
+    nnoremap <Right> <NOP>
+    echo "Hard mode enabled"
+  endif
+endfunction
+nnoremap <leader>uh :call ToggleHardMode()<CR>
+
 " Select the entire buffer
 nnoremap vig ggVG
 " Copy the entire buffer to the clipboard

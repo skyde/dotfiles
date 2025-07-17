@@ -59,6 +59,11 @@ vim.keymap.set("n", "<leader>uk", print_keys.toggle, {
   desc = "Toggle Key Print",
 })
 
+-- Toggle Hardtime (hard mode)
+vim.keymap.set("n", "<leader>uh", function()
+  vim.cmd("Hardtime toggle")
+end, { desc = "Toggle Hardtime" })
+
 -- Toggle comment on the current line  ── normal mode
 vim.keymap.set("n", "<S-F11>", "gcc", { remap = true, silent = true, desc = "Toggle Comment (line)" })
 
