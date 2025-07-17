@@ -7,8 +7,7 @@ Follow these rules whenever you make changes:
 1. Run `chezmoi apply --dry-run -S .` and ensure it finishes without errors.
 2. Run `chezmoi doctor -S .` and confirm all tests pass.
 
-If `chezmoi` is missing, install it using:
-`curl -fsLS get.chezmoi.io | bash -s -- -b /usr/local/bin`
+If `chezmoi` is missing, install it via your package manager or from https://github.com/twpayne/chezmoi.
 
 ## Optional checks
 - If `shellcheck` is available, run it on any modified shell scripts.
