@@ -63,6 +63,7 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> <leader>` – workbench.action.quickOpen
 - `<leader> a` – workbench.action.chat.open
 - `<leader> f m` – workbench.files.action.focusFilesExplorer
+- `<leader> f n` – workbench.action.files.newUntitledFile
 - `<leader> e` – workbench.view.explorer
 - `] b` – workbench.action.nextEditor
 - `[ b` – workbench.action.previousEditor
