@@ -16,7 +16,8 @@ export VISUAL="$EDITOR"
 
 # Shell Options
 setopt autocd             # Enter directory just by typing its name
-setopt correct            # Auto correct command typos
+# Disable automatic command correction
+# setopt correct
 setopt nocaseglob         # Case insensitive globbing
 setopt extended_glob      # Extended globbing
 setopt hist_ignore_all_dups  # Don’t store duplicate history
