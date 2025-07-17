@@ -347,6 +347,10 @@
       "before": ["<leader>", "f", "l"],
       "commands": ["copyFilePath"]
     },
+    {
+      "before": ["<leader>", "f", "n"],
+      "commands": ["workbench.action.files.newUntitledFile"]
+    },
     // Explorer
     {
       "before": ["<leader>", "e"],
