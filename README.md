@@ -113,6 +113,7 @@ I'm using a few plugins:
 - Vim
 - Find it Faster (hooks into fzf, rg & bat)
 - clangd for C++ language features
+- [hardtime.nvim](https://github.com/m4xshen/hardtime.nvim) for Hard Mode (toggle with `<leader>uh`)
 Extensions listed in `vscode_extensions.txt` will be installed automatically
 when these dotfiles are applied. Custom keybindings are documented in
 [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).

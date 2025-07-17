@@ -21,6 +21,7 @@ which is also symlinked for use by the Cursor editor.
 - `<` / `>` in visual mode keep selection when indenting.
 - `<leader><leader>` – ReSharper goto file.
 - `<C-s>` – format document and save (works in all modes).
+- `<leader>uh` – toggle Hard Mode.
 
 ## File Operations
 - `<leader>fm` – open containing folder.
