@@ -423,31 +423,31 @@
       "commands": ["workbench.action.toggleFullScreen"]
     },
     {
-      "before": ["leader", "w", "v"],
+      "before": ["<leader>", "w", "v"],
       "commands": [":vsplit"]
     },
     {
-      "before": ["leader", "w", "s"],
+      "before": ["<leader>", "w", "s"],
       "commands": [":split"]
     },
     {
-      "before": ["leader", "w", "d"],
+      "before": ["<leader>", "w", "d"],
       "commands": ["workbench.action.closeActiveEditor"]
     },
     {
-      "before": ["leader", "w", "h"],
+      "before": ["<leader>", "w", "h"],
       "commands": ["workbench.action.focusLeftGroup"]
     },
     {
-      "before": ["leader", "w", "j"],
+      "before": ["<leader>", "w", "j"],
       "commands": ["workbench.action.focusBelowGroup"]
     },
     {
-      "before": ["leader", "w", "k"],
+      "before": ["<leader>", "w", "k"],
       "commands": ["workbench.action.focusAboveGroup"]
     },
     {
-      "before": ["leader", "w", "l"],
+      "before": ["<leader>", "w", "l"],
       "commands": ["workbench.action.focusRightGroup"]
     },
     // Search
@@ -521,6 +521,10 @@
     {
       "before": ["S", "9"],
       "commands": ["workbench.action.openEditorAtIndex9"]
+    },
+    {
+      "before": ["S", "0"],
+      "commands": ["workbench.action.lastEditorInGroup"]
     },
     // Goto
     {
