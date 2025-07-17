@@ -3,7 +3,7 @@
 ### Mac
 
 ```sh
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# Install Homebrew from https://brew.sh if it's not already present
 brew install chezmoi
 chezmoi init --apply skyde
 ```
@@ -11,10 +11,8 @@ chezmoi init --apply skyde
 ### Linux
 
 ```
-sudo apt-get update -qq && sudo apt-get install -y curl git && \
-mkdir -p ~/.local/bin && \
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && export PATH="$HOME/.local/bin:$PATH" && \
-curl -fsSL get.chezmoi.io | BINDIR="$HOME/.local/bin" bash -s -- init --apply skyde
+sudo apt-get update -qq && sudo apt-get install -y git chezmoi
+chezmoi init --apply skyde
 ```
 
 ### Windows
@@ -29,13 +27,13 @@ chezmoi init --apply skyde
 Try it yourself in a Docker container.
 
 ```sh
-docker run --rm -it debian:testing bash -c 'apt update && apt install -y curl git && curl -fsSL get.chezmoi.io | bash -s -- init --apply skyde && exec bash'
+docker run --rm -it debian:testing bash -c 'apt update && apt install -y git chezmoi && chezmoi init --apply skyde && exec bash'
 ```
 
 ### WSL Installation
 
 ```ps
-wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc 'sudo sed -i "s/bookworm/trixie/g" /etc/apt/sources.list && sudo apt update && sudo apt full-upgrade -y && curl -fsLS get.chezmoi.io | bash -s -- init --apply skyde'
+wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc 'sudo sed -i "s/bookworm/trixie/g" /etc/apt/sources.list && sudo apt update && sudo apt full-upgrade -y && sudo apt install -y chezmoi && chezmoi init --apply skyde'
 ```
 
 ## Starship Prompt
