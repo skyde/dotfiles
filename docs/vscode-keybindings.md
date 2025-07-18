@@ -73,6 +73,8 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> b u` – workbench.action.unpinEditor
 - `<leader> b p` – workbench.action.pinEditor
 - `<leader> b P` – workbench.action.closeOtherEditors
+- `<leader> b h` – workbench.action.moveEditorLeftInGroup
+- `<leader> b l` – workbench.action.moveEditorRightInGroup
 - `<S-h>` – :bprevious
 - `<S-l>` – :bnext
 - `<leader> w f` – workbench.action.toggleZenMode

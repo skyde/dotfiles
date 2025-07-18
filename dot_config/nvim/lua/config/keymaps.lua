@@ -104,3 +104,7 @@ vim.keymap.del("n", "<S-l>")
 -- map("n", "<D-S-]>", ":bnext<CR>", { desc = "Next buffer" })
 -- Previous buffer: Cmd+Shift+[
 -- map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
+
+-- Move tab left/right
+map("n", "<leader>bh", "<cmd>tabmove -1<CR>", { desc = "Move tab left" })
+map("n", "<leader>bl", "<cmd>tabmove +1<CR>", { desc = "Move tab right" })
