@@ -337,6 +337,16 @@
     // File
     {
       "before": ["<leader>", "f", "m"],
+      "commands": [
+        "workbench.action.terminal.focus",
+        {
+          "command": "workbench.action.terminal.sendSequence",
+          "args": { "text": "yazi \"${file}\"\u000D" }
+        }
+      ]
+    },
+    {
+      "before": ["<leader>", "f", "M"],
       "commands": ["revealFileInOS"]
     },
     {
