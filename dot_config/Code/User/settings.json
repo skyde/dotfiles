@@ -729,6 +729,21 @@
     {
       "before": ["<leader>", "m", "s"],
       "commands": ["workbench.action.debug.stop"]
+    },
+    {
+      "before": ["Z", "Z"],
+      "commands": [
+        "workbench.action.unpinEditor",
+        "workbench.action.files.save",
+        "workbench.action.closeActiveEditor"
+      ]
+    },
+    {
+      "before": ["Z", "Q"],
+      "commands": [
+        "workbench.action.unpinEditor",
+        "workbench.action.revertAndCloseActiveEditor"
+      ]
     }
   ],
   "vim.insertModeKeyBindings": [
