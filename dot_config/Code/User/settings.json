@@ -374,6 +374,16 @@
       "commands": ["workbench.action.previousEditor"]
     },
     {
+      // Move tab left
+      "before": ["<leader>", "b", "h"],
+      "commands": ["workbench.action.moveEditorLeftInGroup"]
+    },
+    {
+      // Move tab right
+      "before": ["<leader>", "b", "l"],
+      "commands": ["workbench.action.moveEditorRightInGroup"]
+    },
+    {
       // Close current tab
       "before": ["<leader>", "b", "d"],
       "commands": [
