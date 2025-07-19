@@ -23,7 +23,8 @@ which is also symlinked for use by the Cursor editor.
 - `<C-s>` – format document and save (works in all modes).
 
 ## File Operations
-- `<leader>fm` – open containing folder.
+- `<leader>fm` – open [Yazi](https://github.com/sxyazi/yazi) in the terminal at the current file.
+- `<leader>fM` – open containing folder.
 - `<leader>r` – open terminal window.
 - `<leader>e` – show Solution Explorer.
 
