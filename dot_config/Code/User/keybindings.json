@@ -377,20 +377,20 @@
     "key": "alt+k",
     "command": "workbench.action.debug.stepOut",
     "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
-  },
-  // Editor terminal
-  {
-    // Close the editor terminal as soon as escape is pressed - things that launch into there should be transient
-    "key": "escape",
-    "command": "runCommands",
-    "when": "terminalFocus && terminalEditorActive",
-    "args": {
-      "commands": [
-        "workbench.action.unpinEditor",
-        "workbench.action.revertAndCloseActiveEditor"
-      ]
-    }
   }
+  // // Editor terminal
+  // {
+  //   // Close the editor terminal as soon as escape is pressed - things that launch into there should be transient
+  //   "key": "escape",
+  //   "command": "runCommands",
+  //   "when": "terminalFocus && terminalEditorActive",
+  //   "args": {
+  //     "commands": [
+  //       "workbench.action.unpinEditor",
+  //       "workbench.action.revertAndCloseActiveEditor"
+  //     ]
+  //   }
+  // }
   // Terminal
   // {
   //   // There is an issue with the find it faster plugin where it does not focus your last editor when you press escape, so this fixes that

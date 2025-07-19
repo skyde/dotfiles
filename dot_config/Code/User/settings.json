@@ -337,20 +337,7 @@
     // File
     {
       "before": ["<leader>", "f", "m"],
-      "commands": [
-        // This does a workaround to get it to work.
-        // If we open the terminal directly int he editor it is not able to take in the send sequence - likely due to a timing issue
-        // So we open it as a standard terminal to start, then move to the editor
-        "workbench.action.terminal.new",
-        {
-          "command": "workbench.action.terminal.sendSequence",
-          "args": { "text": "yazi \"${file}\"\u000D" }
-        },
-        "workbench.action.terminal.moveToEditor",
-        // Need to call this twice for some reason to have it hide
-        "workbench.action.terminal.toggleTerminal",
-        "workbench.action.terminal.toggleTerminal"
-      ]
+      "commands": ["yazi-vscode.toggle"]
     },
     {
       "before": ["<leader>", "f", "M"],
