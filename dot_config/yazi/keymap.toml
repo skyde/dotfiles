@@ -18,11 +18,11 @@ prepend_keymap = [
 	{ on = "<Backspace>", run = [ "toggle", "arrow next" ], desc = "Toggle the current selection state" },#
 
   # Shortcuts
-	{ on = "D-f", run = "find --smart",            desc = "Find next file" },
-	{ on = "D-S-f",         run = "search --via=rg",             desc = "Search files by content via ripgrep" },
+	{ on = "<D-f>", run = "find --smart",            desc = "Find next file" },
+	{ on = "<S-D-f>",         run = "search --via=rg",             desc = "Search files by content via ripgrep" },
 
   # Macros
-	{ on = ["<S-F3>"], run = "search --via=fd",             desc = "Search files by name via fd" },
+	{ on = "<S-F3>", run = "search --via=fd",             desc = "Search files by name via fd" },
 	{ on = "<S-F4>", run = "arrow -50%",  desc = "Move cursor up half page" },
 	{ on = "<S-F6>", run = "arrow 50%",   desc = "Move cursor down half page" },
 ]
