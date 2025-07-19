@@ -5,8 +5,8 @@
 prepend_keymap = [
   # Operations
   { on = "<Esc>", run = "quit", desc = "Close Yazi" },
-	{ on = "g",         run = "open",                        desc = "Open selected files" },
-	{ on = "G",         run = "open --interactive",          desc = "Open selected files interactively" },
+	{ on = "s",         run = "open",                        desc = "Open selected files" },
+	{ on = "S",         run = "open --interactive",          desc = "Open selected files interactively" },
 	{ on = "x",         run = "yank --cut",                  desc = "Yank selected files (cut)" },
 	{ on = "d",         run = "remove",                      desc = "Trash selected files" },
 	{ on = "D",         run = "remove --permanently",        desc = "Permanently delete selected files" },
