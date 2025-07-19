@@ -1,0 +1,15 @@
+# Custom keymap for Yazi mirroring VS Code Explorer shortcuts
+"$schema" = "https://yazi-rs.github.io/schemas/keymap.json"
+
+[mgr]
+keymap = [
+  # Close Yazi similar to toggling the Explorer
+  { on = "<Esc>", run = "quit", desc = "Close Yazi" },
+  { on = "e",     run = "quit", desc = "Close Yazi" },
+
+  # File operations from VS Code Explorer
+  { on = "o",     run = "create", desc = "Create file" },
+  { on = "O",     run = "create", desc = "Create folder (append /)" },
+  { on = "c",     run = "rename", desc = "Rename" },
+  { on = "d",     run = "remove", desc = "Delete (trash)" },
+]
