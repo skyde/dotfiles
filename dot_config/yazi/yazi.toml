@@ -1,0 +1,6 @@
+# Basic Yazi configuration
+# Schema: https://yazi-rs.github.io/schemas/yazi.json
+
+[mgr]
+ratio = [1, 4, 3]
+show_hidden = false
