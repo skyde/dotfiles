@@ -9,4 +9,5 @@ less
 llvm
 nvim
 zoxide
+yazi
 starship
