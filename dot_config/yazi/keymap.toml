@@ -25,4 +25,22 @@ prepend_keymap = [
 	{ on = "<S-F3>", run = "search --via=fd",             desc = "Search files by name via fd" },
 	{ on = "<S-F4>", run = "arrow -50%",  desc = "Move cursor up half page" },
 	{ on = "<S-F6>", run = "arrow 50%",   desc = "Move cursor down half page" },
+
+  # Vim style numeric jumps
+  { on = ["2", "j"], run = "arrow 2", desc = "Move down 2 lines" },
+  { on = ["3", "j"], run = "arrow 3", desc = "Move down 3 lines" },
+  { on = ["4", "j"], run = "arrow 4", desc = "Move down 4 lines" },
+  { on = ["5", "j"], run = "arrow 5", desc = "Move down 5 lines" },
+  { on = ["6", "j"], run = "arrow 6", desc = "Move down 6 lines" },
+  { on = ["7", "j"], run = "arrow 7", desc = "Move down 7 lines" },
+  { on = ["8", "j"], run = "arrow 8", desc = "Move down 8 lines" },
+  { on = ["9", "j"], run = "arrow 9", desc = "Move down 9 lines" },
+  { on = ["2", "k"], run = "arrow -2", desc = "Move up 2 lines" },
+  { on = ["3", "k"], run = "arrow -3", desc = "Move up 3 lines" },
+  { on = ["4", "k"], run = "arrow -4", desc = "Move up 4 lines" },
+  { on = ["5", "k"], run = "arrow -5", desc = "Move up 5 lines" },
+  { on = ["6", "k"], run = "arrow -6", desc = "Move up 6 lines" },
+  { on = ["7", "k"], run = "arrow -7", desc = "Move up 7 lines" },
+  { on = ["8", "k"], run = "arrow -8", desc = "Move up 8 lines" },
+  { on = ["9", "k"], run = "arrow -9", desc = "Move up 9 lines" },
 ]
