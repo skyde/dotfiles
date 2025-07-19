@@ -802,8 +802,9 @@
   "terminal.integrated.fontSize": 16,
   "terminal.integrated.enableVisualBell": false,
   "accessibility.signals.terminalBell": {
-    "sound": false
+    "sound": "off"
   },
+  "terminal.integrated.confirmOnKill": "never",
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
