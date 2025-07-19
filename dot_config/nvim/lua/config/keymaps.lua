@@ -59,11 +59,10 @@ vim.keymap.set("n", "<leader>uk", print_keys.toggle, {
   desc = "Toggle Key Print",
 })
 
--- Toggle comment on the current line  ── normal mode
-vim.keymap.set("n", "<S-F11>", "gcc", { remap = true, silent = true, desc = "Toggle Comment (line)" })
+map_shift_f(11, "gcc", { remap = true, silent = true, desc = "Toggle Comment (line)" })
 
 -- Toggle comment on a visual selection ── visual mode
-vim.keymap.set("x", "<S-F11>", "gc", { remap = true, silent = true, desc = "Toggle Comment (block)" })
+map_shift_f(11, "gc", { mode = "x", remap = true, silent = true, desc = "Toggle Comment (block)" })
 
 -- Reload the current buffer, smart-handling Lua files
 vim.keymap.set("n", "zl", function()
