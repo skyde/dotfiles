@@ -2,7 +2,7 @@
 "$schema" = "https://yazi-rs.github.io/schemas/keymap.json"
 
 [mgr]
-keymap = [
+append_keymap = [
   # Close Yazi similar to toggling the Explorer
   { on = "<Esc>", run = "quit", desc = "Close Yazi" },
   { on = "e",     run = "quit", desc = "Close Yazi" },
