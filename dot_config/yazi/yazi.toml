@@ -3,4 +3,4 @@
 
 [mgr]
 ratio = [1, 4, 3]
-show_hidden = false
+show_hidden = true
