@@ -4,14 +4,3 @@
 [mgr]
 ratio = [1, 4, 3]
 show_hidden = true
-
-[opener]
-open = [
-  { run = 'code "$@"', orphan = true, desc = 'VS Code', for = 'unix' },
-  { run = 'code %*', orphan = true, desc = 'VS Code', for = 'windows' },
-]
-
-[open]
-rules = [
-  { name = '*', use = [ 'open' ] },
-]
