@@ -230,8 +230,31 @@
     }
   },
   {
+    // Open the terminal form the editor
+    // Ensure it opens full screen
+    "key": "cmd+t",
+    "when": "!terminalFocus",
+    "command": "runCommands",
+    "args": {
+      "commands": [
+        // Fullscreen terminal
+        "workbench.action.toggleMaximizedPanel",
+        // Use this if you want the terminal just to pop up partially at the bottom
+        // "workbench.action.terminal.toggleTerminal",
+        // When opening a terminal ensure we focus terminal 1 - as the Find it Faster plugin opens other terminals
+        "workbench.action.terminal.focusAtIndex1"
+      ]
+    }
+  },
+  {
     // If the terminal is focused then close it
     "key": "ctrl+/",
+    "when": "terminalFocus",
+    "command": "workbench.action.terminal.toggleTerminal"
+  },
+  {
+    // If the terminal is focused then close it
+    "key": "cmd+t",
     "when": "terminalFocus",
     "command": "workbench.action.terminal.toggleTerminal"
   },
