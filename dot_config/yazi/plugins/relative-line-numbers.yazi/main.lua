@@ -1,127 +1,158 @@
---- relative-line-numbers.yazi/main.lua
---- Show relative (or absolute) line numbers in Yazi's file list and provide a
---- Vim style quick jump command.
+-- relative-line-numbers.yazi/main.lua
+-- Show relative/absolute line numbers and provide vim‑style quick‑jump.
 
-local SHOW_NUMBERS_ABSOLUTE          = 0
-local SHOW_NUMBERS_RELATIVE          = 1
-local SHOW_NUMBERS_RELATIVE_ABSOLUTE = 2
-local SHOW_NUMBERS_NONE              = 3
+----------------------------------------------------------------------
+--  Constants
+----------------------------------------------------------------------
+local ABS, REL, HYBRID, NONE = 0, 1, 2, 3 -- number modes
 
--- Insert a number column at the beginning of each entry.
-local apply_numbers = ya.sync(function(_, mode)
-  Linemode:children_add(function(self)
-    if mode == SHOW_NUMBERS_NONE then
-      return ""
-    end
+----------------------------------------------------------------------
+--  Number column (Entity.number + Current:redraw patch)
+----------------------------------------------------------------------
+local render_numbers = ya.sync(function(_, mode)
+	if ui.render then
+		ui.render()
+	else
+		ya.render()
+	end
 
-    local files = cx.active.current._folder.window
-    local hovered
-    for i, f in ipairs(files) do
-      if f.is_hovered then
-        hovered = i
-        break
-      end
-    end
+	-- 1) What to paint in front of every row
+	Entity.number = function(_, index, total, file, hovered)
+		if mode == NONE then
+			return ui.Span("")
+		end -- disabled
 
-    local index
-    for i, f in ipairs(files) do
-      if f.url == self._file.url then
-        index = i
-        break
-      end
-    end
-    if not index then
-      return ""
-    end
+		local n
+		if mode == ABS then
+			n = file.idx
+		elseif mode == REL then
+			n = math.abs(hovered - index)
+		else -- HYBRID
+			n = (hovered == index) and file.idx or math.abs(hovered - index)
+		end
 
-    local idx
-    if mode == SHOW_NUMBERS_ABSOLUTE then
-      idx = self._file.idx
-    elseif mode == SHOW_NUMBERS_RELATIVE then
-      idx = math.abs(hovered - index)
-    elseif mode == SHOW_NUMBERS_RELATIVE_ABSOLUTE then
-      idx = hovered == index and self._file.idx or math.abs(hovered - index)
-    end
+		local fmt = "%" .. #tostring(total) .. "d"
+		-- keep columns aligned (Vim’s trick: leading space on non‑hovered rows)
+		if hovered == index then
+			return ui.Span(string.format(fmt .. " ", n))
+		else
+			return ui.Span(string.format(" " .. fmt, n))
+		end
+	end
 
-    local total = #cx.active.current._folder.files
-    local fmt = "%" .. #tostring(total) .. "d "
-    return ui.Line { string.format(fmt, idx) }
-  end, 0)
+	-- 2) Patch Current:redraw once so the number column is prepended
+	Current.redraw = function(self)
+		local files = self._folder.window
+		if #files == 0 then
+			return self:empty()
+		end
 
-  if ui.render then ui.render() else ya.render() end
+		-- cache hovered index (we need it for every row)
+		local hovered = 1
+		for i, f in ipairs(files) do
+			if f.is_hovered then
+				hovered = i
+				break
+			end
+		end
+
+		local entities, linemodes = {}, {}
+		for i, f in ipairs(files) do
+			linemodes[#linemodes + 1] = Linemode:new(f):redraw()
+
+			local ent = Entity:new(f)
+			entities[#entities + 1] = ui.Line({
+				Entity:number(i, #self._folder.files, f, hovered),
+				ent:redraw(),
+			}):style(ent:style())
+		end
+
+		return {
+			ui.List(entities):area(self._area),
+			ui.Text(linemodes):area(self._area):align(ui.Align.RIGHT),
+		}
+	end
 end)
 
-local MOTION_DIGIT_KEYS = {
-  { on = "0" }, { on = "1" }, { on = "2" }, { on = "3" }, { on = "4" },
-  { on = "5" }, { on = "6" }, { on = "7" }, { on = "8" }, { on = "9" },
-}
+----------------------------------------------------------------------
+--  Vim‑style quick jump (mostly your original code, just tidied up)
+----------------------------------------------------------------------
+local DIGITS = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" }
+local MOTIONS = { "j", "k", "h", "l", "<Down>", "<Up>", "<Left>", "<Right>" }
 
-local MOTION_CMD_KEYS = {
-  { on = "j" }, { on = "k" }, { on = "h" }, { on = "l" },
-  { on = "<Down>" }, { on = "<Up>" }, { on = "<Left>" }, { on = "<Right>" },
-}
-
-local function normalize_direction(key)
-  if key == "<Down>"  then return "j" end
-  if key == "<Up>"    then return "k" end
-  if key == "<Left>"  then return "h" end
-  if key == "<Right>" then return "l" end
-  return key
+local function dir_key(k)
+	if k == "<Down>" then
+		return "j"
+	elseif k == "<Up>" then
+		return "k"
+	elseif k == "<Left>" then
+		return "h"
+	elseif k == "<Right>" then
+		return "l"
+	else
+		return k
+	end
 end
 
 local function quick_jump(initial)
-  local digits = initial or ""
-  local candidates = {}
-  for _, c in ipairs(MOTION_DIGIT_KEYS) do table.insert(candidates, c) end
-  for _, c in ipairs(MOTION_CMD_KEYS)   do table.insert(candidates, c) end
+	local digits, cands = initial or "", {}
+	for _, k in ipairs(DIGITS) do
+		cands[#cands + 1] = { on = k }
+	end
+	for _, k in ipairs(MOTIONS) do
+		cands[#cands + 1] = { on = k }
+	end
 
-  while true do
-    local idx = ya.which { cands = candidates, silent = true }
-    if not idx then return end
-    local key = candidates[idx].on
-    if key:match("^%d$") then
-      digits = digits .. key
-    else
-      local dir = normalize_direction(key)
-      local count = tonumber(digits) or 1
-      if count <= 0 then count = 1 end
-      if dir == "j" then
-        ya.mgr_emit("arrow", {  count })
-      elseif dir == "k" then
-        ya.mgr_emit("arrow", { -count })
-      elseif dir == "h" then
-        for _ = 1, count do ya.mgr_emit("leave", {}) end
-      elseif dir == "l" then
-        for _ = 1, count do ya.mgr_emit("enter", {}) end
-      end
-      return
-    end
-  end
+	while true do
+		local i = ya.which({ cands = cands, silent = true })
+		if not i then
+			return
+		end -- cancelled
+		local k = cands[i].on
+		if k:match("%d") then -- keep collecting digits
+			digits = digits .. k
+		else -- got a motion key
+			local count = tonumber(digits) or 1
+			if count < 1 then
+				count = 1
+			end
+			local d = dir_key(k)
+			if d == "j" then
+				ya.mgr_emit("arrow", { count })
+			elseif d == "k" then
+				ya.mgr_emit("arrow", { -count })
+			elseif d == "h" then
+				for _ = 1, count do
+					ya.mgr_emit("leave", {})
+				end
+			elseif d == "l" then
+				for _ = 1, count do
+					ya.mgr_emit("enter", {})
+				end
+			end
+			return
+		end
+	end
 end
 
+----------------------------------------------------------------------
+--  Plugin glue (entry / setup)
+----------------------------------------------------------------------
 local function entry(_, job)
-  local initial
-  if job.args and #job.args > 0 then
-    local n = tonumber(job.args[1])
-    if n then initial = tostring(n) end
-  end
-  quick_jump(initial)
+	local first
+	if job.args and job.args[1] then
+		local n = tonumber(job.args[1])
+		if n then
+			first = tostring(n)
+		end
+	end
+	quick_jump(first)
 end
 
 local function setup(state, opts)
-  opts = opts or {}
-  local show = opts.show_numbers or "relative"
-  local mode
-  if show == "absolute" then
-    mode = SHOW_NUMBERS_ABSOLUTE
-  elseif show == "relative_absolute" then
-    mode = SHOW_NUMBERS_RELATIVE_ABSOLUTE
-  elseif show == "none" then
-    mode = SHOW_NUMBERS_NONE
-  else
-    mode = SHOW_NUMBERS_RELATIVE
-  end
-  apply_numbers(mode)
+	opts = opts or {}
+	local mode = ({ absolute = ABS, relative = REL, relative_absolute = HYBRID, none = NONE })[opts.show_numbers] or REL
+	render_numbers(mode)
 end
 
 return { entry = entry, setup = setup }

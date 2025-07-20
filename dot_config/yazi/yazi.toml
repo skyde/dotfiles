@@ -5,6 +5,9 @@
 ratio = [1, 4, 3]
 show_hidden = true
 
+[which]
+show_pending = false
+
 # [[plugin.prepend_fetchers]]
 # id = "git"
 # name = "*"
