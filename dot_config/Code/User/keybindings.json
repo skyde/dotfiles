@@ -12,6 +12,10 @@
           "command": "cursorMove",
           "args": { "to": "viewPortTop", "by": "line" }
         },
+        // This makes it so that if you move in a direction your cursor will 'follow' you
+        // This moves the cursor down from the top of the screen to match 'cursor surrounding lines' in settings.json
+        // Some custom logic is required to get this to work fully in VSCode to match NVim, if you don't do this the
+        // navigation by paging is very confusing since doing an edit will then jump you back to where you were a long time ago.
         "scrollLineDown",
         "cursorDown",
         "scrollLineDown",
@@ -75,6 +79,7 @@
     "command": "workbench.action.quickOpen"
   },
   // Scroll up 16 Lines
+  // Matches Nvim where small scrolls will keep the cursor in exacty the same relative place on the screen
   {
     "key": "shift+f4",
     "command": "runCommands",
@@ -177,6 +182,8 @@
     "when": "editorTextFocus"
   },
   // Change within current file
+  // Makes the standard cmd-f shortcut map to the / key
+  // Useful as I have a macro mapped to cmd-f
   {
     "key": "cmd+f",
     "command": "runCommands",
@@ -191,7 +198,7 @@
       ]
     }
   },
-  // Fuzzy find with files (rg)
+  // Global fuzzy find within files (uses rip grep)
   {
     "key": "shift+cmd+f",
     "command": "runCommands",
@@ -206,6 +213,8 @@
   },
   // Terminal
   {
+    // Open the terminal form the editor
+    // Ensure it opens full screen
     "key": "ctrl+/",
     "when": "!terminalFocus",
     "command": "runCommands",
@@ -221,6 +230,7 @@
     }
   },
   {
+    // If the terminal is focused then close it
     "key": "ctrl+/",
     "when": "terminalFocus",
     "command": "workbench.action.terminal.toggleTerminal"
@@ -255,15 +265,10 @@
     "when": "filesExplorerFocus && !inputFocus"
   },
   {
-    "key": "shift+O",
+    "key": "shift+o",
     "command": "explorer.newFolder",
     "when": "explorerViewletFocus"
   },
-  // {
-  //     "key": "shift+n",
-  //     "command": "workbench.action.newWindow",
-  //     "when": "!explorerViewletFocus"
-  // },
   {
     "command": "deleteFile",
     "key": "d",
