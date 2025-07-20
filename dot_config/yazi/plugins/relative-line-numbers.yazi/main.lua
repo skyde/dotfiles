@@ -1,5 +1,5 @@
 -- relative-line-numbers.yazi/main.lua
--- Show relative/absolute line numbers and provide vim‑style quick‑jump.
+-- Show relative/absolute line numbers and provide Vim‑style quick‑jump.
 
 ----------------------------------------------------------------------
 --  Constants
@@ -9,18 +9,30 @@ local ABS, REL, HYBRID, NONE = 0, 1, 2, 3 -- number modes
 ----------------------------------------------------------------------
 --  Number column (Entity.number + Current:redraw patch)
 ----------------------------------------------------------------------
+-- Patch the number column into Yazi's UI.  When the file list is rendered
+-- we prepend a small column showing either absolute or relative line
+-- numbers.  This function is wrapped with `ya.sync` to make sure it runs
+-- on the main thread and only once.  Depending on the selected mode the
+-- numbers will be absolute, purely relative, a hybrid of the two, or
+-- completely disabled.
 local render_numbers = ya.sync(function(_, mode)
+	-- Call the appropriate render function depending on Yazi version.
+	-- On newer Yazi releases there is a `ui.render`; fall back to
+	-- `ya.render()` on older versions.
 	if ui.render then
 		ui.render()
 	else
 		ya.render()
 	end
 
-	-- 1) What to paint in front of every row
+	-- 1) Define how to draw the number for each row.  We compute either the
+	-- absolute index, the relative distance from the hovered row, or a
+	-- hybrid of both.  A leading space on non‑hovered rows keeps columns
+	-- aligned (this mimics Vim's trick for relative line numbers).
 	Entity.number = function(_, index, total, file, hovered)
 		if mode == NONE then
-			return ui.Span("")
-		end -- disabled
+			return ui.Span("") -- numbers disabled
+		end
 
 		local n
 		if mode == ABS then
@@ -32,7 +44,6 @@ local render_numbers = ya.sync(function(_, mode)
 		end
 
 		local fmt = "%" .. #tostring(total) .. "d"
-		-- keep columns aligned (Vim’s trick: leading space on non‑hovered rows)
 		if hovered == index then
 			return ui.Span(string.format(fmt .. " ", n))
 		else
@@ -40,14 +51,16 @@ local render_numbers = ya.sync(function(_, mode)
 		end
 	end
 
-	-- 2) Patch Current:redraw once so the number column is prepended
+	-- 2) Patch Current:redraw so that the number column is prepended to
+	-- every row.  We cache the hovered index once so we don't recompute
+	-- it for each file.
 	Current.redraw = function(self)
 		local files = self._folder.window
 		if #files == 0 then
 			return self:empty()
 		end
 
-		-- cache hovered index (we need it for every row)
+		-- Determine which row is currently hovered.
 		local hovered = 1
 		for i, f in ipairs(files) do
 			if f.is_hovered then
@@ -59,7 +72,6 @@ local render_numbers = ya.sync(function(_, mode)
 		local entities, linemodes = {}, {}
 		for i, f in ipairs(files) do
 			linemodes[#linemodes + 1] = Linemode:new(f):redraw()
-
 			local ent = Entity:new(f)
 			entities[#entities + 1] = ui.Line({
 				Entity:number(i, #self._folder.files, f, hovered),
@@ -75,11 +87,19 @@ local render_numbers = ya.sync(function(_, mode)
 end)
 
 ----------------------------------------------------------------------
---  Vim‑style quick jump (mostly your original code, just tidied up)
+--  Vim‑style quick jump
 ----------------------------------------------------------------------
+-- Define the digit and motion keys that we accept as input.  Users can
+-- type a count (like `22`) followed by a motion key (`j`, `k`, `h`, `l` or
+-- the corresponding arrow key) to move multiple lines at once.  See
+-- Yazi's key notation docs for how special keys like `<Down>` are
+-- represented:contentReference[oaicite:0]{index=0}.
 local DIGITS = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" }
 local MOTIONS = { "j", "k", "h", "l", "<Down>", "<Up>", "<Left>", "<Right>" }
 
+-- Translate arrow keys into their vim‑style counterparts.  Without this
+-- translation the plugin would treat `<Down>` as a literal motion and
+-- potentially not move at all.
 local function dir_key(k)
 	if k == "<Down>" then
 		return "j"
@@ -94,8 +114,14 @@ local function dir_key(k)
 	end
 end
 
+-- Collect a count and a motion key from the user.  We call
+-- `ya.which()` repeatedly until a non‑digit is pressed.  Once we have a
+-- motion key we compute the count (defaulting to 1) and emit the
+-- appropriate command using `ya.mgr_emit`.  Negative counts move up and
+-- positive counts move down as documented for the `arrow` command:contentReference[oaicite:1]{index=1}.
 local function quick_jump(initial)
-	local digits, cands = initial or "", {}
+	local digits = initial or ""
+	local cands = {}
 	for _, k in ipairs(DIGITS) do
 		cands[#cands + 1] = { on = k }
 	end
@@ -106,21 +132,26 @@ local function quick_jump(initial)
 	while true do
 		local i = ya.which({ cands = cands, silent = true })
 		if not i then
-			return
-		end -- cancelled
+			return -- cancelled
+		end
 		local k = cands[i].on
-		if k:match("%d") then -- keep collecting digits
+		if k:match("%d") then
+			-- Keep collecting digits.
 			digits = digits .. k
-		else -- got a motion key
+		else
+			-- We received a motion key.  Determine how far to move.
 			local count = tonumber(digits) or 1
 			if count < 1 then
 				count = 1
 			end
 			local d = dir_key(k)
+			-- Use ya.mgr_emit instead of ya.emit.  ya.mgr_emit() sends a
+			-- command to the manager layer of Yazi and is the modern
+			-- replacement for ya.manager_emit()/ya.emit():contentReference[oaicite:2]{index=2}.
 			if d == "j" then
-				ya.mgr_emit("arrow", { count })
+				ya.mgr_emit("arrow", { count }) -- move down
 			elseif d == "k" then
-				ya.mgr_emit("arrow", { -count })
+				ya.mgr_emit("arrow", { -count }) -- move up
 			elseif d == "h" then
 				for _ = 1, count do
 					ya.mgr_emit("leave", {})
@@ -138,6 +169,9 @@ end
 ----------------------------------------------------------------------
 --  Plugin glue (entry / setup)
 ----------------------------------------------------------------------
+-- Entry point for the plugin.  If the plugin is invoked with a numeric
+-- argument (e.g. `:yazi jump 42j`), pre‑seed the digits so the first
+-- call to quick_jump uses that count.
 local function entry(_, job)
 	local first
 	if job.args and job.args[1] then
@@ -149,9 +183,18 @@ local function entry(_, job)
 	quick_jump(first)
 end
 
-local function setup(state, opts)
+-- Setup function invoked when the plugin is loaded.  Determine which
+-- numbering mode to use based on the user's configuration and patch the
+-- number renderer accordingly.
+local function setup(_, opts)
 	opts = opts or {}
-	local mode = ({ absolute = ABS, relative = REL, relative_absolute = HYBRID, none = NONE })[opts.show_numbers] or REL
+	local mode_map = {
+		absolute = ABS,
+		relative = REL,
+		relative_absolute = HYBRID,
+		none = NONE,
+	}
+	local mode = mode_map[opts.show_numbers] or REL
 	render_numbers(mode)
 end
 
