@@ -43,11 +43,21 @@ local render_numbers = ya.sync(function(_, mode)
 			n = (hovered == index) and file.idx or math.abs(hovered - index)
 		end
 
-		local fmt = "%" .. #tostring(total) .. "d"
-		if hovered == index then
-			return ui.Span(string.format(fmt .. " ", n))
+		-- Width of the number column (digits in `total`)
+		local width = #tostring(total)
+		local num_style = ui.Style():fg("darkgray")
+		local text
+
+		-- For pure REL mode, the current line is blank (same width)
+		if mode == REL and hovered == index then
+			text = string.rep(" ", width + 1)
+			-- Do not style the text if we don't render the number - to ensure the background color is correct
+			return ui.Span(text)
 		else
-			return ui.Span(string.format(" " .. fmt, n))
+			-- Right‑align number, add a space on the right for padding
+			text = string.format("%" .. width .. "d ", n)
+
+			return ui.Span(text):style(num_style)
 		end
 	end
 
@@ -93,7 +103,7 @@ end)
 -- type a count (like `22`) followed by a motion key (`j`, `k`, `h`, `l` or
 -- the corresponding arrow key) to move multiple lines at once.  See
 -- Yazi's key notation docs for how special keys like `<Down>` are
--- represented:contentReference[oaicite:0]{index=0}.
+-- represented
 local DIGITS = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" }
 local MOTIONS = { "j", "k", "h", "l", "<Down>", "<Up>", "<Left>", "<Right>" }
 
@@ -118,7 +128,7 @@ end
 -- `ya.which()` repeatedly until a non‑digit is pressed.  Once we have a
 -- motion key we compute the count (defaulting to 1) and emit the
 -- appropriate command using `ya.mgr_emit`.  Negative counts move up and
--- positive counts move down as documented for the `arrow` command:contentReference[oaicite:1]{index=1}.
+-- positive counts move down as documented for the `arrow` command
 local function quick_jump(initial)
 	local digits = initial or ""
 	local cands = {}
@@ -147,7 +157,7 @@ local function quick_jump(initial)
 			local d = dir_key(k)
 			-- Use ya.mgr_emit instead of ya.emit.  ya.mgr_emit() sends a
 			-- command to the manager layer of Yazi and is the modern
-			-- replacement for ya.manager_emit()/ya.emit():contentReference[oaicite:2]{index=2}.
+			-- replacement for ya.manager_emit()/ya.emit()
 			if d == "j" then
 				ya.mgr_emit("arrow", { count }) -- move down
 			elseif d == "k" then
