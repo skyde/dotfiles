@@ -104,3 +104,9 @@ vim.keymap.del("n", "<S-l>")
 -- Move tab left/right
 map("n", "<leader>bh", "<cmd>tabmove -1<CR>", { desc = "Move tab left" })
 map("n", "<leader>bl", "<cmd>tabmove +1<CR>", { desc = "Move tab right" })
+
+-- Indent with Tab and unindent with Shift+Tab
+map("n", "<Tab>", ">>", { desc = "Indent line" })
+map("n", "<S-Tab>", "<<", { desc = "Unindent line" })
+map("v", "<Tab>", ">gv", { desc = "Indent selection" })
+map("v", "<S-Tab>", "<gv", { desc = "Unindent selection" })
