@@ -97,9 +97,9 @@ vim.keymap.del("n", "<S-l>")
 
 -- These are commented out for now as they are not working. Maybe kitty on Mac does not pick up the event?
 -- Next buffer: Cmd+Shift+]
--- map("n", "<D-S-]>", ":bnext<CR>", { desc = "Next buffer" })
+map("n", "<D-S-]>", ":bnext<CR>", { desc = "Next buffer" })
 -- Previous buffer: Cmd+Shift+[
--- map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
+map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
 
 -- Move tab left/right
 map("n", "<leader>bh", "<cmd>tabmove -1<CR>", { desc = "Move tab left" })
