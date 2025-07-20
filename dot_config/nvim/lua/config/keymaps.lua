@@ -83,6 +83,9 @@ map("n", "<A-o>", "<cmd>ClangdSwitchSourceHeader<CR>", { desc = "Switch header/s
 -- Navigate jump list with Alt+Left/Right
 map("n", "<D-Left>", "<C-o>", { desc = "Jump backward" })
 map("n", "<D-Right>", "<C-i>", { desc = "Jump forward" })
+-- Browser-style Forward/Back keys
+map("n", "<Back>", "<C-o>", { desc = "Jump backward" })
+map("n", "<Forward>", "<C-i>", { desc = "Jump forward" })
 
 -- macOS clipboard shortcuts
 map("v", "<D-c>", '"+y', { desc = "Copy selection" })
