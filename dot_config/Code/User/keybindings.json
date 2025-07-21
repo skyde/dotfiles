@@ -261,6 +261,16 @@
     "key": "escape",
     "when": "sideBarVisible && !editorFocus"
   },
+  {
+    "key": "ctrl+l",
+    "command": "diffEditor.switchSide",
+    "when": "isInDiffEditor"
+  },
+  {
+    "key": "ctrl+h",
+    "command": "diffEditor.switchSide",
+    "when": "isInDiffEditor"
+  },
   // Copilot Chat
   {
     // Focus back to the editor
