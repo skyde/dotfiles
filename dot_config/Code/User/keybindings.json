@@ -439,6 +439,16 @@
         "workbench.action.revertAndCloseActiveEditor"
       ]
     }
+  },
+  {
+    "key": "shift+left",
+    "command": "workbench.action.previousEditor",
+    "when": "isWindows"
+  },
+  {
+    "key": "shift+right",
+    "command": "workbench.action.nextEditor",
+    "when": "isWindows"
   }
   // Terminal
   // {
