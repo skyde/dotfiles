@@ -662,6 +662,10 @@
     // Git
     {
       "before": ["<leader>", "g", "g"],
+      "commands": ["lazygit.openLazygit"]
+    },
+    {
+      "before": ["<leader>", "g", "G"],
       "commands": [
         "workbench.view.scm",
         "scm.focusInput",
