@@ -7,6 +7,8 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 - `PageUp` – scroll one page up and move the cursor to the bottom of the viewport (matches Vim behavior).
 - `Shift+F4` – scroll up 16 lines.
 - `Shift+F6` – scroll down 16 lines.
+- `Ctrl+Tab` – switch to the next tab (Windows only).
+- `Ctrl+Shift+Tab` – switch to the previous tab (Windows only).
 
 ## Build and Search
 - `Shift+F2` – run the build task.
