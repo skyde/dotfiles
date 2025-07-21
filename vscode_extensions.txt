@@ -5,3 +5,4 @@ ms-vscode.cpptools-themes
 esbenp.prettier-vscode
 llvm-vs-code-extensions.vscode-clangd
 dautroc.yazi-vscode
+chaitanyashahare.lazygit
