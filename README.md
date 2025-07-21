@@ -83,6 +83,8 @@ Allows increased brightness when viewing SDR content on an HDR monitor.
 - Set cursor thickness to 6
 ```
 
+Yazi expects its configuration under `%AppData%\yazi\config` on Windows. These dotfiles create a symlink to `~/.config/yazi` so settings apply across OSes.
+
 ## Powershell 7
 
 Use this since it's nicer than the default one.
