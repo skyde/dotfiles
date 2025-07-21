@@ -306,6 +306,7 @@
     { "before": ["<C-o>"], "commands": ["workbench.action.navigateBack"] },
     { "before": ["<C-i>"], "commands": ["workbench.action.navigateForward"] },
     { "before": ["<C-h>"], "commands": ["workbench.action.focusLeftGroup"] },
+    { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] },
     { "before": ["<C-j>"], "commands": ["workbench.action.focusBelowGroup"] },
     { "before": ["<C-k>"], "commands": ["workbench.action.focusAboveGroup"] },
     {
@@ -323,7 +324,6 @@
       "before": ["<C-r>"],
       "commands": [{ "command": "redo" }]
     },
-    { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] },
     // Fuzzy Find
     {
       "before": ["<leader>", "<leader>"],
@@ -611,7 +611,7 @@
     },
     {
       "before": ["<leader>", "c", "e"],
-      "commands": ["editor.action.triggerSuggest"]
+      "commands": ["editor.action.codeAction"]
     },
     // Errors
     {
@@ -660,6 +660,15 @@
       "commands": ["workbench.action.debug.setNextStatement"]
     },
     // Git
+    {
+      "before": ["<leader>", "g", "g"],
+      "commands": [
+        "workbench.view.scm",
+        "scm.focusInput",
+        "vim.enterInsertMode"
+      ]
+    },
+    // [EDIT][SCM]
     { "before": ["<leader>", "g", "d"], "commands": ["git.openChange"] }, // [EDIT][SCM]
     // ── 1. Stage / Unstage ────────────────────────────────────────────────────
     // (s)tage - adds the whole file OR just the highlighted hunks to the index.
