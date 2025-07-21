@@ -334,6 +334,11 @@
       "before": ["<leader>", "a"],
       "commands": ["workbench.action.chat.open"]
     },
+    {
+      // Close Copilot Chat
+      "before": ["<leader>", "A"],
+      "commands": ["workbench.action.toggleAuxiliaryBar"]
+    },
     // File
     {
       "before": ["<leader>", "f", "m"],

@@ -271,10 +271,10 @@
   },
   // Copilot Chat
   {
-    // Close Copilot Chat when Esc is pressed
+    // Focus back to the editor
     "key": "escape",
-    "command": "workbench.action.toggleAuxiliaryBar",
-    "when": "auxiliaryBarVisible"
+    "command": "workbench.action.focusActiveEditorGroup",
+    "when": "view.workbench.panel.chat.view.copilot.visible && !editorFocus"
   },
   // Explorer
   {
