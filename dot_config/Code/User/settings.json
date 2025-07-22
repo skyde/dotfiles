@@ -15,9 +15,9 @@
   "security.workspace.trust.untrustedFiles": "prompt",
   // Increase terminal scrollback similar to using a terminal split in Neovim
   "terminal.integrated.scrollback": 10000,
-  "editor.fontFamily": "FiraCode Nerd Font, Fira Code, monospace",
+  "editor.fontFamily": "JetBrainsMono Nerd Font, JetBrains Mono, monospace",
   "editor.fontLigatures": true,
-  "terminal.integrated.fontFamily": "FiraCode Nerd Font, Fira Code, monospace",
+  "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font, JetBrains Mono, monospace",
   "terminal.integrated.defaultProfile.linux": "zsh",
   "terminal.integrated.defaultProfile.osx": "zsh",
   "terminal.integrated.defaultProfile.windows": "pwsh",
