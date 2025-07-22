@@ -77,6 +77,9 @@ end, { desc = "Source current file" })
 -- Save file with Ctrl+S in normal and insert mode
 map({ "n", "i" }, "<D-s>", "<cmd>w<CR>", { desc = "Save file" })
 
+-- Same action via Shift+F5 (sent by kitty Cmd+S)
+map_shift_f(5, "<cmd>w<CR>", { mode = { "n", "i" }, desc = "Save file" })
+
 -- Toggle between source and header files (requires clangd)
 map("n", "<A-o>", "<cmd>ClangdSwitchSourceHeader<CR>", { desc = "Switch header/source" })
 
@@ -100,6 +103,10 @@ vim.keymap.del("n", "<S-l>")
 map("n", "<D-S-]>", ":bnext<CR>", { desc = "Next buffer" })
 -- Previous buffer: Cmd+Shift+[
 map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
+
+-- Same actions via Shift+F10/F9 (sent by kitty Cmd+Shift+] and [)
+map_shift_f(10, ":bnext<CR>", { desc = "Next buffer" })
+map_shift_f(9, ":bprevious<CR>", { desc = "Previous buffer" })
 
 -- Move tab left/right
 map("n", "<leader>bh", "<cmd>tabmove -1<CR>", { desc = "Move tab left" })
