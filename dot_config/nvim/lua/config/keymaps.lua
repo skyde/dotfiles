@@ -104,9 +104,9 @@ map("n", "<D-S-]>", ":bnext<CR>", { desc = "Next buffer" })
 -- Previous buffer: Cmd+Shift+[
 map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
 
--- Same actions via Shift+F10/F9 (sent by kitty Cmd+Shift+] and [)
-map_shift_f(10, ":bnext<CR>", { desc = "Next buffer" })
-map_shift_f(9, ":bprevious<CR>", { desc = "Previous buffer" })
+-- Same actions via Shift+F12/F13 (sent by kitty Cmd+Shift+] and [)
+map_shift_f(1, ":bprevious<CR>", { desc = "Previous buffer" })
+map_shift_f(12, ":bnext<CR>", { desc = "Next buffer" })
 
 -- Move tab left/right
 map("n", "<leader>bh", "<cmd>tabmove -1<CR>", { desc = "Move tab left" })
