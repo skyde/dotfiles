@@ -71,6 +71,11 @@ Automatically switches mode of fn keys per program. Important as keyboard macros
 
 Allows increased brightness when viewing SDR content on an HDR monitor.
 
+## tmux
+
+Using Option as a secondary leader key requires kitty to forward Option as Alt.
+This is configured via `macos_option_as_alt yes` in `~/.config/kitty/kitty.conf`.
+
 # Windows
 
 ## Config
