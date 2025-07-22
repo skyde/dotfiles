@@ -61,7 +61,7 @@ Activate with footpedal + r. Navigate with arrow keys and space to select.
 
 ## Hammerspoon
 
-Custom shortcut to open Spotlight Search with a keyboard macro. To avoid overwriting the original shortcut.
+Spotlight opens when the Cmd key is tapped by itself. This replaces the old Shift+F9 macro.
 
 ## Fluor
 
@@ -136,7 +136,7 @@ scroll up - Shift F4
 scroll down - Shift F6
 stop build - Shift F7
 goto definition - Shift F8
-toggle spotlight search - Shift F9
+open spotlight - tap Cmd
 toggle eye mouse - Shift F10
 toggle comment - Shift F11
 ```
