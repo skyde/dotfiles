@@ -38,8 +38,8 @@ APT_PACKAGES+=(zsh zsh-autosuggestions zsh-syntax-highlighting)
 echo "Installing: ${APT_PACKAGES[*]}"
 $SUDO apt-get install -y "${APT_PACKAGES[@]}" || true
 
-# Install Fira Code font using apt
-$SUDO apt-get install -y fonts-firacode || true
+# Install JetBrains Mono font using apt
+$SUDO apt-get install -y fonts-jetbrains-mono || true
 
 # Set zsh as the default shell if available
 if command -v zsh >/dev/null 2>&1; then

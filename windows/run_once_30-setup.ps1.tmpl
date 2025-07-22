@@ -41,13 +41,13 @@ if (Get-Command winget -ErrorAction SilentlyContinue) {
 } else {
     Write-Warning "winget is not available. Skipping winget app installs."
 }
-# Install fonts (Windows-specific: FiraCode-NF)
-$fontName = "FiraCode Nerd Font"
-$fontInstalled = (Get-ChildItem -Path "$env:WINDIR\Fonts" -Include "*FiraCode*NF*.ttf" -Recurse -ErrorAction SilentlyContinue | Measure-Object).Count -gt 0
+# Install fonts (Windows-specific: JetBrainsMono-NF)
+$fontName = "JetBrainsMono Nerd Font"
+$fontInstalled = (Get-ChildItem -Path "$env:WINDIR\Fonts" -Include "*JetBrainsMono*NF*.ttf" -Recurse -ErrorAction SilentlyContinue | Measure-Object).Count -gt 0
 if (-not $fontInstalled) {
-    Write-Warning "FiraCode-NF font is not installed. Please install it manually from https://github.com/ryanoasis/nerd-fonts/releases."
+    Write-Warning "JetBrainsMono-NF font is not installed. Please install it manually from https://github.com/ryanoasis/nerd-fonts/releases."
 } else {
-    Write-Host "FiraCode-NF font is already installed."
+    Write-Host "JetBrainsMono-NF font is already installed."
 }
 # Ensure LLVM (clang) is in PATH for C compiler support
 $llvmBin = "$env:ProgramFiles\LLVM\bin"

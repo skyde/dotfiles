@@ -40,9 +40,9 @@ if brew list fd >/dev/null 2>&1 && ! brew list --formula | grep -q "^fd$"; then
     brew link --overwrite fd || echo "Failed to link fd, continuing..."
 fi
 
-# Install fonts (macOS-specific: font-fira-code-nerd-font)
+# Install fonts (macOS-specific: font-jetbrains-mono-nerd-font)
 echo "Installing fonts..."
-brew install --cask font-fira-code-nerd-font || echo "Failed to install font-fira-code-nerd-font, continuing..."
+brew install --cask font-jetbrains-mono-nerd-font || echo "Failed to install font-jetbrains-mono-nerd-font, continuing..."
 
 echo "macOS setup complete!"
 
