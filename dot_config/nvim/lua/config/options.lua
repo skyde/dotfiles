@@ -34,3 +34,12 @@ if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 or vim.fn.has("win32unix
 end
 
 vim.opt.clipboard:append("unnamedplus")
+
+-- Disable underlined diagnostics (squiggles)
+vim.diagnostic.config({ underline = false })
+
+-- Hide the tabline unless multiple tab pages are open
+vim.opt.showtabline = 0
+
+-- Don't show whitespace characters like tabs by default
+vim.opt.list = false
