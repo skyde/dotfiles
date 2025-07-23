@@ -81,6 +81,9 @@
   // Scroll up 16 Lines
   // Matches Nvim where small scrolls will keep the cursor in exacty the same relative place on the screen
   {
+    "key": "shift+f4",
+    "command": "runCommands",
+    "when": "textInputFocus",
     "args": {
       "commands": [
         "scrollLineUp",
@@ -118,7 +121,6 @@
       ]
     }
   },
-
   // Scroll down 16 Lines
   {
     "key": "shift+f6",
