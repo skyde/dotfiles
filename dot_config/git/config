@@ -5,8 +5,15 @@
     diffFilter = delta --color-only
 
 [delta]
-    navigate = true
-    dark = true
+  true-color = always
+  navigate = true # use n and N to move between diff sections
+  light = false
+  hyperlinks = true
+  side-by-side = true
+  line-numbers = true
 
 [merge]
-    conflictstyle = zdiff3
+    conflictstyle = diff3
+
+[diff]
+    colorMoved = default
