@@ -451,6 +451,12 @@
     "key": "ctrl+shift+tab",
     "command": "workbench.action.previousEditor",
     "when": "isWindows"
+  },
+  {
+    "key": "ctrl+s",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u0013" },
+    "when": "terminalFocus"
   }
   // Terminal
   // {
