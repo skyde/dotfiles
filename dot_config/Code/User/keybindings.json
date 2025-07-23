@@ -472,8 +472,7 @@
           // Escape keycode
           "args": { "text": "\u001b" }
         },
-        "workbench.action.focusActiveEditorGroup",
-        "workbench.action.navigateBack",
+        "workbench.action.closeActiveEditor",
         "extension.vim_escape"
       ]
     }
