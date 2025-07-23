@@ -264,6 +264,11 @@
     "when": "sideBarVisible && !editorFocus"
   },
   {
+    "command": "workbench.action.toggleSidebarVisibility",
+    "key": "e",
+    "when": "sideBarVisible && !editorFocus"
+  },
+  {
     "key": "ctrl+l",
     "command": "diffEditor.switchSide",
     "when": "isInDiffEditor"
