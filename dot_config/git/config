@@ -15,6 +15,10 @@
 
 [diff]
     colorMoved = default
+    tool = nvimdiff
+
+[difftool]
+    prompt = false
 
 [delta "side-by-side"]
   side-by-side = true
