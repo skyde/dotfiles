@@ -455,7 +455,7 @@
   {
     "key": "cmd+s",
     "command": "workbench.action.terminal.sendSequence",
-    "args": { "text": "\u0013" },
+    "args": { "text": "\u001B[15;2~" }, // sends Shift‑F5
     "when": "terminalFocus"
   }
   // Terminal
