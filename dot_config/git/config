@@ -1,5 +1,5 @@
 [core]
-    pager = delta
+    pager = delta --features=side-by-side
 
 [interactive]
     diffFilter = delta --color-only
@@ -9,11 +9,14 @@
   navigate = true # use n and N to move between diff sections
   light = false
   hyperlinks = true
-  side-by-side = true
-  line-numbers = true
 
 [merge]
     conflictstyle = diff3
 
 [diff]
     colorMoved = default
+
+[delta "side-by-side"]
+  side-by-side = true
+  line-numbers = true
+  syntax-theme = base16-256
