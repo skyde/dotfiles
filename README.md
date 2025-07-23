@@ -51,6 +51,7 @@ The setup scripts also install speedy alternatives for common commands:
 - `eza` as an improved `ls`
 - `yazi` as a modern terminal file manager
 - `delta` for modern git diffs (also used in Lazygit)
+  - diffs are side-by-side by default, while LazyGit shows inline changes
 
 # Mac
 
