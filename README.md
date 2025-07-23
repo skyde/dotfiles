@@ -50,6 +50,7 @@ The setup scripts also install speedy alternatives for common commands:
 - `bat` as a colorful `cat`
 - `eza` as an improved `ls`
 - `yazi` as a modern terminal file manager
+- `delta` for modern git diffs (also used in Lazygit)
 
 # Mac
 
