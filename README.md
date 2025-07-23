@@ -119,6 +119,17 @@ I'm using a few plugins:
 Extensions listed in `vscode_extensions.txt` will be installed automatically
 when these dotfiles are applied. Custom keybindings are documented in
 [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
+
+For remote development, install the **Remote - SSH** extension. Add your server
+details to `~/.ssh/config`, e.g.
+
+```ssh
+Host devbox
+  HostName server.example.com
+  User you
+```
+
+Use the “Remote-SSH: Connect to Host…” command in VS Code to start a session.
 ```
 
 # Keyboard
