@@ -21,6 +21,10 @@
   "terminal.integrated.defaultProfile.linux": "zsh",
   "terminal.integrated.defaultProfile.osx": "zsh",
   "terminal.integrated.defaultProfile.windows": "pwsh",
+  // Forward Ctrl+S to the terminal by removing the save command from the skip list
+  "terminal.integrated.commandsToSkipShell": [
+    "-workbench.action.files.save"
+  ],
   "editor.formatOnSave": true,
   "window.zoomLevel": 0.2,
   // Cursor Shape & Style
