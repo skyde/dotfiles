@@ -16,6 +16,7 @@
 [diff]
     colorMoved = default
     tool = nvimdiff
+    algorithm = histogram
 
 [difftool]
     prompt = false
