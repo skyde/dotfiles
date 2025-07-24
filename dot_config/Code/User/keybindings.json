@@ -436,8 +436,8 @@
   // }
   // Editor terminal
   {
-    // Close the editor terminal as soon as escape is pressed - things that launch into there should be transient
-    "key": "escape",
+    // Close the editor terminal as soon as cmd+t is pressed - things that launch into there should be transient
+    "key": "cmd+t",
     "command": "runCommands",
     "when": "terminalFocus && terminalEditorActive",
     "args": {

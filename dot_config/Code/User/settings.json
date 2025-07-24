@@ -356,7 +356,7 @@
     },
     {
       "before": ["<leader>", "f", "l"],
-      "commands": ["copyFilePath"]
+      "commands": ["workbench.action.files.copyPathOfActiveFile"]
     },
     {
       "before": ["<leader>", "f", "n"],
@@ -663,8 +663,34 @@
     },
     // Git
     {
+      // Open LazyGit
       "before": ["<leader>", "g", "g"],
-      "commands": ["lazygit.openLazygit"]
+      "commands": [
+        "workbench.action.terminal.new",
+        {
+          "command": "workbench.action.terminal.sendSequence",
+          "args": { "text": "lazygit\u000D" }
+        },
+        "workbench.action.terminal.moveToEditor",
+        // Need to call this twice for some reason to have it hide
+        "workbench.action.terminal.toggleTerminal",
+        "workbench.action.terminal.toggleTerminal"
+      ]
+    },
+    {
+      // Git log - shows the Git log of the current file
+      "before": ["<leader>", "g", "l"],
+      "commands": [
+        "workbench.action.terminal.new",
+        {
+          "command": "workbench.action.terminal.sendSequence",
+          "args": { "text": "git log -p \"${file}\"\u000D" }
+        },
+        "workbench.action.terminal.moveToEditor",
+        // Need to call this twice for some reason to have it hide
+        "workbench.action.terminal.toggleTerminal",
+        "workbench.action.terminal.toggleTerminal"
+      ]
     },
     {
       "before": ["<leader>", "g", "G"],
@@ -712,7 +738,7 @@
 
     // (l)og timeline – opens the Timeline side-pane with full commit history,
     // file-saves, and extension events.
-    { "before": ["<leader>", "g", "l"], "commands": ["files.openTimeline"] }, // [EDIT]
+    { "before": ["<leader>", "g", "L"], "commands": ["files.openTimeline"] }, // [EDIT]
 
     // ── 5. File maintenance ─────────────────────────────────────────────────
     // re(n)ame – triggers the Explorer rename (same as F2) or, if focus is on
