@@ -63,7 +63,7 @@ Activate with footpedal + r. Navigate with arrow keys and space to select.
 
 ## Hammerspoon
 
-Spotlight opens when the Cmd key is tapped by itself. This replaces the old Shift+F9 macro.
+Spotlight opens when the Cmd key is tapped by itself.
 
 ## Fluor
 
