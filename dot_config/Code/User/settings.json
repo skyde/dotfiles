@@ -578,7 +578,7 @@
     },
     {
       "before": ["g", "h"],
-      "commands": ["clangd.switchSourceHeader"]
+      "commands": ["clangd.switchheadersource"]
     },
     {
       "before": ["g", "u"],
