@@ -512,43 +512,43 @@
     },
     // Jump to tab
     {
-      "before": ["S", "1"],
+      "before": ["<leader>", "s", "1"],
       "commands": ["workbench.action.openEditorAtIndex1"]
     },
     {
-      "before": ["S", "2"],
+      "before": ["<leader>", "s", "2"],
       "commands": ["workbench.action.openEditorAtIndex2"]
     },
     {
-      "before": ["S", "3"],
+      "before": ["<leader>", "s", "3"],
       "commands": ["workbench.action.openEditorAtIndex3"]
     },
     {
-      "before": ["S", "4"],
+      "before": ["<leader>", "s", "4"],
       "commands": ["workbench.action.openEditorAtIndex4"]
     },
     {
-      "before": ["S", "5"],
+      "before": ["<leader>", "s", "5"],
       "commands": ["workbench.action.openEditorAtIndex5"]
     },
     {
-      "before": ["S", "6"],
+      "before": ["<leader>", "s", "6"],
       "commands": ["workbench.action.openEditorAtIndex6"]
     },
     {
-      "before": ["S", "7"],
+      "before": ["<leader>", "s", "7"],
       "commands": ["workbench.action.openEditorAtIndex7"]
     },
     {
-      "before": ["S", "8"],
+      "before": ["<leader>", "s", "8"],
       "commands": ["workbench.action.openEditorAtIndex8"]
     },
     {
-      "before": ["S", "9"],
+      "before": ["<leader>", "s", "9"],
       "commands": ["workbench.action.openEditorAtIndex9"]
     },
     {
-      "before": ["S", "0"],
+      "before": ["<leader>", "s", "0"],
       "commands": ["workbench.action.lastEditorInGroup"]
     },
     // Goto
