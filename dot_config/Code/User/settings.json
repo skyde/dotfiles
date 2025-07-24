@@ -684,7 +684,9 @@
         "workbench.action.terminal.new",
         {
           "command": "workbench.action.terminal.sendSequence",
-          "args": { "text": "git log -p \"${file}\"\u000D" }
+          "args": {
+            "text": "git log -p --diff-algorithm=histogram --date=short \"${file}\"\u000D"
+          }
         },
         "workbench.action.terminal.moveToEditor",
         // Need to call this twice for some reason to have it hide
