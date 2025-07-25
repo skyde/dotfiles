@@ -70,7 +70,7 @@
   // Build
   {
     "key": "shift+f2",
-    "command": "workbench.action.debug.start",
+    "command": "workbench.action.tasks.build",
     "when": "taskCommandsRegistered"
   },
   // Fuzzy find class / file by name
@@ -166,7 +166,13 @@
   // Stop Build / Stop Debugging
   {
     "key": "shift+f7",
-    "command": "workbench.action.debug.stop"
+    "command": "runCommands",
+    "args": {
+      "commands": [
+        "workbench.action.tasks.terminate",
+        "workbench.action.debug.stop"
+      ]
+    }
   },
   // Goto Definition
   {
