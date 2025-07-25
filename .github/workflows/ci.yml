@@ -36,8 +36,11 @@ jobs:
         run: |
           if (-not (Get-Command chezmoi -ErrorAction SilentlyContinue)) {
             Write-Host 'chezmoi not found. Attempting winget install.'
-            winget install twpayne.chezmoi -e --id twpayne.chezmoi `
-              || throw 'chezmoi is required. Install it manually.'
+            winget install --id twpayne.chezmoi -e `
+              --accept-source-agreements --accept-package-agreements --silent
+            if ($LASTEXITCODE -ne 0) {
+              throw 'chezmoi is required. Install it manually.'
+            }
           }
 
       - name: Dry-run apply
