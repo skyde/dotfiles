@@ -6,6 +6,8 @@ if command -v code >/dev/null 2>&1; then
     CODE_CMD="code"
 elif command -v cursor >/dev/null 2>&1; then
     CODE_CMD="cursor"
+elif [ -f "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" ]; then
+    CODE_CMD="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
 else
     echo "VS Code 'code' or 'cursor' command not found, skipping extension install"
     exit 0

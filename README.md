@@ -128,6 +128,9 @@ I'm using a few plugins:
 Extensions listed in `vscode_extensions.txt` will be installed automatically
 when these dotfiles are applied. Custom keybindings are documented in
 [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
+On macOS, the install script also checks for the default CLI at
+`/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` if the
+`code` command isn't in your `PATH`.
 
 For remote development, install the **Remote - SSH** extension. Add your server
 details to `~/.ssh/config`, e.g.
