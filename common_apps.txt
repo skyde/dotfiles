@@ -6,6 +6,7 @@ bat
 delta
 eza
 less
+kitty
 llvm
 nvim
 zoxide

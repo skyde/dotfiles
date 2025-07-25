@@ -49,6 +49,7 @@ The setup scripts also install speedy alternatives for common commands:
 - `fd` as a faster `find`
 - `bat` as a colorful `cat`
 - `eza` as an improved `ls`
+- `kitty` as a GPU-accelerated terminal emulator
 - `yazi` as a modern terminal file manager
 - `delta` for modern git diffs (also used in Lazygit)
   - diffs are side-by-side by default, while LazyGit shows inline changes
