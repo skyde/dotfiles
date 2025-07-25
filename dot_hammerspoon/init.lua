@@ -30,5 +30,45 @@ local flagsListener = hs.eventtap.new({ hs.eventtap.event.types.flagsChanged }, 
     end
 end)
 
-keyDownListener:start()
-flagsListener:start()
+-- Helper to determine if a device is an external keyboard
+local function isExternalKeyboard(dev)
+    local name = string.lower(dev.productName or "")
+    return name:find("keyboard") and
+        name ~= string.lower("Apple Internal Keyboard / Trackpad")
+end
+
+-- Check if any external keyboard is currently connected
+local function externalKeyboardPresent()
+    local devices = hs.usb.attachedDevices() or {}
+    for _, dev in ipairs(devices) do
+        if isExternalKeyboard(dev) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Start or stop listeners based on external keyboard presence
+local function updateListeners()
+    if externalKeyboardPresent() then
+        if not keyDownListener:isEnabled() then
+            keyDownListener:start()
+            flagsListener:start()
+        end
+    else
+        if keyDownListener:isEnabled() then
+            keyDownListener:stop()
+            flagsListener:stop()
+        end
+    end
+end
+
+-- Watch for USB device changes to refresh listener status
+hs.usb.watcher.new(function(info)
+    if isExternalKeyboard(info) then
+        hs.timer.doAfter(0.5, updateListeners)
+    end
+end):start()
+
+-- Activate listeners if an external keyboard is already connected
+updateListeners()
