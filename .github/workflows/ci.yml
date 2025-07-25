@@ -53,7 +53,8 @@ jobs:
       - name: Install tools
         run: sudo apt-get update -y && sudo apt-get install -y shellcheck stylua
       - name: Shellcheck
-        run: find . -name '*.sh' -o -name '*.sh.tmpl' -o -name 'dot_*rc' | xargs -r shellcheck
+        run: |
+          find . -name '*.sh' -print | xargs -r shellcheck
       - name: Stylua
         run: |
           find dot_config/nvim -name '*.lua' | xargs -r stylua -c
