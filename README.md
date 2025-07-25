@@ -5,21 +5,30 @@
 ```sh
 # Install Homebrew from https://brew.sh if it's not already present
 brew install chezmoi
-chezmoi init --apply skyde
+chezmoi init skyde
+# Review changes if desired
+chezmoi diff
+chezmoi apply
 ```
 
 ### Linux
 
 ```
 sudo apt-get update -qq && sudo apt-get install -y git chezmoi
-chezmoi init --apply skyde
+chezmoi init skyde
+# Review changes if desired
+chezmoi diff
+chezmoi apply
 ```
 
 ### Windows
 
 ```ps
 winget install twpayne.chezmoi
-chezmoi init --apply skyde
+chezmoi init skyde
+# Review changes if desired
+chezmoi diff
+chezmoi apply
 ```
 
 # Linux Container
@@ -27,13 +36,13 @@ chezmoi init --apply skyde
 Try it yourself in a Docker container.
 
 ```sh
-docker run --rm -it debian:testing bash -c 'apt update && apt install -y git chezmoi && chezmoi init --apply skyde && exec bash'
+docker run --rm -it debian:testing bash -c 'apt update && apt install -y git chezmoi && chezmoi init skyde && chezmoi diff && chezmoi apply && exec bash'
 ```
 
 ### WSL Installation
 
 ```ps
-wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc 'sudo sed -i "s/bookworm/trixie/g" /etc/apt/sources.list && sudo apt update && sudo apt full-upgrade -y && sudo apt install -y chezmoi && chezmoi init --apply skyde'
+wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc 'sudo sed -i "s/bookworm/trixie/g" /etc/apt/sources.list && sudo apt update && sudo apt full-upgrade -y && sudo apt install -y chezmoi && chezmoi init skyde && chezmoi diff && chezmoi apply'
 ```
 
 ## Starship Prompt
