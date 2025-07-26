@@ -367,18 +367,36 @@
       "commands": ["workbench.action.toggleFullScreen"]
     },
     {
+      // Split the current window vertically
+      // This duplicates the current window
       "before": ["<leader>", "w", "v"],
       "commands": [":vsplit"]
     },
     {
+      // Split the current window horizontally
+      // This duplicates the current window
       "before": ["<leader>", "w", "s"],
       "commands": [":split"]
     },
     {
-      "before": ["<leader>", "w", "d"],
-      "commands": ["workbench.action.closeActiveEditor"]
+      // Split the current window in a direction
+      "before": ["<leader>", "w", "L"],
+      "commands": ["workbench.action.moveEditorToRightGroup"]
     },
     {
+      "before": ["<leader>", "w", "H"],
+      "commands": ["workbench.action.moveEditorToLeftGroup"]
+    },
+    {
+      "before": ["<leader>", "w", "K"],
+      "commands": ["workbench.action.moveEditorToAboveGroup"]
+    },
+    {
+      "before": ["<leader>", "w", "J"],
+      "commands": ["workbench.action.moveEditorToBelowGroup"]
+    },
+    {
+      // Focus window
       "before": ["<leader>", "w", "h"],
       "commands": ["workbench.action.focusLeftGroup"]
     },
@@ -393,6 +411,11 @@
     {
       "before": ["<leader>", "w", "l"],
       "commands": ["workbench.action.focusRightGroup"]
+    },
+    {
+      // Close the current window
+      "before": ["<leader>", "w", "d"],
+      "commands": ["workbench.action.closeActiveEditor"]
     },
     // Search
     {
