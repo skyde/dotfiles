@@ -151,7 +151,7 @@ return {
       "--glob=!*.so",
       "--glob=!*.dll",
       "--glob=!*.blob.*", -- Exclude any file with .blob. in the name
-      "--glob=!blob/**",   -- Exclude any folder named blob
+      "--glob=!blob/**", -- Exclude any folder named blob
     }
     vim.keymap.set("n", "<leader>se", function()
       require("telescope").extensions.live_grep_args.live_grep_args({
