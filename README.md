@@ -24,7 +24,7 @@ chezmoi apply
 ### Windows
 
 ```ps
-winget install twpayne.chezmoi
+winget install twpayne.chezmoi --accept-package-agreements --accept-source-agreements
 chezmoi init skyde
 # Review changes if desired
 chezmoi diff

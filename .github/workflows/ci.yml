@@ -36,7 +36,8 @@ jobs:
         run: |
           if (-not (Get-Command chezmoi -ErrorAction SilentlyContinue)) {
             Write-Host 'chezmoi not found. Attempting winget install.'
-            winget install twpayne.chezmoi -e --id twpayne.chezmoi `
+            winget install twpayne.chezmoi -e --id twpayne.chezmoi \
+              --accept-package-agreements --accept-source-agreements `
               || throw 'chezmoi is required. Install it manually.'
           }
 
@@ -54,7 +55,7 @@ jobs:
         run: sudo apt-get update -y && sudo apt-get install -y shellcheck stylua
       - name: Shellcheck
         run: |
-          find . -name '*.sh' -print | xargs -r shellcheck
+          find . \( -name '*.sh' -o -name '*.sh.tmpl' -o -name 'dot_*rc' \) -type f -print0 | xargs -0 -r shellcheck
       - name: Stylua
         run: |
-          find dot_config/nvim -name '*.lua' | xargs -r stylua -c
+          find dot_config/nvim -name '*.lua' -type f -print0 | xargs -0 -r stylua -c
