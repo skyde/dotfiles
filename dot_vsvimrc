@@ -176,7 +176,7 @@ map <leader>sg :vsc Tools.FastFind.OpenDocked<CR>
 
 " Window
 
-" Set fullscreen mode using a plugin called 'Minimal VS Plugin' (the memonic is Window -> Fullscreen)
+" Set fullscreen mode using a plugin called 'Minimal VS Plugin' (the mnemonic is Window -> Fullscreen)
 nnoremap <leader>wf :vsc View.Hidemenu<CR>
 " nnoremap <leader>ws :vsc Window.NewVerticalTabGroup<CR>
 " nnoremap <leader>wv :vsc Window.Split<CR>

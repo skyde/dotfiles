@@ -360,7 +360,7 @@
       "after": ["<C-6>"]
     },
     {
-      // TODO: Ideally <leader>bp is a toggle, but non trival to get this to work
+      // TODO: Ideally <leader>bp is a toggle, but non-trivial to get this to work
       "before": ["<leader>", "b", "u"],
       "commands": ["workbench.action.unpinEditor"],
       "when": "activeEditorIsPinned"
