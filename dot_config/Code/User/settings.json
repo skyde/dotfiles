@@ -46,7 +46,10 @@
     "tab.inactiveBackground": "#000000",
     "tab.activeBorderTop": "#AA4000",
     "editorGroupHeader.tabsBackground": "#000000",
-    "editorLineNumber.foreground": "#585858"
+    "editorLineNumber.foreground": "#585858",
+
+    // Scroll Bar
+    "scrollbarSlider.background": "#ffffff17"
   },
   // Custom color scheme
   "editor.tokenColorCustomizations": {
@@ -260,6 +263,22 @@
       "before": ["<leader>", "A"],
       "commands": ["workbench.action.toggleAuxiliaryBar"]
     },
+    // UI
+    {
+      // Toggle word wrap
+      "before": ["<leader>", "u", "w"],
+      "commands": ["editor.action.toggleWordWrap"]
+    },
+    {
+      // Toggle zen mode
+      "before": ["<leader>", "u", "z"],
+      "commands": ["workbench.action.toggleZenMode"]
+    },
+    {
+      // Render whitespace (conceal)
+      "before": ["<leader>", "u", "c"],
+      "commands": ["toggleRenderWhitespace"]
+    },
     // File
     {
       "before": ["<leader>", "f", "m"],
@@ -358,12 +377,12 @@
     // Windows
     {
       // Memonic is 'fullscreen'
-      "before": ["<leader>", "w", "f"],
+      "before": ["<leader>", "w", "F"],
       "commands": ["workbench.action.toggleZenMode"]
     },
     {
       // This actually just toggles fullscreen if you need it
-      "before": ["<leader>", "w", "F"],
+      "before": ["<leader>", "w", "f"],
       "commands": ["workbench.action.toggleFullScreen"]
     },
     {
@@ -836,12 +855,12 @@
   // "vim.timeout": 500, // Faster key sequence timeout (Neovim default is 1000ms)
   // "extensions.ignoreRecommendations": true, // Hide extension suggestions (less GUI noise)
   // Zen Mode
-  "zenMode.centerLayout": false,
-  // "zenMode.showTabs": "none",
+  "zenMode.centerLayout": true,
+  "zenMode.showTabs": "none",
   "zenMode.fullScreen": true,
-  "zenMode.hideStatusBar": false,
+  "zenMode.hideStatusBar": true,
   "zenMode.hideActivityBar": true,
-  "zenMode.hideLineNumbers": false,
+  // "zenMode.hideLineNumbers": false,
   "window.commandCenter": false,
   "workbench.layoutControl.enabled": false,
   "workbench.activityBar.location": "hidden",
