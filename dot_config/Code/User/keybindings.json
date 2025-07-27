@@ -235,10 +235,10 @@
     }
   },
   {
-    // Open the terminal form the editor
+    // Open the terminal from the editor when it's closed
     // Ensure it opens full screen
     "key": "cmd+t",
-    "when": "!terminalFocus",
+    "when": "!terminalIsOpen",
     "command": "runCommands",
     "args": {
       "commands": [
@@ -252,9 +252,9 @@
     }
   },
   {
-    // If the terminal is focused then close it
-    "key": "ctrl+/",
-    "when": "terminalFocus",
+    // Close the maximized terminal even when it's not focused
+    "key": "cmd+t",
+    "when": "terminalIsOpen && !terminalFocus && panelMaximized",
     "command": "runCommands",
     "args": {
       "commands": [
@@ -265,9 +265,15 @@
     }
   },
   {
-    // If the terminal is focused then close it
+    // Close the terminal when it's not focused and not maximized
     "key": "cmd+t",
-    "when": "terminalFocus",
+    "when": "terminalIsOpen && !terminalFocus && !panelMaximized",
+    "command": "workbench.action.terminal.toggleTerminal"
+  },
+  {
+    // If the terminal is focused then close it
+    "key": "ctrl+/",
+    "when": "terminalFocus && panelMaximized",
     "command": "runCommands",
     "args": {
       "commands": [
@@ -276,6 +282,31 @@
         "workbench.action.terminal.toggleTerminal"
       ]
     }
+  },
+  {
+    // If the terminal is focused and not maximized then close it
+    "key": "ctrl+/",
+    "when": "terminalFocus && !panelMaximized",
+    "command": "workbench.action.terminal.toggleTerminal"
+  },
+  {
+    // If the terminal is focused then close it
+    "key": "cmd+t",
+    "when": "terminalFocus && panelMaximized",
+    "command": "runCommands",
+    "args": {
+      "commands": [
+        // Exit terminal full screen before closing
+        "workbench.action.toggleMaximizedPanel",
+        "workbench.action.terminal.toggleTerminal"
+      ]
+    }
+  },
+  {
+    // If the terminal is focused and not maximized then close it
+    "key": "cmd+t",
+    "when": "terminalFocus && !panelMaximized",
+    "command": "workbench.action.terminal.toggleTerminal"
   },
   // File explorer & Git
   {
