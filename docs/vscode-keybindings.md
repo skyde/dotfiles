@@ -20,6 +20,7 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 ## Terminal
 - `Ctrl+/` – toggle the integrated terminal.
 - `Ctrl+S` – send Ctrl+S to the integrated terminal when focused.
+- `Cmd+T` – toggle the terminal visibility and exit fullscreen if needed.
 
 ## Explorer
 - `Escape` – toggle the sidebar when focus is in the explorer.
