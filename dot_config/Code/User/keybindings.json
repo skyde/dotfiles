@@ -255,13 +255,27 @@
     // If the terminal is focused then close it
     "key": "ctrl+/",
     "when": "terminalFocus",
-    "command": "workbench.action.terminal.toggleTerminal"
+    "command": "runCommands",
+    "args": {
+      "commands": [
+        // Exit terminal full screen before closing
+        "workbench.action.toggleMaximizedPanel",
+        "workbench.action.terminal.toggleTerminal"
+      ]
+    }
   },
   {
     // If the terminal is focused then close it
     "key": "cmd+t",
     "when": "terminalFocus",
-    "command": "workbench.action.terminal.toggleTerminal"
+    "command": "runCommands",
+    "args": {
+      "commands": [
+        // Exit terminal full screen before closing
+        "workbench.action.toggleMaximizedPanel",
+        "workbench.action.terminal.toggleTerminal"
+      ]
+    }
   },
   // File explorer & Git
   {
