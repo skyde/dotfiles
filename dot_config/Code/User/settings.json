@@ -277,7 +277,7 @@
     {
       // Render whitespace (conceal)
       "before": ["<leader>", "u", "c"],
-      "commands": ["toggleRenderWhitespace"]
+      "commands": ["editor.action.toggleRenderWhitespace"]
     },
     // File
     {
