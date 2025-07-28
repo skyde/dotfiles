@@ -312,11 +312,6 @@
     "key": "escape",
     "when": "sideBarVisible && !editorFocus"
   },
-  // {
-  //   "command": "workbench.action.toggleSidebarVisibility",
-  //   "key": "e",
-  //   "when": "sideBarVisible && !editorFocus"
-  // },
   {
     "key": "ctrl+l",
     "command": "diffEditor.switchSide",
@@ -482,13 +477,6 @@
     "command": "editor.action.addSelectionToNextFindMatch",
     "when": "(vim.mode == 'Normal' || vim.mode == 'Visual') && (editorTextFocus || !inputFocus)"
   },
-
-  // // Code
-  // {
-  //   "command": "editor.action.codeAction",
-  //   "key": "space c e",
-  //   "when": "vim.mode == 'Normal' && editorTextFocus"
-  // }
   // Editor terminal
   {
     "key": "ctrl+tab",
