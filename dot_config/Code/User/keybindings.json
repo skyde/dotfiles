@@ -249,6 +249,63 @@
       ]
     }
   },
+  {
+    // Close the editor terminal as soon as cmd+t is pressed - things that launch into there should be transient
+    "key": "cmd+t",
+    "command": "runCommands",
+    "when": "terminalFocus && terminalEditorActive",
+    "args": {
+      "commands": [
+        "workbench.action.unpinEditor",
+        "workbench.action.revertAndCloseActiveEditor"
+      ]
+    }
+  },
+  // Duplicate terminal commands to run with ctrl+/ as well
+  {
+    // Open the terminal from the editor when it's closed
+    // Ensure it opens full screen
+    "key": "ctrl+/",
+    "when": "!terminalFocus",
+    "command": "runCommands",
+    "args": {
+      "commands": [
+        // Fullscreen terminal
+        "workbench.action.toggleMaximizedPanel",
+        // Use this if you want the terminal just to pop up partially at the bottom
+        // "workbench.action.terminal.toggleTerminal",
+        // When opening a terminal ensure we focus terminal 1 - as the Find it Faster plugin opens other terminals
+        "workbench.action.terminal.focusAtIndex1"
+      ]
+    }
+  },
+  {
+    // Close the terminal when it's focused
+    "key": "ctrl+/",
+    "when": "terminalFocus",
+    "command": "runCommands",
+    "args": {
+      "commands": [
+        // When the are closing the terminal disable fullscreen mode so
+        // subsequent usage of the terminal is not fullscreen
+        "workbench.action.toggleMaximizedPanel",
+        // Hide the terminal
+        "workbench.action.terminal.toggleTerminal"
+      ]
+    }
+  },
+  {
+    // Close the editor terminal as soon as cmd+t is pressed - things that launch into there should be transient
+    "key": "ctrl+/",
+    "command": "runCommands",
+    "when": "terminalFocus && terminalEditorActive",
+    "args": {
+      "commands": [
+        "workbench.action.unpinEditor",
+        "workbench.action.revertAndCloseActiveEditor"
+      ]
+    }
+  },
   // File explorer & Git
   {
     "command": "workbench.action.toggleSidebarVisibility",
@@ -427,18 +484,6 @@
   //   "when": "vim.mode == 'Normal' && editorTextFocus"
   // }
   // Editor terminal
-  {
-    // Close the editor terminal as soon as cmd+t is pressed - things that launch into there should be transient
-    "key": "cmd+t",
-    "command": "runCommands",
-    "when": "terminalFocus && terminalEditorActive",
-    "args": {
-      "commands": [
-        "workbench.action.unpinEditor",
-        "workbench.action.revertAndCloseActiveEditor"
-      ]
-    }
-  },
   {
     "key": "ctrl+tab",
     "command": "workbench.action.nextEditor",
