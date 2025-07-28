@@ -218,9 +218,9 @@
   },
   // Terminal
   {
-    // Open the terminal form the editor
+    // Open the terminal from the editor when it's closed
     // Ensure it opens full screen
-    "key": "ctrl+/",
+    "key": "cmd+t",
     "when": "!terminalFocus",
     "command": "runCommands",
     "args": {
@@ -235,78 +235,19 @@
     }
   },
   {
-    // Open the terminal from the editor when it's closed
-    // Ensure it opens full screen
+    // Close the terminal when it's focused
     "key": "cmd+t",
-    "when": "!terminalIsOpen",
+    "when": "terminalFocus",
     "command": "runCommands",
     "args": {
       "commands": [
-        // Fullscreen terminal
+        // When the are closing the terminal disable fullscreen mode so
+        // subsequent usage of the terminal is not fullscreen
         "workbench.action.toggleMaximizedPanel",
-        // Use this if you want the terminal just to pop up partially at the bottom
-        // "workbench.action.terminal.toggleTerminal",
-        // When opening a terminal ensure we focus terminal 1 - as the Find it Faster plugin opens other terminals
-        "workbench.action.terminal.focusAtIndex1"
-      ]
-    }
-  },
-  {
-    // Close the maximized terminal even when it's not focused
-    "key": "cmd+t",
-    "when": "terminalIsOpen && !terminalFocus && panelMaximized",
-    "command": "runCommands",
-    "args": {
-      "commands": [
-        // Exit terminal full screen before closing
-        "workbench.action.toggleMaximizedPanel",
+        // Hide the terminal
         "workbench.action.terminal.toggleTerminal"
       ]
     }
-  },
-  {
-    // Close the terminal when it's not focused and not maximized
-    "key": "cmd+t",
-    "when": "terminalIsOpen && !terminalFocus && !panelMaximized",
-    "command": "workbench.action.terminal.toggleTerminal"
-  },
-  {
-    // If the terminal is focused then close it
-    "key": "ctrl+/",
-    "when": "terminalFocus && panelMaximized",
-    "command": "runCommands",
-    "args": {
-      "commands": [
-        // Exit terminal full screen before closing
-        "workbench.action.toggleMaximizedPanel",
-        "workbench.action.terminal.toggleTerminal"
-      ]
-    }
-  },
-  {
-    // If the terminal is focused and not maximized then close it
-    "key": "ctrl+/",
-    "when": "terminalFocus && !panelMaximized",
-    "command": "workbench.action.terminal.toggleTerminal"
-  },
-  {
-    // If the terminal is focused then close it
-    "key": "cmd+t",
-    "when": "terminalFocus && panelMaximized",
-    "command": "runCommands",
-    "args": {
-      "commands": [
-        // Exit terminal full screen before closing
-        "workbench.action.toggleMaximizedPanel",
-        "workbench.action.terminal.toggleTerminal"
-      ]
-    }
-  },
-  {
-    // If the terminal is focused and not maximized then close it
-    "key": "cmd+t",
-    "when": "terminalFocus && !panelMaximized",
-    "command": "workbench.action.terminal.toggleTerminal"
   },
   // File explorer & Git
   {
