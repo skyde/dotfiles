@@ -738,6 +738,14 @@
     },
     // Make (Build)
     {
+      "before": ["<leader>", "m", "a"],
+      "commands": ["workbench.action.tasks.runTask"]
+    },
+    {
+      "before": ["<leader>", "m", "t"],
+      "commands": ["workbench.action.tasks.reRunTask"]
+    },
+    {
       "before": ["<leader>", "m", "b"],
       "commands": ["workbench.action.tasks.build"]
     },
