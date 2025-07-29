@@ -31,6 +31,7 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 
 ## Copilot Chat
 - `Escape` – close Copilot Chat when focused.
+- `Ctrl+N` – start a new conversation in Copilot Chat when the chat window is open.
 
 ## Merge Conflicts
 - `Alt+K` – accept current change.
