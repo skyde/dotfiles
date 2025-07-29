@@ -94,14 +94,12 @@ if (( $+commands[fzf] )); then
     selected=$(
       fc -nrl 1 |                  \
       awk '!seen[$0]++' |          \
-      fzf  --height=40%            \
+      fzf  --height=80%            \
            --reverse               \
            --tiebreak=index        \
            --no-sort               \
            --prompt='History> '    \
-           --query="$LBUFFER"      \
-           --preview 'echo {}'     \
-           --preview-window=down:3:wrap
+           --query="$LBUFFER"      
     ) || return
 
     LBUFFER=$selected
