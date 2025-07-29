@@ -334,6 +334,12 @@
     "command": "workbench.action.focusActiveEditorGroup",
     "when": "view.workbench.panel.chat.view.copilot.visible && !editorFocus"
   },
+  {
+    // Start a new conversation in Copilot Chat
+    "key": "ctrl+n",
+    "command": "workbench.action.chat.new",
+    "when": "view.workbench.panel.chat.view.copilot.visible"
+  },
   // // Git
   // {
   //   "command": "workbench.action.toggleSidebarVisibility",
