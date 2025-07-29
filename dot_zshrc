@@ -88,15 +88,28 @@ if command -v fzf >/dev/null; then
   fi
 fi
 
-# Fuzzy search command history with fzf
-if command -v fzf >/dev/null; then
-  function _fzf_history_search() {
+if (( $+commands[fzf] )); then
+  function _fzf_history_widget() {
     local selected
-    selected=$(fc -rl 1 | sed 's/^ *[0-9]* *//' | fzf --tac --no-sort --prompt="History> ") || return
-    print -z "$selected"
+    selected=$(
+      fc -nrl 1 |                  \
+      awk '!seen[$0]++' |          \
+      fzf  --height=40%            \
+           --reverse               \
+           --tiebreak=index        \
+           --no-sort               \
+           --prompt='History> '    \
+           --query="$LBUFFER"      \
+           --preview 'echo {}'     \
+           --preview-window=down:3:wrap
+    ) || return
+
+    LBUFFER=$selected
+    zle redisplay
   }
-  zle -N _fzf_history_search
-  bindkey '^R' _fzf_history_search
+
+  zle -N _fzf_history_widget
+  bindkey '^R' _fzf_history_widget
 fi
 
 # Aliases
