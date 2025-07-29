@@ -337,7 +337,7 @@
   {
     // Start a new conversation in Copilot Chat
     "key": "ctrl+n",
-    "command": "workbench.action.chat.new",
+    "command": "workbench.action.chat.newSession",
     "when": "view.workbench.panel.chat.view.copilot.visible"
   },
   // // Git
