@@ -218,34 +218,24 @@
   },
   // Terminal
   {
-    // Open the terminal from the editor when it's closed
-    // Ensure it opens full screen
     "key": "cmd+t",
-    "when": "!terminalFocus",
-    "command": "runCommands",
-    "args": {
-      "commands": [
-        // Fullscreen terminal
-        "workbench.action.toggleMaximizedPanel",
-        // Use this if you want the terminal just to pop up partially at the bottom
-        // "workbench.action.terminal.toggleTerminal",
-        // When opening a terminal ensure we focus terminal 1 - as the Find it Faster plugin opens other terminals
-        "workbench.action.terminal.focusAtIndex1"
-      ]
-    }
+    "command": "workbench.action.closePanel",
+    "when": "panelVisible"
   },
   {
     // Close the terminal when it's focused
     "key": "cmd+t",
-    "when": "terminalFocus",
+    "when": "!panelVisible",
     "command": "runCommands",
     "args": {
       "commands": [
         // When the are closing the terminal disable fullscreen mode so
         // subsequent usage of the terminal is not fullscreen
         "workbench.action.toggleMaximizedPanel",
-        // Hide the terminal
-        "workbench.action.terminal.toggleTerminal"
+        // Show the terminal
+        "workbench.action.terminal.toggleTerminal",
+        // Auto select the main terminal
+        "workbench.action.terminal.focusAtIndex1"
       ]
     }
   },
@@ -263,34 +253,24 @@
   },
   // Duplicate terminal commands to run with ctrl+/ as well
   {
-    // Open the terminal from the editor when it's closed
-    // Ensure it opens full screen
     "key": "ctrl+/",
-    "when": "!terminalFocus",
-    "command": "runCommands",
-    "args": {
-      "commands": [
-        // Fullscreen terminal
-        "workbench.action.toggleMaximizedPanel",
-        // Use this if you want the terminal just to pop up partially at the bottom
-        // "workbench.action.terminal.toggleTerminal",
-        // When opening a terminal ensure we focus terminal 1 - as the Find it Faster plugin opens other terminals
-        "workbench.action.terminal.focusAtIndex1"
-      ]
-    }
+    "command": "workbench.action.closePanel",
+    "when": "panelVisible"
   },
   {
     // Close the terminal when it's focused
     "key": "ctrl+/",
-    "when": "terminalFocus",
+    "when": "!panelVisible",
     "command": "runCommands",
     "args": {
       "commands": [
         // When the are closing the terminal disable fullscreen mode so
         // subsequent usage of the terminal is not fullscreen
         "workbench.action.toggleMaximizedPanel",
-        // Hide the terminal
-        "workbench.action.terminal.toggleTerminal"
+        // Show the terminal
+        "workbench.action.terminal.toggleTerminal",
+        // Auto select the main terminal
+        "workbench.action.terminal.focusAtIndex1"
       ]
     }
   },
