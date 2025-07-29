@@ -5,6 +5,8 @@
 local cmdPressed = false
 local otherKeyPressed = false
 local cmdDownTime = 0
+local cmdThreshold = 0.15
+local cmdReleaseDelay = 0.05
 
 local keyDownListener = hs.eventtap.new({ hs.eventtap.event.types.keyDown }, function(_)
     if cmdPressed then
@@ -22,8 +24,13 @@ local flagsListener = hs.eventtap.new({ hs.eventtap.event.types.flagsChanged }, 
         cmdDownTime = hs.timer.secondsSinceEpoch()
     elseif not flags.cmd and cmdPressed then
         cmdPressed = false
-        if not otherKeyPressed and hs.timer.secondsSinceEpoch() - cmdDownTime < 0.2 then
-            hs.eventtap.keyStroke({ "cmd" }, "space", 0)
+        local elapsed = hs.timer.secondsSinceEpoch() - cmdDownTime
+        if not otherKeyPressed and elapsed < cmdThreshold then
+            hs.timer.doAfter(cmdReleaseDelay, function()
+                if not cmdPressed and not otherKeyPressed then
+                    hs.eventtap.keyStroke({ "cmd" }, "space", 0)
+                end
+            end)
         end
     elseif cmdPressed and (flags.alt or flags.shift or flags.ctrl or flags.fn) then
         otherKeyPressed = true

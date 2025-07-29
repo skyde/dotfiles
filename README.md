@@ -72,7 +72,7 @@ Activate with footpedal + r. Navigate with arrow keys and space to select.
 
 ## Hammerspoon
 
-Spotlight opens when the Cmd key is tapped by itself.
+Spotlight opens when the Cmd key is quickly tapped by itself. A short delay prevents accidental triggers.
 
 ## Fluor
 
