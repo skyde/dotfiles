@@ -622,6 +622,11 @@
       "before": ["<leader>", "d", "g"],
       "commands": ["workbench.action.debug.setNextStatement"]
     },
+    // Debug Active
+    {
+      "before": ["<leader>", "Backspace"],
+      "commands": ["editor.debug.action.showDebugHover"]
+    },
     // Git
     {
       // Open LazyGit
@@ -892,5 +897,6 @@
   "find-it-faster.general.showMaximizedTerminal": true,
   "find-it-faster.findWithinFiles.fuzzRipgrepQuery": true,
   "git.blame.editorDecoration.enabled": false,
-  "github.copilot.nextEditSuggestions.enabled": true
+  "github.copilot.nextEditSuggestions.enabled": true,
+  "debug.inlineValues": "on"
 }
