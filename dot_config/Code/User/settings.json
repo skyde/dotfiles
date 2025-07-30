@@ -618,6 +618,26 @@
       "commands": ["workbench.action.debug.continue"]
     },
     {
+      "before": ["<leader>", "d", "p"],
+      "commands": ["workbench.action.debug.pause"]
+    },
+    {
+      "before": ["<leader>", "d", "t"],   // Terminate (Stop)
+      "commands": ["workbench.action.debug.stop"]
+    },
+    {
+      "before": ["<leader>", "d", "R"],   // Restart  (capital R = “Reload”)
+      "commands": ["workbench.action.debug.restart"]
+    },
+    {
+      "before": ["<leader>", "d", "L"],   // Toggle Log‑point (capital L = “Log”)
+      "commands": ["editor.debug.action.toggleLogPoint"]
+    },
+    {
+      "before": ["<leader>", "d", "C"],   // Conditional BP (capital C)
+      "commands": ["editor.debug.action.conditionalBreakpoint"]
+    },
+    {
       // Goto
       "before": ["<leader>", "d", "g"],
       "commands": ["workbench.action.debug.setNextStatement"]
@@ -626,6 +646,33 @@
     {
       "before": ["<leader>", "Backspace"],
       "commands": ["editor.debug.action.showDebugHover"]
+    },
+    // ── Watches & evaluation ─────────────────────────────────────────────────────
+    {
+      "before": ["<leader>", "d", "w"],   // Add selection → Watch
+      "commands": ["editor.debug.action.selectionToWatch"]
+    },
+    {
+      "before": ["<leader>", "d", "x"],   // Evaluate selection in REPL
+      "commands": ["editor.debug.action.selectionToRepl"]
+    },
+
+    // ── Quick view focus ─────────────────────────────────────────────────────────
+    {
+      "before": ["<leader>", "d", "v"],   // Variables view
+      "commands": ["workbench.debug.action.focusVariablesView"]
+    },
+    {
+      "before": ["<leader>", "d", "W"],   // Watch view (capital W)
+      "commands": ["workbench.debug.action.focusWatchView"]
+    },
+    {
+      "before": ["<leader>", "d", "k"],   // Call‑Stack view (k = “stack” mnemonic)
+      "commands": ["workbench.debug.action.focusCallStackView"]
+    },
+    {
+      "before": ["<leader>", "d", "h"],   // Focus Debug Console (h = “hover/host”)
+      "commands": ["workbench.debug.action.focusRepl"]
     },
     // Git
     {
