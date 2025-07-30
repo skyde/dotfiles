@@ -268,9 +268,9 @@
         // subsequent usage of the terminal is not fullscreen
         "workbench.action.toggleMaximizedPanel",
         // Show the terminal
-        "workbench.action.terminal.toggleTerminal",
+        "workbench.action.terminal.toggleTerminal"
         // Auto select the main terminal
-        "workbench.action.terminal.focusAtIndex1"
+        // "workbench.action.terminal.focusAtIndex1"
       ]
     }
   },
