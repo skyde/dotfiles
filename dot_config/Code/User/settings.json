@@ -196,8 +196,6 @@
   // Highlighted Yank
   "vim.highlightedyank.enable": true,
   "vim.highlightedyank.duration": 125,
-  // Easy Motion
-  "vim.easymotion": true,
   // Surround
   "vim.surround": true,
   // Camel Case Motion - disabed for now as conflicts with other bindings
@@ -466,50 +464,45 @@
       "before": ["<leader>", "s", "r"],
       "commands": ["find-it-faster.resumeSearch"]
     },
-    // Easy Motion
-    {
-      "before": ["s"],
-      "after": ["<leader>", "<leader>", "2", "s"]
-    },
     // Jump to tab
     {
-      "before": ["<leader>", "s", "1"],
+      "before": ["<leader>", "1"],
       "commands": ["workbench.action.openEditorAtIndex1"]
     },
     {
-      "before": ["<leader>", "s", "2"],
+      "before": ["<leader>", "2"],
       "commands": ["workbench.action.openEditorAtIndex2"]
     },
     {
-      "before": ["<leader>", "s", "3"],
+      "before": ["<leader>", "3"],
       "commands": ["workbench.action.openEditorAtIndex3"]
     },
     {
-      "before": ["<leader>", "s", "4"],
+      "before": ["<leader>", "4"],
       "commands": ["workbench.action.openEditorAtIndex4"]
     },
     {
-      "before": ["<leader>", "s", "5"],
+      "before": ["<leader>", "5"],
       "commands": ["workbench.action.openEditorAtIndex5"]
     },
     {
-      "before": ["<leader>", "s", "6"],
+      "before": ["<leader>", "6"],
       "commands": ["workbench.action.openEditorAtIndex6"]
     },
     {
-      "before": ["<leader>", "s", "7"],
+      "before": ["<leader>", "7"],
       "commands": ["workbench.action.openEditorAtIndex7"]
     },
     {
-      "before": ["<leader>", "s", "8"],
+      "before": ["<leader>", "8"],
       "commands": ["workbench.action.openEditorAtIndex8"]
     },
     {
-      "before": ["<leader>", "s", "9"],
+      "before": ["<leader>", "9"],
       "commands": ["workbench.action.openEditorAtIndex9"]
     },
     {
-      "before": ["<leader>", "s", "0"],
+      "before": ["<leader>", "0"],
       "commands": ["workbench.action.lastEditorInGroup"]
     },
     // Goto
@@ -622,19 +615,19 @@
       "commands": ["workbench.action.debug.pause"]
     },
     {
-      "before": ["<leader>", "d", "t"],   // Terminate (Stop)
+      "before": ["<leader>", "d", "t"], // Terminate (Stop)
       "commands": ["workbench.action.debug.stop"]
     },
     {
-      "before": ["<leader>", "d", "R"],   // Restart  (capital R = “Reload”)
+      "before": ["<leader>", "d", "R"], // Restart  (capital R = “Reload”)
       "commands": ["workbench.action.debug.restart"]
     },
     {
-      "before": ["<leader>", "d", "L"],   // Toggle Log‑point (capital L = “Log”)
+      "before": ["<leader>", "d", "L"], // Toggle Log‑point (capital L = “Log”)
       "commands": ["editor.debug.action.toggleLogPoint"]
     },
     {
-      "before": ["<leader>", "d", "C"],   // Conditional BP (capital C)
+      "before": ["<leader>", "d", "C"], // Conditional BP (capital C)
       "commands": ["editor.debug.action.conditionalBreakpoint"]
     },
     {
@@ -649,29 +642,29 @@
     },
     // ── Watches & evaluation ─────────────────────────────────────────────────────
     {
-      "before": ["<leader>", "d", "w"],   // Add selection → Watch
+      "before": ["<leader>", "d", "w"], // Add selection → Watch
       "commands": ["editor.debug.action.selectionToWatch"]
     },
     {
-      "before": ["<leader>", "d", "x"],   // Evaluate selection in REPL
+      "before": ["<leader>", "d", "x"], // Evaluate selection in REPL
       "commands": ["editor.debug.action.selectionToRepl"]
     },
 
     // ── Quick view focus ─────────────────────────────────────────────────────────
     {
-      "before": ["<leader>", "d", "v"],   // Variables view
+      "before": ["<leader>", "d", "v"], // Variables view
       "commands": ["workbench.debug.action.focusVariablesView"]
     },
     {
-      "before": ["<leader>", "d", "W"],   // Watch view (capital W)
+      "before": ["<leader>", "d", "W"], // Watch view (capital W)
       "commands": ["workbench.debug.action.focusWatchView"]
     },
     {
-      "before": ["<leader>", "d", "k"],   // Call‑Stack view (k = “stack” mnemonic)
+      "before": ["<leader>", "d", "k"], // Call‑Stack view (k = “stack” mnemonic)
       "commands": ["workbench.debug.action.focusCallStackView"]
     },
     {
-      "before": ["<leader>", "d", "h"],   // Focus Debug Console (h = “hover/host”)
+      "before": ["<leader>", "d", "h"], // Focus Debug Console (h = “hover/host”)
       "commands": ["workbench.debug.action.focusRepl"]
     },
     // Git
