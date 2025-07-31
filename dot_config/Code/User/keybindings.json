@@ -223,7 +223,6 @@
     "when": "panelVisible"
   },
   {
-    // Close the terminal when it's focused
     "key": "cmd+t",
     "when": "!panelVisible",
     "command": "runCommands",
@@ -236,6 +235,27 @@
         "workbench.action.terminal.toggleTerminal"
         // Auto select the main terminal
         // "workbench.action.terminal.focusAtIndex1"
+      ]
+    }
+  },
+  {
+    "key": "cmd+r",
+    "command": "workbench.action.closePanel",
+    "when": "panelVisible"
+  },
+  {
+    "key": "cmd+r",
+    "when": "!panelVisible",
+    "command": "runCommands",
+    "args": {
+      "commands": [
+        // When the are closing the terminal disable fullscreen mode so
+        // subsequent usage of the terminal is not fullscreen
+        "workbench.action.toggleMaximizedPanel",
+        // Show the terminal
+        "workbench.action.terminal.toggleTerminal",
+        // Auto select the main terminal
+        "workbench.action.terminal.focusAtIndex1"
       ]
     }
   },
