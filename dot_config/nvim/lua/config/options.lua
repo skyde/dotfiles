@@ -43,3 +43,8 @@ vim.opt.showtabline = 0
 
 -- Don't show whitespace characters like tabs by default
 vim.opt.list = false
+
+-- Use a blank space for deleted lines in diff mode
+vim.opt.fillchars:append({
+  diff = " ",
+})
