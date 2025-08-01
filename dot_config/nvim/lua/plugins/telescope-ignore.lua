@@ -160,5 +160,19 @@ return {
         end,
       })
     end, { desc = "Grep C++/Python files only" })
+
+    -- Search files by type using the word under cursor
+    vim.keymap.set("n", "<leader>st", function()
+      local ft = vim.bo.filetype
+      require("telescope").extensions.live_grep_args.live_grep_args({
+        default_text = vim.fn.expand("<cword>"),
+        additional_args = function()
+          if ft ~= "" then
+            return vim.list_extend({ "--type=" .. ft }, speedup_globs)
+          end
+          return speedup_globs
+        end,
+      })
+    end, { desc = "Search word in current filetype" })
   end,
 }
