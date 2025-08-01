@@ -28,6 +28,12 @@
 
 [difftool]
     prompt = false
+[difftool "nvimdiff"]
+    cmd = nvim -f -d "$LOCAL" "$REMOTE"
+
+[mergetool "nvimdiff3"]
+    cmd = nvim -f -d "$LOCAL" "$MERGED" "$REMOTE"
+    trustExitCode = false
 
 [delta "side-by-side"]
   side-by-side = true
