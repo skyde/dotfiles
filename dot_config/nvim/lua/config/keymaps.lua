@@ -73,7 +73,7 @@ end, { desc = "Source current file" })
 -- Reload the entire Neovim configuration and plugins
 vim.keymap.set("n", "<leader>rr", function()
   vim.cmd("source $MYVIMRC")
-  vim.cmd("Lazy reload")
+  vim.cmd("Lazy sync")
 end, { desc = "Reload config" })
 
 --------------------------------------------------------------------------
