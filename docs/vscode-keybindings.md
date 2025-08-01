@@ -43,6 +43,13 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 - `Shift+Alt+L` – go to previous conflict.
 - `Alt+L` – go to previous unhandled conflict.
 
+`<leader> c o` – accept current change.
+`<leader> c t` – accept incoming change.
+`<leader> c b` – accept both changes.
+`<leader> c 0` – accept selection.
+`] x` – next conflict.
+`[ x` – previous conflict.
+
 
 ## Vim Extension Mappings
 
@@ -136,6 +143,12 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `Shift+Alt+H` – go to next conflict region.
 - `Alt+L` – go to previous unhandled conflict.
 - `Shift+Alt+L` – go to previous conflict region.
+- `<leader> c o` – accept current change.
+- `<leader> c t` – accept incoming change.
+- `<leader> c b` – accept both changes.
+- `<leader> c 0` – accept selection.
+- `] x` – next conflict.
+- `[ x` – previous conflict.
 - `<leader> t r` – run current test
 - `<leader> t d` – debug current test
 - `<leader> t a` – run all tests
