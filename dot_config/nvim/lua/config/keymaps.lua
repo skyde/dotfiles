@@ -112,6 +112,14 @@ map_shift_f(12, ":bnext<CR>", { desc = "Next buffer" })
 map("n", "<leader>bh", "<cmd>tabmove -1<CR>", { desc = "Move tab left" })
 map("n", "<leader>bl", "<cmd>tabmove +1<CR>", { desc = "Move tab right" })
 
+-- Jump to tab by number
+for i = 1, 9 do
+  map("n", "<leader>" .. i, "<cmd>tabnext " .. i .. "<CR>", {
+    desc = "Go to tab " .. i,
+  })
+end
+map("n", "<leader>0", "<cmd>tablast<CR>", { desc = "Go to last tab" })
+
 -- Indent with Tab and unindent with Shift+Tab
 map("n", "<Tab>", ">>", { desc = "Indent line" })
 map("n", "<S-Tab>", "<<", { desc = "Unindent line" })
