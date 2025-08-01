@@ -12,7 +12,7 @@
 
 [merge]
     conflictstyle = diff3
-    tool = vscode
+    tool = nvimdiff3
 
 [mergetool]
     prompt = false
