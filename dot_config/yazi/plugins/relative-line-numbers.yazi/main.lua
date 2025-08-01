@@ -64,11 +64,11 @@ local render_numbers = ya.sync(function(_, mode)
 	-- 2) Patch Current:redraw so that the number column is prepended to
 	-- every row.  We cache the hovered index once so we don't recompute
 	-- it for each file.
-	Current.redraw = function(self)
-		local files = self._folder.window
-		if #files == 0 then
-			return self:empty()
-		end
+        Current.redraw = function(self)
+                local files = self._folder.window
+                if #files == 0 then
+                        return self:empty()
+                end
 
 		-- Determine which row is currently hovered.
 		local hovered = 1
@@ -89,11 +89,18 @@ local render_numbers = ya.sync(function(_, mode)
 			}):style(ent:style())
 		end
 
-		return {
-			ui.List(entities):area(self._area),
-			ui.Text(linemodes):area(self._area):align(ui.Align.RIGHT),
-		}
-	end
+                return {
+                        ui.List(entities):area(self._area),
+                        ui.Text(linemodes):area(self._area):align(ui.Align.RIGHT),
+                }
+        end
+
+        -- Trigger a final render so the layout accounts for the number column.
+        if ui.render then
+                ui.render()
+        else
+                ya.render()
+        end
 end)
 
 ----------------------------------------------------------------------
