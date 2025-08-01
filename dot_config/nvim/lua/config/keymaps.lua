@@ -70,6 +70,12 @@ vim.keymap.set("n", "zl", function()
   end
 end, { desc = "Source current file" })
 
+-- Reload the entire Neovim configuration and plugins
+vim.keymap.set("n", "<leader>rr", function()
+  vim.cmd("source $MYVIMRC")
+  vim.cmd("Lazy reload")
+end, { desc = "Reload config" })
+
 --------------------------------------------------------------------------
 -- Map normal shortcut (used by macros to NVim) -----------------------------------------------------
 --------------------------------------------------------------------------
