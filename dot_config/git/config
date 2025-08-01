@@ -12,10 +12,14 @@
 
 [merge]
     conflictstyle = diff3
-    tool = nvimdiff
+    tool = vscode
 
 [mergetool]
     prompt = false
+
+[mergetool "vscode"]
+    cmd = code --wait $MERGED
+    trustExitCode = true
 
 [diff]
     colorMoved = default
