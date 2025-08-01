@@ -410,44 +410,49 @@
   },
   // Merging
   {
-    "key": "alt+k",
-    "command": "merge-conflict.accept.current",
-    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
-  },
-  {
-    "key": "ctrl+alt+k",
-    "command": "merge-conflict.accept.all-current",
-    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
-  },
-  {
-    "key": "alt+j",
-    "command": "merge-conflict.accept.incoming",
-    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
-  },
-  {
-    "key": "ctrl+alt+j",
-    "command": "merge-conflict.accept.all-incoming",
-    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
-  },
-  {
     "key": "alt+h",
     "command": "merge.goToNextUnhandledConflict",
-    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
-  },
-  {
-    "key": "ctrl+alt+h",
-    "command": "merge-conflict.next",
-    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
-  },
-  {
-    "key": "ctrl+alt+l",
-    "command": "merge-conflict.previous",
-    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
+    "when": "isMergeEditor"
   },
   {
     "key": "alt+l",
     "command": "merge.goToPreviousUnhandledConflict",
-    "when": "(isMergeEditor || mergeConflictsCount > 0) && editorTextFocus"
+    "when": "isMergeEditor"
+  },
+  {
+    "key": "alt+k",
+    "command": "merge.toggleActiveConflictInput1",
+    "when": "isMergeEditor"
+  },
+  {
+    "key": "alt+j",
+    "command": "merge.toggleActiveConflictInput2",
+    "when": "isMergeEditor"
+  },
+  {
+    "key": "alt+y",
+    "command": "merge-conflict.accept.both",
+    "when": "isMergeEditor"
+  },
+  {
+    "key": "ctrl+alt+k",
+    "command": "merge.acceptAllInput1",
+    "when": "isMergeEditor"
+  },
+  {
+    "key": "ctrl+alt+j",
+    "command": "merge.acceptAllIput2",
+    "when": "isMergeEditor"
+  },
+  {
+    "key": "alt+n",
+    "command": "merge.goToNextUnhandledConflict",
+    "when": "isMergeEditor"
+  },
+  {
+    "key": "alt+e",
+    "command": "merge.goToPreviousUnhandledConflict",
+    "when": "isMergeEditor"
   },
   // Debug Navigation
   {
