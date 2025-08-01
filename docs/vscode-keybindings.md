@@ -51,6 +51,9 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
  `[ x` – previous conflict.
  `] c` – next change in diff.
  `[ c` – previous change in diff.
+`<leader> c 0` – accept selection.
+`] x` – next conflict.
+`[ x` – previous conflict.
 
 
 ## Vim Extension Mappings
