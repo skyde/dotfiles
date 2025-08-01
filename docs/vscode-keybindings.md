@@ -50,84 +50,84 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 
 ### Normal Mode
 - `<leader> v` – <C-v>
-- `<tab>` – editor.action.indentLines
-- `<S-tab>` – editor.action.outdentLines
+- `<tab>` – indent lines
+- `<S-tab>` – outdent lines
 - `<C-u>` – 16k
 - `<C-d>` – 16j
-- `<D-Left>` – workbench.action.navigateBack
-- `<D-Right>` – workbench.action.navigateForward
-- `<C-o>` – workbench.action.navigateBack
-- `<C-i>` – workbench.action.navigateForward
-- `<C-h>` – workbench.action.focusLeftGroup
-- `<C-j>` – workbench.action.focusBelowGroup
-- `<C-k>` – workbench.action.focusAboveGroup
+- `<D-Left>` – go back
+- `<D-Right>` – go forward
+- `<C-o>` – go back
+- `<C-i>` – go forward
+- `<C-h>` – focus left pane
+- `<C-j>` – focus pane below
+- `<C-k>` – focus pane above
 - `<Esc>` – <Esc>
 - `u` – undo
 - `<C-r>` – redo
-- `<C-l>` – workbench.action.focusRightGroup
-- `<leader> <leader>` – workbench.action.quickOpen
-- `<leader> a` – workbench.action.chat.open
-- `<leader> f m` – workbench.files.action.focusFilesExplorer
-- `<leader> f n` – workbench.action.files.newUntitledFile
-- `<leader> e` – workbench.view.explorer
-- `] b` – workbench.action.nextEditor
-- `[ b` – workbench.action.previousEditor
-- `<leader> b d` – workbench.action.closeActiveEditor
-- `<leader> b o` – workbench.action.closeOtherEditors
+- `<C-l>` – focus right pane
+- `<leader> <leader>` – quick open
+- `<leader> a` – open chat
+- `<leader> f m` – focus file explorer
+- `<leader> f n` – new file
+- `<leader> e` – open explorer
+- `] b` – next tab
+- `[ b` – previous tab
+- `<leader> b d` – close tab
+- `<leader> b o` – close other tabs
 - `<leader> b b` – <C-6>
-- `<leader> b u` – workbench.action.unpinEditor
-- `<leader> b p` – workbench.action.pinEditor
-- `<leader> b P` – workbench.action.closeOtherEditors
-- `<leader> b h` – workbench.action.moveEditorLeftInGroup
-- `<leader> b l` – workbench.action.moveEditorRightInGroup
+- `<leader> b u` – unpin tab
+- `<leader> b p` – pin tab
+- `<leader> b P` – close other tabs
+- `<leader> b h` – move tab left
+- `<leader> b l` – move tab right
 - `<S-h>` – :bprevious
 - `<S-l>` – :bnext
-- `<leader> w f` – workbench.action.toggleZenMode
-- `<leader> w F` – workbench.action.toggleFullScreen
+- `<leader> w f` – toggle Zen mode
+- `<leader> w F` – toggle fullscreen
 - `leader w v` – :vsplit
 - `leader w s` – :split
-- `leader w d` – workbench.action.closeActiveEditor
-- `leader w h` – workbench.action.focusLeftGroup
-- `leader w j` – workbench.action.focusBelowGroup
-- `leader w k` – workbench.action.focusAboveGroup
-- `leader w l` – workbench.action.focusRightGroup
-- `<leader> s g` – find-it-faster.findWithinFiles
-- `<leader> s f` – find-it-faster.findFiles
-- `<leader> s t` – find-it-faster.findWithinFilesWithTypeFilter
-- `<leader> s r` – find-it-faster.resumeSearch
+- `leader w d` – close tab
+- `leader w h` – focus left pane
+- `leader w j` – focus pane below
+- `leader w k` – focus pane above
+- `leader w l` – focus right pane
+- `<leader> s g` – search within files
+- `<leader> s f` – search files
+- `<leader> s t` – search files by type
+- `<leader> s r` – resume search
 - `s` – <leader> <leader> 2 s
 - `S` – <leader> <leader> 2 S
-- `g d` – editor.action.revealDefinition
-- `g p` – editor.action.peekDefinition
-- `g i` – editor.action.goToImplementation
-- `g r` – editor.action.goToReferences
-- `g h` – C_Cpp.SwitchHeaderSource
-- `g u` – editor.action.referenceSearch.trigger
-- `g n` – editor.action.showDefinitionPreviewHover
+- `g d` – go to definition
+- `g p` – peek definition
+- `g i` – go to implementation
+- `g r` – find references
+- `g h` – switch header/source
+- `g u` – find usages
+- `g n` – show definition preview
 - `v i g` – g g V G
 - `y i g` – g g V G y
 - `d i g` – g g V G d
-- `<leader> c r` – editor.action.rename
-- `<leader> c i` – editor.action.triggerParameterHints
-- `<leader> c e` – editor.action.triggerSuggest
-- `<leader> e e` – workbench.actions.view.problems
-- `<leader> e n` – editor.action.marker.next
-- `<leader> e p` – editor.action.marker.prev
-- `<leader> d b` – editor.debug.action.toggleBreakpoint
-- `<leader> d d` – workbench.debug.viewlet.action.disableAllBreakpoints
-- `<leader> d e` – workbench.debug.viewlet.action.enableAllBreakpoints
-- `<leader> d r` – workbench.debug.viewlet.action.removeAllBreakpoints
-- `<leader> d a` – workbench.debug.viewlet.action.focusBreakpointsView
-- `<leader> d c` – workbench.action.debug.continue
-- `<leader> g d` – git.openChange
-- `<leader> g s` – git.stage
-- `<leader> g u` – git.unstage
-- `<leader> g d` – git.openChange
-- `<leader> g w` – git.openFile
-- `<leader> g r` – git.revertSelectedRanges
-- `<leader> g h` – gitlens.showQuickCommitFileDetails
-- `<leader> g l` – files.openTimeline
-- `<leader> g n` – renameFile
+- `<leader> c r` – rename symbol
+- `<leader> c i` – show parameter hints
+- `<leader> c e` – show completions
+- `<leader> e e` – open problems view
+- `<leader> e n` – next problem
+- `<leader> e p` – previous problem
+- `<leader> d b` – toggle breakpoint
+- `<leader> d d` – disable all breakpoints
+- `<leader> d e` – enable all breakpoints
+- `<leader> d r` – remove all breakpoints
+- `<leader> d a` – focus breakpoints view
+- `<leader> d c` – continue debugging
+- `<leader> g d` – view file diff
+- `<leader> g s` – stage changes
+- `<leader> g u` – unstage changes
+- `<leader> g d` – view file diff
+- `<leader> g w` – open file in repo
+- `<leader> g r` – revert selected ranges
+- `<leader> g h` – show commit details
+- `<leader> g l` – open timeline
+- `<leader> g n` – rename file
 - `Alt+K` – accept current change during merge.
 - `Shift+Alt+K` – accept all current changes.
 - `Alt+J` – accept incoming change.
@@ -136,18 +136,18 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `Shift+Alt+H` – go to next conflict region.
 - `Alt+L` – go to previous unhandled conflict.
 - `Shift+Alt+L` – go to previous conflict region.
-- `<leader> t r` – testing.runCurrentTest
-- `<leader> t d` – testing.debugCurrentTest
-- `<leader> t a` – testing.runAll
-- `<leader> t R` – testing.reRunLastRun
-- `<leader> t o` – testing.showMostRecentOutput
-- `<leader> t f` – testing.runCurrentFile
-- `<leader> t e` – testing.openTestView
-- `<leader> m b` – workbench.action.tasks.build
-- `<leader> m c` – workbench.action.tasks.terminate
-- `<leader> m r` – workbench.action.debug.start
-- `<leader> m s` – workbench.action.debug.stop
-- `<leader> d g` – workbench.action.debug.setNextStatement
+- `<leader> t r` – run current test
+- `<leader> t d` – debug current test
+- `<leader> t a` – run all tests
+- `<leader> t R` – rerun last tests
+- `<leader> t o` – show test output
+- `<leader> t f` – run tests in file
+- `<leader> t e` – open test view
+- `<leader> m b` – run build task
+- `<leader> m c` – terminate task
+- `<leader> m r` – start debugging
+- `<leader> m s` – stop debugging
+- `<leader> d g` – set next statement
 - `Alt+H` – step over.
 - `Alt+L` – step into.
 - `Alt+K` – step out.
@@ -156,9 +156,9 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<Esc>` – <Esc> <C-g>u
 
 ### Visual Mode
-- `<tab>` – editor.action.indentLines
-- `<S-tab>` – editor.action.outdentLines
-- `<` – editor.action.outdentLines
-- `>` – editor.action.indentLines
-- `H` – editor.action.moveLinesDownAction
-- `L` – editor.action.moveLinesUpAction
+- `<tab>` – indent lines
+- `<S-tab>` – outdent lines
+- `<` – outdent lines
+- `>` – indent lines
+- `H` – move line down
+- `L` – move line up
