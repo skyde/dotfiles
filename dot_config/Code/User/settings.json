@@ -825,17 +825,16 @@
       "before": ["[", "c"],
       "commands": ["workbench.action.compareEditor.previousChange"]
     },
-    // {
-    //   // Change the current side of the diff
-    //   "before": ["<leader>", "c", "s"],
-    //   "commands": ["workbench.action.compareEditor.swapSides"]
-    // },
+    {
+      // Change the current side of the diff
+      "before": ["<leader>", "c", "s"],
+      "commands": ["diffEditor.switchSide"]
+    },
     {
       // Revert the current change
-      "before": ["<leader>", "c", "r"],
-      "commands": ["diffEditor.revert"]
+      "before": ["<leader>", "c", "c"],
+      "commands": ["git.revertSelectedRanges"]
     },
-    // workbench.action.compareEditor.
     // Testing
     {
       "before": ["<leader>", "t", "r"],

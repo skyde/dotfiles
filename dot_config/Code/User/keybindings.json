@@ -312,16 +312,16 @@
     "key": "escape",
     "when": "sideBarVisible && !editorFocus"
   },
-  {
-    "key": "ctrl+l",
-    "command": "diffEditor.switchSide",
-    "when": "isInDiffEditor"
-  },
-  {
-    "key": "ctrl+h",
-    "command": "diffEditor.switchSide",
-    "when": "isInDiffEditor"
-  },
+  // {
+  //   "key": "ctrl+l",
+  //   "command": "diffEditor.switchSide",
+  //   "when": "isInDiffEditor"
+  // },
+  // {
+  //   "key": "ctrl+h",
+  //   "command": "diffEditor.switchSide",
+  //   "when": "isInDiffEditor"
+  // },
   // Copilot Chat
   {
     // Focus back to the editor
@@ -359,42 +359,41 @@
   // Diff
   {
     // Goto next change
-    "key": "alt+l",
-    "command": "workbench.action.compareEditor.previousChange",
+    "key": "alt+down",
+    "command": "workbench.action.compareEditor.nextChange",
     "when": "textCompareEditorVisible && editorTextFocus"
   },
   {
     // Goto previous change
-    "key": "alt+h",
-    "command": "workbench.action.compareEditor.nextChange",
+    "key": "alt+up",
+    "command": "workbench.action.compareEditor.previousChange",
     "when": "textCompareEditorVisible && editorTextFocus"
   },
+  // {
+  //   // Revert the selected hunk
+  //   "key": "alt+k",
+  //   "command": "git.revertSelectedRanges",
+  //   "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
+  // },
+  // {
+  //   // Stage the selected hunk
+  //   "key": "ctrl+j",
+  //   "command": "git.stageSelectedRanges",
+  //   "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
+  // },
+  // {
+  //   // Unstage the selected hunk - this is not working for some reason but maybe would in some context
+  //   "key": "ctrl+alt+j",
+  //   "command": "git.unstageSelectedRanges",
+  //   "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
+  // },
 
-  {
-    // Revert the selected hunk
-    "key": "alt+k",
-    "command": "git.revertSelectedRanges",
-    "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
-  },
-  {
-    // Stage the selected hunk
-    "key": "ctrl+j",
-    "command": "git.stageSelectedRanges",
-    "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
-  },
-  {
-    // Unstage the selected hunk - this is not working for some reason but maybe would in some context
-    "key": "ctrl+alt+j",
-    "command": "git.unstageSelectedRanges",
-    "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
-  },
-
-  {
-    // Fallback revert
-    "key": "alt+shift+k",
-    "command": "diffEditor.revert",
-    "when": "isInDiffEditor && editorTextFocus"
-  },
+  // {
+  //   // Fallback revert
+  //   "key": "alt+shift+k",
+  //   "command": "diffEditor.revert",
+  //   "when": "isInDiffEditor && editorTextFocus"
+  // },
 
   // {
   //   // Pop up an in place 'peek' of the next diff in any file you are editing
@@ -410,38 +409,38 @@
   // },
   // Merging
   {
-    "key": "alt+h",
+    "key": "alt+down",
     "command": "merge.goToNextUnhandledConflict",
     "when": "isMergeEditor"
   },
   {
-    "key": "alt+l",
+    "key": "alt+up",
     "command": "merge.goToPreviousUnhandledConflict",
     "when": "isMergeEditor"
   },
-  {
-    "key": "alt+k",
-    "command": "merge.toggleActiveConflictInput1",
-    "when": "isMergeEditor"
-  },
-  {
-    "key": "alt+j",
-    "command": "merge.toggleActiveConflictInput2",
-    "when": "isMergeEditor"
-  },
+  // {
+  //   "key": "alt+k",
+  //   "command": "merge.toggleActiveConflictInput1",
+  //   "when": "isMergeEditor"
+  // },
+  // {
+  //   "key": "alt+j",
+  //   "command": "merge.toggleActiveConflictInput2",
+  //   "when": "isMergeEditor"
+  // },
   // Debug Navigation
   {
-    "key": "alt+h",
+    "key": "alt+down",
     "command": "workbench.action.debug.stepOver",
     "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
   },
   {
-    "key": "alt+l",
+    "key": "alt+up",
     "command": "workbench.action.debug.stepInto",
     "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
   },
   {
-    "key": "alt+k",
+    "key": "alt+h",
     "command": "workbench.action.debug.stepOut",
     "when": "inDebugMode && debugState == 'stopped' && editorTextFocus"
   },
