@@ -13,3 +13,12 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
     vim.bo.filetype = "json"
   end,
 })
+
+-- Ensure a pure black background regardless of colorscheme
+vim.api.nvim_create_autocmd("ColorScheme", {
+  pattern = "*",
+  callback = function()
+    vim.api.nvim_set_hl(0, "Normal", { bg = "#000000" })
+    vim.api.nvim_set_hl(0, "NormalFloat", { bg = "#000000" })
+  end,
+})
