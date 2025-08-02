@@ -440,11 +440,21 @@
       "commands": ["find-it-faster.findFiles"]
     },
     {
+      // Start a new search within files
+      "before": ["<leader>", "s", "s"],
+      "commands": [
+        // Search within files
+        "find-it-faster.findWithinFiles",
+        "extension.vim_escape"
+      ]
+    },
+    {
+      // Search for the current word within files
       "before": ["<leader>", "s", "t"],
       "commands": [
         // Automatically search for the word under the cursor
         "editor.action.addSelectionToNextFindMatch",
-        // If you want you can search everything
+        // Search within files
         "find-it-faster.findWithinFiles",
         "extension.vim_escape"
       ]
@@ -612,6 +622,21 @@
       "commands": ["workbench.debug.viewlet.action.focusBreakpointsView"]
     },
     // Debug
+    {
+      // Step Over (next)
+      "before": ["<leader>", "d", "n"],
+      "commands": ["workbench.action.debug.stepOver"]
+    },
+    {
+      // Step Into
+      "before": ["<leader>", "d", "i"],
+      "commands": ["workbench.action.debug.stepInto"]
+    },
+    {
+      // Step Out
+      "before": ["<leader>", "d", "o"],
+      "commands": ["workbench.action.debug.stepOut"]
+    },
     {
       // Continue
       "before": ["<leader>", "d", "c"],

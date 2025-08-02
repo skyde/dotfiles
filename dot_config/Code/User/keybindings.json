@@ -353,7 +353,6 @@
     "when": "textCompareEditorVisible && editorTextFocus"
   },
 
-
   // Merging
   {
     "key": "alt+down",
