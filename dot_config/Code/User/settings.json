@@ -585,48 +585,60 @@
       "before": ["<leader>", "e", "p"],
       "commands": ["editor.action.marker.prev"]
     },
-    // Debug
+    // Debug Breakpoints
     {
+      // Toggle breakpoint
       "before": ["<leader>", "d", "b"],
       "commands": ["editor.debug.action.toggleBreakpoint"]
     },
     {
+      // Disable all breakpoints
       "before": ["<leader>", "d", "d"],
       "commands": ["workbench.debug.viewlet.action.disableAllBreakpoints"]
     },
     {
+      // Enable all breakpoints
       "before": ["<leader>", "d", "e"],
       "commands": ["workbench.debug.viewlet.action.enableAllBreakpoints"]
     },
     {
+      // Remove all breakpoints
       "before": ["<leader>", "d", "r"],
       "commands": ["workbench.debug.viewlet.action.removeAllBreakpoints"]
     },
     {
+      // Focus breakpoints view
       "before": ["<leader>", "d", "a"],
       "commands": ["workbench.debug.viewlet.action.focusBreakpointsView"]
     },
+    // Debug
     {
+      // Continue
       "before": ["<leader>", "d", "c"],
       "commands": ["workbench.action.debug.continue"]
     },
     {
+      // Pause
       "before": ["<leader>", "d", "p"],
       "commands": ["workbench.action.debug.pause"]
     },
     {
-      "before": ["<leader>", "d", "t"], // Terminate (Stop)
+      // Terminate
+      "before": ["<leader>", "d", "t"],
       "commands": ["workbench.action.debug.stop"]
     },
     {
-      "before": ["<leader>", "d", "R"], // Restart  (capital R = “Reload”)
+      // Restart
+      "before": ["<leader>", "d", "R"],
       "commands": ["workbench.action.debug.restart"]
     },
     {
-      "before": ["<leader>", "d", "L"], // Toggle Log‑point (capital L = “Log”)
+      // Toggle log point
+      "before": ["<leader>", "d", "L"],
       "commands": ["editor.debug.action.toggleLogPoint"]
     },
     {
+      // Conditional Breakpoint
       "before": ["<leader>", "d", "C"], // Conditional BP (capital C)
       "commands": ["editor.debug.action.conditionalBreakpoint"]
     },
@@ -642,11 +654,13 @@
     },
     // ── Watches & evaluation ─────────────────────────────────────────────────────
     {
-      "before": ["<leader>", "d", "w"], // Add selection → Watch
+      // Add selection → Watch
+      "before": ["<leader>", "d", "w"],
       "commands": ["editor.debug.action.selectionToWatch"]
     },
     {
-      "before": ["<leader>", "d", "x"], // Evaluate selection in REPL
+      // Evaluate selection in REPL
+      "before": ["<leader>", "d", "x"],
       "commands": ["editor.debug.action.selectionToRepl"]
     },
 
