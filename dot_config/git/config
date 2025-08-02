@@ -23,11 +23,17 @@
 
 [diff]
     colorMoved = default
-    tool = nvimdiff
+    tool = vscode
     algorithm = histogram
 
 [difftool]
     prompt = false
+
+[difftool "vscode"]
+    cmd = code --wait --diff $LOCAL $REMOTE
+    prompt = false
+    trustExitCode = true
+
 [difftool "nvimdiff"]
     cmd = nvim -f -d "$LOCAL" "$REMOTE"
 

@@ -790,14 +790,20 @@
       "commands": ["mergeEditor.acceptMerge"]
     },
     {
-      // Goto next conflict
+      // Goto next conflict or change
       "before": ["<leader>", "c", "n"],
-      "commands": ["merge.goToNextUnhandledConflict"]
+      "commands": [
+        "workbench.action.compareEditor.nextChange",
+        "merge.goToNextUnhandledConflict"
+      ]
     },
     {
-      // Goto previous conflict
+      // Goto previous conflict or change
       "before": ["<leader>", "c", "p"],
-      "commands": ["merge.goToPreviousUnhandledConflict"]
+      "commands": [
+        "workbench.action.compareEditor.previousChange",
+        "merge.goToPreviousUnhandledConflict"
+      ]
     },
     {
       // Goto next conflict
@@ -809,6 +815,27 @@
       "before": ["[", "x"],
       "commands": ["merge.goToPreviousUnhandledConflict"]
     },
+    {
+      // Goto next conflict
+      "before": ["]", "c"],
+      "commands": ["workbench.action.compareEditor.nextChange"]
+    },
+    {
+      // Goto previous conflict
+      "before": ["[", "c"],
+      "commands": ["workbench.action.compareEditor.previousChange"]
+    },
+    // {
+    //   // Change the current side of the diff
+    //   "before": ["<leader>", "c", "s"],
+    //   "commands": ["workbench.action.compareEditor.swapSides"]
+    // },
+    {
+      // Revert the current change
+      "before": ["<leader>", "c", "r"],
+      "commands": ["diffEditor.revert"]
+    },
+    // workbench.action.compareEditor.
     // Testing
     {
       "before": ["<leader>", "t", "r"],

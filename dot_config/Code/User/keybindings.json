@@ -396,18 +396,18 @@
     "when": "isInDiffEditor && editorTextFocus"
   },
 
-  {
-    // Pop up an in place 'peek' of the next diff in any file you are editing
-    "key": "alt+l",
-    "command": "editor.action.dirtydiff.previous",
-    "when": "editorTextFocus && !isInDiffEditor"
-  },
-  {
-    // Pop up an in place 'peek' of the previous diff in any file you are editing
-    "key": "alt+h",
-    "command": "editor.action.dirtydiff.next",
-    "when": "editorTextFocus && !isInDiffEditor"
-  },
+  // {
+  //   // Pop up an in place 'peek' of the next diff in any file you are editing
+  //   "key": "alt+l",
+  //   "command": "editor.action.dirtydiff.previous",
+  //   "when": "editorTextFocus && !isInDiffEditor"
+  // },
+  // {
+  //   // Pop up an in place 'peek' of the previous diff in any file you are editing
+  //   "key": "alt+h",
+  //   "command": "editor.action.dirtydiff.next",
+  //   "when": "editorTextFocus && !isInDiffEditor"
+  // },
   // Merging
   {
     "key": "alt+h",
@@ -427,31 +427,6 @@
   {
     "key": "alt+j",
     "command": "merge.toggleActiveConflictInput2",
-    "when": "isMergeEditor"
-  },
-  {
-    "key": "alt+y",
-    "command": "merge-conflict.accept.both",
-    "when": "isMergeEditor"
-  },
-  {
-    "key": "ctrl+alt+k",
-    "command": "merge.acceptAllInput1",
-    "when": "isMergeEditor"
-  },
-  {
-    "key": "ctrl+alt+j",
-    "command": "merge.acceptAllIput2",
-    "when": "isMergeEditor"
-  },
-  {
-    "key": "alt+n",
-    "command": "merge.goToNextUnhandledConflict",
-    "when": "isMergeEditor"
-  },
-  {
-    "key": "alt+e",
-    "command": "merge.goToPreviousUnhandledConflict",
     "when": "isMergeEditor"
   },
   // Debug Navigation
