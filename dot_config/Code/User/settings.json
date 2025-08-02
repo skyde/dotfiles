@@ -647,8 +647,10 @@
       "before": ["<leader>", "d", "g"],
       "commands": ["workbench.action.debug.setNextStatement"]
     },
-    // Debug Active
+    // Hover
     {
+      // Show the hover - or the debug hover
+      // TODO: Make sure the debug hover is working here
       "before": ["<leader>", "Backspace"],
       "commands": [
         "editor.action.showHover",
