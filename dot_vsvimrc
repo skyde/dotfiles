@@ -148,8 +148,6 @@ nmap s gS:vsc Tools.InvokePeasyMotionTwoCharJump<CR>
 nmap S gS:vsc Tools.InvokePeasyMotionJumpToDocumentTab<CR>
 
 " Resharper
-" noremap ] :vsc ReSharper.ReSharper_GotoNextMember<CR>
-" noremap [ :vsc ReSharper.ReSharper_GotoPrevMember<CR>
 
 map <leader>tr :vsc ReSharper.ReSharper_UnitTestRunFromContext<CR>
 map <leader>td :vsc ReSharper.ReSharper_UnitTestDebugContext<CR>
@@ -167,7 +165,6 @@ map <leader>mr :vsc Debug.Start<CR>
 map <leader>ms :vsc Debug.StopDebugging<CR>
 
 " TODO: Add a macro which does this. replace ms with the macro and remove mc
-" map <leader>mt :vsc Build.Cancel<CR>:vsc Debug.StopDebugging<CR>
 
 " Fuzzy Find
 
@@ -178,9 +175,6 @@ map <leader>sg :vsc Tools.FastFind.OpenDocked<CR>
 
 " Set fullscreen mode using a plugin called 'Minimal VS Plugin' (the mnemonic is Window -> Fullscreen)
 nnoremap <leader>wf :vsc View.Hidemenu<CR>
-" nnoremap <leader>ws :vsc Window.NewVerticalTabGroup<CR>
-" nnoremap <leader>wv :vsc Window.Split<CR>
-" nnoremap <leader>wr :vsc Window.RemoveSplit<CR>
 
 noremap <leader>wp :vsc Window.PinTab<CR>
 noremap <leader>wP :vsc Window.CloseAllButPinned<CR>

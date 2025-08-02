@@ -216,7 +216,6 @@
       ]
     }
   },
-  // Terminal
   {
     "key": "cmd+t",
     "command": "workbench.action.closePanel",
@@ -312,16 +311,6 @@
     "key": "escape",
     "when": "sideBarVisible && !editorFocus"
   },
-  // {
-  //   "key": "ctrl+l",
-  //   "command": "diffEditor.switchSide",
-  //   "when": "isInDiffEditor"
-  // },
-  // {
-  //   "key": "ctrl+h",
-  //   "command": "diffEditor.switchSide",
-  //   "when": "isInDiffEditor"
-  // },
   // Copilot Chat
   {
     // Focus back to the editor
@@ -329,12 +318,6 @@
     "command": "workbench.action.focusActiveEditorGroup",
     "when": "view.workbench.panel.chat.view.copilot.visible && !editorFocus"
   },
-  // // Git
-  // {
-  //   "command": "workbench.action.toggleSidebarVisibility",
-  //   "key": "escape",
-  //   "when": "explorerViewletVisible && !inputFocus"
-  // },
   // Explorer
   {
     "key": "o",
@@ -369,44 +352,8 @@
     "command": "workbench.action.compareEditor.previousChange",
     "when": "textCompareEditorVisible && editorTextFocus"
   },
-  // {
-  //   // Revert the selected hunk
-  //   "key": "alt+k",
-  //   "command": "git.revertSelectedRanges",
-  //   "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
-  // },
-  // {
-  //   // Stage the selected hunk
-  //   "key": "ctrl+j",
-  //   "command": "git.stageSelectedRanges",
-  //   "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
-  // },
-  // {
-  //   // Unstage the selected hunk - this is not working for some reason but maybe would in some context
-  //   "key": "ctrl+alt+j",
-  //   "command": "git.unstageSelectedRanges",
-  //   "when": "isInDiffEditor && !isInDiffLeftEditor && editorTextFocus"
-  // },
 
-  // {
-  //   // Fallback revert
-  //   "key": "alt+shift+k",
-  //   "command": "diffEditor.revert",
-  //   "when": "isInDiffEditor && editorTextFocus"
-  // },
 
-  // {
-  //   // Pop up an in place 'peek' of the next diff in any file you are editing
-  //   "key": "alt+l",
-  //   "command": "editor.action.dirtydiff.previous",
-  //   "when": "editorTextFocus && !isInDiffEditor"
-  // },
-  // {
-  //   // Pop up an in place 'peek' of the previous diff in any file you are editing
-  //   "key": "alt+h",
-  //   "command": "editor.action.dirtydiff.next",
-  //   "when": "editorTextFocus && !isInDiffEditor"
-  // },
   // Merging
   {
     "key": "alt+down",
@@ -418,16 +365,6 @@
     "command": "merge.goToPreviousUnhandledConflict",
     "when": "isMergeEditor"
   },
-  // {
-  //   "key": "alt+k",
-  //   "command": "merge.toggleActiveConflictInput1",
-  //   "when": "isMergeEditor"
-  // },
-  // {
-  //   "key": "alt+j",
-  //   "command": "merge.toggleActiveConflictInput2",
-  //   "when": "isMergeEditor"
-  // },
   // Debug Navigation
   {
     "key": "alt+down",
@@ -467,60 +404,4 @@
     "args": { "text": "\u001B[15;2~" }, // sends Shift‑F5
     "when": "terminalFocus"
   }
-  // Terminal
-  // {
-  //   // There is an issue with the find it faster plugin where it does not focus your last editor when you press q, so this fixes that
-  //   "key": "q",
-  //   "command": "runCommands",
-  //   // This only activates when the 'editor as a tab' mode is active. Would be better to use a context set by the find it faster plugin
-  //   "when": "terminalFocus && terminalEditorActive",
-  //   "args": {
-  //     "commands": [
-  //       {
-  //         "command": "workbench.action.terminal.sendSequence",
-  //         // Escape keycode
-  //         "args": { "text": "\u001b" }
-  //       },
-  //       "workbench.action.closeActiveEditor",
-  //       "extension.vim_escape"
-  //     ]
-  //   }
-  // }
-  // {
-  //   // There is an issue with the find it faster plugin where it does not focus your last editor when you press escape, so this fixes that
-  //   "key": "escape",
-  //   "command": "runCommands",
-  //   // This only activates when the 'editor as a tab' mode is active. Would be better to use a context set by the find it faster plugin
-  //   "when": "terminalFocus && terminalEditorActive",
-  //   "args": {
-  //     "commands": [
-  //       {
-  //         "command": "workbench.action.terminal.sendSequence",
-  //         // Escape keycode
-  //         "args": { "text": "\u001b" }
-  //       },
-  //       "workbench.action.closeActiveEditor",
-  //       "extension.vim_escape"
-  //     ]
-  //   }
-  // }
-  // {
-  //   // There is an issue in the find it faster plugin where it does not clear your last selection when you do a search, so this fixes that
-  //   "key": "enter",
-  //   "command": "runCommands",
-  //   // This only activates when the 'editor as a tab' mode is active. Would be better to use a context set by the find it faster plugin
-  //   "when": "terminalFocus && terminalEditorActive",
-  //   "args": {
-  //     "commands": [
-  //       {
-  //         "command": "workbench.action.terminal.sendSequence",
-  //         // Enter keycode
-  //         "args": { "text": "\u000D" }
-  //       },
-  //       "workbench.action.focusActiveEditorGroup",
-  //       "workbench.action.navigateBack",
-  //       "extension.vim_escape"
-  //     ]
-  //   }
-  // }
 ]
