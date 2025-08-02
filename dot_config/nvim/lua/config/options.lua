@@ -2,6 +2,9 @@
 -- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
 -- Add any additional options here
 
+-- Enable true color support
+vim.opt.termguicolors = true
+
 -- Prevent 'edge hugging'
 vim.o.scrolloff = 8
 
