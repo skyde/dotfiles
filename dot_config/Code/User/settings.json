@@ -650,7 +650,10 @@
     // Debug Active
     {
       "before": ["<leader>", "Backspace"],
-      "commands": ["editor.debug.action.showDebugHover"]
+      "commands": [
+        "editor.action.showHover",
+        "editor.debug.action.showDebugHover"
+      ]
     },
     // ── Watches & evaluation ─────────────────────────────────────────────────────
     {
