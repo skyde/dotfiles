@@ -719,36 +719,26 @@
       "before": ["<leader>", "g", "s"],
       "commands": ["git.stage"]
     },
-    // (u)nstage – the inverse of stage. Same context rules.
-    { "before": ["<leader>", "g", "u"], "commands": ["git.unstage"] }, // [SCM][DIFF][EDIT]
-
-    // (w)orktree – when you’re *in* that diff, switch back to the live file.
-    { "before": ["<leader>", "g", "w"], "commands": ["git.openFile"] }, // [DIFF]
-
-    // ── 3. Throw-away changes ───────────────────────────────────────────────
-    // (r)evert – inside a diff, discard ONLY the selected lines/hunks.
-    // {
-    //   "before": ["<leader>", "g", "r"],
-    //   "commands": ["git.revertSelectedRanges"]
-    // }, // [DIFF]
-
-    // ── 4. Inspect history ───────────────────────────────────────────────────
-    // (h)istory popup – GitLens quick view of the last commit touching
-    // the current line/file.
     {
+      // Unstage the current file you have open
+      "before": ["<leader>", "g", "u"],
+      "commands": ["git.unstage"]
+    },
+    {
+      // Worktree - when you are in a diff go back to the actual file
+      "before": ["<leader>", "g", "w"],
+      "commands": ["git.openFile"]
+    },
+    {
+      // Git lens history of the of the last commit touching the current line / file
       "before": ["<leader>", "g", "h"],
       "commands": ["gitlens.showQuickCommitFileDetails"]
-    }, // [EDIT]
-
-    // (l)og timeline – opens the Timeline side-pane with full commit history,
-    // file-saves, and extension events.
-    { "before": ["<leader>", "g", "L"], "commands": ["files.openTimeline"] }, // [EDIT]
-
-    // ── 5. File maintenance ─────────────────────────────────────────────────
-    // re(n)ame – triggers the Explorer rename (same as F2) or, if focus is on
-    // the editor tab header, renames the file on disk and updates the buffer.
-    { "before": ["<leader>", "g", "n"], "commands": ["renameFile"] }, // [EXPL][EDIT]
-
+    },
+    {
+      // Git lens version of log of current file
+      "before": ["<leader>", "g", "L"],
+      "commands": ["files.openTimeline"]
+    },
     // Merge
     {
       // Accept Ours
