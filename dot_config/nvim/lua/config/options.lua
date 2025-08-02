@@ -40,18 +40,19 @@ vim.opt.clipboard:append("unnamedplus")
 
 vim.diagnostic.config({ underline = false })
 
--- Never show the tabline
-vim.opt.showtabline = 0
-
 -- Do not highlight the current line
 vim.opt.cursorline = false
 
 -- Remove the sign column gutter
 vim.opt.signcolumn = "no"
 
--- Use a bright orange block cursor with black text
-vim.opt.guicursor =
-  "n-v-c-sm:block-Cursor,i-ci-ve:ver25-Cursor,r-cr:hor20-Cursor,o:hor50-Cursor"
+-- Use a bright orange block cursor in normal mode and a hollow block when inserting
+vim.opt.guicursor = {
+  "n-v-c:block-Cursor", -- Normal/Visual/Command
+  "i-ci:ver25-Cursor", -- Insert & Cmd‑line insert
+  "r-cr:hor20-Cursor", -- Replace
+  "o:hor50-Cursor", -- Operator‑pending
+}
 
 -- Don't show whitespace characters like tabs by default
 vim.opt.list = false
