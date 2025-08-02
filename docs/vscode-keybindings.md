@@ -23,9 +23,9 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 - `Shift+F7` – stop build or debugging.
 
 ## Debugging
-- `Alt+H` – step over.
-- `Alt+L` – step into.
-- `Alt+K` – step out.
+- `Alt+Down` – step over.
+- `Alt+Up` – step into.
+- `Alt+H` – step out.
 
 ## Explorer
 - `Escape` – toggle the sidebar when focus is in the explorer.
@@ -35,7 +35,7 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 - `d` – delete the selected file.
 
 ## Copilot Chat
-- `Escape` – close Copilot Chat when focused.
+- `Escape` – focus the editor when Copilot Chat is active.
 
 ## Merge Conflicts
 - `Alt+Down` – go to next unhandled conflict.
