@@ -22,12 +22,6 @@ which is also symlinked for use by the Cursor editor.
 - `<leader><leader>` – ReSharper goto file.
 - `<C-s>` – format document and save (works in all modes).
 
-## File Operations
-- `<leader>fm` – open [Yazi](https://github.com/sxyazi/yazi) in the terminal at the current file.
-- `<leader>fM` – open containing folder.
-- `<leader>r` – open terminal window.
-- `<leader>e` – show Solution Explorer.
-
 ## Navigation and Code
 - `gd` – go to definition.
 - `gp` – peek definition.
@@ -41,32 +35,10 @@ which is also symlinked for use by the Cursor editor.
 - `<leader>cR` – rename file.
 - `<leader>ci` – show parameter info.
 
-## Version Control
-- `<leader>gd` – diff against depot.
-- `<leader>go` – open in P4V.
-- `<leader>gr` – revert if unchanged.
-- `<leader>gR` – revert file.
-- `<leader>ga` – mark for add.
-- `<leader>gD` – mark for delete.
-- `<leader>gh` – file history.
-- `<leader>gt` – timelapse view.
-
-## Merge Conflicts
-- `Alt+K` – accept current change.
-- `Shift+Alt+K` – accept all current changes.
-- `Alt+J` – accept incoming change.
-- `Shift+Alt+J` – accept all incoming changes.
-- `Alt+H` – go to next unhandled conflict.
-- `Shift+Alt+H` – go to next conflict region.
-- `Alt+L` – go to previous unhandled conflict.
-- `Shift+Alt+L` – go to previous conflict region.
-
-## Refactoring and Errors
-- `<leader>ce` – Resharper quick fix.
-- `<leader>.` – quick actions for position.
-- `<leader>ee` – show error list.
-- `<leader>en` – next error.
-- `<leader>ep` – previous error.
+## File Operations
+- `<leader>fm` – open containing folder.
+- `<leader>r` – open terminal window.
+- `<leader>e` – show Solution Explorer.
 
 ## Tabs and Windows
 - `]b` / `[b` – next/previous tab.
@@ -78,6 +50,30 @@ which is also symlinked for use by the Cursor editor.
 - `s` – Peasy Motion two‑char jump.
 - `S` – Peasy Motion jump to tab.
 
+## Version Control
+- `<leader>gd` – diff against depot.
+- `<leader>go` – open in P4V.
+- `<leader>gr` – revert if unchanged.
+- `<leader>gR` – revert file.
+- `<leader>ga` – mark for add.
+- `<leader>gD` – mark for delete.
+- `<leader>gh` – file history.
+- `<leader>gt` – timelapse view.
+
+## Refactoring and Errors
+- `<leader>ce` – Resharper quick fix.
+- `<leader>.` – quick actions for position.
+- `<leader>ee` – show error list.
+- `<leader>en` – next error.
+- `<leader>ep` – previous error.
+
+## Build and Search
+- `<leader>mb` – build solution.
+- `<leader>mc` – cancel build.
+- `<leader>mr` – start debugging.
+- `<leader>ms` – stop debugging.
+- `<leader>sg` – open ReSharper Fast Find.
+
 ## Unit Testing
 - `<leader>tr` – run tests from context.
 - `<leader>td` – debug tests from context.
@@ -86,13 +82,6 @@ which is also symlinked for use by the Cursor editor.
 - `<leader>tt` – open unit test sessions.
 - `<leader>e` – next error in solution.
 - `<leader>E` – previous error in solution.
-
-## Build and Search
-- `<leader>mb` – build solution.
-- `<leader>mc` – cancel build.
-- `<leader>mr` – start debugging.
-- `<leader>ms` – stop debugging.
-- `<leader>sg` – open ReSharper Fast Find.
 
 ## Window Management
 - `<leader>wf` – toggle fullscreen (via Minimal VS Plugin).
@@ -111,6 +100,16 @@ which is also symlinked for use by the Cursor editor.
 - `Alt+H` – step over.
 - `Alt+L` – step into.
 - `Alt+K` – step out.
+
+## Merge Conflicts
+- `Alt+K` – accept current change.
+- `Shift+Alt+K` – accept all current changes.
+- `Alt+J` – accept incoming change.
+- `Shift+Alt+J` – accept all incoming changes.
+- `Alt+H` – go to next unhandled conflict.
+- `Shift+Alt+H` – go to next conflict region.
+- `Alt+L` – go to previous unhandled conflict.
+- `Shift+Alt+L` – go to previous conflict region.
 
 ## Hardware Macro Keys
 These key combinations are implemented via keyboard macros rather than in `dot_vsvimrc`:

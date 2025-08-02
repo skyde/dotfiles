@@ -3,52 +3,43 @@
 This document lists all custom shortcuts defined in [`dot_config/Code/User/keybindings.json`](../dot_config/Code/User/keybindings.json). The same file is symlinked for the Cursor editor.
 
 ## Navigation
+- `Ctrl+Tab` – switch to the next tab (Windows only).
+- `Ctrl+Shift+Tab` – switch to the previous tab (Windows only).
 - `PageDown` – scroll one page down and move the cursor to the top of the viewport (matches Vim behavior).
 - `PageUp` – scroll one page up and move the cursor to the bottom of the viewport (matches Vim behavior).
 - `Shift+F4` – scroll up 16 lines.
 - `Shift+F6` – scroll down 16 lines.
-- `Ctrl+Tab` – switch to the next tab (Windows only).
-- `Ctrl+Shift+Tab` – switch to the previous tab (Windows only).
+
+## Terminal
+- `Ctrl+/` – toggle the integrated terminal.
+- `Cmd+T` – toggle the terminal visibility and exit fullscreen if needed.
+- `Cmd+S` – send Ctrl+S to the integrated terminal when focused.
 
 ## Build and Search
 - `Shift+F2` – run the build task.
 - `Shift+F3` – quick open file or symbol.
-- `Shift+F7` – stop build or debugging.
 - `Shift+F8` – go to definition.
 - `Shift+F11` – toggle comment for the current line.
+- `Shift+F7` – stop build or debugging.
 
-## Terminal
-- `Ctrl+/` – toggle the integrated terminal.
-- `Ctrl+S` – send Ctrl+S to the integrated terminal when focused.
-- `Cmd+T` – toggle the terminal visibility and exit fullscreen if needed.
+## Debugging
+- `Alt+H` – step over.
+- `Alt+L` – step into.
+- `Alt+K` – step out.
 
 ## Explorer
 - `Escape` – toggle the sidebar when focus is in the explorer.
 - `o` – create a new file.
-- `c` – rename the selected file.
 - `Shift+O` – create a new folder.
+- `c` – rename the selected file.
 - `d` – delete the selected file.
 
 ## Copilot Chat
 - `Escape` – close Copilot Chat when focused.
-- `Ctrl+N` – start a new conversation in Copilot Chat when the chat window is open.
 
 ## Merge Conflicts
-- `Alt+K` – accept current change.
-- `Shift+Alt+K` – accept all current changes.
-- `Alt+J` – accept incoming change.
-- `Shift+Alt+J` – accept all incoming changes.
-- `Alt+H` – go to next unhandled conflict.
-- `Shift+Alt+H` – go to next conflict.
-- `Shift+Alt+L` – go to previous conflict.
-- `Alt+L` – go to previous unhandled conflict.
-
-`<leader> c o` – accept current change.
-`<leader> c t` – accept incoming change.
-`<leader> c b` – accept both changes.
-`<leader> c 0` – accept selection.
-`] x` – next conflict.
-`[ x` – previous conflict.
+- `Alt+Down` – go to next unhandled conflict.
+- `Alt+Up` – go to previous unhandled conflict.
 
 
 ## Vim Extension Mappings
@@ -135,20 +126,6 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> g h` – show commit details
 - `<leader> g l` – open timeline
 - `<leader> g n` – rename file
-- `Alt+K` – accept current change during merge.
-- `Shift+Alt+K` – accept all current changes.
-- `Alt+J` – accept incoming change.
-- `Shift+Alt+J` – accept all incoming changes.
-- `Alt+H` – go to next unhandled conflict.
-- `Shift+Alt+H` – go to next conflict region.
-- `Alt+L` – go to previous unhandled conflict.
-- `Shift+Alt+L` – go to previous conflict region.
-- `<leader> c o` – accept current change.
-- `<leader> c t` – accept incoming change.
-- `<leader> c b` – accept both changes.
-- `<leader> c 0` – accept selection.
-- `] x` – next conflict.
-- `[ x` – previous conflict.
 - `<leader> t r` – run current test
 - `<leader> t d` – debug current test
 - `<leader> t a` – run all tests
@@ -161,9 +138,6 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> m r` – start debugging
 - `<leader> m s` – stop debugging
 - `<leader> d g` – set next statement
-- `Alt+H` – step over.
-- `Alt+L` – step into.
-- `Alt+K` – step out.
 ### Insert Mode
 
 - `<Esc>` – <Esc> <C-g>u
