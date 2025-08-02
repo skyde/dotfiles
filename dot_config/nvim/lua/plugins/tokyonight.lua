@@ -16,13 +16,15 @@ return {
       on_colors = function(colors)
         colors.bg = "#000000"
         colors.bg_dark = "#000000"
-        colors.bg_float = "#000000"
+        colors.bg_float = "#0d0d0d"
         colors.bg_highlight = "#111111"
       end,
       on_highlights = function(hl, colors)
         hl.Normal = { bg = colors.bg }
-        hl.NormalFloat = { bg = colors.bg }
-        hl.FloatBorder = { bg = colors.bg, fg = colors.fg_dark }
+        hl.NormalFloat = { bg = colors.bg_float }
+        hl.FloatBorder = { bg = colors.bg_float, fg = colors.fg_dark }
+        hl.Cursor = { fg = "#000000", bg = "#ff8800" }
+        hl.CursorLineNr = { fg = colors.blue }
       end,
     },
     config = function(_, opts)

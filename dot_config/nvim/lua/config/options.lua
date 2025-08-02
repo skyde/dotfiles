@@ -38,11 +38,20 @@ end
 
 vim.opt.clipboard:append("unnamedplus")
 
--- Disable underlined diagnostics (squiggles)
 vim.diagnostic.config({ underline = false })
 
--- Hide the tabline unless multiple tab pages are open
+-- Never show the tabline
 vim.opt.showtabline = 0
+
+-- Do not highlight the current line
+vim.opt.cursorline = false
+
+-- Remove the sign column gutter
+vim.opt.signcolumn = "no"
+
+-- Use a bright orange block cursor with black text
+vim.opt.guicursor =
+  "n-v-c-sm:block-Cursor,i-ci-ve:ver25-Cursor,r-cr:hor20-Cursor,o:hor50-Cursor"
 
 -- Don't show whitespace characters like tabs by default
 vim.opt.list = false
