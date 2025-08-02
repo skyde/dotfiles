@@ -709,33 +709,28 @@
         "vim.enterInsertMode"
       ]
     },
-    // [EDIT][SCM]
-    { "before": ["<leader>", "g", "d"], "commands": ["git.openChange"] }, // [EDIT][SCM]
-    // ── 1. Stage / Unstage ────────────────────────────────────────────────────
-    // (s)tage - adds the whole file OR just the highlighted hunks to the index.
-    // Works from editor, diff view, or the SCM list.
-    { "before": ["<leader>", "g", "s"], "commands": ["git.stage"] }, // [SCM][DIFF][EDIT]
-
+    {
+      // Open a diff for the changes to the current file
+      "before": ["<leader>", "g", "d"],
+      "commands": ["git.openChange"]
+    },
+    {
+      // Stage the current file you have open
+      "before": ["<leader>", "g", "s"],
+      "commands": ["git.stage"]
+    },
     // (u)nstage – the inverse of stage. Same context rules.
     { "before": ["<leader>", "g", "u"], "commands": ["git.unstage"] }, // [SCM][DIFF][EDIT]
-
-    // ── 2. Jump between working tree & diff ──────────────────────────────────
-    // (d)iff – open or toggle the Git diff against HEAD for the current file.
-    // { "before": ["<leader>", "g", "d"], "commands": ["git.openChange"] }, // [DIFF][EDIT]
 
     // (w)orktree – when you’re *in* that diff, switch back to the live file.
     { "before": ["<leader>", "g", "w"], "commands": ["git.openFile"] }, // [DIFF]
 
     // ── 3. Throw-away changes ───────────────────────────────────────────────
     // (r)evert – inside a diff, discard ONLY the selected lines/hunks.
-    {
-      "before": ["<leader>", "g", "r"],
-      "commands": ["git.revertSelectedRanges"]
-    }, // [DIFF]
-
-    // (c)lean – run `git clean -xdf` after a safety prompt to wipe ALL
-    // untracked files. Irreversible, so keep the mnemonic sharp!
-    // { "before": ["<leader>", "g", "C"], "commands": ["git.clean"] }, // [ANY]
+    // {
+    //   "before": ["<leader>", "g", "r"],
+    //   "commands": ["git.revertSelectedRanges"]
+    // }, // [DIFF]
 
     // ── 4. Inspect history ───────────────────────────────────────────────────
     // (h)istory popup – GitLens quick view of the last commit touching
@@ -754,7 +749,7 @@
     // the editor tab header, renames the file on disk and updates the buffer.
     { "before": ["<leader>", "g", "n"], "commands": ["renameFile"] }, // [EXPL][EDIT]
 
-    // ── 6. Merge conflict resolution ─────────────────────────────────────────
+    // Merge
     {
       // Accept Ours
       "before": ["<leader>", "c", "o"],
@@ -833,7 +828,7 @@
     },
     {
       // Revert the current change
-      "before": ["<leader>", "c", "c"],
+      "before": ["<leader>", "c", "v"],
       "commands": ["git.revertSelectedRanges"]
     },
     // Testing
