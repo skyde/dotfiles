@@ -54,9 +54,12 @@ fi
 # Final debug check
 echo "=== FINAL DEBUG ==="
 for pkg in "${COMMON_APPS[@]}"; do
-    echo "which $pkg: $(which "$pkg" 2>/dev/null || echo 'not found')"
-    if command -v "$pkg" >/dev/null 2>&1; then
-        echo "$pkg version: $("$pkg" --version 2>/dev/null | head -1 || echo 'version not available')"
+    pkg_path=$(command -v "$pkg" 2>/dev/null || true)
+    if [ -n "$pkg_path" ]; then
+        echo "$pkg is at: $pkg_path"
+        echo "$pkg version: $("$pkg" --version 2>/dev/null | head -n 1 || echo 'version not available')"
+    else
+        echo "$pkg: not found"
     fi
 done
 
