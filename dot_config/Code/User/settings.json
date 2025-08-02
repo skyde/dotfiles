@@ -1061,5 +1061,6 @@
     "llvm-vs-code-extensions.vscode-clangd",
     "dautroc.yazi-vscode",
     "chaitanyashahare.lazygit"
-  ]
+  ],
+  "gitlens.currentLine.enabled": false
 }
