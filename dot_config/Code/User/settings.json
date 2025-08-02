@@ -1013,7 +1013,7 @@
   "editor.folding": false, // Disable code folding (Neovim has it, but it's optional; disable for minimalism)
   // "breadcrumbs.enabled": false, // Already in your config, but reinforcing
   // "zenMode.hideTabs": true, // Uncomment and adjust your existing zenMode; hides tabs in Zen mode
-  // "zenMode.restore": true, // Auto-restore previous layout when exiting Zen mode
+  "zenMode.restore": false,
   // "workbench.statusBar.visible": false
   // Minimal Terminal
   "terminal.integrated.tabs.enabled": false, // Hide terminal tabs for minimalism
