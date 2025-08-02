@@ -10,6 +10,10 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 - `Shift+F4` – scroll up 16 lines.
 - `Shift+F6` – scroll down 16 lines.
 
+## Editing
+- `Alt+Up` – disabled to prevent moving the current line.
+- `Alt+Down` – disabled to prevent moving the current line.
+
 ## Terminal
 - `Ctrl+/` – toggle the integrated terminal.
 - `Cmd+T` – toggle the terminal visibility and exit fullscreen if needed.
