@@ -49,9 +49,9 @@ vim.opt.cursorline = false
 -- Remove the sign column gutter
 vim.opt.signcolumn = "no"
 
--- Use a bright orange block cursor with black text
+-- Use a bright orange block cursor in normal mode and a hollow block when inserting
 vim.opt.guicursor =
-  "n-v-c-sm:block-Cursor,i-ci-ve:ver25-Cursor,r-cr:hor20-Cursor,o:hor50-Cursor"
+  "n-v-c-sm:block-Cursor,i-ci-ve:block-CursorInsert,r-cr:hor20-Cursor,o:hor50-Cursor"
 
 -- Don't show whitespace characters like tabs by default
 vim.opt.list = false

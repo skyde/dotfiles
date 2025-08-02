@@ -24,6 +24,7 @@ return {
         hl.NormalFloat = { bg = colors.bg_float }
         hl.FloatBorder = { bg = colors.bg_float, fg = colors.fg_dark }
         hl.Cursor = { fg = "#000000", bg = "#ff8800" }
+        hl.CursorInsert = { fg = "#ff8800", bg = "NONE" }
         hl.CursorLineNr = { fg = "#569cd6" }
       end,
     },
