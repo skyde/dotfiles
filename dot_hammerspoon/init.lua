@@ -58,10 +58,13 @@ end
 -- Start or stop listeners based on external keyboard presence
 local function updateListeners()
     if externalKeyboardPresent() then
-        if not keyDownListener:isEnabled() then
-            keyDownListener:start()
-            flagsListener:start()
+        if keyDownListener:isEnabled() then
+            -- restart to ensure reliability after sleep
+            keyDownListener:stop()
+            flagsListener:stop()
         end
+        keyDownListener:start()
+        flagsListener:start()
     else
         if keyDownListener:isEnabled() then
             keyDownListener:stop()
@@ -74,6 +77,14 @@ end
 hs.usb.watcher.new(function(info)
     if isExternalKeyboard(info) then
         hs.timer.doAfter(0.5, updateListeners)
+    end
+end):start()
+
+-- Refresh listeners after waking from sleep or unlocking
+hs.caffeinate.watcher.new(function(event)
+    if event == hs.caffeinate.watcher.systemDidWake or
+        event == hs.caffeinate.watcher.screensDidUnlock then
+        hs.timer.doAfter(1, updateListeners)
     end
 end):start()
 
