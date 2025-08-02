@@ -24,7 +24,7 @@ return {
         hl.NormalFloat = { bg = colors.bg_float }
         hl.FloatBorder = { bg = colors.bg_float, fg = colors.fg_dark }
         hl.Cursor = { fg = "#000000", bg = "#ff8800" }
-        hl.CursorLineNr = { fg = colors.blue }
+        hl.CursorLineNr = { fg = "#569cd6" }
       end,
     },
     config = function(_, opts)

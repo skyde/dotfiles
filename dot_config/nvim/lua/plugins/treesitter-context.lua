@@ -1,4 +1,3 @@
 return {
-  "nvim-treesitter/nvim-treesitter-context",
-  opts = {},
+  { "nvim-treesitter/nvim-treesitter-context", enabled = false },
 }
