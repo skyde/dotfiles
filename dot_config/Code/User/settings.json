@@ -760,6 +760,9 @@
     { "before": ["<leader>", "c", "0"], "commands": ["merge-conflict.accept.selection"] },
     { "before": ["]", "x"], "commands": ["merge-conflict.next"] },
     { "before": ["[", "x"], "commands": ["merge-conflict.previous"] },
+    // ── 7. Diff navigation ─────────────────────────────────────────────────
+    { "before": ["]", "c"], "commands": ["workbench.action.compareEditor.nextChange"] },
+    { "before": ["[", "c"], "commands": ["workbench.action.compareEditor.previousChange"] },
     // Testing
     {
       "before": ["<leader>", "t", "r"],

@@ -46,6 +46,11 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 `<leader> c o` – accept current change.
 `<leader> c t` – accept incoming change.
 `<leader> c b` – accept both changes.
+ `<leader> c 0` – accept selection.
+ `] x` – next conflict.
+ `[ x` – previous conflict.
+ `] c` – next change in diff.
+ `[ c` – previous change in diff.
 `<leader> c 0` – accept selection.
 `] x` – next conflict.
 `[ x` – previous conflict.
