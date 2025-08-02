@@ -701,6 +701,7 @@
       ]
     },
     {
+      // Open VSCode version of Git viewer
       "before": ["<leader>", "g", "G"],
       "commands": [
         "workbench.view.scm",
