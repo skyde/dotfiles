@@ -22,7 +22,11 @@ echo "Installing common apps..."
 # Install common apps
 for pkg in "${COMMON_APPS[@]}"; do
     echo "Installing $pkg..."
-    brew install "$pkg" || echo "Failed to install $pkg, continuing..."
+    if [[ "$pkg" == "kitty" ]]; then
+        brew install --cask "$pkg" || echo "Failed to install $pkg, continuing..."
+    else
+        brew install "$pkg" || echo "Failed to install $pkg, continuing..."
+    fi
 done
 
 brew install zsh-autosuggestions zsh-syntax-highlighting
