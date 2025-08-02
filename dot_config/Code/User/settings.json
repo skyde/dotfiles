@@ -450,7 +450,7 @@
       ]
     },
     {
-      "before": ["<leader>", "S", "T"],
+      "before": ["<leader>", "s", "T"],
       "commands": [
         // Automatically search for the word under the cursor
         "editor.action.addSelectionToNextFindMatch",
