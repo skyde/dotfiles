@@ -8,10 +8,10 @@ Install these dotfiles using [chezmoi](https://www.chezmoi.io/):
 
 ```bash
 # If chezmoi is already installed
-chezmoi init --apply https://github.com/USERNAME/dotfiles.git
+chezmoi init --apply https://github.com/F286/dotfiles.git
 
 # Or install chezmoi and apply in one step
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply https://github.com/USERNAME/dotfiles.git
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply https://github.com/F286/dotfiles.git
 ```
 
 Replace `USERNAME` with the GitHub owner of this repository if using a fork.
