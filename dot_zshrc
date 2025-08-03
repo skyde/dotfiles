@@ -36,6 +36,7 @@ HISTFILE=~/.zsh_history
 # Key Bindings
 bindkey -v                # Use vim keybindings
 KEYTIMEOUT=1              # Reduce delay for ESC
+bindkey -M vicmd '_' vi-beginning-of-line  # '_' moves to start of line in normal mode
 
 # bindkey -e                # Use emacs keybindings
 # bindkey '^[[1;5C' forward-word     # Ctrl+Right
