@@ -406,5 +406,10 @@
     "command": "workbench.action.terminal.sendSequence",
     "args": { "text": "\u001B[15;2~" }, // sends Shift‑F5
     "when": "terminalFocus"
+  },
+  {
+    "key": "alt+o",
+    "command": "clangd.switchheadersource",
+    "when": "editorTextFocus && resourceLangId == 'c' || editorTextFocus && resourceLangId == 'cpp' || editorTextFocus && resourceLangId == 'cuda-cpp' || editorTextFocus && resourceLangId == 'objective-c' || editorTextFocus && resourceLangId == 'objective-cpp'"
   }
 ]
