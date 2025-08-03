@@ -53,8 +53,7 @@
 
     // Inlays
     "editorInlayHint.foreground": "#606060",
-    "editorInlayHint.background": "#000000"
-    // "editorInlayHint.parameterForeground": "#bbbbbb"
+    "editorInlayHint.background": "#00000000"
   },
   // Custom color scheme
   "editor.tokenColorCustomizations": {
