@@ -257,7 +257,7 @@
     // Fuzzy Find
     {
       "before": ["<leader>", "<leader>"],
-      "commands": ["workbench.action.quickOpen"]
+      "commands": ["find-it-faster.findFiles"]
     },
     // Copilot Chat
     {
@@ -446,6 +446,10 @@
     {
       "before": ["<leader>", "s", "f"],
       "commands": ["find-it-faster.findFiles"]
+    },
+    {
+      "before": ["<leader>", "s", "F"],
+      "commands": ["workbench.action.quickOpen"]
     },
     {
       // Start a new search within files
@@ -766,16 +770,16 @@
       "before": ["<leader>", "g", "d"],
       "commands": ["git.openChange"]
     },
-    {
-      // Stage the current file you have open
-      "before": ["<leader>", "g", "s"],
-      "commands": ["git.stage"]
-    },
-    {
-      // Unstage the current file you have open
-      "before": ["<leader>", "g", "u"],
-      "commands": ["git.unstage"]
-    },
+    // {
+    //   // Stage the current file you have open
+    //   "before": ["<leader>", "g", "s"],
+    //   "commands": ["git.stage"]
+    // },
+    // {
+    //   // Unstage the current file you have open
+    //   "before": ["<leader>", "g", "u"],
+    //   "commands": ["git.unstage"]
+    // },
     {
       // Worktree - when you are in a diff go back to the actual file
       "before": ["<leader>", "g", "w"],
@@ -1007,17 +1011,17 @@
   "search.useGlobalIgnoreFiles": true,
   "search.useParentIgnoreFiles": true,
   "find-it-faster.general.useGitIgnoreExcludes": true,
-  // "terminal.integrated.env.linux": {
-  //   "FZF_DEFAULT_OPTS": "--reverse --delimiter : --with-nth 1,4.. --ansi --no-hscroll --keep-right --hscroll-off=60"
-  // },
+  "terminal.integrated.env.linux": {
+    "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --track --tiebreak=pathname"
+  },
   "terminal.integrated.env.osx": {
     // "FZF_DEFAULT_OPTS": "--reverse --delimiter : --with-nth=4..,1 # ① snippet, ② path --ansi --no-hscroll --hscroll-off=60"
     // "FZF_DEFAULT_OPTS": "--reverse --keep-right --ansi --ellipsis= --style=minimal "
     "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --track --tiebreak=pathname"
   },
-  // "terminal.integrated.env.windows": {
-  //   "FZF_DEFAULT_OPTS": "--reverse --delimiter : --with-nth 1,4.. --ansi --no-hscroll --keep-right --hscroll-off=60"
-  // },
+  "terminal.integrated.env.windows": {
+    "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --track --tiebreak=pathname"
+  },
   // Minimalism
   "editor.guides.indentation": false,
   "editor.hideCursorInOverviewRuler": true, // Hide cursor in scrollbar for a cleaner look
@@ -1062,6 +1066,8 @@
   "find-it-faster.findWithinFiles.previewWindowConfig": "bottom,30%,+{2}/2",
   // "find-it-faster.general.fz": "--bind=preview-up:ignore,preview-down:ignore,preview-page-up:ignore,preview-page-down:ignore",
   // "find-it-faster.findFiles.previewCommand": "top,0%,border-bottom,+{2}+3/3,~3",
+  // "find-it-faster.findFiles.previewWindowConfig": "right,60%,border-bottom,+{2}+3/3,~3",
+  "find-it-faster.findFiles.previewWindowConfig": "right,55%",
   // "find-it-faster.findWithinFiles.previewCommand": "bat --style=numbers --color=always {1} --highlight-line {2}",
   "find-it-faster.general.showMaximizedTerminal": true,
   "find-it-faster.findWithinFiles.fuzzRipgrepQuery": true,
