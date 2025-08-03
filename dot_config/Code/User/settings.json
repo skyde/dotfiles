@@ -49,7 +49,12 @@
     "editorLineNumber.foreground": "#585858",
 
     // Scroll Bar
-    "scrollbarSlider.background": "#ffffff17"
+    "scrollbarSlider.background": "#ffffff17",
+
+    // Inlays
+    "editorInlayHint.foreground": "#606060",
+    "editorInlayHint.background": "#000000"
+    // "editorInlayHint.parameterForeground": "#bbbbbb"
   },
   // Custom color scheme
   "editor.tokenColorCustomizations": {
@@ -1068,5 +1073,6 @@
     "chaitanyashahare.lazygit"
   ],
   "gitlens.currentLine.enabled": false,
-  "gitlens.codeLens.enabled": false
+  "gitlens.codeLens.enabled": false,
+  "editor.inlayHints.enabled": "on"
 }
