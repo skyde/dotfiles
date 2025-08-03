@@ -1,9 +1,2 @@
 vscodevim.vim
-tomrijndorp.find-it-faster
-jeff-hykin.better-cpp-syntax
-ms-vscode.cpptools-themes
-esbenp.prettier-vscode
-llvm-vs-code-extensions.vscode-clangd
-dautroc.yazi-vscode
-chaitanyashahare.lazygit
-ms-vscode-remote.remote-ssh
+quillbard.kanagawa

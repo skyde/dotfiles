@@ -10,6 +10,10 @@ set relativenumber
 set cursorline
 set scrolloff=8
 
+" Disable blinking cursor and use Kanagawa theme if available
+set guicursor+=a:blinkon0
+colorscheme kanagawa
+
 " Search
 set ignorecase
 set smartcase
