@@ -1012,15 +1012,15 @@
   "search.useParentIgnoreFiles": true,
   "find-it-faster.general.useGitIgnoreExcludes": true,
   "terminal.integrated.env.linux": {
-    "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --track --tiebreak=pathname"
+    "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname"
   },
   "terminal.integrated.env.osx": {
     // "FZF_DEFAULT_OPTS": "--reverse --delimiter : --with-nth=4..,1 # ① snippet, ② path --ansi --no-hscroll --hscroll-off=60"
     // "FZF_DEFAULT_OPTS": "--reverse --keep-right --ansi --ellipsis= --style=minimal "
-    "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --track --tiebreak=pathname"
+    "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname"
   },
   "terminal.integrated.env.windows": {
-    "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --track --tiebreak=pathname"
+    "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname"
   },
   // Minimalism
   "editor.guides.indentation": false,
