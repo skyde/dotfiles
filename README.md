@@ -4,13 +4,48 @@ Personal dotfiles for my development environment, managed with [chezmoi](https:/
 
 ## Installation with chezmoi
 
-Install these dotfiles using [chezmoi](https://www.chezmoi.io/):
+Install these dotfiles using [chezmoi](https://www.chezmoi.io/). Below are example commands for different platforms.
+
+### macOS
 
 ```bash
-# If chezmoi is already installed
-chezmoi init --apply https://github.com/F286/dotfiles.git
+# Install Homebrew from https://brew.sh if it's not already present
+brew install chezmoi
+chezmoi init F286
+# Review changes if desired
+chezmoi diff
+chezmoi apply
+```
 
-# Or install chezmoi and apply in one step
+### Linux
+
+```bash
+sudo apt-get update -qq && sudo apt-get install -y git chezmoi
+chezmoi init F286
+# Review changes if desired
+chezmoi diff
+chezmoi apply
+```
+
+### Windows
+
+```powershell
+winget install twpayne.chezmoi
+chezmoi init F286
+# Review changes if desired
+chezmoi diff
+chezmoi apply
+```
+
+If `chezmoi` is already installed, you can also apply these dotfiles directly:
+
+```bash
+chezmoi init --apply https://github.com/F286/dotfiles.git
+```
+
+Or install `chezmoi` and apply in one step:
+
+```bash
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply https://github.com/F286/dotfiles.git
 ```
 
