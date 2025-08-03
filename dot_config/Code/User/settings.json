@@ -974,9 +974,12 @@
   "extensions.experimental.affinity": {
     "vscodevim.vim": 1
   },
+  // Disable links as there is an underline effect that is not great
+  // Goto definition works regardless so not needed
+  "editor.links": false,
+  // Theme
   "workbench.colorTheme": "Visual Studio Dark - C++",
   "window.titleBarStyle": "custom",
-
   "editor.minimap.enabled": false,
   "editor.fontSize": 16,
   "terminal.integrated.fontSize": 16,
