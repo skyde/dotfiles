@@ -15,6 +15,7 @@
   // Vim extension settings
   "vim.useSystemClipboard": true,
   "vim.useCtrlKeys": true,
+  "vim.surround": true,
   "vim.leader": "<space>",
   "vim.handleKeys": {
     "<tab>": false,

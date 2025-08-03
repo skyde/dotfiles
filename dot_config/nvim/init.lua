@@ -27,4 +27,5 @@ require("lazy").setup({
       vim.cmd("colorscheme kanagawa")
     end,
   },
+  { "tpope/vim-surround" },
 })
