@@ -34,9 +34,12 @@ SAVEHIST=50000
 HISTFILE=~/.zsh_history
 
 # Key Bindings
-bindkey -e                # Use emacs keybindings
-bindkey '^[[1;5C' forward-word     # Ctrl+Right
-bindkey '^[[1;5D' backward-word    # Ctrl+Left
+bindkey -v                # Use vim keybindings
+KEYTIMEOUT=1              # Reduce delay for ESC
+
+# bindkey -e                # Use emacs keybindings
+# bindkey '^[[1;5C' forward-word     # Ctrl+Right
+# bindkey '^[[1;5D' backward-word    # Ctrl+Left
 
 # Bootstrap Starship
 eval "$(starship init zsh)"
