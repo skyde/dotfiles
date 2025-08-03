@@ -1,7 +1,0 @@
-[lpedal]>[escape]
-[mpedal]>[lmouse]
-{rpedal}>{rmouse}
-[jack1]>
-[jack2]>
-[jack3]>
-[jack4]>

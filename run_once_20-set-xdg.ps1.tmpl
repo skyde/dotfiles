@@ -1,9 +1,0 @@
-{{- /* run_once_20-set-xdg.ps1.tmpl */ -}}
-{{- if eq .chezmoi.os "windows" -}}
-# Permanently set XDG_* at *user* scope so every program inherits them.
-
-[Environment]::SetEnvironmentVariable('XDG_CONFIG_HOME', "$HOME\.config",      'User')
-[Environment]::SetEnvironmentVariable('XDG_DATA_HOME',  "$HOME\.local\share",  'User')
-[Environment]::SetEnvironmentVariable('XDG_CACHE_HOME', "$HOME\.cache",        'User')
-Write-Host '✔  XDG_* variables set (User scope). Restart shells to pick up changes.'
-{{- end -}}
