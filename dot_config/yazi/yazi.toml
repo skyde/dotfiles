@@ -2,7 +2,7 @@
 # Schema: https://yazi-rs.github.io/schemas/yazi.json
 
 [mgr]
-ratio = [1, 4, 3]
+ratio = [1, 4, 7]
 show_hidden = true
 
 # [[plugin.prepend_fetchers]]
