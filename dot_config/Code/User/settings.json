@@ -250,6 +250,10 @@
       "before": ["<C-r>"],
       "commands": [{ "command": "redo" }]
     },
+    {
+      "before": ["Y"],
+      "after": ["y", "$"]
+    },
     // Fuzzy Find
     {
       "before": ["<leader>", "<leader>"],
