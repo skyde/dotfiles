@@ -116,8 +116,9 @@ Use this since it's nicer than the default one.
 
 Ensure you set the correct environment variable to allow the diff to work:
 
-````
+```
 P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe" /Diff %1 %2
+```
 
 # Visual Studio Code
 
@@ -139,11 +140,9 @@ details to `~/.ssh/config`, e.g.
 Host devbox
   HostName server.example.com
   User you
-````
+```
 
 Use the “Remote-SSH: Connect to Host…” command in VS Code to start a session.
-
-```
 
 # Keyboard
 
@@ -188,4 +187,3 @@ The pedal config:
 The method to open V-Drive is either:
 - Flip the switch on the bottom of the pedal
 - Hold the pedal down briefly while connecting to the computer (waterproof version)
-```

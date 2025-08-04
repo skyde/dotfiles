@@ -86,13 +86,13 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<S-l>` – :bnext
 - `<leader> w f` – toggle Zen mode
 - `<leader> w F` – toggle fullscreen
-- `leader w v` – :vsplit
-- `leader w s` – :split
-- `leader w d` – close tab
-- `leader w h` – focus left pane
-- `leader w j` – focus pane below
-- `leader w k` – focus pane above
-- `leader w l` – focus right pane
+- `<leader> w v` – :vsplit
+- `<leader> w s` – :split
+- `<leader> w d` – close tab
+- `<leader> w h` – focus left pane
+- `<leader> w j` – focus pane below
+- `<leader> w k` – focus pane above
+- `<leader> w l` – focus right pane
 - `<leader> s g` – search within files
 - `<leader> s f` – search files
 - `<leader> s t` – search files by type
@@ -124,7 +124,6 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> g d` – view file diff
 - `<leader> g s` – stage changes
 - `<leader> g u` – unstage changes
-- `<leader> g d` – view file diff
 - `<leader> g w` – open file in repo
 - `<leader> g r` – revert selected ranges
 - `<leader> g h` – show commit details

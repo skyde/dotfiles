@@ -61,7 +61,7 @@ which is also symlinked for use by the Cursor editor.
 - `<leader>gt` – timelapse view.
 
 ## Refactoring and Errors
-- `<leader>ce` – Resharper quick fix.
+- `<leader>ce` – ReSharper quick fix.
 - `<leader>.` – quick actions for position.
 - `<leader>ee` – show error list.
 - `<leader>en` – next error.
