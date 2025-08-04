@@ -1,7 +1,7 @@
 {
 	"name": "Vimium C",
-	"@time": "8/4/2025, 1:58:33 PM",
-	"time": 1754333913496,
+	"@time": "8/4/2025, 2:25:11 PM",
+	"time": 1754335511731,
 	"environment": {
 		"extension": "2.12.2",
 		"platform": "mac",
@@ -63,8 +63,8 @@
 		"# map bD restoreTab",
 		"# map bx closeTabsOnRight",
 		"# map bX closeTabsOnLeft",
-		"map bo closeOtherTabs       # b o -> Close other tabs (keep current; pinned tabs are preserved)",
-		"# map bP closeSomeOtherTabs       # b P -> Close all non-pinned tabs (same as above, leaves pinned tabs)",
+		"map bo closeOtherTabs ",
+		"map bP closeOtherTabs",
 		"map bp togglePinTab         # b p -> Pin current tab",
 		"# map bu togglePinTab         # b u -> Unpin current tab",
 		"map bb visitPreviousTab     # b b -> Switch to last active tab (previously visited tab)",
