@@ -314,6 +314,11 @@
     },
     // Buffers
     {
+      // New tab
+      "before": ["<leader>", "b", "n"],
+      "commands": ["workbench.action.files.newUntitledFile"]
+    },
+    {
       // Next tab
       "before": ["]", "b"],
       "commands": ["workbench.action.nextEditor"]

@@ -114,6 +114,9 @@ map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
 map_shift_f(1, ":bprevious<CR>", { desc = "Previous buffer" })
 map_shift_f(12, ":bnext<CR>", { desc = "Next buffer" })
 
+-- Open new tab
+map("n", "<leader>bn", "<cmd>tabnew<CR>", { desc = "New tab" })
+
 -- Move tab left/right
 map("n", "<leader>bh", "<cmd>tabmove -1<CR>", { desc = "Move tab left" })
 map("n", "<leader>bl", "<cmd>tabmove +1<CR>", { desc = "Move tab right" })
