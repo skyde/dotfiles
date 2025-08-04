@@ -116,14 +116,14 @@ Use this since it's nicer than the default one.
 
 Ensure you set the correct environment variable to allow the diff to work:
 
-```
+````
 P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe" /Diff %1 %2
 
 # Visual Studio Code
 
 I'm using a few plugins:
 - Vim
-- Find it Faster (hooks into fzf, rg & bat)
+- Fzf Picker (hooks into fzf, rg & bat)
 - clangd for C++ language features
 Extensions listed in `vscode_extensions.txt` will be installed automatically
 when these dotfiles are applied. Custom keybindings are documented in
@@ -139,9 +139,10 @@ details to `~/.ssh/config`, e.g.
 Host devbox
   HostName server.example.com
   User you
-```
+````
 
 Use the “Remote-SSH: Connect to Host…” command in VS Code to start a session.
+
 ```
 
 # Keyboard
@@ -155,6 +156,7 @@ For more detail see the 'Interaction' repo.
 ## Macro Bindings
 
 ```
+
 build and run - Shift F2
 find class - Shift F3
 scroll up - Shift F4
@@ -164,6 +166,7 @@ goto definition - Shift F8
 open spotlight - tap Cmd
 toggle eye mouse - Shift F10
 toggle comment - Shift F11
+
 ```
 
 ## Platforms
@@ -185,3 +188,4 @@ The pedal config:
 The method to open V-Drive is either:
 - Flip the switch on the bottom of the pedal
 - Hold the pedal down briefly while connecting to the computer (waterproof version)
+```
