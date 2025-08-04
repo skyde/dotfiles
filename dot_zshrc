@@ -33,14 +33,14 @@ HISTSIZE=50000
 SAVEHIST=50000
 HISTFILE=~/.zsh_history
 
-# Key Bindings
-bindkey -v                # Use vim keybindings
-KEYTIMEOUT=1              # Reduce delay for ESC
-bindkey -M vicmd '_' vi-beginning-of-line  # '_' moves to start of line in normal mode
+# # Key Bindings
+# bindkey -v                # Use vim keybindings
+# KEYTIMEOUT=1              # Reduce delay for ESC
+# bindkey -M vicmd '_' vi-beginning-of-line  # '_' moves to start of line in normal mode
 
-# bindkey -e                # Use emacs keybindings
-# bindkey '^[[1;5C' forward-word     # Ctrl+Right
-# bindkey '^[[1;5D' backward-word    # Ctrl+Left
+bindkey -e                # Use emacs keybindings
+bindkey '^[[1;5C' forward-word     # Ctrl+Right
+bindkey '^[[1;5D' backward-word    # Ctrl+Left
 
 # Bootstrap Starship
 eval "$(starship init zsh)"
@@ -89,7 +89,7 @@ if command -v fzf >/dev/null; then
     fi
   done
   if command -v fd >/dev/null; then
-    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git --color=always --style=minimal'
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git --color=always'
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
   fi
   # if [[ $FIND_IT_FASTER_ACTIVE -eq 1 ]]; then

@@ -254,11 +254,6 @@
       "before": ["Y"],
       "after": ["y", "$"]
     },
-    // Fuzzy Find
-    {
-      "before": ["<leader>", "<leader>"],
-      "commands": ["find-it-faster.findFiles"]
-    },
     // Copilot Chat
     {
       "before": ["<leader>", "a"],
@@ -444,19 +439,46 @@
     },
     // Search
     {
-      "before": ["<leader>", "s", "f"],
-      "commands": ["find-it-faster.findFiles"]
-    },
-    {
-      "before": ["<leader>", "s", "F"],
+      "before": ["<leader>", "<leader>"],
       "commands": ["workbench.action.quickOpen"]
     },
+    {
+      "before": ["<leader>", "s", "f"],
+      "commands": ["fzf-picker.findFiles"]
+    },
+    // {
+    //   "before": ["<leader>", "s", "F"],
+    //   "commands": ["workbench.action.quickOpen"]
+    // },
+    // {
+    //   // Custom “search-preview” binding: <leader> s p
+    //   "before": ["<leader>", "s", "p"],
+    //   "commands": [
+    //     // 1. Open an external (panel) terminal first…
+    //     "workbench.action.terminal.new",
+
+    //     // 2. …send the fzf pipeline + ⏎
+    //     {
+    //       "command": "workbench.action.terminal.sendSequence",
+    //       "args": {
+    //         // "text": "fzf --prompt='rg> ' --bind \\\"change:reload:rg --column --line-number --no-heading --hidden --smart-case {q} || true\\\" --delimiter ':' --preview 'bat --style=numbers --color=always --line-range {2}-5:{2}+5 {1}' --bind \\\"enter:execute(code -g {1}:{2}:{3} > /dev/null)+abort\\\"\\u000D"
+    //         "text": "fzf --prompt='rg'\u000D"
+    //       }
+    //     },
+
+    //     // 3 & 4. Dock the terminal in the editor and hide it
+    //     "workbench.action.terminal.moveToEditor",
+    //     "workbench.action.terminal.toggleTerminal",
+    //     "workbench.action.terminal.toggleTerminal"
+    //   ]
+    // },
+
     {
       // Start a new search within files
       "before": ["<leader>", "s", "s"],
       "commands": [
         // Search within files
-        "find-it-faster.findWithinFiles",
+        "fzf-picker.findWithinFiles",
         "extension.vim_escape"
       ]
     },
@@ -467,7 +489,7 @@
         // Automatically search for the word under the cursor
         "editor.action.addSelectionToNextFindMatch",
         // Search within files
-        "find-it-faster.findWithinFiles",
+        "fzf-picker.findWithinFiles",
         "extension.vim_escape"
       ]
     },
@@ -477,14 +499,14 @@
         // Automatically search for the word under the cursor
         "editor.action.addSelectionToNextFindMatch",
         // By default we filter & only search relavant files
-        "find-it-faster.findWithinFilesWithType",
+        "fzf-picker.findWithinFilesWithType",
         // Escape to Vim normal mode
         "extension.vim_escape"
       ]
     },
     {
       "before": ["<leader>", "s", "r"],
-      "commands": ["find-it-faster.resumeSearch"]
+      "commands": ["fzf-picker.resumeSearch"]
     },
     // Jump to tab
     {
@@ -1010,19 +1032,24 @@
   },
   "search.useGlobalIgnoreFiles": true,
   "search.useParentIgnoreFiles": true,
-  "find-it-faster.general.useGitIgnoreExcludes": true,
+  "fzf-picker.general.useGitIgnoreExcludes": true,
   "terminal.integrated.env.linux": {
-    "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    // "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
   },
   "terminal.integrated.env.osx": {
     // "FZF_DEFAULT_OPTS": "--reverse --delimiter : --with-nth=4..,1 # ① snippet, ② path --ansi --no-hscroll --hscroll-off=60"
     // "FZF_DEFAULT_OPTS": "--reverse --keep-right --ansi --ellipsis= --style=minimal "
     // "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --track --info inline --color='prompt:#80a0ff,pointer:#ffaf5f,marker:#afff5f'"
     // "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --track --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
-    "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    // "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f' --scheme=path"
+    // "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    // "FZF_DEFAULT_OPTS": "--reverse --track --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    // "FZF_DEFAULT_OPTS": "--reverse --track --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    // "FZF_DEFAULT_OPTS": "--bind 'esc:ignore' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
   },
   "terminal.integrated.env.windows": {
-    "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    // "FZF_DEFAULT_OPTS": "--reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
   },
   // Minimalism
   "editor.guides.indentation": false,
@@ -1063,17 +1090,20 @@
   "git.mergeEditor": true,
   "workbench.iconTheme": "material-icon-theme",
   "workbench.editor.empty.hint": "hidden",
-  "find-it-faster.findWithinFiles.showPreview": true,
-  // "find-it-faster.findWithinFiles.pr": "bat --color=always --style=numbers --highlight-line {2} {1}",
-  "find-it-faster.findWithinFiles.previewCommand": "bat --color=always --style=numbers --highlight-line {2} {1}",
-  "find-it-faster.findWithinFiles.previewWindowConfig": "bottom,30%,+{2}/2",
+  // "find-it-faster.findWithinFiles.showPreview": true,
+  "fzf-picker.findWithinFiles.previewCommand": "bat --color=always --style=numbers --highlight-line {2} {1}",
+  "fzf-picker.findWithinFiles.previewWindowConfig": "bottom,30%,+{2}/2",
+  // "find-it-faster.findWithinFiles.pr,
   // "find-it-faster.general.fz": "--bind=preview-up:ignore,preview-down:ignore,preview-page-up:ignore,preview-page-down:ignore",
   // "find-it-faster.findFiles.previewCommand": "top,0%,border-bottom,+{2}+3/3,~3",
   // "find-it-faster.findFiles.previewWindowConfig": "right,60%,border-bottom,+{2}+3/3,~3",
-  "find-it-faster.findFiles.previewWindowConfig": "right,55%",
+  "fzf-picker.findFiles.previewWindowConfig": "right,55%",
+  // "find-it-faster.general.killTerminalAfterUse": true, // <‑‑ add this
+  // "fzf-picker.general.restoreFocusTerminal": true,
   // "find-it-faster.findWithinFiles.previewCommand": "bat --style=numbers --color=always {1} --highlight-line {2}",
-  "find-it-faster.general.showMaximizedTerminal": true,
-  "find-it-faster.findWithinFiles.fuzzRipgrepQuery": true,
+  // "fzf-quick-open.fuzzyCmd": "fzf",
+  // "fzf-picker.general.showMaximizedTerminal": true
+  // "fzf-picker.findWithinFiles.fuzzRipgrepQuery": true,
   "git.blame.editorDecoration.enabled": false,
   "github.copilot.nextEditSuggestions.enabled": true,
   "debug.inlineValues": "on",
@@ -1089,5 +1119,6 @@
   ],
   "gitlens.currentLine.enabled": false,
   "gitlens.codeLens.enabled": false,
-  "editor.inlayHints.enabled": "on"
+  "editor.inlayHints.enabled": "on",
+  "find-it-faster.general.hideTerminalAfterFail": false
 }

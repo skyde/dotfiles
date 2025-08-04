@@ -411,5 +411,24 @@
     "key": "alt+o",
     "command": "clangd.switchheadersource",
     "when": "editorTextFocus && resourceLangId == 'c' || editorTextFocus && resourceLangId == 'cpp' || editorTextFocus && resourceLangId == 'cuda-cpp' || editorTextFocus && resourceLangId == 'objective-c' || editorTextFocus && resourceLangId == 'objective-cpp'"
-  }
+  },
+  // {
+  //   // There is an issue in the find it faster plugin where it does go back to your last focused window when closed
+  //   "key": "escape",
+  //   "command": "runCommands",
+  //   // This only activates when the 'editor as a tab' mode is active. Would be better to
+  //   "when": "terminalFocus && terminalEditorActive",
+  //   "args": {
+  //     "commands": [
+  //       {
+  //         "command": "workbench.action.terminal.sendSequence",
+  //         // Enter keycode
+  //         "args": { "text": "\u001D" }
+  //       },
+  //       "workbench.action.focusActiveEditorGroup",
+  //       "workbench.action.navigateBack",
+  //       "extension.vim_escape"
+  //     ]
+  //   }
+  // }
 ]
