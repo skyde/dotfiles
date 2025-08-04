@@ -1023,7 +1023,6 @@
     "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
   },
   "terminal.integrated.env.osx": {
-    // "FZF_DEFAULT_OPTS": "--bind 'esc:ignore' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
     "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
   },
   "terminal.integrated.env.windows": {
