@@ -88,5 +88,8 @@ hs.caffeinate.watcher.new(function(event)
     end
 end):start()
 
+-- Periodically refresh listeners to reduce reliance on system events
+hs.timer.doEvery(5, updateListeners)
+
 -- Activate listeners if an external keyboard is already connected
 updateListeners()
