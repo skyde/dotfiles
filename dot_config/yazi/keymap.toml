@@ -48,5 +48,6 @@ prepend_keymap = [
   { on = [ "9" ], run = "plugin relative-line-numbers 9", desc = "Jump (starts with 9)" },
 
   # Optional helper key – lets you type e.g. “m 4 2 j”
-  { on = [ "m" ], run = "plugin relative-line-numbers", desc = "Start relative jump" }
+  { on = [ "m" ], run = "plugin relative-line-numbers", desc = "Start relative jump" },
+  { on = [ "g", "m" ], run = "cd ~/.local/share/chezmoi", desc = "Go to chezmoi directory" }
 ]
