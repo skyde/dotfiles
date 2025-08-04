@@ -1,10 +1,10 @@
 -- Minimal Neovim config with Kanagawa theme
--- Relative line numbers and a non‑blinking orange cursor
--- Only apply the colorscheme when not running inside VS Code
+-- Relative line numbers, a non‑blinking orange cursor and a vertical bar in insert mode
 
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.termguicolors = true
+vim.opt.guicursor = "n-v-c-sm:block,i-ci-ve:ver25,r-cr-o:hor20"
 vim.opt.guicursor:append("a:blinkon0")
 vim.api.nvim_set_hl(0, "Cursor", { fg = "#FF5000", bg = "#000000" })
 
