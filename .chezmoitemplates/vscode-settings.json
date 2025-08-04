@@ -7,6 +7,7 @@
   "editor.lineNumbers": "relative",
   "editor.renderLineHighlight": "none",
   "workbench.colorTheme": "Kanagawa",
+  "workbench.preferredDarkColorTheme": "Kanagawa",
   "workbench.colorCustomizations": {
     "editorCursor.foreground": "#FF5000",
     "editorCursor.background": "#000000"
