@@ -4,6 +4,7 @@
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.termguicolors = true
+vim.opt.background = "light"
 vim.opt.guicursor = "n-v-c-sm:block,i-ci-ve:ver25,r-cr-o:hor20"
 vim.opt.guicursor:append("a:blinkon0")
 vim.api.nvim_set_hl(0, "Cursor", { fg = "#FF5000", bg = "#000000" })
@@ -28,7 +29,7 @@ require("lazy").setup({
       return not vim.g.vscode
     end,
     config = function()
-      vim.cmd("colorscheme kanagawa")
+      vim.cmd("colorscheme kanagawa-lotus")
     end,
   },
   { "tpope/vim-surround" },
