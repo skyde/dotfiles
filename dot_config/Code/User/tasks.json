@@ -1,17 +1,38 @@
+// .vscode/tasks.json
 {
   "version": "2.0.0",
   "tasks": [
-    {
-      "label": "fzfSearchContent",
-      "type": "shell",
-      "command": "fzf --prompt='rg> ' --bind \"change:reload:rg --column --line-number --no-heading --hidden --smart-case {q} || true\" --delimiter ':' --preview 'bat --style=numbers --color=always --line-range {2}-5:{2}+5 {1}' --bind \"enter:execute(code --reuse-window -g {1}:{2}:{3} > /dev/null)+abort\"",
-      "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
-        "panel": "shared"
-      },
-      "problemMatcher": []
-    }
+    // {
+    //   "label": "fzfSearchContent",
+    //   "type": "shell",
+    //   "command": "fzf",
+    //   "args": [
+    //     "--prompt=rg> ",
+    //     "--bind",
+    //     "change:reload:rg --column --line-number --no-heading --hidden --smart-case {q} || true",
+    //     "--delimiter",
+    //     ":",
+    //     "--preview",
+    //     // ▼ pick ONE of the two previews described above ▼
+    //     // Simple “after 5” + highlight
+    //     "bat --style=numbers --color=always --highlight-line {2} --line-range {2}:+5 {1}",
+    //     // or full ±5 context via Bash arithmetic
+    //     // "bash -c 'ln=$2; s=$((ln-5)); (( s<1 )) && s=1; e=$((ln+5)); bat --style=numbers --color=always --highlight-line $ln --line-range ${s}:${e} \"$1\"' -- {1} {2}",
+    //     "--bind",
+    //     "enter:execute(code --reuse-window -g {1}:{2}:{3} > /dev/null)+abort"
+    //   ],
+    //   /*— extra quality‑of‑life —*/
+    //   "options": {
+    //     // keeps BAT from opening a pager that would clash with fzf
+    //     "env": { "BAT_PAGER": "less -R" }
+    //   },
+    //   "presentation": {
+    //     "echo": false,
+    //     "reveal": "always",
+    //     "focus": true,
+    //     "panel": "dedicated"
+    //   },
+    //   "problemMatcher": []
+    // }
   ]
 }
