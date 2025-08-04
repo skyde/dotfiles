@@ -4,6 +4,7 @@
   "editor.cursorSurroundingLinesStyle": "all",
   "editor.cursorBlinking": "solid",
   "editor.cursorSmoothCaretAnimation": "off",
+  "editor.cursorStyle": "line",
   "editor.fontSize": 14,
   "editor.lineNumbers": "relative",
   "editor.renderLineHighlight": "none",
@@ -24,6 +25,14 @@
     "<S-tab>": false,
     "<C-o>": true,
     "<C-i>": true
+  },
+  "vim.cursorStylePerMode": {
+    "normal": "block",
+    "insert": "line",
+    "replace": "underline",
+    "visual": "block",
+    "visualLine": "block",
+    "visualBlock": "block"
   },
   "vim.normalModeKeyBindingsNonRecursive": [
     { "before": ["<leader>", "v"], "after": ["<C-v>"] },
