@@ -13,3 +13,5 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
     vim.bo.filetype = "json"
   end,
 })
+
+vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
