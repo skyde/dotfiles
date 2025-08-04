@@ -446,28 +446,14 @@
       "before": ["<leader>", "s", "f"],
       "commands": ["fzf-picker.findFiles"]
     },
-    // {
-    //   // Custom fzf implementation without a plugin - can switch to this if it works
-    //   "before": ["<leader>", "s", "c"],
-    //   "commands": [
-    //     // 1. Open an external (panel) terminal first…
-    //     "workbench.action.terminal.new",
-
-    //     // 2. …send the fzf pipeline + ⏎
-    //     {
-    //       "command": "workbench.action.terminal.sendSequence",
-    //       "args": {
-    //         // "text": "fzf --prompt='rg> ' --bind \\\"change:reload:rg --column --line-number --no-heading --hidden --smart-case {q} || true\\\" --delimiter ':' --preview 'bat --style=numbers --color=always --line-range {2}-5:{2}+5 {1}' --bind \\\"enter:execute(code -g {1}:{2}:{3} > /dev/null)+abort\\\"\\u000D"
-    //         "text": "fzf --prompt='rg'\u000D"
-    //       }
-    //     },
-
-    //     // 3 & 4. Dock the terminal in the editor and hide it
-    //     "workbench.action.terminal.moveToEditor",
-    //     "workbench.action.terminal.toggleTerminal",
-    //     "workbench.action.terminal.toggleTerminal"
-    //   ]
-    // },
+    {
+      // Search file contents using FZF via VS Code task
+      "before": ["<leader>", "s", "c"],
+      "commands": [
+        "workbench.action.tasks.runTask?fzfSearchContent",
+        "workbench.action.terminal.toggleTerminal"
+      ]
+    },
     {
       // Start a new search within files
       "before": ["<leader>", "s", "s"],

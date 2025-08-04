@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "fzfSearchContent",
+      "type": "shell",
+      "command": "fzf --prompt='rg> ' --bind \"change:reload:rg --column --line-number --no-heading --hidden --smart-case {q} || true\" --delimiter ':' --preview 'bat --style=numbers --color=always --line-range {2}-5:{2}+5 {1}' --bind \"enter:execute(code --reuse-window -g {1}:{2}:{3} > /dev/null)+abort\"",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
