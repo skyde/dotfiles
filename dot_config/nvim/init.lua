@@ -1,5 +1,6 @@
 -- Minimal Neovim config with Kanagawa theme
 -- Relative line numbers and a non‑blinking orange cursor
+-- Only apply the colorscheme when not running inside VS Code
 
 vim.opt.number = true
 vim.opt.relativenumber = true
@@ -23,6 +24,9 @@ vim.opt.rtp:prepend(lazypath)
 require("lazy").setup({
   {
     "rebelot/kanagawa.nvim",
+    cond = function()
+      return not vim.g.vscode
+    end,
     config = function()
       vim.cmd("colorscheme kanagawa")
     end,
