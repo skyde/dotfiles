@@ -8,7 +8,10 @@ promptToReturnFromSubprocess: false
 promptToOpenMergeTool: false
 
 gui:
-  scrollHeight: 0
+  scrollHeight: 32
+  scrollPastBottom: false
+  scrollOffMargin: 8
+  scrollOffBehavior: margin
 
 keybinding:
   universal:
