@@ -215,7 +215,7 @@
       "commands": [
         // Automatically search for the word under the cursor
         "editor.action.addSelectionToNextFindMatch",
-        "find-it-faster.findWithinFiles",
+        "fzf-picker.findWithinFiles",
         "extension.vim_escape"
       ]
     }
