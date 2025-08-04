@@ -1,95 +1,129 @@
--- init.lua
+------------------------------------------------------------
+--  Cmd‑tap → Spotlight           (external keyboards only)
+--  Robust against   • sleep/wake • long uptimes • USB swap
+------------------------------------------------------------
 
+--------- tweakables ----------------------------------------------------------
+local TAPPING_TERM = 0.18 -- max seconds Cmd can be held and still count as “tap”
+local RELEASE_DELAY = 0.06 -- let macOS finish key‑up animation before Spotlight
+local STALE_FOR = 10 -- restart tap if no event for this many seconds
+-------------------------------------------------------------------------------
 
--- Open Spotlight when Cmd is tapped without other keys
-local cmdPressed = false
-local otherKeyPressed = false
-local cmdDownTime = 0
-local cmdThreshold = 0.15
-local cmdReleaseDelay = 0.05
+-- internal “don’t touch while running” state
+local cmdDownAt, sawOtherKey, lastEventAt = nil, false, hs.timer.secondsSinceEpoch()
+local tap -- will hold the current hs.eventtap
+local usbWatcher, caffeineWatcher, dog -- helper watchers
 
-local keyDownListener = hs.eventtap.new({ hs.eventtap.event.types.keyDown }, function(_)
-    if cmdPressed then
-        otherKeyPressed = true
-    end
-    return false
-end)
+--------------------------------------------------------------------- utilities
+local function now()
+	return hs.timer.secondsSinceEpoch()
+end
 
-local flagsListener = hs.eventtap.new({ hs.eventtap.event.types.flagsChanged }, function(evt)
-    local flags = evt:getFlags()
-
-    if flags.cmd and not cmdPressed then
-        cmdPressed = true
-        otherKeyPressed = false
-        cmdDownTime = hs.timer.secondsSinceEpoch()
-    elseif not flags.cmd and cmdPressed then
-        cmdPressed = false
-        local elapsed = hs.timer.secondsSinceEpoch() - cmdDownTime
-        if not otherKeyPressed and elapsed < cmdThreshold then
-            hs.timer.doAfter(cmdReleaseDelay, function()
-                if not cmdPressed and not otherKeyPressed then
-                    hs.eventtap.keyStroke({ "cmd" }, "space", 0)
-                end
-            end)
-        end
-    elseif cmdPressed and (flags.alt or flags.shift or flags.ctrl or flags.fn) then
-        otherKeyPressed = true
-    end
-end)
-
--- Helper to determine if a device is an external keyboard
 local function isExternalKeyboard(dev)
-    local name = string.lower(dev.productName or "")
-    return name:find("keyboard") and
-        name ~= string.lower("Apple Internal Keyboard / Trackpad")
+	local name = (dev.productName or ""):lower()
+	return name:find("keyboard") and name ~= "apple internal keyboard / trackpad"
 end
 
--- Check if any external keyboard is currently connected
 local function externalKeyboardPresent()
-    local devices = hs.usb.attachedDevices() or {}
-    for _, dev in ipairs(devices) do
-        if isExternalKeyboard(dev) then
-            return true
-        end
-    end
-    return false
+	for _, d in ipairs(hs.usb.attachedDevices() or {}) do
+		if isExternalKeyboard(d) then
+			return true
+		end
+	end
+	return false
 end
 
--- Start or stop listeners based on external keyboard presence
-local function updateListeners()
-    if externalKeyboardPresent() then
-        if keyDownListener:isEnabled() then
-            -- restart to ensure reliability after sleep
-            keyDownListener:stop()
-            flagsListener:stop()
-        end
-        keyDownListener:start()
-        flagsListener:start()
-    else
-        if keyDownListener:isEnabled() then
-            keyDownListener:stop()
-            flagsListener:stop()
-        end
-    end
+------------------------------------------------------------------ spotlight FX
+local function triggerSpotlight()
+	hs.eventtap.keyStroke({ "cmd" }, "space", 0) -- works even if user remapped glob‑ally
 end
 
--- Watch for USB device changes to refresh listener status
-hs.usb.watcher.new(function(info)
-    if isExternalKeyboard(info) then
-        hs.timer.doAfter(0.5, updateListeners)
-    end
-end):start()
+-------------------------------------------------------------- tap event logic
+local function handle(evt)
+	local t = evt:getType()
+	local flags = evt:getFlags()
+	lastEventAt = now() -- heartbeat for watchdog
 
--- Refresh listeners after waking from sleep or unlocking
-hs.caffeinate.watcher.new(function(event)
-    if event == hs.caffeinate.watcher.systemDidWake or
-        event == hs.caffeinate.watcher.screensDidUnlock then
-        hs.timer.doAfter(1, updateListeners)
-    end
-end):start()
+	-- start of Cmd press --------------------------------------------------------
+	if t == hs.eventtap.event.types.flagsChanged and flags.cmd and not cmdDownAt then
+		cmdDownAt = now()
+		sawOtherKey = false
+		return false
+	end
 
--- Periodically refresh listeners to reduce reliance on system events
-hs.timer.doEvery(5, updateListeners)
+	-- any other key/mod while Cmd is down? -------------------------------------
+	if cmdDownAt and t == hs.eventtap.event.types.keyDown then
+		sawOtherKey = true
+		return false
+	end
+	if cmdDownAt and (flags.alt or flags.shift or flags.ctrl or flags.fn) then
+		sawOtherKey = true
+	end
 
--- Activate listeners if an external keyboard is already connected
-updateListeners()
+	-- Cmd released -------------------------------------------------------------
+	if t == hs.eventtap.event.types.flagsChanged and not flags.cmd and cmdDownAt then
+		local pressDuration = now() - cmdDownAt
+		cmdDownAt = nil
+
+		if not sawOtherKey and pressDuration < TAPPING_TERM then
+			hs.timer.doAfter(RELEASE_DELAY, function()
+				if not cmdDownAt then
+					triggerSpotlight()
+				end
+			end)
+		end
+	end
+	return false -- never swallow the event, just observe
+end
+
+-------------------------------------------------------- tap (re)construction
+local function buildTap()
+	if tap then
+		tap:stop()
+	end -- kill previous instance (if any)
+	tap = hs.eventtap.new({ hs.eventtap.event.types.flagsChanged, hs.eventtap.event.types.keyDown }, handle)
+	tap:start()
+end
+
+------------------------------------------------------------- public bootstrap
+local function ensureRunning()
+	if externalKeyboardPresent() then
+		buildTap()
+	else
+		if tap then
+			tap:stop()
+		end
+	end
+end
+
+-- USB hot‑plug watcher --------------------------------------------------------
+usbWatcher = hs.usb.watcher
+	.new(function(info)
+		if isExternalKeyboard(info) then
+			hs.timer.doAfter(0.3, ensureRunning)
+		end
+	end)
+	:start()
+
+-- sleep / wake / unlock watcher ---------------------------------------------
+caffeineWatcher = hs.caffeinate.watcher
+	.new(function(e)
+		if e == hs.caffeinate.watcher.systemWillSleep then
+			if tap then
+				tap:stop()
+			end
+		elseif e == hs.caffeinate.watcher.systemDidWake or e == hs.caffeinate.watcher.screensDidUnlock then
+			hs.timer.doAfter(1, ensureRunning)
+		end
+	end)
+	:start()
+
+-- watchdog – heal macOS dropping the event‑tap -------------------------------
+dog = hs.timer.doEvery(5, function()
+	if tap and (now() - lastEventAt) > STALE_FOR then
+		buildTap()
+	end
+end)
+
+-- initial activation ---------------------------------------------------------
+ensureRunning()
