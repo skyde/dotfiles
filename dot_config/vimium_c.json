@@ -1,21 +1,23 @@
 {
 	"name": "Vimium C",
-	"@time": "8/4/2025, 7:26:43 AM",
-	"time": 1754310403801,
+	"@time": "8/4/2025, 7:39:32 AM",
+	"time": 1754311172881,
 	"environment": {
 		"extension": "2.12.2",
 		"platform": "mac",
 		"chromium": 138
 	},
+	"allBrowserUrls": true,
 	"exclusionRules": [],
 	"filterLinkHints": true,
-	"grabBackFocus": true,
 	"keyLayout": 2,
 	"keyMappings": [
 		"#!no-check",
 		"# Search",
 		"map <space> LinkHints.activate",
 		"map <s-space> LinkHints.activateOpenInNewTab",
+		"map s LinkHints.activate",
+		"map S LinkHints.activateOpenInNewTab",
 		"",
 		"# Tab Navigation",
 		"map <s-f1> previousTab",
