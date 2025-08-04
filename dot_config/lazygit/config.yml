@@ -7,6 +7,9 @@ git:
 promptToReturnFromSubprocess: false
 promptToOpenMergeTool: false
 
+gui:
+  scrollHeight: 0
+
 keybinding:
   universal:
     undo: u
