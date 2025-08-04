@@ -29,3 +29,19 @@ require("lazy").setup({
   },
   { "tpope/vim-surround" },
 })
+
+-- Map <leader>1..9 to switch tabs
+if vim.g.vscode then
+  for i = 1, 9 do
+    vim.keymap.set("n", "<leader>" .. i, function()
+      vim.fn.VSCodeNotify("workbench.action.openEditorAtIndex" .. i)
+    end, { desc = "Go to tab " .. i, silent = true })
+  end
+else
+  for i = 1, 9 do
+    vim.keymap.set("n", "<leader>" .. i, i .. "gt", {
+      desc = "Go to tab " .. i,
+      silent = true,
+    })
+  end
+end
