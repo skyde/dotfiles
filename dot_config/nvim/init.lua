@@ -1,46 +1,6 @@
--- Minimal Neovim config with Kanagawa theme
+vim.opt.rtp:prepend("~/.local/share/nvim/site/pack/lazy/start/lazy.nvim")
 
--- Enable true color support for better colors
-vim.opt.termguicolors = true
+require("plugins")
 
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.loop.fs_stat(lazypath) then
-  vim.fn.system({
-    "git",
-    "clone",
-    "--filter=blob:none",
-    "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable",
-    lazypath,
-  })
-end
-vim.opt.rtp:prepend(lazypath)
-
-require("lazy").setup({
-  {
-    "rebelot/kanagawa.nvim",
-    cond = function()
-      return not vim.g.vscode
-    end,
-    config = function()
-      vim.cmd("colorscheme kanagawa")
-    end,
-  },
-  { "tpope/vim-surround" },
-})
-
--- Map <leader>1..9 to switch tabs
-if vim.g.vscode then
-  for i = 1, 9 do
-    vim.keymap.set("n", "<leader>" .. i, function()
-      vim.fn.VSCodeNotify("workbench.action.openEditorAtIndex" .. i)
-    end, { desc = "Go to tab " .. i, silent = true })
-  end
-else
-  for i = 1, 9 do
-    vim.keymap.set("n", "<leader>" .. i, i .. "gt", {
-      desc = "Go to tab " .. i,
-      silent = true,
-    })
-  end
-end
+-- Set colorscheme
+vim.cmd.colorscheme("kanagawa")
