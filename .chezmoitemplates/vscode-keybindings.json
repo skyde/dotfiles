@@ -82,18 +82,6 @@
     "key": "shift+f3",
     "command": "workbench.action.quickOpen"
   },
-  // Fuzzy search open editors
-  {
-    "key": "space b",
-    "command": "workbench.action.showAllEditorsByMostRecentlyUsed",
-    "when": "editorTextFocus && vim.mode == 'Normal'"
-  },
-  // Fuzzy search workspace files
-  {
-    "key": "space k",
-    "command": "workbench.action.quickOpen",
-    "when": "editorTextFocus && vim.mode == 'Normal'"
-  },
   // Scroll up 16 Lines
   // Matches Nvim where small scrolls will keep the cursor in exacty the same relative place on the screen
   {
@@ -458,21 +446,6 @@
   {
     "key": "ctrl+right",
     "command": "workbench.action.increaseViewSize",
-    "when": "editorTextFocus && vim.mode == 'Normal'"
-  },
-  {
-    "key": "space -",
-    "command": "workbench.action.splitEditorDown",
-    "when": "editorTextFocus && vim.mode == 'Normal'"
-  },
-  {
-    "key": "space |",
-    "command": "workbench.action.splitEditorRight",
-    "when": "editorTextFocus && vim.mode == 'Normal'"
-  },
-  {
-    "key": "space w d",
-    "command": "workbench.action.closeActiveEditor",
     "when": "editorTextFocus && vim.mode == 'Normal'"
   }
 ]

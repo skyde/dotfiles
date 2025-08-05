@@ -40,12 +40,15 @@
     "visualBlock": "block"
   },
   "vim.normalModeKeyBindingsNonRecursive": [
+    // Misc
     { "before": ["<leader>", "v"], "after": ["<C-v>"] },
     {
       "before": ["<Esc>"],
       "after": ["<Esc>"],
       "commands": [":nohl"]
     },
+
+    // Quick access to editors 1-9
     { "before": ["<leader>", "1"], "commands": ["workbench.action.openEditorAtIndex1"] },
     { "before": ["<leader>", "2"], "commands": ["workbench.action.openEditorAtIndex2"] },
     { "before": ["<leader>", "3"], "commands": ["workbench.action.openEditorAtIndex3"] },
@@ -55,15 +58,109 @@
     { "before": ["<leader>", "7"], "commands": ["workbench.action.openEditorAtIndex7"] },
     { "before": ["<leader>", "8"], "commands": ["workbench.action.openEditorAtIndex8"] },
     { "before": ["<leader>", "9"], "commands": ["workbench.action.openEditorAtIndex9"] },
-    { "before": ["<leader>", "b"], "commands": ["workbench.action.showAllEditorsByMostRecentlyUsed"] },
-    { "before": ["<leader>", "k"], "commands": ["workbench.action.quickOpen"] }
+
+    // File & Explorer
+    {
+      "before": ["<leader>", "e"],
+      "commands": [
+        "workbench.view.explorer",
+        "workbench.files.action.showActiveFileInExplorer"
+      ]
+    },
+    {
+      "before": ["<leader>", "f", "n"],
+      "commands": ["workbench.action.files.newUntitledFile"]
+    },
+    {
+      "before": ["<leader>", "f", "r"],
+      "commands": ["workbench.action.openRecent"]
+    },
+    {
+      "before": ["<leader>", "f", "l"],
+      "commands": ["workbench.action.files.copyPathOfActiveFile"]
+    },
+
+    // Search (Telescope-like)
+    { "before": ["<leader>", "s", "f"], "commands": ["workbench.action.quickOpen"] },
+    { "before": ["<leader>", "s", "s"], "commands": ["workbench.action.findInFiles"] },
+    {
+      "before": ["<leader>", "s", "b"],
+      "commands": ["workbench.action.showAllEditorsByMostRecentlyUsed"]
+    },
+    { "before": ["<leader>", "s", "t"], "commands": ["workbench.action.findInFiles"] },
+    { "before": ["<leader>", "s", "r"], "commands": ["search.action.openPreviousSearchResults"] },
+
+    // Buffer / Tab management
+    { "before": ["]", "b"], "commands": ["workbench.action.nextEditor"] },
+    { "before": ["[", "b"], "commands": ["workbench.action.previousEditor"] },
+    { "before": ["<S-l>"], "commands": ["workbench.action.nextEditor"] },
+    { "before": ["<S-h>"], "commands": ["workbench.action.previousEditor"] },
+    { "before": ["<leader>", "b", "n"], "commands": ["workbench.action.files.newUntitledFile"] },
+    { "before": ["<leader>", "b", "d"], "commands": ["workbench.action.closeActiveEditor"] },
+    { "before": ["<leader>", "b", "o"], "commands": ["workbench.action.closeOtherEditors"] },
+    { "before": ["<leader>", "b", "b"], "commands": ["workbench.action.openPreviousEditor"] },
+    { "before": ["<leader>", "b", "p"], "commands": ["workbench.action.pinEditor"] },
+    { "before": ["<leader>", "b", "u"], "commands": ["workbench.action.unpinEditor"] },
+    { "before": ["<leader>", "b", "h"], "commands": ["workbench.action.moveEditorLeftInGroup"] },
+    { "before": ["<leader>", "b", "l"], "commands": ["workbench.action.moveEditorRightInGroup"] },
+
+    // Window management
+    { "before": ["<leader>", "w", "v"], "commands": ["workbench.action.splitEditorRight"] },
+    { "before": ["<leader>", "w", "s"], "commands": ["workbench.action.splitEditorDown"] },
+    { "before": ["<leader>", "w", "d"], "commands": ["workbench.action.closeActiveEditor"] },
+    { "before": ["<leader>", "w", "h"], "commands": ["workbench.action.focusLeftGroup"] },
+    { "before": ["<leader>", "w", "j"], "commands": ["workbench.action.focusBelowGroup"] },
+    { "before": ["<leader>", "w", "k"], "commands": ["workbench.action.focusAboveGroup"] },
+    { "before": ["<leader>", "w", "l"], "commands": ["workbench.action.focusRightGroup"] },
+    { "before": ["<leader>", "w", "F"], "commands": ["workbench.action.toggleZenMode"] },
+
+    // LSP & Code Actions
+    { "before": ["g", "d"], "commands": ["editor.action.revealDefinition"] },
+    { "before": ["g", "D"], "commands": ["editor.action.revealDeclaration"] },
+    { "before": ["g", "i"], "commands": ["editor.action.goToImplementation"] },
+    { "before": ["g", "r"], "commands": ["editor.action.goToReferences"] },
+    { "before": ["g", "y"], "commands": ["editor.action.goToTypeDefinition"] },
+    { "before": ["g", "p"], "commands": ["editor.action.peekDefinition"] },
+    { "before": ["g", "N"], "commands": ["editor.action.showDefinitionPreviewHover"] },
+    { "before": ["K"], "commands": ["editor.action.showHover"] },
+    { "before": ["g", "K"], "commands": ["editor.action.triggerParameterHints"] },
+    { "before": ["<leader>", "c", "r"], "commands": ["editor.action.rename"] },
+    { "before": ["<leader>", "c", "a"], "commands": ["editor.action.codeAction"] },
+    { "before": ["<leader>", "c", "A"], "commands": ["editor.action.sourceAction"] },
+
+    // Diagnostics
+    { "before": ["<leader>", "e", "e"], "commands": ["workbench.actions.view.problems"] },
+    { "before": ["<leader>", "e", "n"], "commands": ["editor.action.marker.next"] },
+    { "before": ["<leader>", "e", "p"], "commands": ["editor.action.marker.prev"] },
+
+    // Git
+    { "before": ["<leader>", "g", "G"], "commands": ["workbench.view.scm"] },
+    {
+      "before": ["<leader>", "g", "g"],
+      "commands": [
+        "workbench.action.terminal.toggleTerminal",
+        { "command": "workbench.action.terminal.sendSequence", "args": { "text": "lazygit\u000D" } }
+      ]
+    },
+    { "before": ["<leader>", "g", "d"], "commands": ["git.openFile"] },
+
+    // Misc overrides
+    { "before": ["s"], "commands": ["workbench.action.quickOpen"] },
+    { "before": ["S"], "commands": ["workbench.action.findInFiles"] },
+    { "before": ["Z", "Z"], "commands": ["workbench.action.files.save", "workbench.action.closeActiveEditor"] },
+    { "before": ["Z", "Q"], "commands": ["workbench.action.revertAndCloseActiveEditor"] }
   ],
   "vim.insertModeKeyBindings": [
-    { "before": ["<Esc>"], "after": ["<Esc>", "<C-g>u"] }
+    { "before": ["<Esc>"], "after": ["<Esc>", "<C-g>u"] },
+    { "before": ["<C-k>"], "commands": ["editor.action.triggerParameterHints"] }
   ],
   "vim.visualModeKeyBindings": [
     { "before": ["<"], "commands": ["editor.action.outdentLines"] },
-    { "before": [">"], "commands": ["editor.action.indentLines"] }
+    { "before": [">"], "commands": ["editor.action.indentLines"] },
+    { "before": ["<Tab>"], "commands": ["editor.action.indentLines"] },
+    { "before": ["<S-Tab>"], "commands": ["editor.action.outdentLines"] },
+    { "before": ["J"], "commands": ["editor.action.moveLinesDownAction"] },
+    { "before": ["K"], "commands": ["editor.action.moveLinesUpAction"] }
   ],
   "keyboard.dispatch": "keyCode"
 }
