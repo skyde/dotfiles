@@ -1,13 +1,7 @@
 -- Minimal Neovim config with Kanagawa theme
--- Relative line numbers, a non‑blinking orange cursor and a vertical bar in insert mode
 
-vim.opt.number = true
-vim.opt.relativenumber = true
+-- Enable true color support for better colors
 vim.opt.termguicolors = true
-vim.opt.background = "light"
-vim.opt.guicursor = "n-v-c-sm:block,i-ci-ve:ver25,r-cr-o:hor20"
-vim.opt.guicursor:append("a:blinkon0")
-vim.api.nvim_set_hl(0, "Cursor", { fg = "#FF5000", bg = "#000000" })
 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
@@ -29,7 +23,7 @@ require("lazy").setup({
       return not vim.g.vscode
     end,
     config = function()
-      vim.cmd("colorscheme kanagawa-lotus")
+      vim.cmd("colorscheme kanagawa")
     end,
   },
   { "tpope/vim-surround" },
