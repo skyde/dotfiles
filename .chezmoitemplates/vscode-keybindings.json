@@ -426,18 +426,18 @@
   },
   {
     "key": "ctrl+h",
-    "command": "jump_view_left"
+    "command": "workbench.action.focusLeftGroup"
   },
   {
     "key": "ctrl+j",
-    "command": "jump_view_down"
+    "command": "workbench.action.focusBelowGroup"
   },
   {
     "key": "ctrl+k",
-    "command": "jump_view_up"
+    "command": "workbench.action.focusAboveGroup"
   },
   {
     "key": "ctrl+l",
-    "command": "jump_view_right"
+    "command": "workbench.action.focusRightGroup"
   }
 ]

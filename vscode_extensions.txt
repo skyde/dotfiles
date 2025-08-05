@@ -1,3 +1,2 @@
 vscodevim.vim
 qufiwefefwoyn.kanagawa
-chillee.jump-view
