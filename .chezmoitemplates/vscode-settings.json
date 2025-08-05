@@ -6,6 +6,8 @@
   "editor.cursorSmoothCaretAnimation": "off",
   "editor.cursorStyle": "line",
   "editor.fontSize": 14,
+  "editor.fontFamily": "'JetBrainsMono Nerd Font', monospace",
+  "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font",
   "editor.lineNumbers": "relative",
   "editor.renderLineHighlight": "all",
   "workbench.colorTheme": "Kanagawa",
