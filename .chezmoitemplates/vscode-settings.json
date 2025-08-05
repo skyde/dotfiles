@@ -7,12 +7,15 @@
   "editor.cursorStyle": "line",
   "editor.fontSize": 14,
   "editor.lineNumbers": "relative",
-  "editor.renderLineHighlight": "none",
+  "editor.renderLineHighlight": "all",
   "workbench.colorTheme": "Kanagawa",
   "workbench.preferredDarkColorTheme": "Kanagawa",
   "workbench.colorCustomizations": {
-    "editorCursor.foreground": "#FF5000",
-    "editorCursor.background": "#000000"
+    "editorCursor.foreground": "#FFFFFF",
+    "editorCursor.background": "#000000",
+    "editor.lineHighlightBackground": "#FF9E3B",
+    "editor.lineHighlightBorder": "#FF9E3B",
+    "editorLineNumber.activeForeground": "#FF9E3B"
   },
 
   // Disable AI code suggestions and built-in tag closing
