@@ -1,6 +1,6 @@
 # Dotfiles
 
-Personal dotfiles for my development environment, managed with [chezmoi](https://www.chezmoi.io/). Configurations for tools like Neovim, Helix, VS Code, and more are kept under version control so they can be reproduced on any machine.
+Personal dotfiles for my development environment, managed with [chezmoi](https://www.chezmoi.io/). Chezmoi bootstraps a vanilla [LazyVim](https://lazyvim.github.io) configuration for Neovim and also sets up tools like Helix, VS Code, and more so they can be reproduced on any machine.
 
 ## Installation with chezmoi
 
