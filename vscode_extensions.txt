@@ -1,2 +1,3 @@
 vscodevim.vim
 qufiwefefwoyn.kanagawa
+formulahendry.auto-close-tag

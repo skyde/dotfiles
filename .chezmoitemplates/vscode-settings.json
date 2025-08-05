@@ -15,6 +15,11 @@
     "editorCursor.background": "#000000"
   },
 
+  // Disable AI code suggestions and built-in tag closing
+  "editor.inlineSuggest.enabled": false,
+  "github.copilot.enable": { "*": false },
+  "html.autoClosingTags": false,
+
   // Vim extension settings
   "vim.useSystemClipboard": true,
   "vim.useCtrlKeys": true,
