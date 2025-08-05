@@ -11,11 +11,11 @@
   "workbench.colorTheme": "Kanagawa",
   "workbench.preferredDarkColorTheme": "Kanagawa",
   "workbench.colorCustomizations": {
-    "editorCursor.foreground": "#FFFFFF",
+    "editorCursor.foreground": "#D0CCB2",
     "editorCursor.background": "#000000",
-    "editor.lineHighlightBackground": "#FF9E3B",
-    "editor.lineHighlightBorder": "#FF9E3B",
-    "editorLineNumber.activeForeground": "#FF9E3B"
+    "editor.lineHighlightBackground": "#2F334D",
+    "editorLineNumber.activeForeground": "#FF9E3B",
+    "editor.background": "#222436"
   },
 
   // Disable AI code suggestions and built-in tag closing
