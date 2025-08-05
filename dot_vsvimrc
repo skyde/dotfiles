@@ -51,6 +51,7 @@ nnoremap <Right> l
 
 " Select the entire buffer
 nnoremap vig ggVG
+nnoremap vag ggVG
 " Copy the entire buffer to the clipboard
 nnoremap yig ggVGy
 
