@@ -1,0 +1,11 @@
+{{ if eq .chezmoi.os "windows" -}}
+# Install JetBrainsMono Nerd Font on Windows
+if (Get-Command winget -ErrorAction SilentlyContinue) {
+    winget install -e --id NerdFonts.JetBrainsMono
+} elseif (Get-Command choco -ErrorAction SilentlyContinue) {
+    choco install -y nerd-fonts-jetbrainsmono
+} else {
+    Write-Output "No package manager found to install JetBrainsMono Nerd Font"
+}
+{{ end -}}
+
