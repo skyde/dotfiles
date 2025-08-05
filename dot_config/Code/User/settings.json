@@ -474,6 +474,12 @@
       ]
     },
     {
+      // Fuzzy search open editors
+      "before": ["<leader>", "s", "b"],
+      "commands": ["workbench.action.showAllEditorsByMostRecentlyUsed"],
+      "when": "editorTextFocus"
+    },
+    {
       // Search for the current word within files
       "before": ["<leader>", "s", "t"],
       "commands": [
