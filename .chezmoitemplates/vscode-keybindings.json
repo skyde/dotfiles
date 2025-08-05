@@ -82,6 +82,18 @@
     "key": "shift+f3",
     "command": "workbench.action.quickOpen"
   },
+  // Fuzzy search open editors
+  {
+    "key": "space b",
+    "command": "workbench.action.showAllEditorsByMostRecentlyUsed",
+    "when": "editorTextFocus"
+  },
+  // Fuzzy search workspace files
+  {
+    "key": "space k",
+    "command": "workbench.action.quickOpen",
+    "when": "editorTextFocus"
+  },
   // Scroll up 16 Lines
   // Matches Nvim where small scrolls will keep the cursor in exacty the same relative place on the screen
   {

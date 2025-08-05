@@ -49,7 +49,9 @@
     { "before": ["<leader>", "6"], "commands": ["workbench.action.openEditorAtIndex6"] },
     { "before": ["<leader>", "7"], "commands": ["workbench.action.openEditorAtIndex7"] },
     { "before": ["<leader>", "8"], "commands": ["workbench.action.openEditorAtIndex8"] },
-    { "before": ["<leader>", "9"], "commands": ["workbench.action.openEditorAtIndex9"] }
+    { "before": ["<leader>", "9"], "commands": ["workbench.action.openEditorAtIndex9"] },
+    { "before": ["<leader>", "b"], "commands": ["workbench.action.showAllEditorsByMostRecentlyUsed"] },
+    { "before": ["<leader>", "k"], "commands": ["workbench.action.quickOpen"] }
   ],
   "vim.insertModeKeyBindings": [
     { "before": ["<Esc>"], "after": ["<Esc>", "<C-g>u"] }
