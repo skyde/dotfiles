@@ -22,6 +22,7 @@
   "editor.inlineSuggest.enabled": false,
   "github.copilot.enable": { "*": false },
   "html.autoClosingTags": false,
+  "whichkey.delay": 0,
 
   // Vim extension settings
   "vim.useSystemClipboard": true,
@@ -43,6 +44,7 @@
     "visualBlock": "block"
   },
   "vim.normalModeKeyBindingsNonRecursive": [
+    { "before": ["<space>"], "commands": ["whichkey.show"] },
     // Misc
     { "before": ["<leader>", "v"], "after": ["<C-v>"] },
     {
@@ -152,6 +154,9 @@
     { "before": ["S"], "commands": ["workbench.action.findInFiles"] },
     { "before": ["Z", "Z"], "commands": ["workbench.action.files.save", "workbench.action.closeActiveEditor"] },
     { "before": ["Z", "Q"], "commands": ["workbench.action.revertAndCloseActiveEditor"] }
+  ],
+  "vim.visualModeKeyBindingsNonRecursive": [
+    { "before": ["<space>"], "commands": ["whichkey.show"] }
   ],
   "vim.insertModeKeyBindings": [
     { "before": ["<Esc>"], "after": ["<Esc>", "<C-g>u"] },
