@@ -1,0 +1,26 @@
+Here is a list of shortcuts for Visual Studio.
+
+It's hard to export the settings directly, but somewhat quick to reassign them so just do that.
+
+<Shift+F2> Debug.Start
+<Shift+F3> ReSharper.ReSharper_GotoFile
+
+!(needs to move 16 lines) <Shift+F4> Edit.ScrollLineUp
+!(needs to move 16 lines) <Shift+F6> Edit.ScrollLineDown
+
+<Shift+F7> Build.Cancel
+
+!(need a way for this to be context dependent) <Shift+F7> Debug.StopDebugging
+
+<Shift+F8> Edit.GoToDefinition
+<Shift+F11> Edit.ToggleLineComment
+<Ctrl+Shift+F> FastFind
+<Alt+Left Arrow> ReSharper.ReSharper_NavigateBackward
+<Alt+Right Arrow> ReSharper.ReSharper_NavigateForward
+
+
+In VSVim/Keyboard:
+Let VSVim take over:
+Ctrl+I
+Ctrl+O
+Ctrl+R
