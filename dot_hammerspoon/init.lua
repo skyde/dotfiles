@@ -1,129 +1,84 @@
-------------------------------------------------------------
---  Cmd‑tap → Spotlight           (external keyboards only)
---  Robust against   • sleep/wake • long uptimes • USB swap
-------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Spotlight‑on‑Cmd‑tap  •  zero cached device state
+--  – One always‑running event‑tap
+--  – No USB or caffeinate watchers
+--  – Device presence checked exactly when a decision is needed
+--------------------------------------------------------------------------------
 
---------- tweakables ----------------------------------------------------------
-local TAPPING_TERM = 0.18 -- max seconds Cmd can be held and still count as “tap”
-local RELEASE_DELAY = 0.06 -- let macOS finish key‑up animation before Spotlight
-local STALE_FOR = 10 -- restart tap if no event for this many seconds
--------------------------------------------------------------------------------
+---------------------------  Constants  ----------------------------------------
+local INTERNAL_KB_NAME = "Apple Internal Keyboard / Trackpad"
+local CMD_TAP_THRESHOLD = 0.15 -- seconds a press counts as a tap
+local CMD_RELEASE_DELAY = 0.05 -- let other modifiers settle first
+--------------------------------------------------------------------------------
 
--- internal “don’t touch while running” state
-local cmdDownAt, sawOtherKey, lastEventAt = nil, false, hs.timer.secondsSinceEpoch()
-local tap -- will hold the current hs.eventtap
-local usbWatcher, caffeineWatcher, dog -- helper watchers
-
---------------------------------------------------------------------- utilities
-local function now()
-	return hs.timer.secondsSinceEpoch()
-end
-
-local function isExternalKeyboard(dev)
-	local name = (dev.productName or ""):lower()
-	return name:find("keyboard") and name ~= "apple internal keyboard / trackpad"
-end
-
+------------------------  Device‑query helper  ---------------------------------
 local function externalKeyboardPresent()
-	for _, d in ipairs(hs.usb.attachedDevices() or {}) do
-		if isExternalKeyboard(d) then
+	for _, dev in ipairs(hs.usb.attachedDevices() or {}) do
+		local name = string.lower(dev.productName or "")
+		if name:find("keyboard") and name ~= string.lower(INTERNAL_KB_NAME) then
 			return true
 		end
 	end
 	return false
 end
+--------------------------------------------------------------------------------
 
------------------------------------------------------------------- spotlight FX
-local function triggerSpotlight()
-	hs.eventtap.keyStroke({ "cmd" }, "space", 0) -- works even if user remapped glob‑ally
-end
+---------------------------  Gesture state  ------------------------------------
+local cmdDown = false -- Cmd currently held?
+local otherKeyDuringCmd = false -- any non‑modifier key pressed while Cmd down?
+local cmdDownStart = 0 -- epoch seconds when Cmd went down
+--------------------------------------------------------------------------------
 
--------------------------------------------------------------- tap event logic
-local function handle(evt)
-	local t = evt:getType()
-	local flags = evt:getFlags()
-	lastEventAt = now() -- heartbeat for watchdog
+---------------------------  Single event‑tap  ---------------------------------
+local types = { hs.eventtap.event.types.flagsChanged, hs.eventtap.event.types.keyDown }
 
-	-- start of Cmd press --------------------------------------------------------
-	if t == hs.eventtap.event.types.flagsChanged and flags.cmd and not cmdDownAt then
-		cmdDownAt = now()
-		sawOtherKey = false
-		return false
-	end
+local tap = hs.eventtap
+	.new(types, function(evt)
+		local t = evt:getType()
 
-	-- any other key/mod while Cmd is down? -------------------------------------
-	if cmdDownAt and t == hs.eventtap.event.types.keyDown then
-		sawOtherKey = true
-		return false
-	end
-	if cmdDownAt and (flags.alt or flags.shift or flags.ctrl or flags.fn) then
-		sawOtherKey = true
-	end
-
-	-- Cmd released -------------------------------------------------------------
-	if t == hs.eventtap.event.types.flagsChanged and not flags.cmd and cmdDownAt then
-		local pressDuration = now() - cmdDownAt
-		cmdDownAt = nil
-
-		if not sawOtherKey and pressDuration < TAPPING_TERM then
-			hs.timer.doAfter(RELEASE_DELAY, function()
-				if not cmdDownAt then
-					triggerSpotlight()
-				end
-			end)
-		end
-	end
-	return false -- never swallow the event, just observe
-end
-
--------------------------------------------------------- tap (re)construction
-local function buildTap()
-	if tap then
-		tap:stop()
-	end -- kill previous instance (if any)
-	tap = hs.eventtap.new({ hs.eventtap.event.types.flagsChanged, hs.eventtap.event.types.keyDown }, handle)
-	tap:start()
-end
-
-------------------------------------------------------------- public bootstrap
-local function ensureRunning()
-	if externalKeyboardPresent() then
-		buildTap()
-	else
-		if tap then
-			tap:stop()
-		end
-	end
-end
-
--- USB hot‑plug watcher --------------------------------------------------------
-usbWatcher = hs.usb.watcher
-	.new(function(info)
-		if isExternalKeyboard(info) then
-			hs.timer.doAfter(0.3, ensureRunning)
-		end
-	end)
-	:start()
-
--- sleep / wake / unlock watcher ---------------------------------------------
-caffeineWatcher = hs.caffeinate.watcher
-	.new(function(e)
-		if e == hs.caffeinate.watcher.systemWillSleep then
-			if tap then
-				tap:stop()
+		---------------------------------------------------------
+		-- Record any ordinary key‑down while Cmd is held
+		---------------------------------------------------------
+		if t == hs.eventtap.event.types.keyDown then
+			if cmdDown then
+				otherKeyDuringCmd = true
 			end
-		elseif e == hs.caffeinate.watcher.systemDidWake or e == hs.caffeinate.watcher.screensDidUnlock then
-			hs.timer.doAfter(1, ensureRunning)
+			return false
 		end
+
+		---------------------------------------------------------
+		-- Track Cmd going up/down
+		---------------------------------------------------------
+		local flags = evt:getFlags()
+
+		if flags.cmd and not cmdDown then
+			--------------------------------- Cmd just went down
+			cmdDown = true
+			otherKeyDuringCmd = false
+			cmdDownStart = hs.timer.secondsSinceEpoch()
+		elseif not flags.cmd and cmdDown then
+			--------------------------------- Cmd just released
+			cmdDown = false
+			local elapsed = hs.timer.secondsSinceEpoch() - cmdDownStart
+
+			if not otherKeyDuringCmd and elapsed < CMD_TAP_THRESHOLD and externalKeyboardPresent() then -- <-- live query #1
+				hs.timer.doAfter(CMD_RELEASE_DELAY, function()
+					if not cmdDown and not otherKeyDuringCmd and externalKeyboardPresent() then -- <-- live query #2
+						hs.eventtap.keyStroke({ "cmd" }, "space", 0)
+					end
+				end)
+			end
+		elseif cmdDown and (flags.alt or flags.shift or flags.ctrl or flags.fn) then
+			-----------------------------------------------------
+			-- A modifier combination (e.g. Cmd‑Shift) was used
+			-----------------------------------------------------
+			otherKeyDuringCmd = true
+		end
+
+		return false -- observe only; never consume the event
 	end)
 	:start()
+--------------------------------------------------------------------------------
 
--- watchdog – heal macOS dropping the event‑tap -------------------------------
-dog = hs.timer.doEvery(5, function()
-	if tap and (now() - lastEventAt) > STALE_FOR then
-		buildTap()
-	end
-end)
-
--- initial activation ---------------------------------------------------------
-ensureRunning()
+-- Keep a strong reference so Lua’s GC never collects the tap
+_G.__spotlightTap_noCache = tap
