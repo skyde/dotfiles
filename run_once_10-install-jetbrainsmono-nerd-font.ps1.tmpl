@@ -1,11 +1,20 @@
 {{ if eq .chezmoi.os "windows" -}}
 # Install JetBrainsMono Nerd Font on Windows
+$FontDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
+if (Test-Path "$FontDir\JetBrainsMonoNerdFont-Regular.ttf") {
+    return
+}
 if (Get-Command winget -ErrorAction SilentlyContinue) {
-    winget install -e --id NerdFonts.JetBrainsMono
+    winget install -e --id NerdFonts.JetBrainsMono --accept-package-agreements --accept-source-agreements
 } elseif (Get-Command choco -ErrorAction SilentlyContinue) {
     choco install -y nerd-fonts-jetbrainsmono
 } else {
-    Write-Output "No package manager found to install JetBrainsMono Nerd Font"
+    $Url = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
+    $Zip = Join-Path $env:TEMP "JetBrainsMono.zip"
+    Invoke-WebRequest -Uri $Url -OutFile $Zip
+    New-Item -ItemType Directory -Path $FontDir -Force | Out-Null
+    Expand-Archive -Path $Zip -DestinationPath $FontDir -Force
+    Remove-Item $Zip
 }
 {{ end -}}
 
