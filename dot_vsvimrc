@@ -39,6 +39,9 @@ nnoremap <leader> <NOP>
 " Esc removes search highlights automatically
 nnoremap <Esc> :nohl<CR>
 
+" Map Shift+U to redo instead of restoring the line
+nnoremap U <C-r>
+
 " Enter block visual mode with <leader>v
 nnoremap <leader>v <C-v>
 
