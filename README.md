@@ -29,7 +29,10 @@ chezmoi apply
 
 ### Windows
 
+Run PowerShell as Administrator. Before running the scripts, set the execution policy for the current process:
+
 ```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 winget install twpayne.chezmoi
 chezmoi init F286
 # Review changes if desired
