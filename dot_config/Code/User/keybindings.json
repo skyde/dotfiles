@@ -74,7 +74,7 @@
   // Build
   {
     "key": "shift+f2",
-    "command": "workbench.action.tasks.reRunTask",
+    "command": "workbench.action.debug.start",
     "when": "taskCommandsRegistered"
   },
   // Fuzzy find class / file by name
