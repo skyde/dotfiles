@@ -173,7 +173,7 @@
     "command": "runCommands",
     "args": {
       "commands": [
-        "workbench.action.tasks.terminate",
+        // "workbench.action.tasks.terminate",
         "workbench.action.debug.stop"
       ]
     }
