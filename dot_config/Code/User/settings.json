@@ -352,9 +352,9 @@
       ]
     },
     {
-      // Close all tabs
+      // Reopen closed tab
       "before": ["<leader>", "b", "D"],
-      "commands": ["workbench.action.closeAllGroups"]
+      "commands": ["workbench.action.reopenClosedEditor"]
     },
     {
       // Close other tabs
