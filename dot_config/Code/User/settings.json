@@ -943,6 +943,10 @@
       "commands": ["workbench.action.tasks.build"]
     },
     {
+      "before": ["<leader>", "m", "B"],
+      "commands": ["workbench.action.tasks.configureDefaultBuildTask"]
+    },
+    {
       "before": ["<leader>", "m", "c"],
       "commands": ["workbench.action.tasks.terminate"]
     },
@@ -1098,5 +1102,6 @@
   ],
   "gitlens.currentLine.enabled": false,
   "gitlens.codeLens.enabled": false,
-  "editor.inlayHints.enabled": "on"
+  "editor.inlayHints.enabled": "on",
+  "debug.onTaskErrors": "showErrors"
 }
