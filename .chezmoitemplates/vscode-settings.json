@@ -20,6 +20,8 @@
     "editor.background": "#222436"
   },
 
+  "search.location": "panel",
+
   // Disable AI code suggestions and built-in tag closing
   "editor.inlineSuggest.enabled": false,
   "github.copilot.enable": { "*": false },
