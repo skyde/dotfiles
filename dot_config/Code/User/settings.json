@@ -254,6 +254,11 @@
       "before": ["Y"],
       "after": ["y", "$"]
     },
+    // Sidebar
+    {
+      "before": ["<leader>", "r"],
+      "commands": ["workbench.action.toggleSidebarVisibility"]
+    },
     // Copilot Chat
     {
       "before": ["<leader>", "a"],
@@ -634,23 +639,23 @@
     },
     {
       // Disable all breakpoints
-      "before": ["<leader>", "d", "d"],
+      "before": ["<leader>", "d", "B", "a"],
       "commands": ["workbench.debug.viewlet.action.disableAllBreakpoints"]
     },
     {
       // Enable all breakpoints
-      "before": ["<leader>", "d", "e"],
+      "before": ["<leader>", "d", "B", "e"],
       "commands": ["workbench.debug.viewlet.action.enableAllBreakpoints"]
     },
     {
       // Remove all breakpoints
-      "before": ["<leader>", "d", "r"],
+      "before": ["<leader>", "d", "B", "r"],
       "commands": ["workbench.debug.viewlet.action.removeAllBreakpoints"]
     },
     {
-      // Focus breakpoints view
-      "before": ["<leader>", "d", "a"],
-      "commands": ["workbench.debug.viewlet.action.focusBreakpointsView"]
+      // Conditional Breakpoint
+      "before": ["<leader>", "d", "B", "c"],
+      "commands": ["editor.debug.action.conditionalBreakpoint"]
     },
     // Debug
     {
@@ -679,8 +684,8 @@
       "commands": ["workbench.action.debug.pause"]
     },
     {
-      // Terminate
-      "before": ["<leader>", "d", "t"],
+      // Stop
+      "before": ["<leader>", "d", "S"],
       "commands": ["workbench.action.debug.stop"]
     },
     {
@@ -689,19 +694,14 @@
       "commands": ["workbench.action.debug.restart"]
     },
     {
-      // Toggle log point
-      "before": ["<leader>", "d", "L"],
-      "commands": ["editor.debug.action.toggleLogPoint"]
-    },
-    {
-      // Conditional Breakpoint
-      "before": ["<leader>", "d", "C"], // Conditional BP (capital C)
-      "commands": ["editor.debug.action.conditionalBreakpoint"]
-    },
-    {
       // Goto
       "before": ["<leader>", "d", "g"],
       "commands": ["workbench.action.debug.setNextStatement"]
+    },
+    {
+      // Toggle log point
+      "before": ["<leader>", "d", "L"],
+      "commands": ["editor.debug.action.toggleLogPoint"]
     },
     // Hover
     {
@@ -716,7 +716,7 @@
     // ── Watches & evaluation ─────────────────────────────────────────────────────
     {
       // Add selection → Watch
-      "before": ["<leader>", "d", "w"],
+      "before": ["<leader>", "d", "W"],
       "commands": ["editor.debug.action.selectionToWatch"]
     },
     {
@@ -727,11 +727,11 @@
 
     // ── Quick view focus ─────────────────────────────────────────────────────────
     {
-      "before": ["<leader>", "d", "v"], // Variables view
+      "before": ["<leader>", "d", "l"], // Variables view (locals)
       "commands": ["workbench.debug.action.focusVariablesView"]
     },
     {
-      "before": ["<leader>", "d", "W"], // Watch view (capital W)
+      "before": ["<leader>", "d", "w"],
       "commands": ["workbench.debug.action.focusWatchView"]
     },
     {
@@ -741,6 +741,10 @@
     {
       "before": ["<leader>", "d", "h"], // Focus Debug Console (h = “hover/host”)
       "commands": ["workbench.debug.action.focusRepl"]
+    },
+    {
+      "before": ["<leader>", "d", "a"],
+      "commands": ["workbench.debug.viewlet.action.focusbreakpointsview"]
     },
     // Git
     {
@@ -927,7 +931,7 @@
     },
     // Make (Build)
     {
-      "before": ["<leader>", "m", "a"],
+      "before": ["<leader>", "m", "T"],
       "commands": ["workbench.action.tasks.runTask"]
     },
     {
@@ -945,6 +949,10 @@
     {
       "before": ["<leader>", "m", "r"],
       "commands": ["workbench.action.debug.start"]
+    },
+    {
+      "before": ["<leader>", "m", "R"],
+      "commands": ["workbench.action.debug.selectandstart"]
     },
     {
       "before": ["<leader>", "m", "s"],

@@ -310,8 +310,13 @@
     }
   },
   // File explorer & Git
+  // {
+  //   "command": "workbench.action.toggleSidebarVisibility",
+  //   "key": "escape",
+  //   "when": "sideBarVisible && !editorFocus"
+  // },
   {
-    "command": "workbench.action.toggleSidebarVisibility",
+    "command": "workbench.action.focusActiveEditorGroup",
     "key": "escape",
     "when": "sideBarVisible && !editorFocus"
   },
