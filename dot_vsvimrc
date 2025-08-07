@@ -91,7 +91,8 @@ vnoremap > >gv
 nnoremap <leader><leader> :vsc Edit.GoToFile<CR>
 
 " All-in-one text search
-nnoremap <leader>/ :vsc Edit.GoToAll<CR>x:
+" Use Find in Files and avoid triggering Vim's search
+nnoremap <silent> <leader>/ :vsc Edit.FindinFiles<CR>
 
 " All-in-one type search
 nnoremap <leader>st :vsc Edit.GoToAll<CR>t:
