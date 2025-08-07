@@ -735,16 +735,32 @@
       "commands": ["workbench.debug.action.focusWatchView"]
     },
     {
-      "before": ["<leader>", "d", "k"], // Call‑Stack view (k = “stack” mnemonic)
-      "commands": ["workbench.debug.action.focusCallStackView"]
-    },
-    {
       "before": ["<leader>", "d", "h"], // Focus Debug Console (h = “hover/host”)
       "commands": ["workbench.debug.action.focusRepl"]
     },
     {
       "before": ["<leader>", "d", "a"],
       "commands": ["workbench.debug.viewlet.action.focusbreakpointsview"]
+    },
+    {
+      "before": ["<leader>", "d", "k"], // Call‑Stack view (k = “stack” mnemonic)
+      "commands": ["workbench.debug.action.focusCallStackView"]
+    },
+    {
+      "before": ["<leader>", "d", "u"], // Up the call stack
+      "commands": ["workbench.action.debug.callStackUp"]
+    },
+    {
+      "before": ["<leader>", "d", "d"], // Down the call stack
+      "commands": ["workbench.action.debug.callStackDown"]
+    },
+    {
+      "before": ["<leader>", "d", "U"], // Top of the call stack
+      "commands": ["workbench.action.debug.callStackTop"]
+    },
+    {
+      "before": ["<leader>", "d", "D"], // Bottom of the call stack
+      "commands": ["workbench.action.debug.callStackBottom"]
     },
     // Git
     {
