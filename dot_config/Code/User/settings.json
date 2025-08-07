@@ -659,21 +659,6 @@
     },
     // Debug
     {
-      // Step Over (next)
-      "before": ["<leader>", "d", "n"],
-      "commands": ["workbench.action.debug.stepOver"]
-    },
-    {
-      // Step Into
-      "before": ["<leader>", "d", "i"],
-      "commands": ["workbench.action.debug.stepInto"]
-    },
-    {
-      // Step Out
-      "before": ["<leader>", "d", "o"],
-      "commands": ["workbench.action.debug.stepOut"]
-    },
-    {
       // Continue
       "before": ["<leader>", "d", "c"],
       "commands": ["workbench.action.debug.continue"]
@@ -716,7 +701,7 @@
     // ── Watches & evaluation ─────────────────────────────────────────────────────
     {
       // Add selection → Watch
-      "before": ["<leader>", "d", "W"],
+      "before": ["<leader>", "d", "w"],
       "commands": ["editor.debug.action.selectionToWatch"]
     },
     {
@@ -724,42 +709,62 @@
       "before": ["<leader>", "d", "x"],
       "commands": ["editor.debug.action.selectionToRepl"]
     },
-
-    // ── Quick view focus ─────────────────────────────────────────────────────────
+    // Traversal - movement of windows or debug
+    // Does not cause large state changes so mis-typing is not a big issue
     {
-      "before": ["<leader>", "d", "l"], // Variables view (locals)
+      // Step Over (next)
+      "before": ["<leader>", "t", "n"],
+      "commands": ["workbench.action.debug.stepOver"]
+    },
+    {
+      // Step Into
+      "before": ["<leader>", "t", "i"],
+      "commands": ["workbench.action.debug.stepInto"]
+    },
+    {
+      // Step Into Target (choose what to step into)
+      "before": ["<leader>", "t", "I"],
+      "commands": ["workbench.action.debug.stepIntoTarget"]
+    },
+    {
+      // Step Out
+      "before": ["<leader>", "t", "o"],
+      "commands": ["workbench.action.debug.stepOut"]
+    },
+    {
+      "before": ["<leader>", "t", "l"], // Variables view (locals)
       "commands": ["workbench.debug.action.focusVariablesView"]
     },
     {
-      "before": ["<leader>", "d", "w"],
+      "before": ["<leader>", "t", "w"],
       "commands": ["workbench.debug.action.focusWatchView"]
     },
     {
-      "before": ["<leader>", "d", "h"], // Focus Debug Console (h = “hover/host”)
+      "before": ["<leader>", "t", "d"], // Focus Debug Console (h = “hover/host”)
       "commands": ["workbench.debug.action.focusRepl"]
     },
     {
-      "before": ["<leader>", "d", "a"],
+      "before": ["<leader>", "t", "b"],
       "commands": ["workbench.debug.viewlet.action.focusbreakpointsview"]
     },
     {
-      "before": ["<leader>", "d", "k"], // Call‑Stack view (k = “stack” mnemonic)
+      "before": ["<leader>", "t", "c"], // Call‑Stack view (k = “stack” mnemonic)
       "commands": ["workbench.debug.action.focusCallStackView"]
     },
     {
-      "before": ["<leader>", "d", "u"], // Up the call stack
+      "before": ["<leader>", "t", "u"], // Up the call stack
       "commands": ["workbench.action.debug.callStackUp"]
     },
     {
-      "before": ["<leader>", "d", "d"], // Down the call stack
+      "before": ["<leader>", "t", "d"], // Down the call stack
       "commands": ["workbench.action.debug.callStackDown"]
     },
     {
-      "before": ["<leader>", "d", "U"], // Top of the call stack
+      "before": ["<leader>", "t", "U"], // Top of the call stack
       "commands": ["workbench.action.debug.callStackTop"]
     },
     {
-      "before": ["<leader>", "d", "D"], // Bottom of the call stack
+      "before": ["<leader>", "t", "D"], // Bottom of the call stack
       "commands": ["workbench.action.debug.callStackBottom"]
     },
     // Git
@@ -918,31 +923,31 @@
     },
     // Testing
     {
-      "before": ["<leader>", "t", "r"],
+      "before": ["<leader>", "T", "r"],
       "commands": ["testing.runCurrentTest"]
     },
     {
-      "before": ["<leader>", "t", "d"],
+      "before": ["<leader>", "T", "d"],
       "commands": ["testing.debugCurrentTest"]
     },
     {
-      "before": ["<leader>", "t", "a"],
+      "before": ["<leader>", "T", "a"],
       "commands": ["testing.runAll"]
     },
     {
-      "before": ["<leader>", "t", "R"],
+      "before": ["<leader>", "T", "R"],
       "commands": ["testing.reRunLastRun"]
     },
     {
-      "before": ["<leader>", "t", "o"],
+      "before": ["<leader>", "T", "o"],
       "commands": ["testing.showMostRecentOutput"]
     },
     {
-      "before": ["<leader>", "t", "f"],
+      "before": ["<leader>", "T", "f"],
       "commands": ["testing.runCurrentFile"]
     },
     {
-      "before": ["<leader>", "t", "e"],
+      "before": ["<leader>", "T", "e"],
       "commands": ["testing.openTestView"] // focuses the Test Explorer
     },
     // Make (Build)
