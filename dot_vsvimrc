@@ -90,8 +90,14 @@ vnoremap > >gv
 " Fuzzy search files
 nnoremap <leader><leader> :vsc Edit.GoToFile<CR>
 
-" Interactive global search
-nnoremap <leader>/ :vsc Edit.FindInFiles<CR>
+" All-in-one text search
+nnoremap <leader>/ :vsc Edit.GoToAll<CR>x:
+
+" All-in-one type search
+nnoremap <leader>st :vsc Edit.GoToAll<CR>t:
+
+" All-in-one member search
+nnoremap <leader>sm :vsc Edit.GoToAll<CR>m:
 
 " This is a workaround for a bug in the 'Save on Format' plugin where cursor moves up one position on save
 nnoremap <C-s> :vsc Edit.FormatDocument<CR>:vsc File.SaveAll<CR><Right>
