@@ -190,6 +190,12 @@
     "command": "editor.action.commentLine",
     "when": "editorTextFocus"
   },
+  {
+    // LazyVim-style line comment
+    "key": "g c c",
+    "command": "editor.action.commentLine",
+    "when": "editorTextFocus && vim.mode == 'Normal'"
+  },
   // Change within current file
   // Makes the standard cmd-f shortcut map to the / key
   // Useful as I have a macro mapped to cmd-f

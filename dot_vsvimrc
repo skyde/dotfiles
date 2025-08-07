@@ -122,7 +122,8 @@ nnoremap gr :vsc Edit.FindAllReferences<CR>
 nnoremap gk :vsc Edit.PreviousMethod<CR>
 nnoremap gj :vsc Edit.NextMethod<CR>
 nnoremap gu :vsc ReSharper.ReSharper_GotoUsage<CR>
-nnoremap gc :vsc Edit.ToggleComment<CR>
+" Toggle comment like LazyVim's gcc mapping
+nnoremap gcc :vsc Edit.ToggleComment<CR>
 nnoremap gh :vsc EditorContextMenus.CodeWindow.ToggleHeaderCodeFile<CR>
 
 " Code
