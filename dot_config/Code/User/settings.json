@@ -1103,5 +1103,6 @@
   "gitlens.currentLine.enabled": false,
   "gitlens.codeLens.enabled": false,
   "editor.inlayHints.enabled": "on",
-  "debug.onTaskErrors": "showErrors"
+  "debug.onTaskErrors": "showErrors",
+  "task.saveBeforeRun": "always"
 }
