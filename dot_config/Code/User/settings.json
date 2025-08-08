@@ -32,7 +32,7 @@
   // Highlighting
   "editor.semanticHighlighting.enabled": true,
   "editor.selectionHighlight": false,
-  "editor.occurrencesHighlight": "off",
+  "editor.occurrencesHighlight": false,
   "workbench.colorCustomizations": {
     // Custom cursor color - do not change
     "editorCursor.foreground": "#FF5000",
@@ -41,6 +41,8 @@
 
     // Simple Black Background
     "statusBar.background": "#000000",
+    "statusBar.noFolderBackground": "#000000",
+    "statusBar.debuggingBackground": "#000000",
     "editor.background": "#000000",
     "tab.activeBackground": "#301000",
     "tab.inactiveBackground": "#000000",
@@ -740,12 +742,12 @@
       "commands": ["workbench.debug.action.focusWatchView"]
     },
     {
-      "before": ["<leader>", "t", "d"], // Focus Debug Console (h = “hover/host”)
+      "before": ["<leader>", "t", "r"], // Focus Debug Console
       "commands": ["workbench.debug.action.focusRepl"]
     },
     {
       "before": ["<leader>", "t", "b"],
-      "commands": ["workbench.debug.viewlet.action.focusbreakpointsview"]
+      "commands": ["workbench.debug.action.focusBreakpointsView"]
     },
     {
       "before": ["<leader>", "t", "c"], // Call‑Stack view (k = “stack” mnemonic)
@@ -848,7 +850,7 @@
     {
       // Accept All of Ours
       "before": ["<leader>", "c", "O"],
-      "commands": ["merge.acceptAllInput2"]
+      "commands": ["merge.acceptAllInput1"]
     },
     {
       // Accept Theirs
@@ -1055,11 +1057,39 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
   },
-  // Fuzzy Finder
-  "search.exclude": {
-    // Ignore hidden folders
-    "**/\\.*": true
+  "[cpp]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    "editor.formatOnSave": true
   },
+  "[c]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    "editor.formatOnSave": true
+  },
+  "clangd.arguments": [
+    "--background-index",
+    "--clang-tidy",
+    "--completion-style=detailed",
+    "--header-insertion=never",
+    "--pch-storage=memory",
+    "-j=8"
+  ],
+  "files.watcherExclude": {
+    "**/.git/**": true,
+    "**/.cache/**": true,
+    "**/build/**": true,
+    "**/out/**": true,
+    "**/bazel-*/**": true
+  },
+  "search.exclude": {
+    "**/.*": true,
+    "**/node_modules/**": true,
+    "**/build/**": true,
+    "**/out/**": true,
+    "**/bazel-*/**": true
+  },
+  // Japanese text won't be flagged as “suspicious”
+  "editor.unicodeHighlight.allowedLocales": { "ja": true },
+  // Fuzzy Finder
   "search.useGlobalIgnoreFiles": true,
   "search.useParentIgnoreFiles": true,
   "fzf-picker.general.useGitIgnoreExcludes": true,
