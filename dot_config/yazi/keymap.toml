@@ -53,6 +53,6 @@ prepend_keymap = [
   { on = [ "g", "o" ], run = "cd ~/Documents", desc = "Go to Documents" },
   { on = [ "g", "p" ], run = "cd ~/Projects", desc = "Go to Projects" },
   { on = [ "g", "e" ], run = "cd ~/Desktop", desc = "Go to Desktop" },
-  { on = [ "g", "v" ], run = "cd ~/.config/Code/User", desc = "Go to Desktop" },
+  { on = [ "g", "v" ], run = "cd ~/.config/Code/User", desc = "Go to VS Code config" },
   { on = [ "g", "n" ], run = "cd ~/.config/nvim", desc = "Go to NVim" },
 ]

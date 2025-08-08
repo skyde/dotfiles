@@ -101,8 +101,8 @@ map("v", "<D-v>", '"+p', { desc = "Paste over selection" })
 map("i", "<D-v>", "<C-r>+", { desc = "Paste" })
 map("n", "<D-a>", "ggVG", { desc = "Select all" })
 
-vim.keymap.del("n", "<S-h>")
-vim.keymap.del("n", "<S-l>")
+pcall(vim.keymap.del, "n", "<S-h>")
+pcall(vim.keymap.del, "n", "<S-l>")
 
 -- These are commented out for now as they are not working. Maybe kitty on Mac does not pick up the event?
 -- Next buffer: Cmd+Shift+]

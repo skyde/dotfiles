@@ -14,4 +14,5 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
   end,
 })
 
-vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
+-- Be robust if the group changes or is missing
+pcall(vim.api.nvim_del_augroup_by_name, "lazyvim_wrap_spell")

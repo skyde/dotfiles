@@ -21,7 +21,8 @@
   "terminal.integrated.defaultProfile.linux": "zsh",
   "terminal.integrated.defaultProfile.osx": "zsh",
   "terminal.integrated.defaultProfile.windows": "pwsh",
-  // Forward Ctrl+S to the terminal by removing the save command from the skip list
+  // Forward Cmd/Ctrl+S to the terminal by removing the save command from the skip list
+  // This subtracts from VS Code's default list rather than replacing it
   "terminal.integrated.commandsToSkipShell": ["-workbench.action.files.save"],
   "editor.formatOnSave": true,
   "window.zoomLevel": 0.2,
@@ -848,7 +849,7 @@
     {
       // Accept All of Ours
       "before": ["<leader>", "c", "O"],
-      "commands": ["merge.acceptAllInput2"]
+      "commands": ["merge.acceptAllInput1"]
     },
     {
       // Accept Theirs
@@ -1058,7 +1059,7 @@
   // Fuzzy Finder
   "search.exclude": {
     // Ignore hidden folders
-    "**/\\.*": true
+    "**/.*": true
   },
   "search.useGlobalIgnoreFiles": true,
   "search.useParentIgnoreFiles": true,
