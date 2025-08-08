@@ -33,7 +33,7 @@
   // Highlighting
   "editor.semanticHighlighting.enabled": true,
   "editor.selectionHighlight": false,
-  "editor.occurrencesHighlight": "off",
+  "editor.occurrencesHighlight": false,
   "workbench.colorCustomizations": {
     // Custom cursor color - do not change
     "editorCursor.foreground": "#FF5000",
@@ -1091,7 +1091,6 @@
   // "zenMode.hideLineNumbers": false,
   "window.commandCenter": false,
   "workbench.layoutControl.enabled": false,
-  "workbench.activityBar.location": "hidden",
   "C_Cpp.intelliSenseEngine": "disabled",
   "github.copilot.enable": {
     "*": false,
@@ -1126,5 +1125,6 @@
   "gitlens.codeLens.enabled": false,
   "editor.inlayHints.enabled": "on",
   "debug.onTaskErrors": "showErrors",
-  "task.saveBeforeRun": "always"
+  "task.saveBeforeRun": "always",
+  "workbench.activityBar.visible": false
 }
