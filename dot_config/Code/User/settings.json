@@ -741,12 +741,13 @@
       "commands": ["workbench.debug.action.focusWatchView"]
     },
     {
-      "before": ["<leader>", "t", "d"], // Focus Debug Console (h = “hover/host”)
+      // Focus Debug Console (h = “hover/host”)
+      "before": ["<leader>", "t", "h"],
       "commands": ["workbench.debug.action.focusRepl"]
     },
     {
       "before": ["<leader>", "t", "b"],
-      "commands": ["workbench.debug.viewlet.action.focusbreakpointsview"]
+      "commands": ["workbench.debug.viewlet.action.focusBreakpointsView"]
     },
     {
       "before": ["<leader>", "t", "c"], // Call‑Stack view (k = “stack” mnemonic)
@@ -978,7 +979,7 @@
     },
     {
       "before": ["<leader>", "m", "R"],
-      "commands": ["workbench.action.debug.selectandstart"]
+      "commands": ["workbench.action.debug.selectAndStart"]
     },
     {
       "before": ["<leader>", "m", "s"],
@@ -1126,5 +1127,7 @@
   "editor.inlayHints.enabled": "on",
   "debug.onTaskErrors": "showErrors",
   "task.saveBeforeRun": "always",
-  "workbench.activityBar.visible": false
+  "workbench.activityBar.visible": false,
+  "telemetry.telemetryLevel": "off",
+  "gitlens.ai.enabled": false
 }
