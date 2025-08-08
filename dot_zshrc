@@ -165,3 +165,7 @@ function y() {
   [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
   rm -f -- "$tmp"
 }
+
+# Load machine-specific overrides, if present
+# shellcheck disable=SC1090
+[[ -r "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
