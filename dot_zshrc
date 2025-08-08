@@ -122,6 +122,27 @@ if (( $+commands[fzf] )); then
   bindkey '^R' _fzf_history_widget
 fi
 
+# Safer Git defaults on hosts where some tools are unavailable (e.g., corp machines)
+# - If delta is missing, fall back to less and plain diffs for interactive mode
+# - If VS Code is missing, use Neovim/Vim mergetools instead of the vscode tool
+if ! command -v delta >/dev/null || ! command -v code >/dev/null; then
+  function git() {
+    local -a cfg
+    cfg=()
+    if ! command -v delta >/dev/null; then
+      cfg+=( -c core.pager=less -c interactive.diffFilter=cat )
+    fi
+    if ! command -v code >/dev/null; then
+      if command -v nvim >/dev/null; then
+        cfg+=( -c merge.tool=nvimdiff3 -c difftool.tool=nvimdiff )
+      else
+        cfg+=( -c merge.tool=vimdiff -c difftool.tool=vimdiff )
+      fi
+    fi
+    command git "${cfg[@]}" "$@"
+  }
+fi
+
 # Aliases
 alias z='cd'
 alias grep="grep --color=auto"
