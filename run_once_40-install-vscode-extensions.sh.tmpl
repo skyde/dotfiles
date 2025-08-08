@@ -1,4 +1,4 @@
-{{ if ne .chezmoi.os "windows" -}}
+{{ if and (ne .chezmoi.os "windows") (not (and (hasKey . "corp_linux") .corp_linux)) -}}
 #!/usr/bin/env bash
 set -e
 EXT_FILE="{{ .chezmoi.sourceDir }}/vscode_extensions.txt"

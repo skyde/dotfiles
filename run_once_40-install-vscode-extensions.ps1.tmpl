@@ -1,4 +1,4 @@
-{{ if eq .chezmoi.os "windows" -}}
+{{ if and (eq .chezmoi.os "windows") (not (and (hasKey . "corp_linux") .corp_linux)) -}}
 $extensionsFile = "{{ .chezmoi.sourceDir }}\vscode_extensions.txt"
 if (Get-Command "code" -ErrorAction SilentlyContinue) {
     $codeCmd = "code"
