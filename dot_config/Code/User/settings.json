@@ -56,8 +56,10 @@
     "editorInlayHint.foreground": "#606060",
     "editorInlayHint.background": "#00000000",
 
-    "editor.inlineValuesForeground": "#AA3333", // text color of inline values
-    "editor.inlineValuesBackground": "#00000000" // background color (supports transparency)
+    "editor.inlineValuesForeground": "#444444", // text color of inline values
+    "editor.inlineValuesBackground": "#000000" // background color (supports transparency)
+    // "editor.inlineValuesForeground": "#000000", // text color of inline values
+    // "editor.inlineValuesBackground": "#FFFFFF40" // background color (supports transparency)
   },
   // Custom color scheme
   "editor.tokenColorCustomizations": {
@@ -1127,7 +1129,7 @@
   ],
   "gitlens.currentLine.enabled": false,
   "gitlens.codeLens.enabled": false,
-  "editor.inlayHints.enabled": "on",
+  "editor.inlayHints.enabled": "off",
   "debug.onTaskErrors": "showErrors",
   "task.saveBeforeRun": "always",
   "telemetry.telemetryLevel": "off",
