@@ -1149,6 +1149,7 @@
   "gitlens.currentLine.enabled": false,
   "gitlens.codeLens.enabled": false,
   "editor.inlayHints.enabled": "off",
+  "editor.inlayHints.fontFamily": "JetBrainsMono Nerd Font Italic, JetBrains Mono Italic, monospace",
   "debug.onTaskErrors": "showErrors",
   "task.saveBeforeRun": "always",
   "telemetry.telemetryLevel": "off",
