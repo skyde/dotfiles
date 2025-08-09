@@ -93,6 +93,11 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> w j` – focus pane below
 - `<leader> w k` – focus pane above
 - `<leader> w l` – focus right pane
+- `<leader> u w` – toggle word wrap
+- `<leader> u z` – toggle Zen mode
+- `<leader> u c` – toggle render whitespace
+- `<leader> u i` – toggle inline parameter name hints
+- `<leader> u d` – toggle debug inline values
 - `<leader> s g` – search within files
 - `<leader> s f` – search files
 - `<leader> s t` – search files by type
