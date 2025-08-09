@@ -60,13 +60,17 @@ fi
 # Install JetBrains Mono font using apt
 $SUDO apt-get install -y fonts-jetbrains-mono || true
 
-# Set zsh as the default shell if available
+# Set zsh as the default shell if available and the current user exists in passwd
 if command -v zsh >/dev/null 2>&1; then
     ZSH_PATH=$(command -v zsh)
-    CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
-    if [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
-        echo "Changing default shell to $ZSH_PATH"
-        $SUDO chsh -s "$ZSH_PATH" "$USER" || true
+    if getent passwd "$USER" >/dev/null 2>&1; then
+        CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
+        if [ -n "$CURRENT_SHELL" ] && [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
+            echo "Changing default shell to $ZSH_PATH"
+            $SUDO chsh -s "$ZSH_PATH" "$USER" || true
+        fi
+    else
+        echo "Skipping default shell change: user '$USER' not found in /etc/passwd (likely a container user)."
     fi
 fi
 
