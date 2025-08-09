@@ -5,6 +5,16 @@ COMMON_APPS=(
 {{- include "common_apps.txt" -}}
 )
 
+# Enable extra package setup only when explicitly requested
+# Usage: pass --extras/--full or set CHEZMOI_EXTRAS=1
+EXTRAS=0
+case "${1:-}" in
+  --extras|--full) EXTRAS=1 ;;
+esac
+if [ "${CHEZMOI_EXTRAS:-}" = "1" ]; then
+  EXTRAS=1
+fi
+
 echo "Running macOS setup using Homebrew..."
 
 # Check if Homebrew is installed
@@ -18,33 +28,37 @@ else
     brew update
 fi
 
-echo "Installing common apps..."
-# Install common apps
-for pkg in "${COMMON_APPS[@]}"; do
-    echo "Installing $pkg..."
-    brew install "$pkg" || echo "Failed to install $pkg, continuing..."
-done
+if [ "$EXTRAS" -eq 1 ]; then
+  echo "Installing common apps (extras enabled)..."
+  # Install common apps
+  for pkg in "${COMMON_APPS[@]}"; do
+      echo "Installing $pkg..."
+      brew install "$pkg" || echo "Failed to install $pkg, continuing..."
+  done
 
-brew install zsh-autosuggestions zsh-syntax-highlighting
+  brew install zsh-autosuggestions zsh-syntax-highlighting || true
 
-# Install macOS-specific apps
-echo "Installing macOS-specific apps..."
-brew install --cask fluor || echo "Failed to install fluor, continuing..."
-brew install --cask hammerspoon || echo "Failed to install hammerspoon, continuing..."
-brew install --cask alt-tab || echo "Failed to install alt-tab, continuing..."
-brew install --cask betterdisplay || echo "Failed to install betterdisplay, continuing..."
+  # Install macOS-specific apps
+  echo "Installing macOS-specific apps..."
+  brew install --cask fluor || echo "Failed to install fluor, continuing..."
+  brew install --cask hammerspoon || echo "Failed to install hammerspoon, continuing..."
+  brew install --cask alt-tab || echo "Failed to install alt-tab, continuing..."
+  brew install --cask betterdisplay || echo "Failed to install betterdisplay, continuing..."
 
-# Link fd if it's not linked
-if brew list fd >/dev/null 2>&1 && ! brew list --formula | grep -q "^fd$"; then
-    echo "Linking fd..."
-    brew link --overwrite fd || echo "Failed to link fd, continuing..."
+  # Link fd if it's not linked
+  if brew list fd >/dev/null 2>&1 && ! brew list --formula | grep -q "^fd$"; then
+      echo "Linking fd..."
+      brew link --overwrite fd || echo "Failed to link fd, continuing..."
+  fi
+
+  # Install fonts (macOS-specific: font-jetbrains-mono-nerd-font)
+  echo "Installing fonts..."
+  brew install --cask font-jetbrains-mono-nerd-font || echo "Failed to install font-jetbrains-mono-nerd-font, continuing..."
+
+  echo "macOS extras setup complete!"
+else
+  echo "macOS minimal setup. Skipping Homebrew installs. Set CHEZMOI_EXTRAS=1 or pass --extras to enable."
 fi
-
-# Install fonts (macOS-specific: font-jetbrains-mono-nerd-font)
-echo "Installing fonts..."
-brew install --cask font-jetbrains-mono-nerd-font || echo "Failed to install font-jetbrains-mono-nerd-font, continuing..."
-
-echo "macOS setup complete!"
 
 # Configure key repeat behavior for Vim and general usage
 echo "Setting macOS key repeat defaults..."
@@ -64,4 +78,4 @@ echo "Setting Dock auto-hide preferences..."
 defaults write com.apple.dock autohide -bool true
 defaults write com.apple.dock autohide-delay -float 0
 defaults write com.apple.dock autohide-time-modifier -float 0.15
-killall Dock
+killall Dock || true

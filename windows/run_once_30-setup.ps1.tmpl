@@ -6,9 +6,16 @@ $COMMON_APPS = Get-Content "{{ .chezmoi.sourceDir }}/common_apps.txt" | Where-Ob
 Write-Host "COMMON_APPS:"
 $COMMON_APPS | ForEach-Object { Write-Host $_ }
 
-Write-Host 'Running Windows setup using winget...'
-# Install common apps using winget if available
-if (Get-Command winget -ErrorAction SilentlyContinue) {
+Write-Host 'Running Windows setup...'
+
+# Extras flag: enable package installs only if explicitly requested
+# Usage: pass --extras/--full as first arg or set CHEZMOI_EXTRAS=1 env var
+$EXTRAS = 0
+if ($args.Length -gt 0 -and ($args[0] -in @('--extras','--full'))) { $EXTRAS = 1 }
+if ($env:CHEZMOI_EXTRAS -eq '1') { $EXTRAS = 1 }
+
+# Install common apps using winget if available and extras enabled
+if ($EXTRAS -eq 1 -and (Get-Command winget -ErrorAction SilentlyContinue)) {
     # Map app names to winget IDs
     $wingetAppMap = @{
         'git'      = 'Git.Git'
@@ -38,8 +45,10 @@ if (Get-Command winget -ErrorAction SilentlyContinue) {
             Write-Host "No winget mapping for $pkg, skipping."
         }
     }
-} else {
+} elseif ($EXTRAS -eq 1) {
     Write-Warning "winget is not available. Skipping winget app installs."
+} else {
+    Write-Host "Minimal mode: skipping winget installs. Set CHEZMOI_EXTRAS=1 or pass --extras to enable."
 }
 # Install fonts (Windows-specific: JetBrainsMono-NF)
 $fontName = "JetBrainsMono Nerd Font"
@@ -49,7 +58,7 @@ if (-not $fontInstalled) {
 } else {
     Write-Host "JetBrainsMono-NF font is already installed."
 }
-# Ensure LLVM (clang) is in PATH for C compiler support
+# Ensure LLVM (clang) is in PATH for C compiler support (safe in minimal)
 $llvmBin = "$env:ProgramFiles\LLVM\bin"
 if (Test-Path "$llvmBin\clang.exe") {
     $userPath = [System.Environment]::GetEnvironmentVariable('PATH', 'User')
