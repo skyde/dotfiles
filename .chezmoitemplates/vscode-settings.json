@@ -20,6 +20,8 @@
     "editor.background": "#222436"
   },
 
+  "workbench.quickOpen.centered": true,
+
   "search.location": "panel",
 
   // Disable AI code suggestions and built-in tag closing
