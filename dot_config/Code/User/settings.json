@@ -303,12 +303,7 @@
     {
       // Toggle inline parameter name hints
       "before": ["<leader>", "u", "i"],
-      "commands": ["editor.action.toggleInlineHints"]
-    },
-    {
-      // Toggle debug inline values
-      "before": ["<leader>", "u", "d"],
-      "commands": ["workbench.action.debug.toggleInlineValues"]
+      "commands": ["clangd.inlayHints.toggle"]
     },
     // File
     {
@@ -1154,5 +1149,6 @@
   "task.saveBeforeRun": "always",
   "telemetry.telemetryLevel": "off",
   "gitlens.ai.enabled": false,
-  "workbench.activityBar.location": "hidden"
+  "workbench.activityBar.location": "hidden",
+  "editor.renderWhitespace": "none"
 }
