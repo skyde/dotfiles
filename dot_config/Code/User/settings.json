@@ -747,7 +747,7 @@
     },
     {
       "before": ["<leader>", "t", "b"],
-      "commands": ["workbench.debug.viewlet.action.focusBreakpointsView"]
+      "commands": ["workbench.debug.action.focusBreakpointsView"]
     },
     {
       "before": ["<leader>", "t", "c"], // Call‑Stack view (k = “stack” mnemonic)
