@@ -14,9 +14,9 @@ COMMON_APPS=(
 
 echo "Installing packages using apt..."
 
-# Update apt and install essential build tools
+# Update apt and install essential build tools and curl
 $SUDO apt-get update -y -qq || true
-$SUDO apt-get install -y build-essential libc6-dev pkg-config || true
+$SUDO apt-get install -y build-essential libc6-dev pkg-config curl ca-certificates || true
 
 # Map package names from common_apps.txt to their apt package names when they differ
 declare -A APT_PACKAGE_MAP=(
@@ -25,18 +25,37 @@ declare -A APT_PACKAGE_MAP=(
     [nvim]=neovim
 )
 
-# Build list of apt packages
+# Build list of apt packages (mapped) and filter to only those available in apt
 APT_PACKAGES=()
 for pkg in "${COMMON_APPS[@]}"; do
     apt_pkg="${APT_PACKAGE_MAP[$pkg]:-$pkg}"
     APT_PACKAGES+=("$apt_pkg")
 done
 
+# Split into available and missing packages to avoid hard failures on unavailable ones (e.g. yazi)
+AVAILABLE_PACKAGES=()
+MISSING_PACKAGES=()
+for pkg in "${APT_PACKAGES[@]}"; do
+    if apt-cache show "$pkg" >/dev/null 2>&1; then
+        AVAILABLE_PACKAGES+=("$pkg")
+    else
+        MISSING_PACKAGES+=("$pkg")
+    fi
+done
+
 # Install zsh and helpful plugins
 APT_PACKAGES+=(zsh zsh-autosuggestions zsh-syntax-highlighting)
 
-echo "Installing: ${APT_PACKAGES[*]}"
-$SUDO apt-get install -y "${APT_PACKAGES[@]}" || true
+if [ ${#AVAILABLE_PACKAGES[@]} -gt 0 ]; then
+    echo "Installing: ${AVAILABLE_PACKAGES[*]}"
+    $SUDO apt-get install -y "${AVAILABLE_PACKAGES[@]}" || true
+else
+    echo "No mapped packages available via apt to install."
+fi
+
+if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
+    echo "Skipping unavailable packages (not found in apt): ${MISSING_PACKAGES[*]}"
+fi
 
 # Install JetBrains Mono font using apt
 $SUDO apt-get install -y fonts-jetbrains-mono || true

@@ -1,0 +1,3 @@
+# Prevent CI files from being installed into $HOME
+.github/
+

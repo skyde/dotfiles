@@ -33,7 +33,7 @@
   // Highlighting
   "editor.semanticHighlighting.enabled": true,
   "editor.selectionHighlight": false,
-  "editor.occurrencesHighlight": false,
+  "editor.occurrencesHighlight": "off",
   "workbench.colorCustomizations": {
     // Custom cursor color - do not change
     "editorCursor.foreground": "#FF5000",
@@ -1127,7 +1127,7 @@
   "editor.inlayHints.enabled": "on",
   "debug.onTaskErrors": "showErrors",
   "task.saveBeforeRun": "always",
-  "workbench.activityBar.visible": false,
   "telemetry.telemetryLevel": "off",
-  "gitlens.ai.enabled": false
+  "gitlens.ai.enabled": false,
+  "workbench.activityBar.location": "hidden"
 }
