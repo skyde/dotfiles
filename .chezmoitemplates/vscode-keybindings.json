@@ -453,5 +453,17 @@
     "key": "ctrl+right",
     "command": "workbench.action.increaseViewSize",
     "when": "editorTextFocus && vim.mode == 'Normal'"
+  },
+  // First press: show + focus (focus command auto-opens if hidden)
+  {
+    "key": "ctrl+]",
+    "command": "multiCommand.showAndFocusSecondarySideBar",
+    "when": "!secondarySideBarVisible"
+  },
+  // Second press: hide
+  {
+    "key": "ctrl+]",
+    "command": "workbench.action.toggleSecondarySideBar",
+    "when": "secondarySideBarVisible"
   }
 ]

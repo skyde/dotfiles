@@ -196,5 +196,14 @@
     { "before": ["J"], "commands": ["editor.action.moveLinesDownAction"] },
     { "before": ["K"], "commands": ["editor.action.moveLinesUpAction"] }
   ],
+  // Multi-command configuration for secondary side bar toggle+focus
+  "multiCommand.commands": [
+    {
+      "command": "multiCommand.showAndFocusSecondarySideBar",
+      "sequence": [
+        "workbench.action.focusIntoSecondarySideBar"
+      ]
+    }
+  ],
   "keyboard.dispatch": "keyCode"
 }
