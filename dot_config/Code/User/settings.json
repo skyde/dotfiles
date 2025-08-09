@@ -289,6 +289,16 @@
       "before": ["<leader>", "u", "c"],
       "commands": ["editor.action.toggleRenderWhitespace"]
     },
+    {
+      // Toggle inline parameter name hints
+      "before": ["<leader>", "u", "i"],
+      "commands": ["editor.action.toggleInlineHints"]
+    },
+    {
+      // Toggle debug inline values
+      "before": ["<leader>", "u", "d"],
+      "commands": ["workbench.action.debug.toggleInlineValues"]
+    },
     // File
     {
       "before": ["<leader>", "f", "m"],
