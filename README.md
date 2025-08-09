@@ -8,7 +8,13 @@ brew install chezmoi
 chezmoi init skyde
 # Review changes if desired
 chezmoi diff
+
+# Minimal apply (default): no Homebrew installs
 chezmoi apply
+
+# Extras (optional): install tools/apps via Homebrew
+CHEZMOI_EXTRAS=1 chezmoi apply
+# or: CHEZMOI_EXTRAS=1 chezmoi apply -- --extras
 ```
 
 ### Linux
@@ -18,7 +24,13 @@ sudo apt-get update -qq && sudo apt-get install -y git chezmoi
 chezmoi init skyde
 # Review changes if desired
 chezmoi diff
+
+# Minimal apply (default): no apt installs
 chezmoi apply
+
+# Extras (optional): install tools via apt (curl, dev tools, common apps)
+CHEZMOI_EXTRAS=1 chezmoi apply
+# or: CHEZMOI_EXTRAS=1 chezmoi apply -- --extras
 ```
 
 ### Windows
@@ -28,7 +40,13 @@ winget install twpayne.chezmoi
 chezmoi init skyde
 # Review changes if desired
 chezmoi diff
+
+# Minimal apply (default): no winget installs
 chezmoi apply
+
+# Extras (optional): install tools via winget
+$env:CHEZMOI_EXTRAS=1; chezmoi apply
+# or: chezmoi apply -- --extras
 ```
 
 # Linux Container
@@ -36,7 +54,7 @@ chezmoi apply
 Try it yourself in a Docker container.
 
 ```sh
-docker run --rm -it debian:testing bash -c 'apt update && apt install -y git chezmoi && chezmoi init skyde && chezmoi diff && chezmoi apply && exec bash'
+docker run --rm -it debian:testing bash -c 'apt update -qq && apt install -y git curl ca-certificates && sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin && chezmoi init skyde && chezmoi diff && CHEZMOI_EXTRAS=1 chezmoi apply && exec bash'
 ```
 
 ### WSL Installation
@@ -47,12 +65,12 @@ wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc
 
 ## Starship Prompt
 
-All setup scripts install the [Starship](https://starship.rs) prompt for a consistent shell experience.
-On Windows this is installed via winget using the `Starship.Starship` package ID.
+Starship is part of the optional extras. In minimal mode, no prompt/tooling is installed.
+Enable extras to install [Starship](https://starship.rs) (winget: `Starship.Starship`).
 
 ## Fast CLI Tools
 
-The setup scripts also install speedy alternatives for common commands:
+These are installed when extras are enabled:
 
 - `ripgrep` for searching directories quickly
 - `fd` as a faster `find`
