@@ -31,3 +31,8 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
     Write-Host "⚠️  zoxide not found. Install with: winget install ajeetdsouza.zoxide"
 }
 
+# Favor hidden files but ignore common junk, colorized output
+function rg {
+    & rg.exe --hidden --smart-case --colors match:fg:yellow --glob '!.git' --glob '!node_modules' @Args
+}
+
