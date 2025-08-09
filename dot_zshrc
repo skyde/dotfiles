@@ -149,7 +149,13 @@ alias grep="grep --color=auto"
 # Favor hidden files but ignore common junk, colorized output
 alias rg='rg --hidden --smart-case --colors match:fg:yellow --glob "!.git" --glob "!node_modules"'
 # Use modern replacements if available
-command -v bat >/dev/null && alias cat='bat'
+if command -v bat >/dev/null; then
+  alias cat='bat'
+elif command -v batcat >/dev/null; then
+  # Debian/Ubuntu ship the binary as 'batcat'
+  alias bat='batcat'
+  alias cat='batcat'
+fi
 if command -v eza >/dev/null; then
   alias ls='eza --color=auto --group-directories-first'
   alias ll='eza -al --color=auto --group-directories-first'
