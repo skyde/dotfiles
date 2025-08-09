@@ -54,7 +54,10 @@
 
     // Inlays
     "editorInlayHint.foreground": "#606060",
-    "editorInlayHint.background": "#00000000"
+    "editorInlayHint.background": "#00000000",
+
+    "editor.inlineValuesForeground": "#990000", // text color of inline values
+    "editor.inlineValuesBackground": "#00000000" // background color (supports transparency)
   },
   // Custom color scheme
   "editor.tokenColorCustomizations": {
