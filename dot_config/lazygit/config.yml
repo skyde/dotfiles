@@ -7,6 +7,9 @@ git:
 promptToReturnFromSubprocess: false
 promptToOpenMergeTool: false
 
+os:
+  editPreset: vscode
+
 gui:
   scrollHeight: 32
   scrollPastBottom: false
