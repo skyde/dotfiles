@@ -8,7 +8,13 @@ promptToReturnFromSubprocess: false
 promptToOpenMergeTool: false
 
 os:
-  editPreset: vscode
+  editPreset: nvim
+
+  # Make "open" (o) go to VS Code
+  open: "code --reuse-window {{filename}}"
+
+  # Open the current repo/folder in Code when the action is triggered
+  openDirInEditor: "code --reuse-window {{dir}}"
 
 gui:
   scrollHeight: 32

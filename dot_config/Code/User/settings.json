@@ -337,6 +337,10 @@
         "workbench.files.action.showActiveFileInExplorer"
       ]
     },
+    {
+      "before": ["<leader>", "E"],
+      "commands": ["workbench.action.toggleSidebarVisibility"]
+    },
     // Buffers
     {
       // New tab
