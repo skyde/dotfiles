@@ -316,11 +316,6 @@
     }
   },
   // File explorer & Git
-  {
-    "command": "workbench.action.toggleSidebarVisibility",
-    "key": "escape",
-    "when": "sideBarVisible && !editorFocus"
-  },
   // Copilot Chat
   {
     // Focus back to the editor
@@ -454,51 +449,32 @@
     "command": "workbench.action.increaseViewSize",
     "when": "editorTextFocus && vim.mode == 'Normal'"
   },
-  // ⌘[ — Left Side Bar smart toggle
-  // 1) open+focus if hidden, 2) focus if visible but not focused, 3) hide if focused
-  {
-    "key": "cmd+[",
-    "command": "runCommands",
-    "when": "!sideBarVisible",
-    "args": {
-      "commands": [
-        "workbench.action.toggleSidebarVisibility",
-        "workbench.action.focusSideBar"
-      ]
-    }
-  },
-  {
-    "key": "cmd+[",
-    "command": "workbench.action.focusSideBar",
-    "when": "sideBarVisible && !sideBarFocus"
-  },
-  {
-    "key": "cmd+[",
-    "command": "workbench.action.toggleSidebarVisibility",
-    "when": "sideBarFocus"
-  },
-  // macOS default: Outdent Line — free up ⌘[
-  { "key": "cmd+[", "command": "-editor.action.outdentLines" },
-  // Make Esc reliably close the LEFT sidebar whenever it has focus
-  {
-    "key": "escape",
-    "command": "workbench.action.toggleSidebarVisibility",
-    "when": "sideBarFocus"
-  },
-  // ⌘] — smart toggle for the Secondary Side Bar (a.k.a. Auxiliary Bar)
-  {
-    "key": "cmd+]",
-    "command": "workbench.action.focusAuxiliaryBar",
-    "when": "!auxiliaryBarVisible"
-  },
-  {
-    "key": "cmd+]",
-    "command": "workbench.action.focusAuxiliaryBar",
-    "when": "auxiliaryBarVisible && !auxiliaryBarFocus"
-  },
-  {
-    "key": "cmd+]",
-    "command": "workbench.action.toggleAuxiliaryBar",
-    "when": "auxiliaryBarFocus"
-  }
+  // === ABSOLUTE one-keystroke toggles with focus ===
+  // Left Side Bar (Explorer/SCM/Extensions...)
+  { "key": "cmd+b", "command": "workbench.action.focusSideBar", "when": "!sideBarFocus" },
+  { "key": "cmd+b", "command": "workbench.action.closeSidebar",  "when": "sideBarFocus" },
+
+  // Bottom Panel (Terminal/Problems/Output/Debug Console)
+  { "key": "cmd+j", "command": "workbench.action.focusPanel", "when": "!panelFocus" },
+  { "key": "cmd+j", "command": "workbench.action.closePanel",  "when": "panelFocus" },
+
+  // Right (Secondary) Side Bar — single ⌘ stroke
+  { "key": "cmd+;", "command": "workbench.action.focusAuxiliaryBar",   "when": "!auxiliaryBarFocus" },
+  { "key": "cmd+;", "command": "workbench.action.toggleAuxiliaryBar",  "when": "auxiliaryBarFocus" },
+
+  // Esc always drops you back to the editor from bars/panel
+  { "key": "escape", "command": "workbench.action.focusActiveEditorGroup",
+    "when": "sideBarFocus || panelFocus || auxiliaryBarFocus" },
+
+  // === Splits (one modifier only) ===
+  // Standard vertical split (right): keep VS Code default
+  { "key": "cmd+\\", "command": "workbench.action.splitEditor" },
+  // Horizontal split (down): add a clean single-modifier binding
+  { "key": "ctrl+\\", "command": "workbench.action.splitEditorDown" },
+
+  // === Move between editor groups (single-mod, standard) ===
+  // Focus group #1/#2/#3 (VS Code default on macOS)
+  { "key": "cmd+1", "command": "workbench.action.focusFirstEditorGroup" },
+  { "key": "cmd+2", "command": "workbench.action.focusSecondEditorGroup" },
+  { "key": "cmd+3", "command": "workbench.action.focusThirdEditorGroup" }
 ]
