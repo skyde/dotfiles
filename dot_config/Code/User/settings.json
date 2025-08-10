@@ -60,7 +60,10 @@
 
     // Red
     "editor.inlineValuesForeground": "#AA3333", // text color of inline values
-    "editor.inlineValuesBackground": "#00000000" // background color (supports transparency)
+    "editor.inlineValuesBackground": "#AA333320" // background color (supports transparency)
+
+    // "editor.inlineValuesForeground": "#666666", // text color of inline values
+    // "editor.inlineValuesBackground": "#66666620" // background color (supports transparency)
 
     // Gray
     // "editor.inlineValuesForeground": "#444444", // text color of inline values
