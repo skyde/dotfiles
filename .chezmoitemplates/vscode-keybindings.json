@@ -454,16 +454,20 @@
     "command": "workbench.action.increaseViewSize",
     "when": "editorTextFocus && vim.mode == 'Normal'"
   },
-  // First press: show + focus (focus command auto-opens if hidden)
+  // ⌘] — smart toggle for the Secondary Side Bar (a.k.a. Auxiliary Bar)
   {
-    "key": "ctrl+]",
-    "command": "multiCommand.showAndFocusSecondarySideBar",
-    "when": "!secondarySideBarVisible"
+    "key": "cmd+]",
+    "command": "workbench.action.focusAuxiliaryBar",
+    "when": "!auxiliaryBarVisible"
   },
-  // Second press: hide
   {
-    "key": "ctrl+]",
-    "command": "workbench.action.toggleSecondarySideBar",
-    "when": "secondarySideBarVisible"
+    "key": "cmd+]",
+    "command": "workbench.action.focusAuxiliaryBar",
+    "when": "auxiliaryBarVisible && !auxiliaryBarFocus"
+  },
+  {
+    "key": "cmd+]",
+    "command": "workbench.action.toggleAuxiliaryBar",
+    "when": "auxiliaryBarFocus"
   }
 ]
