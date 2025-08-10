@@ -102,14 +102,14 @@ which is also symlinked for use by the Cursor editor.
 - `Alt+K` – step out.
 
 ## Merge Conflicts
-- `Alt+K` – accept current change.
-- `Shift+Alt+K` – accept all current changes.
-- `Alt+J` – accept incoming change.
-- `Shift+Alt+J` – accept all incoming changes.
-- `Alt+H` – go to next unhandled conflict.
-- `Shift+Alt+H` – go to next conflict region.
-- `Alt+L` – go to previous unhandled conflict.
-- `Shift+Alt+L` – go to previous conflict region.
+- `Alt+K` – accept current change (ours).
+- `Shift+Alt+K` – accept all current changes (ours).
+- `Alt+J` – accept incoming change (theirs).
+- `Shift+Alt+J` – accept all incoming changes (theirs).
+- `Alt+H` – go to next difference region.
+- `Shift+Alt+H` – go to next difference region.
+- `Alt+L` – go to previous difference region.
+- `Shift+Alt+L` – go to previous difference region.
 
 ## Hardware Macro Keys
 These key combinations are implemented via keyboard macros rather than in `dot_vsvimrc`:

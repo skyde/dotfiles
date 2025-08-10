@@ -17,18 +17,20 @@ Custom key mappings defined in [`dot_config/vimium_c.json`](../dot_config/vimium
 - `S` – open link in new tab.
 - `f` – focus a link.
 - `e` – edit a link.
-- `c` – open search (Vomnibar).
-- `C` – open search in new tab.
-- `h` / `H` – search history.
+- `c` – open search in new tab (Vomnibar).
+- `C` – open search in current tab (Vomnibar).
+- `i` / `I` – search history (new tab / current tab).
+- `o` / `O` – search bookmarks (new tab / current tab).
 - `a` – search open tabs.
-- `Shift+F3` – quick open.
+- `Shift+F3` – quick open (Vomnibar).
 
 ## Tab Management
-- `t` – create tab.
+- `t` – create new tab.
 - `p` – toggle pin tab.
 - `d` – close current tab.
 - `D` – restore last closed tab.
 - `]` / `[` – next/previous tab.
+- `l` / `h` – next/previous tab.
 - `Shift+F1` / `Shift+F12` – previous/next tab.
 - `b o` / `b P` – close other tabs.
 - `b p` – pin current tab.
@@ -41,3 +43,6 @@ Custom key mappings defined in [`dot_config/vimium_c.json`](../dot_config/vimium
 - `u p` – zoom in.
 - `u m` – zoom out.
 - `u r` – reset zoom.
+
+## Hint Characters
+- `tsraneiodhgmplfuc,bjvk` – custom link hint characters.

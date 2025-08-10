@@ -2,43 +2,46 @@
 
 ## Setting Up Neovim as Your Git Mergetool
 
-To use Neovim for resolving Git merge conflicts, configure Git to launch Neovim with Fugitive for a 3-way diff. Add this to `~/.gitconfig`:
+Current state: Fugitive and Diffview are not enabled in this Neovim config, and git-conflict.nvim is commented out. The instructions below use stock Neovim diff mode and work without plugins.
+
+Add this minimal mergetool config to `~/.gitconfig` to use plain diff mode:
 
 ```ini
 [mergetool "nvim"]
-    cmd = nvim -f -c "Gdiffsplit!" "$MERGED"
+    cmd = nvim -f -d "$LOCAL" "$MERGED" "$REMOTE"
 [merge]
     tool = nvim
 [mergetool]
     prompt = false
 ```
 
-Running `git mergetool` will open Neovim in diff mode showing the local, merged and remote buffers.
+This opens the MERGED buffer and shows LOCAL and REMOTE in diff splits. If you later enable Fugitive, you can switch to `Gdiffsplit!` in the cmd above.
 
-## 3-Way Merge Workflow with Diff Mode
+## 3-Way Merge Workflow with Diff Mode (no plugins)
 
-1. Open the diff splits via `git mergetool` or `:Gvdiffsplit!`.
-2. Jump between conflicts with `]c` and `[c`.
-3. Use `dp` in a side window to put that hunk into the result.
-4. Or from the result window, run `:diffget //2` or `:diffget //3` to pull from the other buffers.
-5. Repeat until all conflict markers are gone, then save and quit.
-6. To accept one side entirely, run `:Gwrite!` in that buffer.
-7. Stage and commit the file when done.
+1. Open the diff splits via `git mergetool`.
+2. Jump between changes with `]c` and `[c`.
+3. To take a hunk from a side into MERGED:
+    - Focus the side window (LOCAL or REMOTE) and press `dp` to put that hunk into MERGED, or
+    - From MERGED, focus a side window briefly, then return to MERGED and press `do` to get the hunk from the last focused side.
+4. Repeat until all conflict markers are gone, then save and quit (`:wq`).
+5. To accept an entire side, in the side window do `ggVG` then `:diffput` to replace MERGED with that version.
+6. Stage and commit the file when done.
 
 ## Resolving Conflict Markers Inline
 
-Plugins like `git-conflict.nvim` or `conflict-marker.vim` highlight conflict markers and provide single-key choices:
+Optional: `git-conflict.nvim` can provide single-key choices, but it is currently disabled in this config. If enabled, you’ll get mappings like:
 
-- **Ours** – `co`
-- **Theirs** – `ct`
-- **Both** – `cb`
-- **None** – `cn`
+- Ours – `<leader>co`
+- Theirs – `<leader>ct`
+- Both – `<leader>cb`
+- None – `<leader>c0`
 
-Navigate markers with `[x` and `]x`, resolve them, then save.
+Plus navigation: `[x` and `]x`.
 
 ## Visual Merge Workflow with Diffview.nvim
 
-`diffview.nvim` offers a merge tool UI listing conflicted files and opening a 3-way diff per file. Use its shortcuts to pull hunks from either side or accept entire versions. When all conflicts are resolved, close Diffview and commit.
+Diffview is not enabled right now. If you enable `sindrets/diffview.nvim`, you can use `:DiffviewOpen` for a richer UI.
 
 ## Best Practices
 

@@ -17,10 +17,10 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 ## Terminal
 - `Ctrl+/` – toggle the integrated terminal.
 - `Cmd+T` – toggle the terminal visibility and exit fullscreen if needed.
-- `Cmd+S` – send Ctrl+S to the integrated terminal when focused.
+- `Cmd+S` – when a terminal is focused, send Shift+F5 to the terminal (mapped in Neovim to save the file).
 
 ## Build and Search
-- `Shift+F2` – run the build task.
+- `Shift+F2` – start debugging.
 - `Shift+F3` – quick open file or symbol.
 - `Shift+F8` – go to definition.
 - `Shift+F11` – toggle comment for the current line.
@@ -32,7 +32,7 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 - `Alt+H` – step out.
 
 ## Explorer
-- `Escape` – toggle the sidebar when focus is in the explorer.
+- `Escape` – focus the editor when the Explorer has focus.
 - `o` – create a new file.
 - `Shift+O` – create a new folder.
 - `c` – rename the selected file.
@@ -69,7 +69,7 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<C-l>` – focus right pane
 - `<leader> <leader>` – quick open
 - `<leader> a` – open chat
-- `<leader> f m` – focus file explorer
+- `<leader> f m` – toggle Yazi file manager
 - `<leader> f n` – new file
 - `<leader> e` – open explorer
 - `] b` – next tab
@@ -84,8 +84,8 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> b l` – move tab right
 - `<S-h>` – :bprevious
 - `<S-l>` – :bnext
-- `<leader> w f` – toggle Zen mode
-- `<leader> w F` – toggle fullscreen
+- `<leader> w f` – toggle fullscreen
+- `<leader> w F` – toggle Zen mode
 - `<leader> w v` – :vsplit
 - `<leader> w s` – :split
 - `<leader> w d` – close tab
@@ -97,13 +97,10 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> u z` – toggle Zen mode
 - `<leader> u c` – toggle render whitespace
 - `<leader> u i` – toggle inline parameter name hints
-- `<leader> u d` – toggle debug inline values
 - `<leader> s g` – search within files
 - `<leader> s f` – search files
 - `<leader> s t` – search files by type
 - `<leader> s r` – resume search
-- `s` – <leader> <leader> 2 s
-- `S` – <leader> <leader> 2 S
 - `g d` – go to definition
 - `g p` – peek definition
 - `g i` – go to implementation
@@ -112,11 +109,11 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `g u` – find usages
 - `g n` – show definition preview
 - `v i g` – g g V G
-- `y i g` – g g V G y
+- `y i g` – yank entire buffer
 - `d i g` – g g V G d
 - `<leader> c r` – rename symbol
 - `<leader> c i` – show parameter hints
-- `<leader> c e` – show completions
+- `<leader> c e` – Quick Fix / Code Actions
 - `<leader> e e` – open problems view
 - `<leader> e n` – next problem
 - `<leader> e p` – previous problem
@@ -126,14 +123,13 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<leader> d r` – remove all breakpoints
 - `<leader> d a` – focus breakpoints view
 - `<leader> d c` – continue debugging
+- `<leader> g g` – open LazyGit in an editor terminal
+- `<leader> g G` – open Source Control (SCM) view
 - `<leader> g d` – view file diff
-- `<leader> g s` – stage changes
-- `<leader> g u` – unstage changes
 - `<leader> g w` – open file in repo
 - `<leader> g r` – revert selected ranges
 - `<leader> g h` – show commit details
 - `<leader> g l` – open timeline
-- `<leader> g n` – rename file
 - `<leader> t r` – run current test
 - `<leader> t d` – debug current test
 - `<leader> t a` – run all tests
@@ -155,5 +151,5 @@ The following shortcuts are configured through the VS Code Vim extension via [`s
 - `<S-tab>` – outdent lines
 - `<` – outdent lines
 - `>` – indent lines
-- `H` – move line down
-- `L` – move line up
+- `J` – move line down
+- `K` – move line up
