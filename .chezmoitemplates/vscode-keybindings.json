@@ -454,6 +454,37 @@
     "command": "workbench.action.increaseViewSize",
     "when": "editorTextFocus && vim.mode == 'Normal'"
   },
+  // ⌘[ — Left Side Bar smart toggle
+  // 1) open+focus if hidden, 2) focus if visible but not focused, 3) hide if focused
+  {
+    "key": "cmd+[",
+    "command": "runCommands",
+    "when": "!sideBarVisible",
+    "args": {
+      "commands": [
+        "workbench.action.toggleSidebarVisibility",
+        "workbench.action.focusSideBar"
+      ]
+    }
+  },
+  {
+    "key": "cmd+[",
+    "command": "workbench.action.focusSideBar",
+    "when": "sideBarVisible && !sideBarFocus"
+  },
+  {
+    "key": "cmd+[",
+    "command": "workbench.action.toggleSidebarVisibility",
+    "when": "sideBarFocus"
+  },
+  // macOS default: Outdent Line — free up ⌘[
+  { "key": "cmd+[", "command": "-editor.action.outdentLines" },
+  // Make Esc reliably close the LEFT sidebar whenever it has focus
+  {
+    "key": "escape",
+    "command": "workbench.action.toggleSidebarVisibility",
+    "when": "sideBarFocus"
+  },
   // ⌘] — smart toggle for the Secondary Side Bar (a.k.a. Auxiliary Bar)
   {
     "key": "cmd+]",
