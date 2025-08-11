@@ -19,7 +19,7 @@ function Confirm-Change($verb, $name, $present) {
         return $true 
     }
     # Prompt for installs
-    $response = Read-Host "$verb $name? [y/N]"
+    $response = Read-Host "${verb} ${name}? [y/N]"
     return $response -match '^(y|Y)(es)?$'
 }
 
