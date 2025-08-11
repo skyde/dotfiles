@@ -1152,7 +1152,6 @@
   },
   "breadcrumbs.enabled": false,
   "gitlens.ai.model": "vscode",
-  "gitlens.ai.vscode.model": "copilot:gpt-4.1",
   "gitlens.graph.minimap.enabled": false,
   "git.mergeEditor": true,
   "workbench.iconTheme": "material-icon-theme",
@@ -1161,7 +1160,6 @@
   "fzf-picker.findWithinFiles.previewWindowConfig": "bottom,30%,+{2}/2",
   "fzf-picker.findFiles.previewWindowConfig": "right,55%",
   "git.blame.editorDecoration.enabled": false,
-  "github.copilot.nextEditSuggestions.enabled": true,
   "debug.inlineValues": "on",
   "remote.SSH.defaultExtensions": [
     "vscodevim.vim",
@@ -1176,11 +1174,17 @@
   "gitlens.currentLine.enabled": false,
   "gitlens.codeLens.enabled": false,
   "editor.inlayHints.enabled": "off",
-  "editor.inlayHints.fontFamily": "JetBrainsMono Nerd Font Italic, JetBrains Mono Italic, monospace",
   "debug.onTaskErrors": "showErrors",
   "task.saveBeforeRun": "always",
   "telemetry.telemetryLevel": "off",
   "gitlens.ai.enabled": false,
   "workbench.activityBar.location": "hidden",
-  "editor.renderWhitespace": "none"
+  "editor.renderWhitespace": "none",
+
+  // Disable git blame on line
+  "git.blame.statusBarItem.enabled": false,
+  "git-blame.config.inlineBlame.hoverMessage.activeLine": false,
+  "git-blame.config.showBlameInline": false,
+  "gitlens.currentLine.uncommittedChangesFormat": "",
+  "gitlens.currentLine.format": ""
 }
