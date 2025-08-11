@@ -318,15 +318,15 @@
   {
     "command": "workbench.action.focusActiveEditorGroup",
     "key": "escape",
-    "when": "sideBarVisible && !editorFocus"
+    "when": "(sideBarVisible || auxiliaryBarVisible) && !editorFocus && !terminalFocus"
   },
-  // Copilot Chat
-  {
-    // Focus back to the editor
-    "key": "escape",
-    "command": "workbench.action.focusActiveEditorGroup",
-    "when": "inputFocus && view.workbench.panel.chat.view.copilot.visible && !editorFocus && !terminalFocus"
-  },
+  // // Copilot Chat
+  // {
+  //   // Focus back to the editor
+  //   "key": "escape",
+  //   "command": "workbench.action.focusActiveEditorGroup",
+  //   "when": "inputFocus && view.workbench.panel.chat.view.copilot.visible && !editorFocus && !terminalFocus"
+  // },
   // Explorer
   {
     "key": "o",

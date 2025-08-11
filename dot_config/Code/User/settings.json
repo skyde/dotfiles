@@ -531,6 +531,11 @@
       ]
     },
     {
+      // Start a new search within files using VS Code search
+      "before": ["<leader>", "s", "S"],
+      "commands": ["workbench.action.findInFiles"]
+    },
+    {
       // Fuzzy search open editors
       "before": ["<leader>", "s", "b"],
       "commands": ["workbench.action.showAllEditorsByMostRecentlyUsed"],
