@@ -21,6 +21,7 @@
   },
 
   "workbench.quickOpen.centered": true,
+  "window.commandCenter": false,
 
   "search.location": "panel",
 
