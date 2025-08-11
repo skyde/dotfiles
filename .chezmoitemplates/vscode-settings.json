@@ -34,6 +34,9 @@
   "vim.surround": true,
   "vim.leader": " ",
   "vim.hlsearch": true,
+  "vim.highlightedyank.enable": true,
+  "vim.highlightedyank.color": "rgba(255, 223, 93, 0.3)", // warm gold, soft opacity
+  "vim.highlightedyank.duration": 290, // milliseconds
   "vim.handleKeys": {
     "<tab>": false,
     "<S-tab>": false,
