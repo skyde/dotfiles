@@ -185,6 +185,14 @@
     // Misc
     {
       "before": [
+        "U"
+      ],
+      "after": [
+        "<C-r>"
+      ]
+    },
+    {
+      "before": [
         "<leader>",
         "v"
       ],
