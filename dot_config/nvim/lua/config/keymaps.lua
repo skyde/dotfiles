@@ -134,3 +134,5 @@ map("n", "<Tab>", ">>", { desc = "Indent line" })
 map("n", "<S-Tab>", "<<", { desc = "Unindent line" })
 map("v", "<Tab>", ">gv", { desc = "Indent selection" })
 map("v", "<S-Tab>", "<gv", { desc = "Unindent selection" })
+
+vim.keymap.set("n", "<leader>e", ":Yazi<CR>", { silent = true })
