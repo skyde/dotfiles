@@ -11,3 +11,6 @@ if vim.fn.has("mac") == 1 then
     vim.cmd("silent! write")
   end, { desc = "Save file" })
 end
+
+-- Toggle comment on current line with gc in normal mode
+vim.keymap.set("n", "gc", "gcc", { remap = true, silent = true, desc = "Comment current line (gc)" })
