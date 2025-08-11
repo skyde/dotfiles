@@ -136,3 +136,7 @@ map("v", "<Tab>", ">gv", { desc = "Indent selection" })
 map("v", "<S-Tab>", "<gv", { desc = "Unindent selection" })
 
 vim.keymap.set("n", "<leader>e", ":Yazi<CR>", { silent = true })
+
+-- Move selection up / down
+map("v", "J", ":m '>+1<CR>gv=gv", { desc = "Move selection down", silent = true })
+map("v", "K", ":m '<-2<CR>gv=gv", { desc = "Move selection up", silent = true })
