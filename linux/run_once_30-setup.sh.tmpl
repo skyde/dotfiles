@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 # Use sudo only if not running as root
 if [ "$(id -u)" -eq 0 ]; then
@@ -8,101 +8,47 @@ else
     SUDO="sudo"
 fi
 
+source "${CHEZMOI_SOURCE_DIR}/.chezmoiscripts/lib/run_ensure.sh"
+
 COMMON_APPS=(
 {{- include "common_apps.txt" -}}
 )
 
-# Enable extra package setup only when explicitly requested
-# Usage: pass --extras/--full/--container or set CHEZMOI_EXTRAS=1
-EXTRAS=0
-case "${1:-}" in
-  --extras|--full|--container) EXTRAS=1 ;;
-esac
-if [ "${CHEZMOI_EXTRAS:-}" = "1" ]; then
-  EXTRAS=1
+echo "Installing packages using apt..."
+
+# Map package names from common_apps.txt to their apt package names when they differ
+declare -A APT_PACKAGE_MAP=(
+    [fd]=fd-find
+    [delta]=git-delta
+    [nvim]=neovim
+)
+
+for pkg in "${COMMON_APPS[@]}"; do
+    apt_pkg="${APT_PACKAGE_MAP[$pkg]:-$pkg}"
+    if apt-cache show "$apt_pkg" >/dev/null 2>&1; then
+        ensure_apt "$apt_pkg"
+    else
+        echo "Skipping unavailable package: $apt_pkg"
+    fi
+done
+
+ensure_apt zsh
+ensure_apt zsh-autosuggestions
+ensure_apt zsh-syntax-highlighting
+ensure_apt fonts-jetbrains-mono
+
+if have zsh; then
+    ZSH_PATH=$(command -v zsh)
+    if getent passwd "$USER" >/dev/null 2>&1; then
+        CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
+        if [ -n "$CURRENT_SHELL" ] && [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
+            if confirm_change "Change default shell to $ZSH_PATH" "$USER" 1; then
+                $SUDO chsh -s "$ZSH_PATH" "$USER" || true
+            fi
+        fi
+    else
+        echo "Skipping default shell change: user '$USER' not found in /etc/passwd."
+    fi
 fi
 
-if [ "$EXTRAS" -eq 1 ]; then
-  echo "Installing packages using apt (extras enabled)..."
-
-  # Update apt and install essential build tools and curl
-  $SUDO apt-get update -y -qq || true
-  $SUDO apt-get install -y build-essential libc6-dev pkg-config curl ca-certificates || true
-
-  # Map package names from common_apps.txt to their apt package names when they differ
-  declare -A APT_PACKAGE_MAP=(
-      [fd]=fd-find
-      [delta]=git-delta
-      [nvim]=neovim
-  )
-
-  # Build list of apt packages (mapped) and filter to only those available in apt
-  APT_PACKAGES=()
-  for pkg in "${COMMON_APPS[@]}"; do
-      apt_pkg="${APT_PACKAGE_MAP[$pkg]:-$pkg}"
-      APT_PACKAGES+=("$apt_pkg")
-  done
-
-  # Install zsh and helpful plugins
-  APT_PACKAGES+=(zsh zsh-autosuggestions zsh-syntax-highlighting)
-
-  # Split into available and missing packages to avoid hard failures on unavailable ones (e.g. yazi)
-  AVAILABLE_PACKAGES=()
-  MISSING_PACKAGES=()
-  for pkg in "${APT_PACKAGES[@]}"; do
-      if apt-cache show "$pkg" >/dev/null 2>&1; then
-          AVAILABLE_PACKAGES+=("$pkg")
-      else
-          MISSING_PACKAGES+=("$pkg")
-      fi
-  done
-
-  if [ ${#AVAILABLE_PACKAGES[@]} -gt 0 ]; then
-      echo "Installing: ${AVAILABLE_PACKAGES[*]}"
-      $SUDO apt-get install -y "${AVAILABLE_PACKAGES[@]}" || true
-  else
-      echo "No mapped packages available via apt to install."
-  fi
-
-  if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
-      echo "Skipping unavailable packages (not found in apt): ${MISSING_PACKAGES[*]}"
-  fi
-else
-  echo "Extras disabled. Skipping apt installs. Set CHEZMOI_EXTRAS=1 or pass --extras to enable."
-fi
-
-if [ "$EXTRAS" -eq 1 ]; then
-  # Install JetBrains Mono font using apt
-  $SUDO apt-get install -y fonts-jetbrains-mono || true
-fi
-
-if [ "$EXTRAS" -eq 1 ]; then
-  # Set zsh as the default shell if available and the current user exists in passwd
-  if command -v zsh >/dev/null 2>&1; then
-      ZSH_PATH=$(command -v zsh)
-      if getent passwd "$USER" >/dev/null 2>&1; then
-          CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
-          if [ -n "$CURRENT_SHELL" ] && [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
-              echo "Changing default shell to $ZSH_PATH"
-              $SUDO chsh -s "$ZSH_PATH" "$USER" || true
-          fi
-      else
-          echo "Skipping default shell change: user '$USER' not found in /etc/passwd (likely a container user)."
-      fi
-  fi
-fi
-
-if [ "$EXTRAS" -eq 1 ]; then
-  # Final debug check
-  echo "=== FINAL DEBUG ==="
-  for pkg in "${COMMON_APPS[@]}"; do
-      echo "which $pkg: $(which "$pkg" 2>/dev/null || echo 'not found')"
-      if command -v "$pkg" >/dev/null 2>&1; then
-          echo "$pkg version: $("$pkg" --version 2>/dev/null | head -1 || echo 'version not available')"
-      fi
-  done
-
-  echo "Linux setup complete using apt!"
-else
-  echo "Linux setup minimal mode complete."
-fi
+echo "Linux setup complete using apt!"
