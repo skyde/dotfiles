@@ -8,7 +8,12 @@
 		"chromium": 138
 	},
 	"allBrowserUrls": true,
-	"exclusionRules": [],
+	"exclusionRules": [
+		{
+			"passKeys": "",
+			"pattern": ":https://vscode.dev/"
+		}
+	],
 	"filterLinkHints": true,
 	"keyLayout": 2,
 	"keyMappings": [
