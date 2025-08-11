@@ -4,8 +4,10 @@
     {
       "label": "FZF: Files (loop)",
       "type": "shell",
-      "command": "bash",
-      "args": ["-lc", "~/.config/fzf/files-loop.sh"],
+      "windows": {
+        "command": "pwsh",
+        "args": ["-NoProfile", "-File", "$env:LOCALAPPDATA\\fzf\\files-loop.ps1"]
+      },
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
@@ -18,8 +20,10 @@
     {
       "label": "FZF: Ripgrep (loop)",
       "type": "shell",
-      "command": "bash",
-      "args": ["-lc", "~/.config/fzf/rg-loop.sh"],
+      "windows": {
+        "command": "pwsh",
+        "args": ["-NoProfile", "-File", "$env:LOCALAPPDATA\\fzf\\rg-loop.ps1"]
+      },
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
