@@ -40,7 +40,7 @@ if (Get-Command winget -ErrorAction SilentlyContinue) {
     # Map app names to winget IDs
     $wingetAppMap = @{
         'git'      = 'Git.Git'
-        'ripgrep'  = 'BurntSushi.ripgrep'
+        'ripgrep'  = 'BurntSushi.ripgrep.MSVC'
         'fd'       = 'sharkdp.fd'
         'fzf'      = 'junegunn.fzf'
         'bat'      = 'sharkdp.bat'
@@ -50,8 +50,8 @@ if (Get-Command winget -ErrorAction SilentlyContinue) {
         'llvm'     = 'LLVM.LLVM'
         'nvim'     = 'Neovim.Neovim'
         'starship' = 'Starship.Starship'
-        'zoxide'   = 'AjeetDSouza.Zoxide'
-        'yazi'     = 'yazi-dev.yazi'
+        'zoxide'   = 'ajeetdsouza.zoxide'
+        'yazi'     = 'sxyazi.yazi'
     }
     foreach ($pkg in $COMMON_APPS) {
         if ($wingetAppMap.ContainsKey($pkg)) {
