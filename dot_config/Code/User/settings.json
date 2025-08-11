@@ -506,7 +506,7 @@
     },
     {
       "before": ["<leader>", "s", "f"],
-      "commands": ["fzf-picker.findFiles"]
+      "commands": ["find-it-faster.findFiles"]
     },
     // {
     //   // Search file contents using FZF via VS Code task
@@ -526,7 +526,7 @@
       "before": ["<leader>", "s", "s"],
       "commands": [
         // Search within files
-        "fzf-picker.findWithinFiles",
+        "find-it-faster.findWithinFiles",
         "extension.vim_escape"
       ]
     },
@@ -543,7 +543,7 @@
         // Automatically search for the word under the cursor
         "editor.action.addSelectionToNextFindMatch",
         // Search within files
-        "fzf-picker.findWithinFiles",
+        "find-it-faster.findWithinFiles",
         "extension.vim_escape"
       ]
     },
@@ -553,14 +553,14 @@
         // Automatically search for the word under the cursor
         "editor.action.addSelectionToNextFindMatch",
         // By default we filter & only search relavant files
-        "fzf-picker.findWithinFilesWithType",
+        "find-it-faster.findWithinFilesWithType",
         // Escape to Vim normal mode
         "extension.vim_escape"
       ]
     },
     {
       "before": ["<leader>", "s", "r"],
-      "commands": ["fzf-picker.resumeSearch"]
+      "commands": ["find-it-faster.resumeSearch"]
     },
     // Jump to tab
     {
@@ -1115,16 +1115,20 @@
   },
   "search.useGlobalIgnoreFiles": true,
   "search.useParentIgnoreFiles": true,
-  "fzf-picker.general.useGitIgnoreExcludes": true,
-  "terminal.integrated.env.linux": {
-    "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
-  },
+  "find-it-faster.advanced.disableStartupChecks": true,
+  // "find-it-faster.": true,
+  // "terminal.integrated.env.linux": {
+  //   "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+  // },
   "terminal.integrated.env.osx": {
-    "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    // "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --bind 'change:reload:echo' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --sync --no-sort --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'",
+    "FZF_VER_NUM": "0.35"
+    // "FZF_DEFAULT_OPTS": "--bind 'load:pos({n})'"
   },
-  "terminal.integrated.env.windows": {
-    "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
-  },
+  // "terminal.integrated.env.windows": {
+  //   "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+  // },
   // Minimalism
   "editor.guides.indentation": false,
   "editor.hideCursorInOverviewRuler": true, // Hide cursor in scrollbar for a cleaner look
@@ -1156,14 +1160,14 @@
   "git.mergeEditor": true,
   "workbench.iconTheme": "material-icon-theme",
   "workbench.editor.empty.hint": "hidden",
-  "fzf-picker.findWithinFiles.previewCommand": "bat --color=always --style=numbers --highlight-line {2} {1}",
-  "fzf-picker.findWithinFiles.previewWindowConfig": "bottom,30%,+{2}/2",
-  "fzf-picker.findFiles.previewWindowConfig": "right,55%",
+  "find-it-faster.findWithinFiles.previewCommand": "bat --color=always --style=numbers --highlight-line {2} {1}",
+  "find-it-faster.findWithinFiles.previewWindowConfig": "bottom,30%,+{2}/2",
+  "find-it-faster.findFiles.previewWindowConfig": "right,55%",
   "git.blame.editorDecoration.enabled": false,
   "debug.inlineValues": "on",
   "remote.SSH.defaultExtensions": [
     "vscodevim.vim",
-    "jellydn.fzf-picker",
+    "tomrijndorp.find-it-faster",
     "jeff-hykin.better-cpp-syntax",
     "ms-vscode.cpptools-themes",
     "esbenp.prettier-vscode",
@@ -1186,5 +1190,7 @@
   "git-blame.config.inlineBlame.hoverMessage.activeLine": false,
   "git-blame.config.showBlameInline": false,
   "gitlens.currentLine.uncommittedChangesFormat": "",
-  "gitlens.currentLine.format": ""
+  "gitlens.currentLine.format": "",
+  "find-it-faster.findWithinFiles.fuzzRipgrepQuery": true,
+  "find-it-faster.general.showMaximizedTerminal": true
 }
