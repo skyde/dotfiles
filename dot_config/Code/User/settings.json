@@ -339,12 +339,23 @@
     },
     // File
     {
-      "before": ["<leader>", "f", "m"],
+      "before": ["<leader>", "e"],
       "commands": ["yazi-vscode.toggle"]
     },
     {
-      "before": ["<leader>", "f", "M"],
+      "before": ["<leader>", "f", "E"],
       "commands": ["revealFileInOS"]
+    },
+    {
+      // Explorer
+      "before": ["<leader>", "f", "e"],
+      "commands": [
+        // ️Ensure the Explorer is visible / takes focus
+        "workbench.view.explorer",
+
+        // Scroll-to-and-select the file open in the active editor
+        "workbench.files.action.showActiveFileInExplorer"
+      ]
     },
     {
       "before": ["<leader>", "f", "r"],
@@ -357,21 +368,6 @@
     {
       "before": ["<leader>", "f", "n"],
       "commands": ["workbench.action.files.newUntitledFile"]
-    },
-    // Explorer
-    {
-      "before": ["<leader>", "e"],
-      "commands": [
-        // ️Ensure the Explorer is visible / takes focus
-        "workbench.view.explorer",
-
-        // Scroll-to-and-select the file open in the active editor
-        "workbench.files.action.showActiveFileInExplorer"
-      ]
-    },
-    {
-      "before": ["<leader>", "E"],
-      "commands": ["workbench.action.toggleSidebarVisibility"]
     },
     // Buffers
     {
