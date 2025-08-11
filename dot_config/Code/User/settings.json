@@ -1030,7 +1030,7 @@
     },
     {
       "before": ["<leader>", "m", "R"],
-      "commands": ["workbench.action.debug.selectAndStart"]
+      "commands": ["workbench.action.debug.selectandstart"]
     },
     {
       "before": ["<leader>", "m", "s"],
