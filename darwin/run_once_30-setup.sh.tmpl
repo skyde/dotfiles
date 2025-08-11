@@ -1,7 +1,8 @@
+{{ if eq .chezmoi.os "darwin" -}}
 #!/usr/bin/env bash
 set -euo pipefail
 
-source "${CHEZMOI_SOURCE_DIR}/.chezmoiscripts/lib/run_ensure.sh"
+source "${CHEZMOI_SOURCE_DIR}/lib/run_ensure.sh.inc"
 
 COMMON_APPS=(
 {{- include "common_apps.txt" -}}
@@ -57,3 +58,5 @@ defaults write com.apple.dock autohide -bool true
 defaults write com.apple.dock autohide-delay -float 0
 defaults write com.apple.dock autohide-time-modifier -float 0.15
 killall Dock || true
+
+{{ end -}}

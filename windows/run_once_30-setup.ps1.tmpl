@@ -1,3 +1,4 @@
+{{ if eq .chezmoi.os "windows" -}}
 # Requires PowerShell 7+
 
 # Build $COMMON_APPS array correctly from file lines
@@ -11,10 +12,13 @@ Write-Host 'Running Windows setup...'
 function Test-Truthy($val) {
     return $val -match '^(1|true|TRUE|True|yes|YES|Yes|on|ON|On)$'
 }
-$AUTO_INSTALL = if (Test-Truthy $env:AUTO_INSTALL) { 1 } else { 0 }
 
 function Confirm-Change($verb, $name, $present) {
-    if ($present -eq 1 -and $AUTO_INSTALL -eq 1) { return $true }
+    if ($present -eq 1) { 
+        # Auto-update without prompting
+        return $true 
+    }
+    # Prompt for installs
     $response = Read-Host "$verb $name? [y/N]"
     return $response -match '^(y|Y)(es)?$'
 }
@@ -99,3 +103,5 @@ try {
 } catch {
     Write-Warning "Failed to update key repeat settings: $_"
 }
+
+{{ end -}}

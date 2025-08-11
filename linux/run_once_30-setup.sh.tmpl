@@ -1,3 +1,4 @@
+{{ if eq .chezmoi.os "linux" -}}
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -8,7 +9,7 @@ else
     SUDO="sudo"
 fi
 
-source "${CHEZMOI_SOURCE_DIR}/.chezmoiscripts/lib/run_ensure.sh"
+source "${CHEZMOI_SOURCE_DIR}/lib/run_ensure.sh.inc"
 
 COMMON_APPS=(
 {{- include "common_apps.txt" -}}
@@ -52,3 +53,4 @@ if have zsh; then
 fi
 
 echo "Linux setup complete using apt!"
+{{ end -}}
