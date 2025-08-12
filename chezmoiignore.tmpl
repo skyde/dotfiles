@@ -13,6 +13,8 @@ AppData/Roaming/Code/User/settings.json
 AppData/Roaming/Code/User/keybindings.json
 {{ end }}
 
+.vscode
+
 {{ if ne .chezmoi.os "darwin" }}darwin/**{{ end }}
 {{ if ne .chezmoi.os "linux" }}linux/**{{ end }}
 {{ if ne .chezmoi.os "windows" }}windows/**{{ end }}
