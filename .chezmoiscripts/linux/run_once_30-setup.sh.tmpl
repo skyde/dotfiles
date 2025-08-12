@@ -9,7 +9,7 @@ else
     SUDO="sudo"
 fi
 
-source "${CHEZMOI_SOURCE_DIR}/lib/run_ensure.sh.inc"
+source "${CHEZMOI_SOURCE_DIR}/lib/run_ensure.sh"
 
 COMMON_APPS=(
 {{- include "common_apps.txt" -}}

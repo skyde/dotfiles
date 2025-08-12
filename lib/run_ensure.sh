@@ -10,6 +10,7 @@ _truthy() {
 }
 
 have() { command -v "$1" >/dev/null 2>&1; }
+
 is_tty() { [ -t 0 ] && [ -t 1 ]; }
 
 ask() {
@@ -52,8 +53,8 @@ ensure() {
   local check="$1"; shift
   local install="$1"; shift
   local update="${1:-}"
-
   local present=0
+
   if eval "$check"; then present=1; fi
 
   if [[ "$present" -eq 1 ]]; then
@@ -87,10 +88,11 @@ ensure_cask() {
 ensure_apt() {
   local pkg="$1"
   local SUDO_CMD=""
-  if [ "$(id -u)" -ne 0 ] && have sudo; then SUDO_CMD="sudo"; fi
+  if [ "$(id -u)" -ne 0 ] && have sudo; then
+    SUDO_CMD="sudo"
+  fi
   ensure "$pkg" \
     "dpkg -s '$pkg' >/dev/null 2>&1" \
     "$SUDO_CMD apt-get update -y && $SUDO_CMD apt-get install -y '$pkg'" \
     "$SUDO_CMD apt-get install -y --only-upgrade '$pkg' || true"
 }
-
