@@ -15,6 +15,11 @@ is_tty() { [ -t 0 ] && [ -t 1 ]; }
 
 ask() {
   local prompt="$1"
+  # If AUTO_INSTALL is set, auto-accept prompts
+  if _truthy "${AUTO_INSTALL:-}"; then
+    echo "[auto] $prompt (AUTO_INSTALL=1)"
+    return 0
+  fi
   if ! is_tty; then
     echo "[skip] $prompt (non-interactive; default = no)"
     return 1
@@ -30,6 +35,11 @@ confirm_change() {
   local verb="$1" name="$2" present="$3" # present: 1 or 0
   if [[ "$present" -eq 1 ]]; then
     # Auto-update without prompting
+    return 0
+  fi
+  # If AUTO_INSTALL is truthy, proceed with installs without prompting
+  if _truthy "${AUTO_INSTALL:-}"; then
+    echo "[auto] $verb $name (AUTO_INSTALL=1)"
     return 0
   fi
   # Prompt for installs
@@ -70,7 +80,7 @@ ensure_cask() {
   local cask="$1"
   ensure "$cask (cask)" \
     "brew list --cask --versions '$cask' >/dev/null 2>&1" \
-    "brew install --cask '$cask'" \
+    "brew install --cask '$cask' || brew reinstall --cask '$cask' || { echo '[warn] brew cask install failed for '$cask' (possibly already present in /Applications). Continuing.' >&2; true; }" \
     "brew upgrade --cask '$cask' || true"
 }
 
