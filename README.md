@@ -9,12 +9,11 @@ chezmoi init skyde
 # Review changes if desired
 chezmoi diff
 
-# Minimal apply (default): no Homebrew installs
+# Apply and be prompted before installs/changes
 chezmoi apply
 
-# Extras (optional): install tools/apps via Homebrew
-CHEZMOI_EXTRAS=1 chezmoi apply
-# or: CHEZMOI_EXTRAS=1 chezmoi apply -- --extras
+# Auto-upgrade already-installed tools without prompting (installs still ask)
+AUTO_INSTALL=1 chezmoi apply
 ```
 
 ### Linux
@@ -25,12 +24,11 @@ chezmoi init skyde
 # Review changes if desired
 chezmoi diff
 
-# Minimal apply (default): no apt installs
+# Apply and be prompted before installs/changes
 chezmoi apply
 
-# Extras (optional): install tools via apt (curl, dev tools, common apps)
-CHEZMOI_EXTRAS=1 chezmoi apply
-# or: CHEZMOI_EXTRAS=1 chezmoi apply -- --extras
+# Auto-upgrade already-installed tools without prompting (installs still ask)
+AUTO_INSTALL=1 chezmoi apply
 ```
 
 ### Windows
@@ -41,12 +39,11 @@ chezmoi init skyde
 # Review changes if desired
 chezmoi diff
 
-# Minimal apply (default): no winget installs
+# Apply and be prompted before installs/changes
 chezmoi apply
 
-# Extras (optional): install tools via winget
-$env:CHEZMOI_EXTRAS=1; chezmoi apply
-# or: chezmoi apply -- --extras
+# Auto-upgrade already-installed tools without prompting (installs still ask)
+$env:AUTO_INSTALL=1; chezmoi apply
 ```
 
 # Linux Container
@@ -54,7 +51,7 @@ $env:CHEZMOI_EXTRAS=1; chezmoi apply
 Try it yourself in a Docker container.
 
 ```sh
-docker run --rm -it debian:testing bash -c 'apt update -qq && apt install -y git curl ca-certificates && sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin && chezmoi init skyde && chezmoi diff && CHEZMOI_EXTRAS=1 chezmoi apply && exec bash'
+docker run --rm -it debian:testing bash -c 'apt update -qq && apt install -y git curl ca-certificates && sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin && chezmoi init skyde && chezmoi diff && AUTO_INSTALL=1 chezmoi apply && exec bash'
 ```
 
 ### WSL Installation
@@ -65,12 +62,11 @@ wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc
 
 ## Starship Prompt
 
-Starship is part of the optional extras. In minimal mode, no prompt/tooling is installed.
-Enable extras to install [Starship](https://starship.rs) (winget: `Starship.Starship`).
+Starship is offered as an optional tool. You'll be prompted to install it, and with `AUTO_INSTALL=1` it will update automatically once present (winget: `Starship.Starship`).
 
 ## Fast CLI Tools
 
-These are installed when extras are enabled:
+These tools are offered during setup:
 
 - `ripgrep` for searching directories quickly
 - `fd` as a faster `find`

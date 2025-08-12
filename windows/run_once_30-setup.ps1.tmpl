@@ -1,3 +1,4 @@
+{{ if eq .chezmoi.os "windows" -}}
 # Requires PowerShell 7+
 
 # Build $COMMON_APPS array correctly from file lines
@@ -8,18 +9,38 @@ $COMMON_APPS | ForEach-Object { Write-Host $_ }
 
 Write-Host 'Running Windows setup...'
 
-# Extras flag: enable package installs only if explicitly requested
-# Usage: pass --extras/--full as first arg or set CHEZMOI_EXTRAS=1 env var
-$EXTRAS = 0
-if ($args.Length -gt 0 -and ($args[0] -in @('--extras','--full'))) { $EXTRAS = 1 }
-if ($env:CHEZMOI_EXTRAS -eq '1') { $EXTRAS = 1 }
+function Test-Truthy($val) {
+    return $val -match '^(1|true|TRUE|True|yes|YES|Yes|on|ON|On)$'
+}
 
-# Install common apps using winget if available and extras enabled
-if ($EXTRAS -eq 1 -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+function Confirm-Change($verb, $name, $present) {
+    if ($present -eq 1) { 
+        # Auto-update without prompting
+        return $true 
+    }
+    # Prompt for installs
+    $response = Read-Host "${verb} ${name}? [y/N]"
+    return $response -match '^(y|Y)(es)?$'
+}
+
+function Ensure-Winget($name, $id) {
+    $present = winget list --id $id --exact 2>$null | Select-String $id
+    if ($present) {
+        if (Confirm-Change 'Update' $name 1) {
+            winget upgrade --id $id --exact --accept-source-agreements --accept-package-agreements | Out-Null
+        }
+    } else {
+        if (Confirm-Change 'Install' $name 0) {
+            winget install --id $id --exact --accept-source-agreements --accept-package-agreements | Out-Null
+        }
+    }
+}
+
+if (Get-Command winget -ErrorAction SilentlyContinue) {
     # Map app names to winget IDs
     $wingetAppMap = @{
         'git'      = 'Git.Git'
-        'ripgrep'  = 'BurntSushi.ripgrep'
+        'ripgrep'  = 'BurntSushi.ripgrep.MSVC'
         'fd'       = 'sharkdp.fd'
         'fzf'      = 'junegunn.fzf'
         'bat'      = 'sharkdp.bat'
@@ -29,26 +50,18 @@ if ($EXTRAS -eq 1 -and (Get-Command winget -ErrorAction SilentlyContinue)) {
         'llvm'     = 'LLVM.LLVM'
         'nvim'     = 'Neovim.Neovim'
         'starship' = 'Starship.Starship'
-        'zoxide'   = 'AjeetDSouza.Zoxide'
-        'yazi'     = 'yazi-dev.yazi'
+        'zoxide'   = 'ajeetdsouza.zoxide'
+        'yazi'     = 'sxyazi.yazi'
     }
     foreach ($pkg in $COMMON_APPS) {
         if ($wingetAppMap.ContainsKey($pkg)) {
-            $wingetId = $wingetAppMap[$pkg]
-            Write-Host "Installing $pkg with winget ($wingetId)"
-            $wingetArgs = @('--id', $wingetId, '--exact', '--accept-source-agreements', '--accept-package-agreements')
-            if ($pkg -eq 'git') {
-                $wingetArgs += '--silent'
-            }
-            winget install @wingetArgs
+            Ensure-Winget $pkg $wingetAppMap[$pkg]
         } else {
             Write-Host "No winget mapping for $pkg, skipping."
         }
     }
-} elseif ($EXTRAS -eq 1) {
-    Write-Warning "winget is not available. Skipping winget app installs."
 } else {
-    Write-Host "Minimal mode: skipping winget installs. Set CHEZMOI_EXTRAS=1 or pass --extras to enable."
+    Write-Warning "winget is not available. Skipping winget app installs."
 }
 # Install fonts (Windows-specific: JetBrainsMono-NF)
 $fontName = "JetBrainsMono Nerd Font"
@@ -58,7 +71,7 @@ if (-not $fontInstalled) {
 } else {
     Write-Host "JetBrainsMono-NF font is already installed."
 }
-# Ensure LLVM (clang) is in PATH for C compiler support (safe in minimal)
+# Ensure LLVM (clang) is in PATH for C compiler support
 $llvmBin = "$env:ProgramFiles\LLVM\bin"
 if (Test-Path "$llvmBin\clang.exe") {
     $userPath = [System.Environment]::GetEnvironmentVariable('PATH', 'User')
@@ -90,3 +103,5 @@ try {
 } catch {
     Write-Warning "Failed to update key repeat settings: $_"
 }
+
+{{ end -}}

@@ -1,3 +1,7 @@
 # Prevent CI files from being installed into $HOME
+
 .github/
 
+# Prevent library files from being treated as executable scripts
+
+lib/
