@@ -1194,5 +1194,5 @@
   "git-blame.config.showBlameInline": false,
   "gitlens.currentLine.uncommittedChangesFormat": "",
   "gitlens.currentLine.format": "",
-  "extensions.ignoreRecommendations": true,
+  "extensions.ignoreRecommendations": true
 }
