@@ -42,7 +42,13 @@
     "<tab>": false,
     "<S-tab>": false,
     "<C-o>": true,
-    "<C-i>": true
+    "<C-i>": true,
+    "<C-c>": false,
+    "<C-v>": false,
+    "<C-x>": false,
+    "<D-c>": false,
+    "<D-v>": false,
+    "<D-x>": false
   },
   "vim.cursorStylePerMode": {
     "normal": "block",
