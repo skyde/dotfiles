@@ -18,6 +18,7 @@
     "editorCursor.background": "#000000",
     "editor.lineHighlightBackground": "#2F334D",
     "editorLineNumber.activeForeground": "#FF9E3B",
+    "editor.selectionBackground": "#313F72",
     "editor.background": "#222436"
   },
   "workbench.quickOpen.centered": true,
