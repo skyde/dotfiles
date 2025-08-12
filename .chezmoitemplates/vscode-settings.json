@@ -52,6 +52,25 @@
     "visualBlock": "block"
   },
   "vim.visualModeKeyBindingsNonRecursive": [
+    // Navigate by visual lines
+    {
+      "before": [
+        "j"
+      ],
+      "after": [
+        "g",
+        "j"
+      ]
+    },
+    {
+      "before": [
+        "k"
+      ],
+      "after": [
+        "g",
+        "k"
+      ]
+    },
     {
       "before": [
         "leader",
@@ -163,6 +182,25 @@
   "keyboard.dispatch": "keyCode",
   "vscode-textobjects.vimEnabled": true,
   "vim.normalModeKeyBindingsNonRecursive": [
+    // Navigate by visual lines
+    {
+      "before": [
+        "j"
+      ],
+      "after": [
+        "g",
+        "j"
+      ]
+    },
+    {
+      "before": [
+        "k"
+      ],
+      "after": [
+        "g",
+        "k"
+      ]
+    },
     // Window splits
     {
       "before": [
