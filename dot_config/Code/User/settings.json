@@ -274,18 +274,24 @@
       "before": ["Y"],
       "after": ["y", "$"]
     },
-    // Sidebar
     {
+      // Sideba(r)
       "before": ["<leader>", "r"],
       "commands": ["workbench.action.toggleSidebarVisibility"]
     },
+    // {
+    //   // (O)pen terminal
+    //   "before": ["<leader>", "o"],
+    //   "commands": ["workbench.action.terminal.toggleTerminal"]
+    // },
     // Copilot Chat
     {
+      // Open auxiliary bar (focus Copilot chat)
       "before": ["<leader>", "a"],
       "commands": ["workbench.action.chat.open"]
     },
     {
-      // Close Copilot Chat
+      // Close auxiliary bar
       "before": ["<leader>", "A"],
       "commands": ["workbench.action.toggleAuxiliaryBar"]
     },

@@ -221,24 +221,11 @@
     }
   },
   {
+    // Toggle the panel at the bottom of the screen
     "key": "cmd+t",
-    "command": "workbench.action.closePanel",
-    "when": "panelVisible"
-  },
-  {
-    "key": "cmd+t",
-    "when": "!panelVisible",
     "command": "runCommands",
     "args": {
-      "commands": [
-        // When the are closing the terminal disable fullscreen mode so
-        // subsequent usage of the terminal is not fullscreen
-        "workbench.action.toggleMaximizedPanel",
-        // Show the terminal
-        "workbench.action.terminal.toggleTerminal"
-        // Auto select the main terminal
-        // "workbench.action.terminal.focusAtIndex1"
-      ]
+      "commands": ["workbench.action.togglePanel"]
     }
   },
   {
@@ -276,25 +263,11 @@
   },
   // Duplicate terminal commands to run with ctrl+/ as well
   {
+    // Show the bottom panel if it's not visible
     "key": "ctrl+/",
-    "command": "workbench.action.closePanel",
-    "when": "panelVisible"
-  },
-  {
-    // Close the terminal when it's focused
-    "key": "ctrl+/",
-    "when": "!panelVisible",
     "command": "runCommands",
     "args": {
-      "commands": [
-        // When the are closing the terminal disable fullscreen mode so
-        // subsequent usage of the terminal is not fullscreen
-        "workbench.action.toggleMaximizedPanel",
-        // Show the terminal
-        "workbench.action.terminal.toggleTerminal"
-        // Auto select the main terminal
-        // "workbench.action.terminal.focusAtIndex1"
-      ]
+      "commands": ["workbench.action.togglePanel"]
     }
   },
   {
