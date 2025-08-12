@@ -1,0 +1,6 @@
+{{- if eq .chezmoi.os "windows" -}}
+$ErrorActionPreference = "Stop"
+# This package installs system-wide via MSI (UAC prompt is normal).
+winget install --id=DEVCOM.JetBrainsMonoNerdFont -e `
+  --accept-package-agreements --accept-source-agreements --silent
+{{- end -}}
