@@ -40,15 +40,16 @@ ensure_apt fonts-jetbrains-mono
 
 if have zsh; then
     ZSH_PATH=$(command -v zsh)
-    if getent passwd "$USER" >/dev/null 2>&1; then
-        CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
+    TARGET_USER="${SUDO_USER:-${USER:-$(id -un)}}"
+    if getent passwd "$TARGET_USER" >/dev/null 2>&1; then
+        CURRENT_SHELL=$(getent passwd "$TARGET_USER" | cut -d: -f7)
         if [ -n "$CURRENT_SHELL" ] && [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
-            if confirm_change "Change default shell to $ZSH_PATH" "$USER" 1; then
-                $SUDO chsh -s "$ZSH_PATH" "$USER" || true
+            if confirm_change "Change default shell to $ZSH_PATH" "$TARGET_USER" 1; then
+                $SUDO chsh -s "$ZSH_PATH" "$TARGET_USER" || true
             fi
         fi
     else
-        echo "Skipping default shell change: user '$USER' not found in /etc/passwd."
+        echo "Skipping default shell change: user '$TARGET_USER' not found in /etc/passwd."
     fi
 fi
 
