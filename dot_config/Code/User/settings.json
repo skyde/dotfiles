@@ -34,6 +34,8 @@
   "editor.semanticHighlighting.enabled": true,
   "editor.selectionHighlight": false,
   "editor.occurrencesHighlight": "off",
+  "vim.searchMatchColor": "#FF002890",
+  // "vim.searchHighlightColor": "#FF500050"
   "workbench.colorCustomizations": {
     // Custom cursor color - do not change
     "editorCursor.foreground": "#FF5000",
@@ -1191,5 +1193,6 @@
   "git-blame.config.inlineBlame.hoverMessage.activeLine": false,
   "git-blame.config.showBlameInline": false,
   "gitlens.currentLine.uncommittedChangesFormat": "",
-  "gitlens.currentLine.format": ""
+  "gitlens.currentLine.format": "",
+  "extensions.ignoreRecommendations": true,
 }
