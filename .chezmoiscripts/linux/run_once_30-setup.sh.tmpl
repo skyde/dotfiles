@@ -1,0 +1,58 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Use sudo only if not running as root
+if [ "$(id -u)" -eq 0 ]; then
+    SUDO=""
+else
+    SUDO="sudo"
+fi
+
+source "${CHEZMOI_SOURCE_DIR}/lib/run_ensure.sh.inc"
+
+COMMON_APPS=(
+{{- include "common_apps.txt" -}}
+)
+
+echo "Installing packages using apt..."
+
+# Map package names from common_apps.txt to their apt package names when they differ
+declare -A APT_PACKAGE_MAP=(
+    [fd]=fd-find
+    [delta]=git-delta
+    [nvim]=neovim
+)
+
+for pkg in "${COMMON_APPS[@]}"; do
+    apt_pkg="${APT_PACKAGE_MAP[$pkg]:-$pkg}"
+    if apt-cache show "$apt_pkg" >/dev/null 2>&1; then
+        ensure_apt "$apt_pkg"
+    else
+        echo "Skipping unavailable package: $apt_pkg"
+    fi
+done
+
+ensure_apt zsh
+ensure_apt zsh-autosuggestions
+ensure_apt zsh-syntax-highlighting
+ensure_apt fonts-jetbrains-mono
+
+if have zsh; then
+    ZSH_PATH=$(command -v zsh)
+    if getent passwd "$USER" >/dev/null 2>&1; then
+        CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
+        if [ -n "$CURRENT_SHELL" ] && [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
+            if confirm_change "Change default shell to $ZSH_PATH" "$USER" 1; then
+                $SUDO chsh -s "$ZSH_PATH" "$USER" || true
+            fi
+        fi
+    else
+        echo "Skipping default shell change: user '$USER' not found in /etc/passwd."
+    fi
+fi
+
+echo "Linux setup complete using apt!"
+{{ end -}}
+
+
