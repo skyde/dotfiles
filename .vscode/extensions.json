@@ -2,7 +2,8 @@
   "recommendations": [
     "vscodevim.vim",
     "qufiwefefwoyn.kanagawa",
-    "formulahendry.auto-close-tag"
+    "formulahendry.auto-close-tag",
+    "RodrigoScola.vscode-textobjects"
   ],
   "unwantedRecommendations": []
 }
