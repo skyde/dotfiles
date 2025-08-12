@@ -55,9 +55,9 @@
     "normal": "block",
     "insert": "line",
     "replace": "underline",
-    "visual": "block",
-    "visualLine": "block",
-    "visualBlock": "block"
+    "visual": "line-thin",
+    "visualLine": "line-thin",
+    "visualBlock": "line-thin"
   },
   "vim.visualModeKeyBindingsNonRecursive": [
     // Navigate by visual lines
