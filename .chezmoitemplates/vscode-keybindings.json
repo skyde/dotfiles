@@ -1,20 +1,11 @@
+
 // Place your key bindings in this file to override the defaults
 [
   // Disable line move shortcuts
   { "key": "alt+down", "command": "-editor.action.moveLinesDownAction" },
   { "key": "alt+up", "command": "-editor.action.moveLinesUpAction" },
 
-  // Toggle line comment with gc in VSCodeVim
-  {
-    "key": "g c",
-    "command": "editor.action.commentLine",
-    "when": "editorTextFocus && vim.mode == 'Normal'"
-  },
-  {
-    "key": "g c",
-    "command": "editor.action.commentLine",
-    "when": "editorTextFocus && (vim.mode == 'Visual' || vim.mode == 'VisualLine' || vim.mode == 'VisualBlock')"
-  },
+  
 
   // Page Down - workround to make cursor movement match Nvim
   {
@@ -202,12 +193,7 @@
     "command": "editor.action.commentLine",
     "when": "editorTextFocus"
   },
-  {
-    // LazyVim-style line comment
-    "key": "g c c",
-    "command": "editor.action.commentLine",
-    "when": "editorTextFocus && vim.mode == 'Normal'"
-  },
+  
   // Change within current file
   // Makes the standard cmd-f shortcut map to the / key
   // Useful as I have a macro mapped to cmd-f
@@ -534,3 +520,4 @@
   { "key": "ctrl+2", "command": "workbench.action.focusSecondEditorGroup" },
   { "key": "ctrl+3", "command": "workbench.action.focusThirdEditorGroup" }
 ]
+

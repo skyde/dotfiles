@@ -1,3 +1,4 @@
+
 {
   // Cursor behavior and line numbers
   "editor.cursorSurroundingLines": 8,
@@ -177,6 +178,16 @@
       "commands": [
         "editor.action.moveLinesUpAction"
       ]
+    },
+    // Moved from keybindings.json: comment toggle in Visual mode
+    {
+      "before": [
+        "g",
+        "c"
+      ],
+      "commands": [
+        "editor.action.commentLine"
+      ]
     }
   ],
   "keyboard.dispatch": "keyCode",
@@ -247,6 +258,26 @@
       ],
       "commands": [
         ":nohl"
+      ]
+    },
+    // Moved from keybindings.json: comment toggles
+    {
+      "before": [
+        "g",
+        "c"
+      ],
+      "commands": [
+        "editor.action.commentLine"
+      ]
+    },
+    {
+      "before": [
+        "g",
+        "c",
+        "c"
+      ],
+      "commands": [
+        "editor.action.commentLine"
       ]
     },
     // Quick access to editors 1-9
@@ -4286,3 +4317,4 @@
     }
   ]
 }
+
