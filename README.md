@@ -12,7 +12,7 @@ chezmoi diff
 # Apply and be prompted before installs/changes
 chezmoi apply
 
-# Auto-upgrade already-installed tools without prompting (installs still ask)
+# Install and upgrade tools without prompting
 AUTO_INSTALL=1 chezmoi apply
 ```
 
@@ -27,7 +27,7 @@ chezmoi diff
 # Apply and be prompted before installs/changes
 chezmoi apply
 
-# Auto-upgrade already-installed tools without prompting (installs still ask)
+# Install and upgrade tools without prompting
 AUTO_INSTALL=1 chezmoi apply
 ```
 
@@ -42,7 +42,7 @@ chezmoi diff
 # Apply and be prompted before installs/changes
 chezmoi apply
 
-# Auto-upgrade already-installed tools without prompting (installs still ask)
+# Install and upgrade tools without prompting
 $env:AUTO_INSTALL=1; chezmoi apply
 ```
 
@@ -62,7 +62,7 @@ wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc
 
 ## Starship Prompt
 
-Starship is offered as an optional tool. You'll be prompted to install it, and with `AUTO_INSTALL=1` it will update automatically once present (winget: `Starship.Starship`).
+Starship is offered as an optional tool. You'll be prompted to install it unless `AUTO_INSTALL=1` is set, in which case it installs and updates without prompting (winget: `Starship.Starship`).
 
 ## Fast CLI Tools
 
