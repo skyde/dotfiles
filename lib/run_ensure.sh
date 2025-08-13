@@ -11,6 +11,12 @@ _truthy() {
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# Optional: source cask->app mapping if available
+if [ -n "${CHEZMOI_SOURCE_DIR:-}" ] && [ -f "${CHEZMOI_SOURCE_DIR}/lib/cask_app_map.sh" ]; then
+  # shellcheck disable=SC1090
+  source "${CHEZMOI_SOURCE_DIR}/lib/cask_app_map.sh"
+fi
+
 is_tty() { [ -t 0 ] && [ -t 1 ]; }
 
 ask() {
@@ -79,6 +85,21 @@ ensure_brew() {
 
 ensure_cask() {
   local cask="$1"
+  local app_path=""
+  local home_app_path=""
+  if declare -F cask_app_paths >/dev/null 2>&1; then
+    read -r app_path home_app_path < <(cask_app_paths "$cask")
+  fi
+
+  # If app bundle already exists, treat as present to avoid prompting
+  if { [ -n "$app_path" ] && [ -d "$app_path" ]; } || { [ -n "$home_app_path" ] && [ -d "$home_app_path" ]; }; then
+    ensure "$cask (cask)" \
+      "true" \
+      "brew install --cask '$cask'" \
+      "brew upgrade --cask '$cask' || true"
+    return
+  fi
+
   ensure "$cask (cask)" \
     "brew list --cask --versions '$cask' >/dev/null 2>&1" \
     "brew install --cask '$cask' || brew reinstall --cask '$cask' || { echo '[warn] brew cask install failed for $cask (possibly already present in /Applications). Continuing.' >&2; true; }" \

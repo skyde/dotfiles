@@ -3,6 +3,7 @@
 set -euo pipefail
 
 source "${CHEZMOI_SOURCE_DIR}/lib/run_ensure.sh"
+source "${CHEZMOI_SOURCE_DIR}/lib/cask_app_map.sh"
 
 COMMON_APPS=(
 {{- include "common_apps.txt" -}}
@@ -27,9 +28,14 @@ done
 ensure_brew zsh-autosuggestions
 ensure_brew zsh-syntax-highlighting
 
-for cask in fluor hammerspoon alt-tab betterdisplay font-jetbrains-mono-nerd-font; do
-    ensure_cask "$cask"
-done
+ for cask in fluor hammerspoon alt-tab betterdisplay font-jetbrains-mono-nerd-font; do
+     read -r app_path home_app_path < <(cask_app_paths "$cask")
+     if { [ -n "$app_path" ] && [ -d "$app_path" ]; } || { [ -n "$home_app_path" ] && [ -d "$home_app_path" ]; }; then
+         echo "Skipping $cask (app already present)"
+     else
+         ensure_cask "$cask"
+     fi
+ done
 
 if have brew && brew list fd >/dev/null 2>&1 && ! brew list --formula | grep -q "^fd$"; then
     if confirm_change "Link" "fd" 1; then
