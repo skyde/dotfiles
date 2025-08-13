@@ -20,7 +20,7 @@
   "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font, JetBrains Mono, monospace",
   "terminal.integrated.defaultProfile.linux": "zsh",
   "terminal.integrated.defaultProfile.osx": "zsh",
-  "terminal.integrated.defaultProfile.windows": "pwsh",
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
   // Forward Cmd/Ctrl+S to the terminal by removing the save command from the skip list
   // This subtracts from VS Code's default list rather than replacing it
   "terminal.integrated.commandsToSkipShell": ["-workbench.action.files.save"],
@@ -258,7 +258,7 @@
     {
       "before": ["<Esc>"],
       "after": ["<Esc>"],
-      "commands": [":nohl"]
+      "commands": [":nohl", "closeParameterHints"]
     },
     {
       // Use Visual Studio code undo rather than VSVim
@@ -767,6 +767,16 @@
         "editor.action.showHover",
         "editor.debug.action.showDebugHover"
       ]
+    },
+    {
+      // Show parameter hints for a method
+      "before": ["Backspace", "<leader>"],
+      "commands": ["editor.action.triggerParameterHints"]
+    },
+    {
+      // Show standard hover, can be useful when in debug & want the normal one
+      "before": ["Backspace", "Backspace"],
+      "commands": ["editor.action.showHover"]
     },
     // ── Watches & evaluation ─────────────────────────────────────────────────────
     {
