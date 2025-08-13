@@ -71,6 +71,20 @@ if (-not $fontInstalled) {
 } else {
     Write-Host "JetBrainsMono-NF font is already installed."
 }
+# Ensure Yazi uses Git's file.exe for MIME detection
+$gitFile = "$env:ProgramFiles\Git\usr\bin\file.exe"
+if (Test-Path $gitFile) {
+    $current = [System.Environment]::GetEnvironmentVariable('YAZI_FILE_ONE', 'User')
+    if ($current -ne $gitFile) {
+        [System.Environment]::SetEnvironmentVariable('YAZI_FILE_ONE', $gitFile, 'User')
+        Write-Host "Set YAZI_FILE_ONE to $gitFile"
+    } else {
+        Write-Host "YAZI_FILE_ONE is already set to $gitFile"
+    }
+    $env:YAZI_FILE_ONE = $gitFile
+} else {
+    Write-Warning "file.exe not found at $gitFile. Install Git for Windows."
+}
 # Ensure LLVM (clang) is in PATH for C compiler support
 $llvmBin = "$env:ProgramFiles\LLVM\bin"
 if (Test-Path "$llvmBin\clang.exe") {
