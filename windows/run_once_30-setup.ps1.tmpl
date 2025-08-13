@@ -52,6 +52,7 @@ if (Get-Command winget -ErrorAction SilentlyContinue) {
         'starship' = 'Starship.Starship'
         'zoxide'   = 'ajeetdsouza.zoxide'
         'yazi'     = 'sxyazi.yazi'
+        'lazygit'  = 'JesseDuffield.lazygit'
     }
     foreach ($pkg in $COMMON_APPS) {
         if ($wingetAppMap.ContainsKey($pkg)) {
