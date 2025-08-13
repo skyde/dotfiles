@@ -275,6 +275,11 @@
       "after": ["y", "$"]
     },
     {
+      // Preferences
+      "before": ["<leader>", "p"],
+      "commands": ["workbench.action.showCommands"]
+    },
+    {
       // Sideba(r)
       "before": ["<leader>", "r"],
       "commands": ["workbench.action.toggleSidebarVisibility"]
