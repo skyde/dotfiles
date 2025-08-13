@@ -75,6 +75,7 @@ These tools are offered during setup:
 - `yazi` as a modern terminal file manager
 - `delta` for modern git diffs (also used in Lazygit)
   - diffs are side-by-side by default, while LazyGit shows inline changes
+- `lazygit` for a simple git TUI
 
 # Mac
 
