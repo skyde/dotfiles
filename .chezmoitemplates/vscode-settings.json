@@ -50,7 +50,8 @@
     "<C-a>": false,
     "<D-c>": false,
     "<D-v>": false,
-    "<D-x>": false
+    "<D-x>": false,
+    "<D-a>": false
   },
   "vim.cursorStylePerMode": {
     "normal": "block",
@@ -60,6 +61,11 @@
     "visualLine": "line-thin",
     "visualBlock": "line-thin"
   },
+  "vim.operatorPendingModeKeyBindingsNonRecursive": [
+    // Entire buffer text object
+    { "before": ["a", "g"], "after": ["a", "e"] },
+    { "before": ["i", "g"], "after": ["i", "e"] }
+  ],
   "vim.visualModeKeyBindingsNonRecursive": [
     // Navigate by visual lines
     {
@@ -99,7 +105,10 @@
       "commands": [
         "editor.action.formatSelection"
       ]
-    }
+    },
+    // Entire buffer text object
+    { "before": ["a", "g"], "after": ["a", "e"] },
+    { "before": ["i", "g"], "after": ["i", "e"] }
   ],
   "vim.insertModeKeyBindingsNonRecursive": [
     {
@@ -268,6 +277,8 @@
         ":nohl"
       ]
     },
+    // Entire buffer text object
+    { "before": ["v", "a", "g"], "after": ["v", "a", "e"] },
     // Moved from keybindings.json: comment toggles
     {
       "before": [
