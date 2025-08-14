@@ -45,11 +45,11 @@
     "<C-o>": true,
     "<C-i>": true,
     "<C-c>": false,
-    "<C-v>": false,
+    "<C-v>": true,
     "<C-x>": false,
     "<C-a>": false,
     "<D-c>": false,
-    "<D-v>": false,
+    "<D-v>": true,
     "<D-x>": false,
     "<D-a>": false
   },
@@ -111,6 +111,15 @@
     { "before": ["i", "g"], "after": ["i", "e"] }
   ],
   "vim.insertModeKeyBindingsNonRecursive": [
+    {
+      "before": ["<C-v>"],
+      "commands": ["editor.action.clipboardPasteAction"]
+    },
+    {
+      "before": ["<D-v>"],
+      "commands": ["editor.action.clipboardPasteAction"]
+    },
+
     {
       "before": [
         "<C-k>"
