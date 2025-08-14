@@ -709,7 +709,7 @@
     },
     {
       // Disable all breakpoints
-      "before": ["<leader>", "d", "B", "a"],
+      "before": ["<leader>", "d", "B", "d"],
       "commands": ["workbench.debug.viewlet.action.disableAllBreakpoints"]
     },
     {
