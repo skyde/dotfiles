@@ -2,37 +2,60 @@
 {
   "version": "2.0.0",
   "tasks": [
-    // {
-    //   "label": "fzfSearchContent",
-    //   "type": "shell",
-    //   "command": "fzf",
-    //   "args": [
-    //     "--prompt=rg> ",
-    //     "--bind",
-    //     "change:reload:rg --column --line-number --no-heading --hidden --smart-case {q} || true",
-    //     "--delimiter",
-    //     ":",
-    //     "--preview",
-    //     // ▼ pick ONE of the two previews described above ▼
-    //     // Simple “after 5” + highlight
-    //     "bat --style=numbers --color=always --highlight-line {2} --line-range {2}:+5 {1}",
-    //     // or full ±5 context via Bash arithmetic
-    //     // "bash -c 'ln=$2; s=$((ln-5)); (( s<1 )) && s=1; e=$((ln+5)); bat --style=numbers --color=always --highlight-line $ln --line-range ${s}:${e} \"$1\"' -- {1} {2}",
-    //     "--bind",
-    //     "enter:execute(code --reuse-window -g {1}:{2}:{3} > /dev/null)+abort"
-    //   ],
-    //   /*— extra quality‑of‑life —*/
-    //   "options": {
-    //     // keeps BAT from opening a pager that would clash with fzf
-    //     "env": { "BAT_PAGER": "less -R" }
-    //   },
-    //   "presentation": {
-    //     "echo": false,
-    //     "reveal": "always",
-    //     "focus": true,
-    //     "panel": "dedicated"
-    //   },
-    //   "problemMatcher": []
-    // }
+    {
+      "label": "FZF Files",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -euo pipefail; src=\"\"; if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then src='git ls-files -co --exclude-standard'; elif command -v fd >/dev/null 2>&1; then src='fd --hidden --type f'; else src='rg --hidden --files'; fi; eval \"$src\" | fzf --ansi --multi --reverse --cycle --prompt='files> ' --header='Tab: select | Ctrl-O: open (keep) | Enter: open & close' --preview='bat --color=always --style=numbers {} | head -500' --preview-window=right,55% --bind 'ctrl-o:execute-silent(code -r -g {+})' --bind 'enter:execute(code -r -g {} > /dev/null)+abort'"
+      ],
+      "options": {
+        "env": {
+          "BAT_PAGER": "less -R"
+        }
+      },
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FZF Ripgrep",
+      "type": "shell",
+      "command": "fzf",
+      "args": [
+        "--ansi",
+        "--multi",
+        "--reverse",
+        "--cycle",
+        "--prompt=rg> ",
+        "--delimiter",
+        ":",
+        "--bind",
+        "change:reload:rg --column --line-number --no-heading --hidden --smart-case {q} || true",
+        "--preview",
+        "bash -lc 'ln={2}; [ -z \"$ln\" ] && ln=1; bat --style=numbers --color=always --highlight-line $ln --line-range ${ln}:+200 "{1}"'",
+        "--preview-window",
+        "bottom,30%",
+        "--bind",
+        "enter:execute-silent(code -r -g {1}:{2}:{3})+ignore"
+      ],
+      "options": {
+        "env": {
+          "BAT_PAGER": "less -R"
+        }
+      },
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
   ]
 }

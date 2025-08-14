@@ -529,7 +529,12 @@
     },
     {
       "before": ["<leader>", "s", "f"],
-      "commands": ["fzf-picker.findFiles"]
+      "commands": [
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "FZF Files"
+        }
+      ]
     },
     // {
     //   // Search file contents using FZF via VS Code task
@@ -548,8 +553,10 @@
       // Start a new search within files
       "before": ["<leader>", "s", "s"],
       "commands": [
-        // Search within files
-        "fzf-picker.findWithinFiles",
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "FZF Ripgrep"
+        },
         "extension.vim_escape"
       ]
     },
@@ -570,8 +577,10 @@
       "commands": [
         // Automatically search for the word under the cursor
         "editor.action.addSelectionToNextFindMatch",
-        // Search within files
-        "fzf-picker.findWithinFiles",
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "FZF Ripgrep"
+        },
         "extension.vim_escape"
       ]
     },
@@ -588,7 +597,11 @@
     },
     {
       "before": ["<leader>", "s", "r"],
-      "commands": ["fzf-picker.resumeSearch"]
+      "commands": [
+        {
+          "command": "workbench.action.tasks.reRunTask"
+        }
+      ]
     },
     // Jump to tab
     {
@@ -1226,5 +1239,9 @@
   "git-blame.config.showBlameInline": false,
   "gitlens.currentLine.uncommittedChangesFormat": "",
   "gitlens.currentLine.format": "",
-  "extensions.ignoreRecommendations": true
+  "extensions.ignoreRecommendations": true,
+  "search.searchOnTypeDebouncePeriod": 30,
+  "search.searchView.keywordSuggestions": true,
+  "search.seedWithNearestWord": true,
+  "search.smartCase": true
 }
