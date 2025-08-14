@@ -18,3 +18,9 @@ AppData/Roaming/Code/User/keybindings.json
 {{ if ne .chezmoi.os "darwin" }}darwin/**{{ end }}
 {{ if ne .chezmoi.os "linux" }}linux/**{{ end }}
 {{ if ne .chezmoi.os "windows" }}windows/**{{ end }}
+
+{{- if ne .chezmoi.os "darwin" }}
+Library/KeyBindings/**
+dot_hammerspoon/**
+run_once_25-install-hammerspoon.sh.tmpl
+{{- end }}
