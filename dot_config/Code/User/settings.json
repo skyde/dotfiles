@@ -346,6 +346,16 @@
       "commands": ["editor.action.toggleRenderWhitespace"]
     },
     {
+      // Increase text size (plus)
+      "before": ["<leader>", "u", "p"],
+      "commands": ["editor.action.fontZoomIn"]
+    },
+    {
+      // Decrease text size (minus)
+      "before": ["<leader>", "u", "m"],
+      "commands": ["editor.action.fontZoomOut"]
+    },
+    {
       // Toggle inline parameter name hints
       "before": ["<leader>", "u", "i"],
       "commands": ["clangd.inlayHints.toggle"]
@@ -1145,13 +1155,13 @@
   "search.useParentIgnoreFiles": true,
   "fzf-picker.general.useGitIgnoreExcludes": true,
   "terminal.integrated.env.linux": {
-    "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f' --bind 'ctrl-f:execute-silent(code -r -g {+})' --bind 'ctrl-o:execute-silent(code -r -g {1}:{2})'"
   },
   "terminal.integrated.env.osx": {
-    "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f' --bind 'ctrl-f:execute-silent(code -r -g {+})' --bind 'ctrl-o:execute-silent(code -r -g {1}:{2})'"
   },
   "terminal.integrated.env.windows": {
-    "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'"
+    "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f' --bind 'ctrl-f:execute-silent(code -r -g {+})' --bind 'ctrl-o:execute-silent(code -r -g {1}:{2})'"
   },
   // Minimalism
   "editor.guides.indentation": false,
@@ -1165,6 +1175,7 @@
   // Zen Mode
   "zenMode.centerLayout": true,
   "zenMode.showTabs": "none",
+  "zenMode.hideLineNumbers": false,
   "zenMode.fullScreen": true,
   "zenMode.hideStatusBar": true,
   "zenMode.hideActivityBar": true,
