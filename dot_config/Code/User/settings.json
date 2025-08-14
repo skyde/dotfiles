@@ -1175,6 +1175,7 @@
   // Zen Mode
   "zenMode.centerLayout": true,
   "zenMode.showTabs": "none",
+  "zenMode.hideLineNumbers": false,
   "zenMode.fullScreen": true,
   "zenMode.hideStatusBar": true,
   "zenMode.hideActivityBar": true,
