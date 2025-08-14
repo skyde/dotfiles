@@ -353,7 +353,7 @@
     {
       // Decrease text size (minus)
       "before": ["<leader>", "u", "m"],
-      "commands": ["editor.action.fontZoom"]
+      "commands": ["editor.action.fontZoomOut"]
     },
     {
       // Toggle inline parameter name hints
