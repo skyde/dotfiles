@@ -346,6 +346,16 @@
       "commands": ["editor.action.toggleRenderWhitespace"]
     },
     {
+      // Increase text size (plus)
+      "before": ["<leader>", "u", "p"],
+      "commands": ["editor.action.fontZoomIn"]
+    },
+    {
+      // Decrease text size (minus)
+      "before": ["<leader>", "u", "m"],
+      "commands": ["editor.action.fontZoom"]
+    },
+    {
       // Toggle inline parameter name hints
       "before": ["<leader>", "u", "i"],
       "commands": ["clangd.inlayHints.toggle"]
