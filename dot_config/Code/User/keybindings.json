@@ -3,7 +3,18 @@
   // Disable line move shortcuts
   { "key": "alt+down", "command": "-editor.action.moveLinesDownAction" },
   { "key": "alt+up", "command": "-editor.action.moveLinesUpAction" },
-
+  {
+    // Ctrl left to jump words
+    "key": "ctrl+left",
+    "command": "cursorWordStartLeft",
+    "when": "editorTextFocus"
+  },
+  {
+    // Ctrl right to jump words
+    "key": "ctrl+right",
+    "command": "cursorWordEndRight",
+    "when": "editorTextFocus"
+  },
   // Page Down - workround to make cursor movement match Nvim
   {
     "key": "pagedown",
