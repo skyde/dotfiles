@@ -1,0 +1,49 @@
+{{- $t := include "themes/tokyonight_moon.json.tmpl" | fromJson -}}
+{{- if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROFILE_NAME="Tokyo Night Moon"
+TERMINAL_DOMAIN="com.apple.Terminal"
+PROFILE_FILE="${HOME}/Library/Terminal/${PROFILE_NAME}.terminal"
+
+# Re-run this script when the profile changes:
+# theme-fingerprint: {{ include "Library/Terminal/Tokyo Night Moon.terminal" | sha256sum }}
+
+# 1) Ensure the profile file exists (chezmoi places it there)
+if [[ ! -f "$PROFILE_FILE" ]]; then
+  echo "Profile file missing: $PROFILE_FILE" >&2
+  exit 1
+fi
+
+# 2) Import if Terminal doesn't know it yet
+if ! /usr/bin/defaults read "$TERMINAL_DOMAIN" "Window Settings" 2>/dev/null | /usr/bin/grep -q "$PROFILE_NAME"; then
+  /usr/bin/open -g "$PROFILE_FILE"
+  /bin/sleep 1
+fi
+
+# 3) Set as default + startup if needed (idempotent writes)
+current_default="$(/usr/bin/defaults read "$TERMINAL_DOMAIN" 'Default Window Settings' 2>/dev/null || true)"
+current_startup="$(/usr/bin/defaults read "$TERMINAL_DOMAIN" 'Startup Window Settings' 2>/dev/null || true)"
+
+if [[ "$current_default" != "$PROFILE_NAME" ]]; then
+  /usr/bin/defaults write "$TERMINAL_DOMAIN" 'Default Window Settings' -string "$PROFILE_NAME"
+fi
+if [[ "$current_startup" != "$PROFILE_NAME" ]]; then
+  /usr/bin/defaults write "$TERMINAL_DOMAIN" 'Startup Window Settings' -string "$PROFILE_NAME"
+fi
+
+# Optional: update currently open windows to the new profile (no-op if Terminal closed)
+if /usr/bin/pgrep -xq "Terminal"; then
+  /usr/bin/osascript <<'APPLESCRIPT' || true
+tell application "Terminal"
+  repeat with aWindow in windows
+    repeat with aTab in tabs of aWindow
+      set current settings of aTab to settings set "{{ $t.name }}"
+    end repeat
+  end repeat
+end tell
+APPLESCRIPT
+fi
+{{- end -}}
+
