@@ -23,4 +23,6 @@ AppData/Roaming/Code/User/keybindings.json
 Library/KeyBindings/**
 dot_hammerspoon/**
 run_once_25-install-hammerspoon.sh.tmpl
+Library/Terminal/*
+.chezmoiscripts/run_onchange_040-terminal-theme.sh.tmpl
 {{- end }}

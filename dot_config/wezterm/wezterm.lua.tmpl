@@ -1,13 +1,12 @@
--- {{/* Chezmoi template -> renders to ~/.config/wezterm/wezterm.lua */}}
+{{- $t := include "themes/tokyonight_moon.json.tmpl" | fromJson -}}
 local wezterm = require("wezterm")
 local act = wezterm.action
 
--- Prefer config_builder when available (newer WezTerm), else a plain table.
 local config = wezterm.config_builder and wezterm.config_builder() or {}
 
--- ---- Appearance & font: match your repo's default Nerd Font setup ----
+-- Appearance & font
 config.font = wezterm.font_with_fallback({
-  "JetBrainsMono Nerd Font", -- your README states this is the default
+  "JetBrainsMono Nerd Font",
   "SF Mono",
   "Menlo",
   "monospace",
@@ -15,27 +14,43 @@ config.font = wezterm.font_with_fallback({
 config.font_size = 13.0
 config.hide_tab_bar_if_only_one_tab = true
 config.audible_bell = "Disabled"
-config.scrollback_lines = 200000  -- generous like common Kitty configs
+config.scrollback_lines = 200000
 
--- On macOS, Option-as-Alt behavior close to terminal defaults
--- (You can tweak these if you rely on AltGr-like compose)
+-- Option-as-Alt on macOS
 config.send_composed_key_when_left_alt_is_pressed = true
-config.send_composed_key_when_right_alt_is_pressed = true  -- mirrors Kitty’s “option as alt” feel
--- Enable Kitty keyboard protocol so nvim can see richer key combos
+config.send_composed_key_when_right_alt_is_pressed = true
 config.enable_kitty_keyboard = true
 
--- Key feel: make ⌘ act like Ctrl for the combos you asked about.
--- This works in local and remote sessions (no fragile process detection).
+-- Key remaps for macOS
 if wezterm.target_triple:find("darwin") then
   config.keys = config.keys or {}
   table.insert(config.keys, { key = "d", mods = "CMD", action = act.SendKey({ key = "d", mods = "CTRL" }) })
   table.insert(config.keys, { key = "u", mods = "CMD", action = act.SendKey({ key = "u", mods = "CTRL" }) })
-  -- Tip: you can mirror more Kitty habits here, e.g.
-  -- table.insert(config.keys, { key = "LeftArrow",  mods = "CMD", action = act.SendKey({ key="a", mods="CTRL" }) }) -- ⌘← => Ctrl-A
-  -- table.insert(config.keys, { key = "RightArrow", mods = "CMD", action = act.SendKey({ key="e", mods="CTRL" }) }) -- ⌘→ => Ctrl-E
 end
 
--- Color scheme: keep system/WezTerm default; align to Kitty later if you want:
--- config.color_scheme = "Gruvbox Dark (Hard)"  -- or whatever you use in Kitty
+-- Color scheme with builtin fallback
+local scheme = "{{ $t.name }}"
+local builtins = wezterm.color.get_builtin_schemes() or {}
+if builtins[scheme] then
+  config.color_scheme = scheme
+else
+  config.colors = {
+    foreground = "{{ $t.foreground }}",
+    background = "{{ $t.background }}",
+    cursor_bg  = "{{ $t.cursor_bg }}",
+    cursor_fg  = "{{ $t.cursor_fg }}",
+    selection_bg = "{{ $t.selection_bg }}",
+    selection_fg = "{{ $t.selection_fg }}",
+    ansi = {
+      "{{ index $t.ansi 0 }}","{{ index $t.ansi 1 }}","{{ index $t.ansi 2 }}","{{ index $t.ansi 3 }}",
+      "{{ index $t.ansi 4 }}","{{ index $t.ansi 5 }}","{{ index $t.ansi 6 }}","{{ index $t.ansi 7 }}"
+    },
+    brights = {
+      "{{ index $t.brights 0 }}","{{ index $t.brights 1 }}","{{ index $t.brights 2 }}","{{ index $t.brights 3 }}",
+      "{{ index $t.brights 4 }}","{{ index $t.brights 5 }}","{{ index $t.brights 6 }}","{{ index $t.brights 7 }}"
+    },
+  }
+end
 
 return config
+
