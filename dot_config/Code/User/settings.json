@@ -550,8 +550,19 @@
     //   ]
     // },
     {
-      // Start a new search within files
+      // Search within files
       "before": ["<leader>", "s", "s"],
+      "commands": [
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "FZF Ripgrep"
+        },
+        "extension.vim_escape"
+      ]
+    },
+    {
+      // Search within files
+      "before": ["<leader>", "/"],
       "commands": [
         {
           "command": "workbench.action.tasks.runTask",
@@ -584,6 +595,23 @@
         "extension.vim_escape"
       ]
     },
+    //  {
+    //       // Open LazyGit
+    //       "before": ["<leader>", "g", "g"],
+    //       "commands": ["lazygit.openLazygit"]
+    //       "commands": [
+    //         "workbench.action.terminal.new",
+    //         {
+    //           "command": "workbench.action.terminal.sendSequence",
+    //           "args": { "text": "lazygit\u000D" }
+    //         },
+    //         "workbench.action.terminal.moveToEditor",
+    //         // Need to call this twice for some reason to have it hide
+    //         "workbench.action.terminal.toggleTerminal",
+    //         "workbench.action.terminal.toggleTerminal"
+    //       ]
+    //     },
+
     {
       "before": ["<leader>", "s", "T"],
       "commands": [
