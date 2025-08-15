@@ -44,7 +44,9 @@ end
 
 -- Scroll up/down 16 lines
 map_shift_f(4, "<C-u>", { desc = "Scroll Up 16 lines", noremap = true })
+map_shift_f(4, "<C-o><C-u>", { mode = "i", desc = "Scroll Up 16 lines", noremap = true })
 map_shift_f(6, "<C-d>", { desc = "Scroll Down 16 lines", noremap = true })
+map_shift_f(6, "<C-o><C-d>", { mode = "i", desc = "Scroll Down 16 lines", noremap = true })
 
 -- Stop current build
 map_shift_f(7, "<cmd>CMakeStop<CR>", { desc = "Stop Build" })
