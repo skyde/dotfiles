@@ -1,0 +1,41 @@
+-- {{/* Chezmoi template -> renders to ~/.config/wezterm/wezterm.lua */}}
+local wezterm = require("wezterm")
+local act = wezterm.action
+
+-- Prefer config_builder when available (newer WezTerm), else a plain table.
+local config = wezterm.config_builder and wezterm.config_builder() or {}
+
+-- ---- Appearance & font: match your repo's default Nerd Font setup ----
+config.font = wezterm.font_with_fallback({
+  "JetBrainsMono Nerd Font", -- your README states this is the default
+  "SF Mono",
+  "Menlo",
+  "monospace",
+})
+config.font_size = 13.0
+config.hide_tab_bar_if_only_one_tab = true
+config.audible_bell = "Disabled"
+config.scrollback_lines = 200000  -- generous like common Kitty configs
+
+-- On macOS, Option-as-Alt behavior close to terminal defaults
+-- (You can tweak these if you rely on AltGr-like compose)
+config.send_composed_key_when_left_alt_is_pressed = true
+config.send_composed_key_when_right_alt_is_pressed = true  -- mirrors Kitty’s “option as alt” feel
+-- Enable Kitty keyboard protocol so nvim can see richer key combos
+config.enable_kitty_keyboard = true
+
+-- Key feel: make ⌘ act like Ctrl for the combos you asked about.
+-- This works in local and remote sessions (no fragile process detection).
+if wezterm.target_triple:find("darwin") then
+  config.keys = config.keys or {}
+  table.insert(config.keys, { key = "d", mods = "CMD", action = act.SendKey({ key = "d", mods = "CTRL" }) })
+  table.insert(config.keys, { key = "u", mods = "CMD", action = act.SendKey({ key = "u", mods = "CTRL" }) })
+  -- Tip: you can mirror more Kitty habits here, e.g.
+  -- table.insert(config.keys, { key = "LeftArrow",  mods = "CMD", action = act.SendKey({ key="a", mods="CTRL" }) }) -- ⌘← => Ctrl-A
+  -- table.insert(config.keys, { key = "RightArrow", mods = "CMD", action = act.SendKey({ key="e", mods="CTRL" }) }) -- ⌘→ => Ctrl-E
+end
+
+-- Color scheme: keep system/WezTerm default; align to Kitty later if you want:
+-- config.color_scheme = "Gruvbox Dark (Hard)"  -- or whatever you use in Kitty
+
+return config
