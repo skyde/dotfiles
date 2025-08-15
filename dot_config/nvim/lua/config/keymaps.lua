@@ -49,10 +49,10 @@ map_shift_f(6, "<C-d>", { desc = "Scroll Down 16 lines", noremap = true })
 map_shift_f(6, "<C-o><C-d>", { mode = "i", desc = "Scroll Down 16 lines", noremap = true })
 
 -- Stop current build
-map_shift_f(7, "<cmd>CMakeStop<CR>", { desc = "Stop Build" })
+map_shift_f(7, "<cmd>CMakeStop<CR>", { mode = { "n", "i" }, desc = "Stop Build" })
 
 -- Go to LSP definition
-map_shift_f(8, vim.lsp.buf.definition, { desc = "Goto Definition" })
+map_shift_f(8, vim.lsp.buf.definition, { mode = { "n", "i" }, desc = "Goto Definition" })
 
 -- Leader-based toggle for key print debugging
 vim.keymap.set("n", "<leader>uk", print_keys.toggle, {
@@ -60,6 +60,7 @@ vim.keymap.set("n", "<leader>uk", print_keys.toggle, {
 })
 
 map_shift_f(11, "gcc", { remap = true, silent = true, desc = "Toggle Comment (line)" })
+map_shift_f(11, "<C-o>gcc", { mode = "i", remap = true, silent = true, desc = "Toggle Comment (line)" })
 
 map_shift_f(11, "gc", { mode = "x", remap = true, silent = true, desc = "Toggle Comment (block)" })
 
@@ -113,8 +114,8 @@ map("n", "<D-S-]>", ":bnext<CR>", { desc = "Next buffer" })
 map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
 
 -- Same actions via Shift+F12/F13 (sent by kitty Cmd+Shift+] and [)
-map_shift_f(1, ":bprevious<CR>", { desc = "Previous buffer" })
-map_shift_f(12, ":bnext<CR>", { desc = "Next buffer" })
+map_shift_f(1, "<cmd>bprevious<CR>", { mode = { "n", "i" }, desc = "Previous buffer" })
+map_shift_f(12, "<cmd>bnext<CR>", { mode = { "n", "i" }, desc = "Next buffer" })
 
 -- Open new tab
 map("n", "<leader>bn", "<cmd>tabnew<CR>", { desc = "New tab" })
