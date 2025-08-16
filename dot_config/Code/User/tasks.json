@@ -2,6 +2,21 @@
 {
   "version": "2.0.0",
   "tasks": [
+    // {
+    //   "label": "Yazi",
+    //   "type": "shell",
+    //   "command": "yazi",
+    //   "presentation": {
+    //     "echo": false,
+    //     "clear": true,
+    //     "reveal": "always",
+    //     "focus": true
+    //   },
+    //   "runOptions": {
+    //     "instanceLimit": 1
+    //   },
+    //   "problemMatcher": []
+    // },
     {
       "label": "LazyGit",
       "type": "shell",

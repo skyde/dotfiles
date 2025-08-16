@@ -368,8 +368,23 @@
       "commands": ["clangd.inlayHints.toggle"]
     },
     // File
+    // {
+    //   // Search within files
+    //   "before": ["<leader>", "f", "e"],
+    //   "commands": [
+    //     // Custom command when terminal is opened to clear any other context
+    //     "task.custom.onOpenTerminal",
+    //     {
+    //       // Run the fzf task
+    //       "command": "workbench.action.tasks.runTask",
+    //       "args": "Yazi"
+    //     },
+    //     // Click escape so we don't come back to a strange mode
+    //     "extension.vim_escape"
+    //   ]
+    // },
     {
-      "before": ["<leader>", "e"],
+      "before": ["<leader>", "f", "e"],
       "commands": ["yazi-vscode.toggle"]
     },
     {
@@ -378,7 +393,7 @@
     },
     {
       // Explorer
-      "before": ["<leader>", "f", "e"],
+      "before": ["<leader>", "f", "t"],
       "commands": [
         // ️Ensure the Explorer is visible / takes focus
         "workbench.view.explorer",
