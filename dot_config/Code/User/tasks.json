@@ -46,6 +46,7 @@
         "--reverse",
         "--ansi",
         "--style=minimal",
+        "--tiebreak=index",
         "--info",
         "inline",
         "--no-cycle",
