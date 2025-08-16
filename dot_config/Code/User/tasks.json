@@ -24,24 +24,40 @@
     //   "problemMatcher": []
     // },
     {
+      "label": "LazyGit",
+      "type": "shell",
+      "command": "lazygit",
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "FZF Ripgrep",
       "type": "shell",
       "command": "fzf",
       "args": [
         "--disabled",
         "--ansi",
+
         "--bind",
         "\"start:reload:rg",
         "--column",
         "--color=always",
         "--smart-case",
         "{q}\"",
+
         "--bind",
         "\"change:reload:rg",
         "--column",
         "--color=always",
         "--smart-case",
         "{q}\"",
+
         "--delimiter",
         ":",
         "--preview",
@@ -54,7 +70,9 @@
         "--preview-window",
         "'+{2}/2'",
         "--bind",
+        // "'enter:execute-silent(code -r -g {1}:{2})+abort'"
         "'enter:execute-silent(code -r -g {1}:{2})'"
+        // "enter:execute-silent(code -r -g {1}:{2}:{3}; /usr/bin/osascript -e 'tell application id \"com.microsoft.VSCode\" to activate' -e 'tell application \"System Events\" to keystroke \"j\" using {command down}')+ignore"
       ],
       // "options": {
       //   "env": {
@@ -63,6 +81,7 @@
       // },
       "presentation": {
         "echo": false,
+        "clear": true,
         "reveal": "always",
         "focus": true,
         "panel": "dedicated"

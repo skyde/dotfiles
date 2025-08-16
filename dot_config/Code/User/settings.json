@@ -553,6 +553,7 @@
       // Search within files
       "before": ["<leader>", "s", "s"],
       "commands": [
+        // "workbench.action.toggleMaximizedPanel",
         {
           "command": "workbench.action.tasks.runTask",
           "args": "FZF Ripgrep"
@@ -904,15 +905,11 @@
       // Open LazyGit
       "before": ["<leader>", "g", "g"],
       "commands": [
-        "workbench.action.terminal.new",
         {
-          "command": "workbench.action.terminal.sendSequence",
-          "args": { "text": "lazygit\u000D" }
+          "command": "workbench.action.tasks.runTask",
+          "args": "LazyGit"
         },
-        "workbench.action.terminal.moveToEditor",
-        // Need to call this twice for some reason to have it hide
-        "workbench.action.terminal.toggleTerminal",
-        "workbench.action.terminal.toggleTerminal"
+        "extension.vim_escape"
       ]
     },
     {
@@ -1271,5 +1268,7 @@
   "search.searchOnTypeDebouncePeriod": 30,
   "search.searchView.keywordSuggestions": true,
   "search.seedWithNearestWord": true,
-  "search.smartCase": true
+  "search.smartCase": true,
+  "panel.opensMaximized": true,
+  "workbench.panel.opensMaximized": "always"
 }

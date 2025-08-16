@@ -293,6 +293,14 @@
       ]
     }
   },
+  {
+    "key": "ctrl+m",
+    "command": "runCommands",
+    "when": "terminalFocus",
+    "args": {
+      "commands": ["workbench.action.toggleMaximizedPanel"]
+    }
+  },
   // File explorer & Git
   // {
   //   "command": "workbench.action.toggleSidebarVisibility",
