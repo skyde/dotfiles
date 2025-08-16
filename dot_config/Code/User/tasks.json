@@ -5,15 +5,18 @@
     {
       "label": "Yazi",
       "type": "shell",
-      // "command": "yazi",
-      // "args": ["--chooser", "\"code", "{}\""],
-      // "command": "bash",
-      // "args": ["-lc", "yazi --chooser-file /dev/null; code ."],
       "command": "bash",
       "args": [
         "-lc",
-        "tmp=$(mktemp); yazi --chooser-file \"$tmp\";      if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi"
+        "cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\";      if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi"
       ],
+      "options": {
+        "env": {
+          // VS Code fills these before shell runs
+          "VSC_CWD": "${fileDirname}",
+          "WORKSPACE": "${workspaceFolder}"
+        }
+      },
       "presentation": {
         "echo": false,
         "clear": true,
