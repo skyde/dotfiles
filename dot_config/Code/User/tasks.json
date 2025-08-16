@@ -2,27 +2,6 @@
 {
   "version": "2.0.0",
   "tasks": [
-    // {
-    //   "label": "FZF Files",
-    //   "type": "shell",
-    //   "command": "bash",
-    //   "args": [
-    //     "-lc",
-    //     "set -euo pipefail; src=\"\"; if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then src='git ls-files -co --exclude-standard'; elif command -v fd >/dev/null 2>&1; then src='fd --hidden --type f'; else src='rg --hidden --files'; fi; eval \"$src\" | fzf --ansi --multi --reverse --cycle --prompt='files> ' --header='Tab: select | Ctrl-O: open (keep) | Enter: open & close' --preview='bat --color=always --style=numbers {} | head -500' --preview-window=right,55% --bind 'ctrl-o:execute-silent(code -r -g {+})' --bind 'enter:execute(code -r -g {} > /dev/null)+abort'"
-    //   ],
-    //   "options": {
-    //     "env": {
-    //       "BAT_PAGER": "less -R"
-    //     }
-    //   },
-    //   "presentation": {
-    //     "echo": false,
-    //     "reveal": "always",
-    //     "focus": true,
-    //     "panel": "dedicated"
-    //   }
-    //   "problemMatcher": []
-    // },
     {
       "label": "LazyGit",
       "type": "shell",
@@ -84,11 +63,6 @@
         "--bind",
         "'esc:clear-query'"
       ],
-      // "options": {
-      //   "env": {
-      //     "BAT_PAGER": "less -R"
-      //   }
-      // },
       "presentation": {
         "echo": false,
         "clear": true,
@@ -115,21 +89,6 @@
         "--no-cycle",
         "--color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'",
 
-        // "--bind",
-        // "\"start:reload:rg",
-        // "--column",
-        // "--color=always",
-        // "--smart-case",
-        // "{q}\"",
-
-        // "--bind",
-        // "\"change:reload:rg",
-
-        // "--column",
-        // "--color=always",
-        // "--smart-case",
-        // "{q}\"",
-
         "--delimiter",
         ":",
         "--preview",
@@ -148,11 +107,6 @@
         "--bind",
         "'esc:clear-query'"
       ],
-      // "options": {
-      //   "env": {
-      //     "BAT_PAGER": "less -R"
-      //   }
-      // },
       "presentation": {
         "echo": false,
         "clear": true,
