@@ -8,7 +8,7 @@
       "command": "bash",
       "args": [
         "-lc",
-        "cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\";      if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi"
+        "cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi"
       ],
       "options": {
         "env": {
@@ -21,7 +21,8 @@
         "echo": false,
         "clear": true,
         "reveal": "always",
-        "focus": true
+        "focus": true,
+        "close": true
       },
       "runOptions": {
         "instanceLimit": 1

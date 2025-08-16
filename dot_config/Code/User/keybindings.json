@@ -301,6 +301,14 @@
       "commands": ["workbench.action.toggleMaximizedPanel"]
     }
   },
+  {
+    "key": "cmd+d",
+    "command": "runCommands",
+    "when": "terminalFocus",
+    "args": {
+      "commands": ["workbench.action.terminal.kill"]
+    }
+  },
   // File explorer & Git
   // {
   //   "command": "workbench.action.toggleSidebarVisibility",
