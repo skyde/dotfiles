@@ -136,9 +136,9 @@
         "'bat",
         "--style=numbers",
         "--color=always",
-        "--highlight-line",
-        "{2}",
-        "{1}'",
+        "--line-range",
+        ":500",
+        "{}'",
         "--preview-window",
         "'right,55%'",
 
