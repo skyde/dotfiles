@@ -99,6 +99,70 @@
         "instanceLimit": 1
       },
       "problemMatcher": []
+    },
+    {
+      "label": "FZF Files",
+      "type": "shell",
+      "command": "fzf",
+
+      "args": [
+        "--reverse",
+        "--ansi",
+        "--style=minimal",
+        "--tiebreak=pathname",
+        "--info",
+        "inline",
+        "--no-cycle",
+        "--color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'",
+
+        // "--bind",
+        // "\"start:reload:rg",
+        // "--column",
+        // "--color=always",
+        // "--smart-case",
+        // "{q}\"",
+
+        // "--bind",
+        // "\"change:reload:rg",
+
+        // "--column",
+        // "--color=always",
+        // "--smart-case",
+        // "{q}\"",
+
+        "--delimiter",
+        ":",
+        "--preview",
+        "'bat",
+        "--style=numbers",
+        "--color=always",
+        "--highlight-line",
+        "{2}",
+        "{1}'",
+        "--preview-window",
+        "'right,55%'",
+
+        "--bind",
+        "'enter:execute-silent(code -r -g {1}:{2})'",
+
+        "--bind",
+        "'esc:clear-query'"
+      ],
+      // "options": {
+      //   "env": {
+      //     "BAT_PAGER": "less -R"
+      //   }
+      // },
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
     }
   ]
 }

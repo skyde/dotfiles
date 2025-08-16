@@ -535,12 +535,20 @@
       "commands": ["workbench.action.quickOpen"]
     },
     {
+      // Search within files
       "before": ["<leader>", "s", "f"],
       "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.onOpenTerminal",
+        // Set the fzf context to active
+        { "command": "setContext", "args": ["fzfActive", true] },
         {
+          // Run the fzf task
           "command": "workbench.action.tasks.runTask",
           "args": "FZF Files"
-        }
+        },
+        // Click escape so we don't come back to a strange mode
+        "extension.vim_escape"
       ]
     },
     // {
