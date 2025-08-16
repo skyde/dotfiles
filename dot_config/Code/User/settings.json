@@ -290,11 +290,22 @@
       "commands": [
         // Custom command when terminal is opened to clear any other context
         "task.custom.onOpenTerminal",
-        // Show the terminal
-        "workbench.action.terminal.toggleTerminal",
-        // Auto select the main terminal
-        "workbench.action.terminal.focusAtIndex1"
+        {
+          // Run the fzf task
+          "command": "workbench.action.tasks.runTask",
+          "args": "StandardTerminal"
+        },
+        // Click escape so we don't come back to a strange mode
+        "extension.vim_escape"
       ]
+      // "commands": [
+      //   // Custom command when terminal is opened to clear any other context
+      //   "task.custom.onOpenTerminal",
+      //   // Show the terminal
+      //   "workbench.action.terminal.toggleTerminal",
+      //   // Auto select the main terminal
+      //   "workbench.action.terminal.focusAtIndex1"
+      // ]
     },
     // Copilot Chat
     {
@@ -368,21 +379,6 @@
       "commands": ["clangd.inlayHints.toggle"]
     },
     // File
-    // {
-    //   // Search within files
-    //   "before": ["<leader>", "f", "e"],
-    //   "commands": [
-    //     // Custom command when terminal is opened to clear any other context
-    //     "task.custom.onOpenTerminal",
-    //     {
-    //       // Run the fzf task
-    //       "command": "workbench.action.tasks.runTask",
-    //       "args": "Yazi"
-    //     },
-    //     // Click escape so we don't come back to a strange mode
-    //     "extension.vim_escape"
-    //   ]
-    // },
     {
       "before": ["<leader>", "f", "e"],
       "commands": [
