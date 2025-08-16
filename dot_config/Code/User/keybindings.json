@@ -427,7 +427,8 @@
           // Enter keycode
           "args": { "text": "\u000D" }
         },
-        "workbench.action.terminal.toggleTerminal"
+        "workbench.action.terminal.toggleTerminal",
+        "extension.setFzfContext.false"
         // {
         //   "command": "setContext",
         //   "args": { "key": "fzfActive", "value": false }
