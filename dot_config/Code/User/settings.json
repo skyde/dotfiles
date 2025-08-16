@@ -1264,7 +1264,8 @@
     "esbenp.prettier-vscode",
     "llvm-vs-code-extensions.vscode-clangd",
     "dautroc.yazi-vscode",
-    "chaitanyashahare.lazygit"
+    "chaitanyashahare.lazygit",
+    "ryuta46.multi-command"
   ],
   "gitlens.currentLine.enabled": false,
   "gitlens.codeLens.enabled": false,

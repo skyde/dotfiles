@@ -418,11 +418,14 @@
     "args": {
       "commands": [
         {
+          // Send the enter keycode
           "command": "workbench.action.terminal.sendSequence",
           // Enter keycode
           "args": { "text": "\u000D" }
         },
+        // Close the terminal
         "workbench.action.terminal.toggleTerminal",
+        // Set the fzf context - so that clicking enter does not close other terminals
         "task.fzf.setDisabled"
       ]
     }
