@@ -41,7 +41,6 @@
       "type": "shell",
       "command": "fzf",
 
-      //   "FZF_DEFAULT_OPTS": "--bind 'esc:clear-query' --reverse --ansi --ellipsis= --style=minimal --tiebreak=pathname --info inline --no-cycle --color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f' --bind 'ctrl-f:execute-silent(code -r -g {+})' --bind 'ctrl-o:execute-silent(code -r -g {1}:{2})'"
       "args": [
         "--reverse",
         "--ansi",

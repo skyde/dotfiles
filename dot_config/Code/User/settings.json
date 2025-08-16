@@ -288,6 +288,8 @@
       // (O)pen terminal
       "before": ["<leader>", "o"],
       "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.onOpenTerminal",
         // Show the terminal
         "workbench.action.terminal.toggleTerminal",
         // Auto select the main terminal
@@ -556,13 +558,18 @@
     // },
     {
       // Search within files
-      "before": ["<leader>", "s", "s"],
+      "before": ["<leader>", "s", "t"],
       "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.onOpenTerminal",
+        // Set the fzf context to active
         { "command": "setContext", "args": ["fzfActive", true] },
         {
+          // Run the fzf task
           "command": "workbench.action.tasks.runTask",
           "args": "FZF Ripgrep"
         },
+        // Click escape so we don't come back to a strange mode
         "extension.vim_escape"
       ]
     },
@@ -570,17 +577,22 @@
       // Search within files
       "before": ["<leader>", "/"],
       "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.onOpenTerminal",
+        // Set the fzf context to active
         { "command": "setContext", "args": ["fzfActive", true] },
         {
+          // Run the fzf task
           "command": "workbench.action.tasks.runTask",
           "args": "FZF Ripgrep"
         },
+        // Click escape so we don't come back to a strange mode
         "extension.vim_escape"
       ]
     },
     {
       // Start a new search within files using VS Code search
-      "before": ["<leader>", "s", "S"],
+      "before": ["<leader>", "s", "T"],
       "commands": ["workbench.action.findInFiles"]
     },
     {
@@ -589,20 +601,20 @@
       "commands": ["workbench.action.showAllEditorsByMostRecentlyUsed"],
       "when": "editorTextFocus"
     },
-    {
-      // Search for the current word within files
-      "before": ["<leader>", "s", "t"],
-      "commands": [
-        // Automatically search for the word under the cursor
-        "editor.action.addSelectionToNextFindMatch",
-        { "command": "setContext", "args": ["fzfActive", true] },
-        {
-          "command": "workbench.action.tasks.runTask",
-          "args": "FZF Ripgrep"
-        },
-        "extension.vim_escape"
-      ]
-    },
+    // {
+    //   // Search for the current word within files
+    //   "before": ["<leader>", "s", "t"],
+    //   "commands": [
+    //     // Automatically search for the word under the cursor
+    //     "editor.action.addSelectionToNextFindMatch",
+    //     { "command": "setContext", "args": ["fzfActive", true] },
+    //     {
+    //       "command": "workbench.action.tasks.runTask",
+    //       "args": "FZF Ripgrep"
+    //     },
+    //     "extension.vim_escape"
+    //   ]
+    // },
     //  {
     //       // Open LazyGit
     //       "before": ["<leader>", "g", "g"],
@@ -912,6 +924,8 @@
       // Open LazyGit
       "before": ["<leader>", "g", "g"],
       "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.onOpenTerminal",
         {
           "command": "workbench.action.tasks.runTask",
           "args": "LazyGit"
@@ -923,6 +937,9 @@
       // Git log - shows the Git log of the current file
       "before": ["<leader>", "g", "l"],
       "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.onOpenTerminal",
+        // Make a new terminal
         "workbench.action.terminal.new",
         {
           "command": "workbench.action.terminal.sendSequence",
@@ -1167,7 +1184,20 @@
   ],
   "multiCommand.commands": [
     {
-      "command": "task.fzf.setDisabled",
+      // When opening a terminal clear any specific context we have set
+      // Can be extended with additional functionality in the future
+      "command": "task.custom.onOpenTerminal",
+      "sequence": [
+        {
+          "command": "setContext",
+          "args": "fzfActive"
+        }
+      ]
+    },
+    {
+      // When closing a terminal clear any specific context we have set
+      // Can be extended with additional functionality in the future
+      "command": "task.custom.onCloseTerminal",
       "sequence": [
         {
           "command": "setContext",

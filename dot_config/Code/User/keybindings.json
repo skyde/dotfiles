@@ -426,7 +426,7 @@
         // Close the terminal
         "workbench.action.terminal.toggleTerminal",
         // Set the fzf context - so that clicking enter does not close other terminals
-        "task.fzf.setDisabled"
+        "task.custom.onCloseTerminal"
       ]
     }
   }
