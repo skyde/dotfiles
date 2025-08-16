@@ -410,6 +410,11 @@
     "when": "editorTextFocus && resourceLangId == 'c' || editorTextFocus && resourceLangId == 'cpp' || editorTextFocus && resourceLangId == 'cuda-cpp' || editorTextFocus && resourceLangId == 'objective-c' || editorTextFocus && resourceLangId == 'objective-cpp'"
   },
   {
+    "key": "ctrl+alt+i",
+    "command": "extension.setFzfContext.false"
+    // "args": { "key": "fzfActive", "value": true }
+  },
+  {
     // There is an issue in the find it faster plugin where it does go back to your last focused window when closed
     "key": "enter",
     "command": "runCommands",
@@ -417,13 +422,16 @@
     "when": "terminalFocus && fzfActive",
     "args": {
       "commands": [
-        { "command": "setContext", "args": ["fzfActive", false] },
         {
           "command": "workbench.action.terminal.sendSequence",
           // Enter keycode
           "args": { "text": "\u000D" }
         },
         "workbench.action.terminal.toggleTerminal"
+        // {
+        //   "command": "setContext",
+        //   "args": { "key": "fzfActive", "value": false }
+        // }
         // "workbench.action.focusActiveEditorGroup",
         // "workbench.action.navigateBack",
         // "extension.vim_escape"

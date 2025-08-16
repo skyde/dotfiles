@@ -571,6 +571,7 @@
       // Search within files
       "before": ["<leader>", "/"],
       "commands": [
+        { "command": "setContext", "args": ["fzfActive", true] },
         {
           "command": "workbench.action.tasks.runTask",
           "args": "FZF Ripgrep"
@@ -595,6 +596,7 @@
       "commands": [
         // Automatically search for the word under the cursor
         "editor.action.addSelectionToNextFindMatch",
+        { "command": "setContext", "args": ["fzfActive", true] },
         {
           "command": "workbench.action.tasks.runTask",
           "args": "FZF Ripgrep"
@@ -1162,6 +1164,18 @@
     {
       "before": ["K"],
       "commands": ["editor.action.moveLinesUpAction"]
+    }
+  ],
+  "multiCommand.commands": [
+    {
+      "command": "extension.setFzfContext.false",
+      "sequence": [
+        {
+          "command": "setContext",
+          // "args": ["fzfActive", false]
+          "args": "fzfActive"
+        }
+      ]
     }
   ],
   // To improve performance
