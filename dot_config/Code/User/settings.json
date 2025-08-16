@@ -390,7 +390,11 @@
         "task.custom.onOpenTerminal",
         // Set the fzf context to active
         { "command": "setContext", "args": ["closePanelOnEnter", true] },
-        // "yazi-vscode.toggle",
+        {
+          // Terminate the fzf task so we open in the right directory
+          "command": "workbench.action.tasks.terminate",
+          "args": "Yazi"
+        },
         {
           // Run the fzf task
           "command": "workbench.action.tasks.runTask",

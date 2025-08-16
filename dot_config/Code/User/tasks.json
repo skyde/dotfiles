@@ -3,6 +3,26 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Standard Terminal",
+      "type": "shell",
+      "command": "bash",
+      "args": [],
+      "options": {
+        "env": {}
+      },
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "close": true
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Yazi",
       "type": "shell",
       "command": "bash",
