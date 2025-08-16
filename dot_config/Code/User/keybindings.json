@@ -424,9 +424,10 @@
           "args": { "text": "\u000D" }
         },
         // Close the terminal
-        "workbench.action.terminal.toggleTerminal",
+        "workbench.action.terminal.toggleTerminal"
+        // Maybe don't need to clear context
         // Set the fzf context - so that clicking enter does not close other terminals
-        "task.custom.onCloseTerminal"
+        // "task.custom.onCloseTerminal"
       ]
     }
   }
