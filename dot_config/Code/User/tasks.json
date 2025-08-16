@@ -71,7 +71,6 @@
         "'+{2}/2'",
         "--bind",
         "'enter:execute-silent(code -r -g {1}:{2})'"
-        // "enter:execute-silent(code -r -g {1}:{2}:{3}; /usr/bin/osascript -e 'tell application id \"com.microsoft.VSCode\" to activate' -e 'tell application \"System Events\" to keystroke \"ctrl+/\" using {command down}')+ignore"
       ],
       // "options": {
       //   "env": {

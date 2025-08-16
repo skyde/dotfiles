@@ -558,7 +558,6 @@
       // Search within files
       "before": ["<leader>", "s", "s"],
       "commands": [
-        // "workbench.action.toggleMaximizedPanel",
         { "command": "setContext", "args": ["fzfActive", true] },
         {
           "command": "workbench.action.tasks.runTask",
@@ -1168,11 +1167,10 @@
   ],
   "multiCommand.commands": [
     {
-      "command": "extension.setFzfContext.false",
+      "command": "task.fzf.setDisabled",
       "sequence": [
         {
           "command": "setContext",
-          // "args": ["fzfActive", false]
           "args": "fzfActive"
         }
       ]
