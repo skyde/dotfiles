@@ -2,21 +2,29 @@
 {
   "version": "2.0.0",
   "tasks": [
-    // {
-    //   "label": "Yazi",
-    //   "type": "shell",
-    //   "command": "yazi",
-    //   "presentation": {
-    //     "echo": false
-    //     "clear": true,
-    //     "reveal": "always",
-    //     "focus": true
-    //   },
-    //   "runOptions": {
-    //     "instanceLimit": 1
-    //   },
-    //   "problemMatcher": []
-    // },
+    {
+      "label": "Yazi",
+      "type": "shell",
+      // "command": "yazi",
+      // "args": ["--chooser", "\"code", "{}\""],
+      // "command": "bash",
+      // "args": ["-lc", "yazi --chooser-file /dev/null; code ."],
+      "command": "bash",
+      "args": [
+        "-lc",
+        "tmp=$(mktemp); yazi --chooser-file \"$tmp\";      if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi"
+      ],
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
     {
       "label": "LazyGit",
       "type": "shell",
