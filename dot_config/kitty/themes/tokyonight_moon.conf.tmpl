@@ -1,4 +1,4 @@
-{{- $t := include "themes/tokyonight_moon.json.tmpl" | fromJson -}}
+{{- $t := includeTemplate "themes/tokyonight_moon.json.tmpl" . | fromJson -}}
 foreground               {{ $t.foreground }}
 background               {{ $t.background }}
 cursor                   {{ $t.cursor_bg }}

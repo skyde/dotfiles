@@ -1,4 +1,4 @@
-{{- $t := include "themes/tokyonight_moon.json.tmpl" | fromJson -}}
+{{- $t := includeTemplate "themes/tokyonight_moon.json.tmpl" . | fromJson -}}
 local wezterm = require("wezterm")
 local act = wezterm.action
 
