@@ -611,17 +611,17 @@
       "commands": ["workbench.action.showAllEditorsByMostRecentlyUsed"],
       "when": "editorTextFocus"
     },
-    {
-      "before": ["<leader>", "s", "T"],
-      "commands": [
-        // Automatically search for the word under the cursor
-        "editor.action.addSelectionToNextFindMatch",
-        // By default we filter & only search relavant files
-        "fzf-picker.findWithinFilesWithType",
-        // Escape to Vim normal mode
-        "extension.vim_escape"
-      ]
-    },
+    // {
+    //   "before": ["<leader>", "s", "T"],
+    //   "commands": [
+    //     // Automatically search for the word under the cursor
+    //     "editor.action.addSelectionToNextFindMatch",
+    //     // By default we filter & only search relavant files
+    //     "fzf-picker.findWithinFilesWithType",
+    //     // Escape to Vim normal mode
+    //     "extension.vim_escape"
+    //   ]
+    // },
     {
       "before": ["<leader>", "s", "r"],
       "commands": [
@@ -1250,14 +1250,10 @@
   "git.mergeEditor": true,
   "workbench.iconTheme": "material-icon-theme",
   "workbench.editor.empty.hint": "hidden",
-  "fzf-picker.findWithinFiles.previewCommand": "bat --color=always --style=numbers --highlight-line {2} {1}",
-  "fzf-picker.findWithinFiles.previewWindowConfig": "bottom,30%,+{2}/2",
-  "fzf-picker.findFiles.previewWindowConfig": "right,55%",
   "git.blame.editorDecoration.enabled": false,
   "debug.inlineValues": "on",
   "remote.SSH.defaultExtensions": [
     "vscodevim.vim",
-    "jellydn.fzf-picker",
     "jeff-hykin.better-cpp-syntax",
     "ms-vscode.cpptools-themes",
     "esbenp.prettier-vscode",
