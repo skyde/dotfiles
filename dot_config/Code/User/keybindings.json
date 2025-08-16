@@ -239,27 +239,27 @@
       "commands": ["workbench.action.togglePanel"]
     }
   },
-  {
-    "key": "cmd+r",
-    "command": "workbench.action.closePanel",
-    "when": "panelVisible"
-  },
-  {
-    "key": "cmd+r",
-    "when": "!panelVisible",
-    "command": "runCommands",
-    "args": {
-      "commands": [
-        // When the are closing the terminal disable fullscreen mode so
-        // subsequent usage of the terminal is not fullscreen
-        // "workbench.action.toggleMaximizedPanel",
-        // Show the terminal
-        "workbench.action.terminal.toggleTerminal",
-        // Auto select the main terminal
-        "workbench.action.terminal.focusAtIndex1"
-      ]
-    }
-  },
+  // {
+  //   "key": "cmd+r",
+  //   "command": "workbench.action.closePanel",
+  //   "when": "panelVisible"
+  // },
+  // {
+  //   "key": "cmd+r",
+  //   "when": "!panelVisible",
+  //   "command": "runCommands",
+  //   "args": {
+  //     "commands": [
+  //       // When the are closing the terminal disable fullscreen mode so
+  //       // subsequent usage of the terminal is not fullscreen
+  //       // "workbench.action.toggleMaximizedPanel",
+  //       // Show the terminal
+  //       "workbench.action.terminal.toggleTerminal",
+  //       // Auto select the main terminal
+  //       "workbench.action.terminal.focusAtIndex1"
+  //     ]
+  //   }
+  // },
   {
     // Close the editor terminal as soon as cmd+t is pressed - things that launch into there should be transient
     "key": "cmd+t",
@@ -410,11 +410,10 @@
     "when": "editorTextFocus && resourceLangId == 'c' || editorTextFocus && resourceLangId == 'cpp' || editorTextFocus && resourceLangId == 'cuda-cpp' || editorTextFocus && resourceLangId == 'objective-c' || editorTextFocus && resourceLangId == 'objective-cpp'"
   },
   {
-    // When opening files from fzf it leaves the terminal in a half open state at the bottom of the screen - close this if required
+    // When opening files from terminal it leaves the terminal in a half open state at the bottom of the screen - close this if required
     "key": "enter",
     "command": "runCommands",
-    // This only activates when the 'editor as a tab' mode is active. Would be better to
-    "when": "terminalFocus && fzfActive",
+    "when": "terminalFocus && closePanelOnEnter",
     "args": {
       "commands": [
         {
@@ -425,9 +424,6 @@
         },
         // Close the terminal
         "workbench.action.terminal.toggleTerminal"
-        // Maybe don't need to clear context
-        // Set the fzf context - so that clicking enter does not close other terminals
-        // "task.custom.onCloseTerminal"
       ]
     }
   }

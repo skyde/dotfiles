@@ -556,7 +556,7 @@
         // Custom command when terminal is opened to clear any other context
         "task.custom.onOpenTerminal",
         // Set the fzf context to active
-        { "command": "setContext", "args": ["fzfActive", true] },
+        { "command": "setContext", "args": ["closePanelOnEnter", true] },
         {
           // Run the fzf task
           "command": "workbench.action.tasks.runTask",
@@ -573,7 +573,7 @@
         // Custom command when terminal is opened to clear any other context
         "task.custom.onOpenTerminal",
         // Set the fzf context to active
-        { "command": "setContext", "args": ["fzfActive", true] },
+        { "command": "setContext", "args": ["closePanelOnEnter", true] },
         {
           // Run the fzf task
           "command": "workbench.action.tasks.runTask",
@@ -1169,7 +1169,7 @@
       "sequence": [
         {
           "command": "setContext",
-          "args": "fzfActive"
+          "args": "closePanelOnEnter"
         }
       ]
     },
@@ -1180,7 +1180,7 @@
       "sequence": [
         {
           "command": "setContext",
-          "args": "fzfActive"
+          "args": "closePanelOnEnter"
         }
       ]
     }

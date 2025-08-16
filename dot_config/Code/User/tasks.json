@@ -7,7 +7,7 @@
     //   "type": "shell",
     //   "command": "yazi",
     //   "presentation": {
-    //     "echo": false,
+    //     "echo": false
     //     "clear": true,
     //     "reveal": "always",
     //     "focus": true
