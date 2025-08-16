@@ -70,9 +70,8 @@
         "--preview-window",
         "'+{2}/2'",
         "--bind",
-        // "'enter:execute-silent(code -r -g {1}:{2})+abort'"
         "'enter:execute-silent(code -r -g {1}:{2})'"
-        // "enter:execute-silent(code -r -g {1}:{2}:{3}; /usr/bin/osascript -e 'tell application id \"com.microsoft.VSCode\" to activate' -e 'tell application \"System Events\" to keystroke \"j\" using {command down}')+ignore"
+        // "enter:execute-silent(code -r -g {1}:{2}:{3}; /usr/bin/osascript -e 'tell application id \"com.microsoft.VSCode\" to activate' -e 'tell application \"System Events\" to keystroke \"ctrl+/\" using {command down}')+ignore"
       ],
       // "options": {
       //   "env": {
@@ -83,8 +82,10 @@
         "echo": false,
         "clear": true,
         "reveal": "always",
-        "focus": true,
-        "panel": "dedicated"
+        "focus": true
+      },
+      "runOptions": {
+        "instanceLimit": 1
       },
       "problemMatcher": []
     }

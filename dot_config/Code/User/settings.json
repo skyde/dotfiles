@@ -284,11 +284,16 @@
       "before": ["<leader>", "r"],
       "commands": ["workbench.action.toggleSidebarVisibility"]
     },
-    // {
-    //   // (O)pen terminal
-    //   "before": ["<leader>", "o"],
-    //   "commands": ["workbench.action.terminal.toggleTerminal"]
-    // },
+    {
+      // (O)pen terminal
+      "before": ["<leader>", "o"],
+      "commands": [
+        // Show the terminal
+        "workbench.action.terminal.toggleTerminal",
+        // Auto select the main terminal
+        "workbench.action.terminal.focusAtIndex1"
+      ]
+    },
     // Copilot Chat
     {
       // Open auxiliary bar (focus Copilot chat)
@@ -554,6 +559,7 @@
       "before": ["<leader>", "s", "s"],
       "commands": [
         // "workbench.action.toggleMaximizedPanel",
+        { "command": "setContext", "args": ["fzfActive", true] },
         {
           "command": "workbench.action.tasks.runTask",
           "args": "FZF Ripgrep"

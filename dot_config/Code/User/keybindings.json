@@ -252,7 +252,7 @@
       "commands": [
         // When the are closing the terminal disable fullscreen mode so
         // subsequent usage of the terminal is not fullscreen
-        "workbench.action.toggleMaximizedPanel",
+        // "workbench.action.toggleMaximizedPanel",
         // Show the terminal
         "workbench.action.terminal.toggleTerminal",
         // Auto select the main terminal
@@ -408,6 +408,27 @@
     "key": "alt+o",
     "command": "clangd.switchheadersource",
     "when": "editorTextFocus && resourceLangId == 'c' || editorTextFocus && resourceLangId == 'cpp' || editorTextFocus && resourceLangId == 'cuda-cpp' || editorTextFocus && resourceLangId == 'objective-c' || editorTextFocus && resourceLangId == 'objective-cpp'"
+  },
+  {
+    // There is an issue in the find it faster plugin where it does go back to your last focused window when closed
+    "key": "enter",
+    "command": "runCommands",
+    // This only activates when the 'editor as a tab' mode is active. Would be better to
+    "when": "terminalFocus && fzfActive",
+    "args": {
+      "commands": [
+        { "command": "setContext", "args": ["fzfActive", false] },
+        {
+          "command": "workbench.action.terminal.sendSequence",
+          // Enter keycode
+          "args": { "text": "\u000D" }
+        },
+        "workbench.action.terminal.toggleTerminal"
+        // "workbench.action.focusActiveEditorGroup",
+        // "workbench.action.navigateBack",
+        // "extension.vim_escape"
+      ]
+    }
   }
   // {
   //   // There is an issue in the find it faster plugin where it does go back to your last focused window when closed
