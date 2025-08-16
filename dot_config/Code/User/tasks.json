@@ -52,7 +52,9 @@
         "{2}",
         "{1}'",
         "--preview-window",
-        "'+{2}/2'"
+        "'+{2}/2'",
+        "--bind",
+        "'enter:execute-silent(code -r -g {1}:{2})'"
       ],
       // "options": {
       //   "env": {
