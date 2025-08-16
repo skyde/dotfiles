@@ -752,7 +752,14 @@
     {
       // Global view if problems / errors
       "before": ["<leader>", "e", "e"],
-      "commands": ["workbench.actions.view.problems"]
+      "commands": [
+        "workbench.actions.view.problems",
+        // Workaround: Toggling panel twice will make fullscren
+        "workbench.action.togglePanel",
+        "workbench.action.togglePanel",
+        // Once fullscreen toggle to not fullscreen
+        "workbench.action.toggleMaximizedPanel"
+      ]
     },
     {
       // Goto next error
@@ -1180,6 +1187,9 @@
       // Can be extended with additional functionality in the future
       "command": "task.custom.onOpenTerminal",
       "sequence": [
+        // "workbench.action.togglePanel",
+        // "workbench.action.togglePanel",
+        "workbench.action.toggleMaximizedPanel",
         {
           "command": "setContext",
           "args": "closePanelOnEnter"
