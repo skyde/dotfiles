@@ -20,8 +20,9 @@ AUTO_INSTALL=1 chezmoi apply
 
 ```
 apt update
-apt install curl git zsh
+apt install -y curl ca-certificates git zsh
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+export PATH="$HOME/.local/bin:$PATH"
 chezmoi init skyde
 
 # Review changes
