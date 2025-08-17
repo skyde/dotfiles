@@ -1,0 +1,104 @@
+# shellcheck shell=bash
+
+# Disable flow control in interactive shells
+if [[ $- == *i* ]]; then
+  stty -ixon -ixoff
+fi
+
+export PATH=/Users/skydebreuil/Projects/depot_tools:$PATH
+
+# Path setup (add custom bins before system paths)
+for d in "$HOME/.local/bin" "$HOME/bin" "/usr/local/bin"; do
+  if [[ -d $d ]] && [[ ":$PATH:" != *":$d:"* ]]; then
+    PATH="$d:$PATH"
+  fi
+done
+export PATH
+
+# Default editor
+export EDITOR="nvim"
+export VISUAL="$EDITOR"
+
+# Shell options
+shopt -s nocaseglob dotglob extglob histappend
+HISTSIZE=50000
+HISTFILE=~/.bash_history
+HISTCONTROL=ignoreboth:erasedups
+PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
+
+set -o emacs
+bind '"\e[1;5C": forward-word'
+bind '"\e[1;5D": backward-word'
+
+# Bootstrap Starship
+if command -v starship >/dev/null 2>&1; then
+  eval "$(starship init bash)"
+fi
+
+# zoxide
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init bash)"
+fi
+
+# FZF integration
+if command -v fzf >/dev/null 2>&1; then
+  for dir in "/usr/share/fzf" "/usr/local/opt/fzf/shell" "/opt/homebrew/opt/fzf/shell" "/usr/share/doc/fzf/examples" "$HOME/.fzf"; do
+    if [[ -r "$dir/key-bindings.bash" ]]; then
+      source "$dir/key-bindings.bash"
+      break
+    fi
+  done
+  for dir in "/usr/share/fzf" "/usr/local/opt/fzf/shell" "/opt/homebrew/opt/fzf/shell" "/usr/share/doc/fzf/examples" "$HOME/.fzf"; do
+    if [[ -r "$dir/completion.bash" ]]; then
+      source "$dir/completion.bash"
+      break
+    fi
+  done
+  if command -v fd >/dev/null 2>&1; then
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git --color=always'
+    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+  fi
+
+  __fzf_history_widget() {
+    local selected
+    selected=$(history | awk '{ $1=""; sub(/^ +/,""); if(!seen[$0]++) print }' |
+      fzf --height=80% --reverse --tiebreak=index --no-sort --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
+    READLINE_LINE=$selected
+    READLINE_POINT=${#selected}
+  }
+  bind -x '"\C-r": "__fzf_history_widget"'
+fi
+
+# Aliases
+alias z='cd'
+alias grep="grep --color=auto"
+# Favor hidden files but ignore common junk, colorized output
+alias rg='rg --hidden --smart-case --colors match:fg:yellow --glob "!.git" --glob "!node_modules"'
+# Use modern replacements if available
+if command -v bat >/dev/null 2>&1; then
+  alias cat='bat'
+elif command -v batcat >/dev/null 2>&1; then
+  alias bat='batcat'
+  alias cat='batcat'
+fi
+if command -v eza >/dev/null 2>&1; then
+  alias ls='eza --color=auto --group-directories-first'
+  alias ll='eza -al --color=auto --group-directories-first'
+  alias la='eza -a --color=auto --group-directories-first'
+fi
+if [[ -z $(command -v fd 2>/dev/null) && -n $(command -v fdfind 2>/dev/null) ]]; then
+  alias fd='fdfind'
+fi
+
+# Open yazi in the current directory and change to its exit path
+y() {
+  local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+  yazi "$@" --cwd-file="$tmp"
+  IFS= read -r -d '' cwd < "$tmp"
+  [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+  rm -f -- "$tmp"
+}
+
+# Load machine-specific overrides, if present
+# shellcheck disable=SC1090
+[[ -r "$HOME/.bashrc.local" ]] && source "$HOME/.bashrc.local"
