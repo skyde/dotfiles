@@ -208,79 +208,27 @@ install_from_github() {
 }
 
 case "$OS" in
-  Darwin)
-    if ! HAVE brew; then
-      # Offer GitHub prebuilt on macOS if Homebrew isn't available
-      if ! HAVE yazi; then
-        if confirm_yazi_install "GitHub prebuilt binary (no brew)"; then
-          install_from_github || echo "[warn] GitHub install failed; Yazi not installed" >&2
-        else
-          echo "[skip] yazi install (AUTO_INSTALL not set)"
-        fi
-      fi
-    else
-      if ! HAVE yazi; then
-        if confirm_yazi_install "Homebrew (brew install yazi)"; then
-          brew list --formula --versions yazi >/dev/null 2>&1 || brew install yazi
-        else
-          echo "[skip] yazi install (AUTO_INSTALL not set)"
-        fi
-      fi
-      brew list --formula --versions ripgrep >/dev/null 2>&1 || brew install ripgrep
-      brew list --formula --versions fd >/dev/null 2>&1 || brew install fd
-      brew list --formula --versions bat >/dev/null 2>&1 || brew install bat
-    fi
-    ;;
   Linux)
-    if HAVE apt-get; then
-      $SUDO_CMD apt-get update -y
-      # Text + binary preview essentials
-      $SUDO_CMD apt-get install -y ripgrep fd-find bat curl ca-certificates poppler-utils ffmpegthumbnailer imagemagick p7zip-full unzip jq file
-      # Decide install plan for yazi and prompt unless AUTO_INSTALL.
-      if ! HAVE yazi; then
-        if apt-cache show yazi >/dev/null 2>&1; then
-          if confirm_yazi_install "APT (apt-get install yazi)"; then
-            $SUDO_CMD apt-get install -y yazi || true
-          else
-            echo "[skip] yazi install (AUTO_INSTALL not set)"
-          fi
-        else
-          if confirm_yazi_install "GitHub prebuilt binary (faster than compiling)"; then
-            if ! install_from_github; then
-              echo "[warn] GitHub install failed; falling back to cargo" >&2
-              install_with_cargo || true
-            fi
+    # Only run custom Yazi install on Debian
+    if [ -r /etc/os-release ]; then . /etc/os-release; fi
+    if [ "${ID:-}" = "debian" ]; then
+      if HAVE apt-get; then
+        $SUDO_CMD apt-get update -y
+        # Minimal deps for binary install/extraction
+        $SUDO_CMD apt-get install -y curl ca-certificates unzip
+        if ! HAVE yazi; then
+          if confirm_yazi_install "GitHub prebuilt binary (Debian)"; then
+            install_from_github || echo "[warn] GitHub install failed; Yazi not installed" >&2
           else
             echo "[skip] yazi install (AUTO_INSTALL not set)"
           fi
         fi
       fi
-      # Debian provides bat as batcat and fd as fdfind. Add friendly aliases.
-      if ! HAVE bat && [ -x /usr/bin/batcat ]; then
-        $SUDO_CMD ln -sf /usr/bin/batcat /usr/local/bin/bat
-      fi
-      if ! HAVE fd && [ -x /usr/bin/fdfind ]; then
-        $SUDO_CMD ln -sf /usr/bin/fdfind /usr/local/bin/fd
-      fi
-    else
-      # Generic Linux fallback: try cargo
-      if ! HAVE yazi; then
-        if confirm_yazi_install "cargo (compiles from source; slower)"; then
-          install_with_cargo
-        else
-          echo "[skip] yazi install (AUTO_INSTALL not set)"
-        fi
-      fi
-      # Ensure helpful aliases if present
-      [ -x /usr/bin/batcat ] && ensure_symlink /usr/bin/batcat /usr/local/bin/bat || true
-      [ -x /usr/bin/fdfind ] && ensure_symlink /usr/bin/fdfind /usr/local/bin/fd || true
     fi
     ;;
   *)
-    # Other OS: best effort via cargo
-    if ! HAVE yazi; then
-      install_with_cargo
-    fi
+    # No custom install on non-Debian OS
+    :
     ;;
 esac
 
