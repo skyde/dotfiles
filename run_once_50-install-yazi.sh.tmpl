@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Ensure Yazi works out-of-the-box:
+# - Install yazi (brew/apt or cargo fallback)
+# - Ensure ripgrep/bat/fd are installed
+# - Create aliases for Debian's batcat/fdfind
+# - Put yazi/ya on PATH via symlinks if installed via cargo
+
+HAVE() { command -v "$1" >/dev/null 2>&1; }
+
+SUDO_CMD=""
+if [ "$(id -u)" -ne 0 ] && HAVE sudo; then
+  SUDO_CMD="sudo"
+fi
+
+OS="$(uname -s)"
+
+ensure_symlink() {
+  local target="$1" link_path="$2"
+  if [ -e "$target" ]; then
+    if [ ! -e "$link_path" ]; then
+      $SUDO_CMD ln -s "$target" "$link_path"
+    fi
+  fi
+}
+
+install_with_cargo() {
+  # Skip if already installed
+  if HAVE yazi || [ -x "$HOME/.cargo/bin/yazi" ]; then
+    return
+  fi
+  # Install Rust toolchain non-interactively, then build Yazi
+  if ! HAVE cargo; then
+    curl -fsSL https://sh.rustup.rs | sh -s -- -y
+    # shellcheck disable=SC1090
+    . "$HOME/.cargo/env"
+  fi
+  cargo install --locked yazi-fm yazi-cli
+
+  # Symlink yazi + ya to a root-owned bin to avoid PATH issues
+  if [ -x "$HOME/.cargo/bin/yazi" ]; then
+    $SUDO_CMD ln -sf "$HOME/.cargo/bin/yazi" /usr/local/bin/yazi
+  fi
+  if [ -x "$HOME/.cargo/bin/ya" ]; then
+    $SUDO_CMD ln -sf "$HOME/.cargo/bin/ya" /usr/local/bin/ya
+  fi
+}
+
+case "$OS" in
+  Darwin)
+    if ! HAVE brew; then
+      echo "Homebrew not found; skipping macOS install for yazi." >&2
+    else
+      brew list --formula --versions yazi >/dev/null 2>&1 || brew install yazi
+      brew list --formula --versions ripgrep >/dev/null 2>&1 || brew install ripgrep
+      brew list --formula --versions fd >/dev/null 2>&1 || brew install fd
+      brew list --formula --versions bat >/dev/null 2>&1 || brew install bat
+    fi
+    ;;
+  Linux)
+    if HAVE apt-get; then
+      $SUDO_CMD apt-get update -y
+      # Text + binary preview essentials
+      $SUDO_CMD apt-get install -y ripgrep fd-find bat curl ca-certificates poppler-utils ffmpegthumbnailer imagemagick p7zip-full unzip jq file
+      # Try native yazi package first; if unavailable, fall back to cargo
+      if ! dpkg -s yazi >/dev/null 2>&1; then
+        if $SUDO_CMD apt-get install -y yazi 2>/dev/null; then
+          : # installed via apt
+        else
+          install_with_cargo
+        fi
+      fi
+      # Debian provides bat as batcat and fd as fdfind. Add friendly aliases.
+      if ! HAVE bat && [ -x /usr/bin/batcat ]; then
+        $SUDO_CMD ln -sf /usr/bin/batcat /usr/local/bin/bat
+      fi
+      if ! HAVE fd && [ -x /usr/bin/fdfind ]; then
+        $SUDO_CMD ln -sf /usr/bin/fdfind /usr/local/bin/fd
+      fi
+    else
+      # Generic Linux fallback: try cargo
+      if ! HAVE yazi; then
+        install_with_cargo
+      fi
+      # Ensure helpful aliases if present
+      [ -x /usr/bin/batcat ] && ensure_symlink /usr/bin/batcat /usr/local/bin/bat || true
+      [ -x /usr/bin/fdfind ] && ensure_symlink /usr/bin/fdfind /usr/local/bin/fd || true
+    fi
+    ;;
+  *)
+    # Other OS: best effort via cargo
+    if ! HAVE yazi; then
+      install_with_cargo
+    fi
+    ;;
+esac
+
+echo "Yazi installation/configuration complete."
+
+

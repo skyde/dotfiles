@@ -12,3 +12,4 @@ zoxide
 yazi
 lazygit
 starship
+tree
