@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Ensure Yazi works out-of-the-box:
-# - Install yazi (brew/apt or cargo fallback)
-# - Ensure ripgrep/bat/fd are installed
-# - Create aliases for Debian's batcat/fdfind
-# - Put yazi/ya on PATH via symlinks if installed via cargo
+# Ensure Yazi works out-of-the-box on Debian via GitHub binary install (no compile)
 
 HAVE() { command -v "$1" >/dev/null 2>&1; }
 
@@ -16,22 +12,13 @@ fi
 
 OS="$(uname -s)"
 
-ensure_symlink() {
-  local target="$1" link_path="$2"
-  if [ -e "$target" ]; then
-    if [ ! -e "$link_path" ]; then
-      $SUDO_CMD ln -s "$target" "$link_path"
-    fi
-  fi
-}
-
 # Try to source shared helpers (truthy/ask) if available
 if [ -n "${CHEZMOI_SOURCE_DIR:-}" ] && [ -f "$CHEZMOI_SOURCE_DIR/lib/run_ensure.sh" ]; then
   # shellcheck disable=SC1090
   . "$CHEZMOI_SOURCE_DIR/lib/run_ensure.sh"
 fi
 
-# Fallback implementations if not sourced
+# Fallback prompt helpers if not sourced
 _truthy() {
   case "${1:-}" in
     1|true|TRUE|True|yes|YES|Yes|on|ON|On) return 0 ;;
@@ -60,28 +47,6 @@ confirm_yazi_install() {
   ask "Install yazi now via $method_msg?"
 }
 
-install_with_cargo() {
-  # Skip if already installed
-  if HAVE yazi || [ -x "$HOME/.cargo/bin/yazi" ]; then
-    return
-  fi
-  # Install Rust toolchain non-interactively, then build Yazi
-  if ! HAVE cargo; then
-    curl -fsSL https://sh.rustup.rs | sh -s -- -y
-    # shellcheck disable=SC1090
-    . "$HOME/.cargo/env"
-  fi
-  cargo install --locked yazi-fm yazi-cli
-
-  # Symlink yazi + ya to a root-owned bin to avoid PATH issues
-  if [ -x "$HOME/.cargo/bin/yazi" ]; then
-    $SUDO_CMD ln -sf "$HOME/.cargo/bin/yazi" /usr/local/bin/yazi
-  fi
-  if [ -x "$HOME/.cargo/bin/ya" ]; then
-    $SUDO_CMD ln -sf "$HOME/.cargo/bin/ya" /usr/local/bin/ya
-  fi
-}
-
 install_from_github() {
   # Install prebuilt Yazi binaries from GitHub releases (avoids compilation)
   # Requires: curl, unzip/tar
@@ -96,13 +61,6 @@ install_from_github() {
         x86_64) os_arch_triple="x86_64-unknown-linux-gnu" ;;
         aarch64|arm64) os_arch_triple="aarch64-unknown-linux-gnu" ;;
         *) echo "Unsupported Linux arch: $uname_m" >&2; return 1 ;;
-      esac
-      ;;
-    Darwin)
-      case "$uname_m" in
-        x86_64) os_arch_triple="x86_64-apple-darwin" ;;
-        arm64) os_arch_triple="aarch64-apple-darwin" ;;
-        *) echo "Unsupported macOS arch: $uname_m" >&2; return 1 ;;
       esac
       ;;
     *)
@@ -129,7 +87,7 @@ install_from_github() {
 
   local tmp_dir
   tmp_dir="$(mktemp -d)"
-  trap 'rm -rf "$tmp_dir"' EXIT
+  trap 'if [ -n "${tmp_dir:-}" ]; then rm -rf "${tmp_dir}"; fi' EXIT
 
   local archive=""
   local archive_ext=""
