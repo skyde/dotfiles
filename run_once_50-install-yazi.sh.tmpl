@@ -193,16 +193,29 @@ case "$OS" in
           ensure_apt curl
           ensure_apt unzip
           ensure_apt ca-certificates
+          ensure_apt file
+          ensure_apt bat || true
         else
           ensure_pkg_cmd curl curl
           ensure_pkg_cmd unzip unzip
           ensure_pkg_cmd ca-certificates update-ca-certificates
+          ensure_pkg_cmd file file
+          # Debian provides the binary as 'batcat' in the 'bat' package
+          ensure_pkg_cmd bat batcat || true
         fi
         if ! HAVE yazi; then
           if confirm_yazi_install "GitHub prebuilt binary (Debian, GNU)"; then
             install_from_github || echo "[warn] GitHub install failed; Yazi not installed" >&2
           else
             echo "[skip] yazi install (AUTO_INSTALL not set)"
+          fi
+        fi
+        # Provide a 'bat' shim for tools that call 'bat' on Debian
+        if ! HAVE bat && HAVE batcat; then
+          target="$(command -v batcat)"
+          if [ -n "$target" ]; then
+            $SUDO_CMD install -d -m 0755 /usr/local/bin
+            $SUDO_CMD ln -sf "$target" /usr/local/bin/bat
           fi
         fi
       fi
