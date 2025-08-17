@@ -19,15 +19,17 @@ AUTO_INSTALL=1 chezmoi apply
 ### Linux
 
 ```
-sudo apt-get update -qq && sudo apt-get install -y git chezmoi
+sudo apt-get update -qq && sudo apt-get install -y git zsh
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
 chezmoi init skyde
-# Review changes if desired
+
+# Review changes
 chezmoi diff
 
-# Apply and be prompted before installs/changes
+# Apply and be prompted before installs/changes (Corporate Use)
 chezmoi apply
 
-# Install and upgrade tools without prompting
+# Install and upgrade tools without prompting (Personal Use)
 AUTO_INSTALL=1 chezmoi apply
 ```
 
