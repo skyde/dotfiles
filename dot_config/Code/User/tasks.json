@@ -82,7 +82,7 @@
         "--column",
         "--color=always",
         "--smart-case",
-        "{q}\"",
+        "{q} || true\"",
 
         "--bind",
         "\"change:reload:rg",
@@ -90,7 +90,7 @@
         "--column",
         "--color=always",
         "--smart-case",
-        "{q}\"",
+        "{q} || true\"",
 
         "--delimiter",
         ":",
