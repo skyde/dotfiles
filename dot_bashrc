@@ -35,6 +35,19 @@ if command -v starship >/dev/null 2>&1; then
   eval "$(starship init bash)"
 fi
 
+# Autocomplete
+if ! shopt -oq posix; then
+  if [[ -r /usr/share/bash-completion/bash_completion ]]; then
+    source /usr/share/bash-completion/bash_completion
+  elif [[ -r /etc/bash_completion ]]; then
+    source /etc/bash_completion
+  fi
+fi
+bind 'set show-all-if-ambiguous on'
+bind 'set menu-complete-display-prefix on'
+bind 'set completion-ignore-case on'
+bind 'TAB:menu-complete'
+
 # zoxide
 if command -v zoxide >/dev/null 2>&1; then
   eval "$(zoxide init bash)"
