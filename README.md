@@ -70,6 +70,34 @@ Try it yourself in a Docker container.
 docker run --rm -it debian:testing bash -c 'apt update -qq && apt install -y git curl ca-certificates && sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin && chezmoi init skyde && chezmoi diff && AUTO_INSTALL=1 chezmoi apply && exec bash'
 ```
 
+### Dev container with SSH (Debian testing)
+
+This repo includes a simple Debian testing image with OpenSSH for remote dev via VS Code Remote-SSH.
+
+```sh
+# Build and run the Debian testing SSH container
+docker build -t dev-debian-testing-ssh:latest ~/.local/share/chezmoi/.tmp/dev-debian-testing-ssh
+docker rm -f dev-debian-testing-ssh || true
+docker run -d --name dev-debian-testing-ssh -p 2222:22 dev-debian-testing-ssh:latest
+
+# Add SSH config entry (one-time)
+cat >> ~/.ssh/config <<'EOF'
+Host debian-testing
+  HostName 127.0.0.1
+  Port 2222
+  User vscode
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  IdentityFile ~/.ssh/id_ed25519
+EOF
+
+# Test and apply dotfiles
+ssh debian-testing 'sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" && AUTO_INSTALL=1 "$HOME/.local/bin/chezmoi" init skyde && AUTO_INSTALL=1 "$HOME/.local/bin/chezmoi" apply --force'
+
+# Open VS Code attached (requires VS Code CLI)
+code --remote ssh-remote+debian-testing --folder-uri "vscode-remote://ssh-remote+debian-testing/home/vscode"
+```
+
 ### WSL Installation
 
 ```ps
