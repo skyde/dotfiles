@@ -119,36 +119,41 @@ install_from_github() {
     return 1
   fi
 
-  # Resolve asset URL deterministically (prefer .zip), follow redirects during HEAD
-  local asset_url=""
+  # Candidate URLs (prefer .zip); try to download each until one succeeds
   local candidates=(
     "https://github.com/${repo}/releases/download/${tag}/yazi-${os_arch_triple}.zip"
     "https://github.com/${repo}/releases/download/${tag}/yazi-${os_arch_triple}.tar.gz"
     "https://github.com/${repo}/releases/download/${tag}/yazi-${tag}-${os_arch_triple}.zip"
     "https://github.com/${repo}/releases/download/${tag}/yazi-${tag}-${os_arch_triple}.tar.gz"
   )
-  for u in "${candidates[@]}"; do
-    if curl -fsIL "$u" >/dev/null 2>&1; then asset_url="$u"; break; fi
-  done
-  if [ -z "$asset_url" ]; then
-    echo "Could not find a matching Yazi release asset for $os_arch_triple at tag $tag" >&2
-    return 1
-  fi
 
   local tmp_dir
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "$tmp_dir"' EXIT
 
-  # Download to appropriate filename based on extension
-  local archive_ext
-  case "$asset_url" in
-    *.zip) archive_ext="zip" ;;
-    *.tar.gz) archive_ext="tar.gz" ;;
-    *.tar.xz) archive_ext="tar.xz" ;;
-    *) archive_ext="unknown" ;;
-  esac
-  local archive="$tmp_dir/yazi.$archive_ext"
-  curl -fsSL "$asset_url" -o "$archive"
+  local archive=""
+  local archive_ext=""
+  for u in "${candidates[@]}"; do
+    case "$u" in
+      *.zip) archive_ext="zip" ;;
+      *.tar.gz) archive_ext="tar.gz" ;;
+      *.tar.xz) archive_ext="tar.xz" ;;
+      *) archive_ext="unknown" ;;
+    esac
+    archive="$tmp_dir/yazi.$archive_ext"
+    if curl -fSL "$u" -o "$archive" >/dev/null 2>&1; then
+      # success
+      break
+    else
+      archive=""
+      archive_ext=""
+    fi
+  done
+
+  if [ -z "$archive" ] || [ ! -s "$archive" ]; then
+    echo "Could not download a matching Yazi release asset for $os_arch_triple at tag $tag" >&2
+    return 1
+  fi
 
   # Extract
   mkdir -p "$tmp_dir/extract"
@@ -168,7 +173,7 @@ install_from_github() {
     tar.xz)
       tar -xJf "$archive" -C "$tmp_dir/extract" ;;
     *)
-      echo "Unknown archive type for $asset_url" >&2
+      echo "Unknown archive type for $archive" >&2
       return 1 ;;
   esac
 
