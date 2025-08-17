@@ -82,10 +82,123 @@ install_with_cargo() {
   fi
 }
 
+install_from_github() {
+  # Install prebuilt Yazi binaries from GitHub releases (avoids compilation)
+  # Requires: curl, tar; prefers jq for asset selection when available
+  local repo="sxyazi/yazi"
+  local os_arch_triple=""
+  local uname_s="$(uname -s)"
+  local uname_m="$(uname -m)"
+
+  case "$uname_s" in
+    Linux)
+      case "$uname_m" in
+        x86_64) os_arch_triple="x86_64-unknown-linux-gnu" ;;
+        aarch64|arm64) os_arch_triple="aarch64-unknown-linux-gnu" ;;
+        *) echo "Unsupported Linux arch: $uname_m" >&2; return 1 ;;
+      esac
+      ;;
+    Darwin)
+      case "$uname_m" in
+        x86_64) os_arch_triple="x86_64-apple-darwin" ;;
+        arm64) os_arch_triple="aarch64-apple-darwin" ;;
+        *) echo "Unsupported macOS arch: $uname_m" >&2; return 1 ;;
+      esac
+      ;;
+    *)
+      echo "Unsupported OS: $uname_s" >&2; return 1 ;;
+  esac
+
+  local tag="${YAZI_VERSION:-}"
+  if [ -z "$tag" ]; then
+    # Fetch latest tag via GitHub API
+    if command -v jq >/dev/null 2>&1; then
+      tag="$(curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" | jq -r .tag_name)"
+    else
+      # Fallback: scrape tag_name with sed (best effort)
+      tag="$(curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null | sed -n 's/.*"tag_name"\s*:\s*"\([^"]\+\)".*/\1/p' | head -n1)"
+    fi
+  fi
+  if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+    echo "Failed to determine latest Yazi release tag" >&2
+    return 1
+  fi
+
+  # Locate asset matching our triple
+  local asset_url=""
+  if command -v jq >/dev/null 2>&1; then
+    asset_url="$(
+      curl -fsSL "https://api.github.com/repos/${repo}/releases/tags/${tag}" \
+        | jq -r --arg t "$os_arch_triple" '.assets[] | select(.browser_download_url | test($t)) | .browser_download_url' \
+        | grep -E '\.(tar\.(gz|xz)|zip)$' \
+        | head -n1
+    )"
+  fi
+
+  if [ -z "$asset_url" ] || [ "$asset_url" = "null" ]; then
+    # Guess common filename pattern if jq isn't available or selection failed
+    # Patterns seen: yazi-<tag>-<triple>.tar.gz or yazi-<triple>.tar.gz
+    asset_url="https://github.com/${repo}/releases/download/${tag}/yazi-${tag}-${os_arch_triple}.tar.gz"
+    if ! curl -fsI "$asset_url" >/dev/null 2>&1; then
+      asset_url="https://github.com/${repo}/releases/download/${tag}/yazi-${os_arch_triple}.tar.gz"
+    fi
+  fi
+
+  if ! curl -fsI "$asset_url" >/dev/null 2>&1; then
+    echo "Could not find a matching Yazi release asset for $os_arch_triple at tag $tag" >&2
+    return 1
+  fi
+
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  trap 'rm -rf "$tmp_dir"' EXIT
+
+  local archive="$tmp_dir/yazi.tar.gz"
+  curl -fsSL "$asset_url" -o "$archive"
+
+  # Extract
+  mkdir -p "$tmp_dir/extract"
+  if tar -xzf "$archive" -C "$tmp_dir/extract" 2>/dev/null; then
+    :
+  else
+    # Try xz if needed
+    if command -v tar >/dev/null 2>&1; then
+      tar -xJf "$archive" -C "$tmp_dir/extract" 2>/dev/null || true
+    fi
+  fi
+
+  # Find binaries (yazi, ya) within extraction
+  local yazi_bin
+  yazi_bin="$(find "$tmp_dir/extract" -type f -name yazi -perm -u+x | head -n1 || true)"
+  local ya_bin
+  ya_bin="$(find "$tmp_dir/extract" -type f -name ya -perm -u+x | head -n1 || true)"
+  if [ -z "$yazi_bin" ]; then
+    echo "yazi binary not found in archive" >&2
+    return 1
+  fi
+
+  $SUDO_CMD install -m 0755 "$yazi_bin" /usr/local/bin/yazi
+  if [ -n "$ya_bin" ]; then
+    $SUDO_CMD install -m 0755 "$ya_bin" /usr/local/bin/ya
+  fi
+
+  if ! command -v yazi >/dev/null 2>&1; then
+    echo "Failed to install yazi to /usr/local/bin" >&2
+    return 1
+  fi
+}
+
 case "$OS" in
   Darwin)
     if ! HAVE brew; then
-      echo "Homebrew not found; skipping macOS install for yazi." >&2
+      # Offer GitHub prebuilt on macOS if Homebrew isn't available
+      if ! HAVE yazi; then
+        if confirm_yazi_install "GitHub prebuilt binary (no brew)"; then
+          install_from_github || echo "[warn] GitHub install failed; Yazi not installed" >&2
+        else
+          echo "[skip] yazi install (AUTO_INSTALL not set)"
+        fi
+      fi
     else
       if ! HAVE yazi; then
         if confirm_yazi_install "Homebrew (brew install yazi)"; then
@@ -113,8 +226,11 @@ case "$OS" in
             echo "[skip] yazi install (AUTO_INSTALL not set)"
           fi
         else
-          if confirm_yazi_install "cargo (compiles from source; slower)"; then
-            install_with_cargo
+          if confirm_yazi_install "GitHub prebuilt binary (faster than compiling)"; then
+            if ! install_from_github; then
+              echo "[warn] GitHub install failed; falling back to cargo" >&2
+              install_with_cargo || true
+            fi
           else
             echo "[skip] yazi install (AUTO_INSTALL not set)"
           fi
