@@ -70,34 +70,6 @@ Try it yourself in a Docker container.
 docker run --rm -it debian:testing bash -c 'apt update -qq && apt install -y git curl ca-certificates && sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin && chezmoi init skyde && chezmoi diff && AUTO_INSTALL=1 chezmoi apply && exec bash'
 ```
 
-### Dev container with SSH (Debian testing)
-
-This repo includes a simple Debian testing image with OpenSSH for remote dev via VS Code Remote-SSH.
-
-```sh
-# Build and run the Debian testing SSH container
-docker build -t dev-debian-testing-ssh:latest ~/.local/share/chezmoi/.tmp/dev-debian-testing-ssh
-docker rm -f dev-debian-testing-ssh || true
-docker run -d --name dev-debian-testing-ssh -p 2222:22 dev-debian-testing-ssh:latest
-
-# Add SSH config entry (one-time)
-cat >> ~/.ssh/config <<'EOF'
-Host debian-testing
-  HostName 127.0.0.1
-  Port 2222
-  User vscode
-  StrictHostKeyChecking no
-  UserKnownHostsFile /dev/null
-  IdentityFile ~/.ssh/id_ed25519
-EOF
-
-# Test and apply dotfiles
-ssh debian-testing 'sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" && AUTO_INSTALL=1 "$HOME/.local/bin/chezmoi" init skyde && AUTO_INSTALL=1 "$HOME/.local/bin/chezmoi" apply --force'
-
-# Open VS Code attached (requires VS Code CLI)
-code --remote ssh-remote+debian-testing --folder-uri "vscode-remote://ssh-remote+debian-testing/home/vscode"
-```
-
 ### WSL Installation
 
 ```ps
@@ -182,15 +154,16 @@ P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\d
 # Visual Studio Code
 
 I'm using a few plugins:
+
 - Vim
 - Fzf Picker (hooks into fzf, rg & bat)
 - clangd for C++ language features
-Extensions listed in `vscode_extensions.txt` will be installed automatically
-when these dotfiles are applied. Custom keybindings are documented in
-[`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
-On macOS, the install script also checks for the default CLI at
-`/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` if the
-`code` command isn't in your `PATH`.
+  Extensions listed in `vscode_extensions.txt` will be installed automatically
+  when these dotfiles are applied. Custom keybindings are documented in
+  [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
+  On macOS, the install script also checks for the default CLI at
+  `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` if the
+  `code` command isn't in your `PATH`.
 
 For remote development, install the **Remote - SSH** extension. Add your server
 details to `~/.ssh/config`, e.g.
@@ -239,10 +212,12 @@ Note you should always leave the keyboard in 'Windows' mode as the bindings have
 The config for the footpedal is located under the savant-elite2 folder.
 
 The pedal config:
+
 - Left is Escape
 - Middle is Left Click
 - Right is Right Click
 
 The method to open V-Drive is either:
+
 - Flip the switch on the bottom of the pedal
 - Hold the pedal down briefly while connecting to the computer (waterproof version)
