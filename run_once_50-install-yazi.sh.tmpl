@@ -153,19 +153,38 @@ install_from_github() {
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "$tmp_dir"' EXIT
 
-  local archive="$tmp_dir/yazi.tar.gz"
+  # Download to appropriate filename based on extension
+  local archive_ext
+  case "$asset_url" in
+    *.zip) archive_ext="zip" ;;
+    *.tar.gz) archive_ext="tar.gz" ;;
+    *.tar.xz) archive_ext="tar.xz" ;;
+    *) archive_ext="unknown" ;;
+  esac
+  local archive="$tmp_dir/yazi.$archive_ext"
   curl -fsSL "$asset_url" -o "$archive"
 
   # Extract
   mkdir -p "$tmp_dir/extract"
-  if tar -xzf "$archive" -C "$tmp_dir/extract" 2>/dev/null; then
-    :
-  else
-    # Try xz if needed
-    if command -v tar >/dev/null 2>&1; then
-      tar -xJf "$archive" -C "$tmp_dir/extract" 2>/dev/null || true
-    fi
-  fi
+  case "$archive_ext" in
+    zip)
+      if command -v unzip >/dev/null 2>&1; then
+        unzip -q "$archive" -d "$tmp_dir/extract"
+      elif command -v bsdtar >/dev/null 2>&1; then
+        bsdtar -xf "$archive" -C "$tmp_dir/extract"
+      else
+        echo "Need 'unzip' or 'bsdtar' to extract Yazi zip archive" >&2
+        return 1
+      fi
+      ;;
+    tar.gz)
+      tar -xzf "$archive" -C "$tmp_dir/extract" ;;
+    tar.xz)
+      tar -xJf "$archive" -C "$tmp_dir/extract" ;;
+    *)
+      echo "Unknown archive type for $asset_url" >&2
+      return 1 ;;
+  esac
 
   # Find binaries (yazi, ya) within extraction
   local yazi_bin
