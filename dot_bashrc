@@ -1,0 +1,20 @@
+# shellcheck shell=bash
+[ -r "$HOME/.shellrc" ] && . "$HOME/.shellrc"
+
+# Bash Options
+shopt -s autocd
+shopt -s nocaseglob
+HISTSIZE=50000
+HISTFILESIZE=50000
+HISTFILE=~/.bash_history
+HISTCONTROL=ignoreboth:erasedups
+shopt -s histappend
+PROMPT_COMMAND='history -a; history -n;'"${PROMPT_COMMAND:-}"
+
+# Key bindings
+bind '"\e[1;5C": forward-word'
+bind '"\e[1;5D": backward-word'
+
+# Load machine-specific overrides
+# shellcheck disable=SC1090
+[ -r "$HOME/.bashrc.local" ] && . "$HOME/.bashrc.local"
