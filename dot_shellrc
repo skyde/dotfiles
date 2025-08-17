@@ -1,0 +1,107 @@
+# shellcheck shell=bash
+
+case $- in
+  *i*) stty -ixon -ixoff ;;
+ esac
+
+shell_name=$(basename "${0#-}")
+
+export PATH=/Users/skydebreuil/Projects/depot_tools:"$PATH"
+
+for d in "$HOME/.local/bin" "$HOME/bin" "/usr/local/bin"; do
+  if [[ -d $d ]] && [[ ":$PATH:" != *":$d:"* ]]; then
+    PATH="$d:$PATH"
+  fi
+done
+export PATH
+
+export EDITOR="nvim"
+export VISUAL="$EDITOR"
+
+if command -v starship >/dev/null; then
+  eval "$(starship init "$shell_name")"
+fi
+
+if command -v zoxide >/dev/null; then
+  eval "$(zoxide init "$shell_name")"
+fi
+
+if command -v fzf >/dev/null; then
+  for dir in \
+    "/usr/share/fzf" \
+    "/usr/local/opt/fzf/shell" \
+    "/opt/homebrew/opt/fzf/shell" \
+    "/usr/share/doc/fzf/examples" \
+    "$HOME/.fzf"; do
+    if [ -r "$dir/key-bindings.$shell_name" ]; then
+      . "$dir/key-bindings.$shell_name"
+      break
+    fi
+  done
+  for dir in \
+    "/usr/share/fzf" \
+    "/usr/local/opt/fzf/shell" \
+    "/opt/homebrew/opt/fzf/shell" \
+    "/usr/share/doc/fzf/examples" \
+    "$HOME/.fzf"; do
+    if [ -r "$dir/completion.$shell_name" ]; then
+      . "$dir/completion.$shell_name"
+      break
+    fi
+  done
+  if command -v fd >/dev/null; then
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git --color=always'
+    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+  fi
+fi
+
+if ! command -v delta >/dev/null || ! command -v code >/dev/null; then
+  git() {
+    local cfg=()
+    if ! command -v delta >/dev/null; then
+      cfg+=( -c core.pager=less -c interactive.diffFilter=cat )
+    fi
+    if ! command -v code >/dev/null; then
+      if command -v nvim >/dev/null; then
+        cfg+=( -c merge.tool=nvimdiff3 -c difftool.tool=nvimdiff )
+      else
+        cfg+=( -c merge.tool=vimdiff -c difftool.tool=vimdiff )
+      fi
+    fi
+    command git "${cfg[@]}" "$@"
+  }
+fi
+
+alias z='cd'
+alias grep='grep --color=auto'
+alias rg='rg --hidden --smart-case --colors match:fg:yellow --glob "!.git" --glob "!node_modules"'
+
+if command -v bat >/dev/null; then
+  alias cat='bat'
+elif command -v batcat >/dev/null; then
+  alias bat='batcat'
+  alias cat='batcat'
+fi
+
+if command -v eza >/dev/null; then
+  alias ls='eza --color=auto --group-directories-first'
+  alias ll='eza -al --color=auto --group-directories-first'
+  alias la='eza -a --color=auto --group-directories-first'
+fi
+
+if [ -z "$(command -v fd 2>/dev/null)" ] && [ -n "$(command -v fdfind 2>/dev/null)" ]; then
+  alias fd='fdfind'
+fi
+
+y() {
+  local tmp cwd
+  tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
+  yazi "$@" --cwd-file="$tmp"
+  IFS= read -r -d '' cwd < "$tmp"
+  [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd" || return
+  rm -f -- "$tmp"
+}
+
+if [ -r "$HOME/.shellrc.local" ]; then
+  . "$HOME/.shellrc.local"
+fi
