@@ -25,6 +25,41 @@ ensure_symlink() {
   fi
 }
 
+# Try to source shared helpers (truthy/ask) if available
+if [ -n "${CHEZMOI_SOURCE_DIR:-}" ] && [ -f "$CHEZMOI_SOURCE_DIR/lib/run_ensure.sh" ]; then
+  # shellcheck disable=SC1090
+  . "$CHEZMOI_SOURCE_DIR/lib/run_ensure.sh"
+fi
+
+# Fallback implementations if not sourced
+_truthy() {
+  case "${1:-}" in
+    1|true|TRUE|True|yes|YES|Yes|on|ON|On) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_tty() { [ -t 0 ] && [ -t 1 ]; }
+
+ask() {
+  local prompt="$1"
+  if ! is_tty; then
+    echo "[skip] $prompt (non-interactive; default = no)"
+    return 1
+  fi
+  read -r -p "$prompt [y/N] " reply
+  [[ "$reply" =~ ^([yY]|[yY][eE][sS])$ ]]
+}
+
+confirm_yazi_install() {
+  local method_msg="$1"
+  if _truthy "${AUTO_INSTALL:-}"; then
+    echo "[auto] Install yazi via $method_msg (AUTO_INSTALL=1)"
+    return 0
+  fi
+  ask "Install yazi now via $method_msg?"
+}
+
 install_with_cargo() {
   # Skip if already installed
   if HAVE yazi || [ -x "$HOME/.cargo/bin/yazi" ]; then
@@ -52,7 +87,13 @@ case "$OS" in
     if ! HAVE brew; then
       echo "Homebrew not found; skipping macOS install for yazi." >&2
     else
-      brew list --formula --versions yazi >/dev/null 2>&1 || brew install yazi
+      if ! HAVE yazi; then
+        if confirm_yazi_install "Homebrew (brew install yazi)"; then
+          brew list --formula --versions yazi >/dev/null 2>&1 || brew install yazi
+        else
+          echo "[skip] yazi install (AUTO_INSTALL not set)"
+        fi
+      fi
       brew list --formula --versions ripgrep >/dev/null 2>&1 || brew install ripgrep
       brew list --formula --versions fd >/dev/null 2>&1 || brew install fd
       brew list --formula --versions bat >/dev/null 2>&1 || brew install bat
@@ -63,12 +104,20 @@ case "$OS" in
       $SUDO_CMD apt-get update -y
       # Text + binary preview essentials
       $SUDO_CMD apt-get install -y ripgrep fd-find bat curl ca-certificates poppler-utils ffmpegthumbnailer imagemagick p7zip-full unzip jq file
-      # Try native yazi package first; if unavailable, fall back to cargo
-      if ! dpkg -s yazi >/dev/null 2>&1; then
-        if $SUDO_CMD apt-get install -y yazi 2>/dev/null; then
-          : # installed via apt
+      # Decide install plan for yazi and prompt unless AUTO_INSTALL.
+      if ! HAVE yazi; then
+        if apt-cache show yazi >/dev/null 2>&1; then
+          if confirm_yazi_install "APT (apt-get install yazi)"; then
+            $SUDO_CMD apt-get install -y yazi || true
+          else
+            echo "[skip] yazi install (AUTO_INSTALL not set)"
+          fi
         else
-          install_with_cargo
+          if confirm_yazi_install "cargo (compiles from source; slower)"; then
+            install_with_cargo
+          else
+            echo "[skip] yazi install (AUTO_INSTALL not set)"
+          fi
         fi
       fi
       # Debian provides bat as batcat and fd as fdfind. Add friendly aliases.
@@ -81,7 +130,11 @@ case "$OS" in
     else
       # Generic Linux fallback: try cargo
       if ! HAVE yazi; then
-        install_with_cargo
+        if confirm_yazi_install "cargo (compiles from source; slower)"; then
+          install_with_cargo
+        else
+          echo "[skip] yazi install (AUTO_INSTALL not set)"
+        fi
       fi
       # Ensure helpful aliases if present
       [ -x /usr/bin/batcat ] && ensure_symlink /usr/bin/batcat /usr/local/bin/bat || true
