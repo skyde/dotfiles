@@ -18,50 +18,21 @@ AUTO_INSTALL=1 chezmoi apply
 
 ### Linux
 
-- System-wide:
-
-```sh
-sudo apt update
-sudo apt install -y curl ca-certificates git zsh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
-chezmoi init skyde
-chezmoi apply  # or: AUTO_INSTALL=1 chezmoi apply
 ```
-
-- Per-user:
-
-```sh
-sudo apt update
-sudo apt install -y curl ca-certificates git zsh
+apt update
+apt install -y curl ca-certificates git zsh
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
-exec $SHELL -l
+export PATH="$HOME/.local/bin:$PATH"
 chezmoi init skyde
-chezmoi apply  # or: AUTO_INSTALL=1 chezmoi apply
-```
 
-### Remote Debian (no curl|sh)
+# Review changes
+chezmoi diff
 
-- Rootless per-user install (download and extract binary):
+# Prompt before install (Corporate Use)
+chezmoi apply
 
-```sh
-arch=$(uname -m)
-case "$arch" in x86_64|amd64) asset=linux_amd64 ;; aarch64|arm64) asset=linux_arm64 ;; *) echo "unsupported arch: $arch"; exit 1 ;; esac
-url=$(curl -fsSL https://api.github.com/repos/twpayne/chezmoi/releases/latest \
-  | grep -oE "browser_download_url.*chezmoi_.*_${asset}\\.tar\\.gz" \
-  | head -n1 \
-  | cut -d '"' -f4)
-curl -fsSL -o /tmp/chezmoi.tar.gz "$url"
-mkdir -p "$HOME/.local/bin"
-tar -xzf /tmp/chezmoi.tar.gz -C "$HOME/.local/bin" chezmoi
-exec $SHELL -l
-chezmoi init skyde
-```
-
-To install system-wide without curl|sh, replace the extract step with:
-
-```sh
-sudo mkdir -p /usr/local/bin
-sudo tar -xzf /tmp/chezmoi.tar.gz -C /usr/local/bin chezmoi
+# Install without prompting (Personal Use)
+AUTO_INSTALL=1 chezmoi apply
 ```
 
 ### Windows
