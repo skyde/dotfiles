@@ -42,8 +42,10 @@ bindkey -e                # Use emacs keybindings
 bindkey '^[[1;5C' forward-word     # Ctrl+Right
 bindkey '^[[1;5D' backward-word    # Ctrl+Left
 
-# Bootstrap Starship
-eval "$(starship init zsh)"
+# Bootstrap Starship (skip in VS Code integrated terminal to avoid OSC/DSR noise)
+if [[ "${TERM_PROGRAM:-}" != "vscode" ]]; then
+  eval "$(starship init zsh)"
+fi
 
 # Zsh Plugins: autosuggestions & syntax-highlighting
 # Load from common installation paths without relying on brew

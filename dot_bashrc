@@ -30,8 +30,8 @@ set -o emacs
 bind '"\e[1;5C": forward-word'
 bind '"\e[1;5D": backward-word'
 
-# Bootstrap Starship
-if command -v starship >/dev/null 2>&1; then
+# Bootstrap Starship (skip in VS Code integrated terminal to avoid OSC/DSR noise)
+if command -v starship >/dev/null 2>&1 && [[ "${TERM_PROGRAM:-}" != "vscode" ]]; then
   eval "$(starship init bash)"
 fi
 
