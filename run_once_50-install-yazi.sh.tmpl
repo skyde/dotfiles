@@ -84,7 +84,7 @@ install_with_cargo() {
 
 install_from_github() {
   # Install prebuilt Yazi binaries from GitHub releases (avoids compilation)
-  # Requires: curl, tar; prefers jq for asset selection when available
+  # Requires: curl, unzip/tar
   local repo="sxyazi/yazi"
   local os_arch_triple=""
   local uname_s="$(uname -s)"
@@ -111,8 +111,7 @@ install_from_github() {
 
   local tag="${YAZI_VERSION:-}"
   if [ -z "$tag" ]; then
-    # Fetch latest tag via GitHub API
-    # Fallback: scrape tag_name with sed (no jq required)
+    # Fetch latest tag via GitHub API (no jq)
     tag="$(curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null | sed -n 's/.*"tag_name"\s*:\s*"\([^"]\+\)".*/\1/p' | head -n1)"
   fi
   if [ -z "$tag" ] || [ "$tag" = "null" ]; then
@@ -120,39 +119,18 @@ install_from_github() {
     return 1
   fi
 
-  # Locate asset matching our triple
-  # Discover asset URL without jq: prefer .zip assets matching triple
-  local release_json
-  release_json="$(curl -fsSL "https://api.github.com/repos/${repo}/releases/tags/${tag}" 2>/dev/null || true)"
+  # Resolve asset URL deterministically (prefer .zip), follow redirects during HEAD
   local asset_url=""
-  if [ -n "$release_json" ]; then
-    asset_url="$(printf "%s" "$release_json" | grep -o "https://[^"]*yazi-${os_arch_triple}\.zip" | head -n1 || true)"
-    if [ -z "$asset_url" ]; then
-      # Try musl variant as a fallback
-      case "$os_arch_triple" in
-        *-unknown-linux-gnu)
-          asset_url="$(printf "%s" "$release_json" | grep -o "https://[^"]*yazi-${os_arch_triple/unknown-linux-gnu/unknown-linux-musl}\.zip" | head -n1 || true)"
-          ;;
-      esac
-    fi
-    if [ -z "$asset_url" ]; then
-      # Try tar.gz as a secondary fallback
-      asset_url="$(printf "%s" "$release_json" | grep -o "https://[^"]*yazi-${os_arch_triple}\.tar\.gz" | head -n1 || true)"
-    fi
-  fi
-
-  if [ -z "$asset_url" ] || [ "$asset_url" = "null" ]; then
-    # Last resort: guess common filenames
-    asset_url="https://github.com/${repo}/releases/download/${tag}/yazi-${os_arch_triple}.zip"
-    if ! curl -fsI "$asset_url" >/dev/null 2>&1; then
-      asset_url="https://github.com/${repo}/releases/download/${tag}/yazi-${tag}-${os_arch_triple}.zip"
-    fi
-    if ! curl -fsI "$asset_url" >/dev/null 2>&1; then
-      asset_url="https://github.com/${repo}/releases/download/${tag}/yazi-${os_arch_triple}.tar.gz"
-    fi
-  fi
-
-  if ! curl -fsI "$asset_url" >/dev/null 2>&1; then
+  local candidates=(
+    "https://github.com/${repo}/releases/download/${tag}/yazi-${os_arch_triple}.zip"
+    "https://github.com/${repo}/releases/download/${tag}/yazi-${os_arch_triple}.tar.gz"
+    "https://github.com/${repo}/releases/download/${tag}/yazi-${tag}-${os_arch_triple}.zip"
+    "https://github.com/${repo}/releases/download/${tag}/yazi-${tag}-${os_arch_triple}.tar.gz"
+  )
+  for u in "${candidates[@]}"; do
+    if curl -fsIL "$u" >/dev/null 2>&1; then asset_url="$u"; break; fi
+  done
+  if [ -z "$asset_url" ]; then
     echo "Could not find a matching Yazi release asset for $os_arch_triple at tag $tag" >&2
     return 1
   fi
