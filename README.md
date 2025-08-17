@@ -6,7 +6,7 @@
 # Install Homebrew from https://brew.sh if it's not already present
 brew install chezmoi
 chezmoi init skyde
-# Review changes if desired
+# Review changes
 chezmoi diff
 
 # Apply and be prompted before installs/changes
@@ -19,7 +19,8 @@ AUTO_INSTALL=1 chezmoi apply
 ### Linux
 
 ```
-sudo apt-get update -qq && sudo apt-get install -y git zsh
+apt update
+apt install curl git zsh
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
 chezmoi init skyde
 
