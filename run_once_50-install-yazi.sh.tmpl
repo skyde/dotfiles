@@ -47,6 +47,32 @@ confirm_yazi_install() {
   ask "Install yazi now via $method_msg?"
 }
 
+# Fallback ensure for Debian packages if ensure_apt is unavailable
+ensure_pkg_cmd() {
+  local pkg="$1"; shift
+  local check_cmd="${1:-}"
+  # If a check command is provided and present, treat as installed
+  if [ -n "$check_cmd" ] && HAVE "$check_cmd"; then
+    return 0
+  fi
+  # Otherwise, attempt dpkg check if pkg name is given
+  if [ -n "$pkg" ] && dpkg -s "$pkg" >/dev/null 2>&1; then
+    return 0
+  fi
+  if _truthy "${AUTO_INSTALL:-}"; then
+    echo "[auto] Install dependency $pkg (AUTO_INSTALL=1)"
+    $SUDO_CMD apt-get update -y
+    $SUDO_CMD apt-get install -y "$pkg"
+    return 0
+  fi
+  if ask "Install dependency $pkg?"; then
+    $SUDO_CMD apt-get update -y
+    $SUDO_CMD apt-get install -y "$pkg"
+  else
+    echo "[skip] $pkg not installed"
+  fi
+}
+
 install_from_github() {
   # Install prebuilt Yazi binaries from GitHub releases (avoids compilation)
   # Requires: curl, unzip/tar
@@ -77,7 +103,7 @@ install_from_github() {
     return 1
   fi
 
-  # Candidate URLs (prefer .zip); try to download each until one succeeds
+  # Candidate URLs (GNU only; prefer .zip); try to download each until one succeeds
   local candidates=(
     "https://github.com/${repo}/releases/download/${tag}/yazi-${os_arch_triple}.zip"
     "https://github.com/${repo}/releases/download/${tag}/yazi-${os_arch_triple}.tar.gz"
@@ -162,11 +188,18 @@ case "$OS" in
     if [ -r /etc/os-release ]; then . /etc/os-release; fi
     if [ "${ID:-}" = "debian" ]; then
       if HAVE apt-get; then
-        $SUDO_CMD apt-get update -y
-        # Minimal deps for binary install/extraction
-        $SUDO_CMD apt-get install -y curl ca-certificates unzip
+        # Ensure minimal dependencies with AUTO_INSTALL/prompt semantics
+        if declare -F ensure_apt >/dev/null 2>&1; then
+          ensure_apt curl
+          ensure_apt unzip
+          ensure_apt ca-certificates
+        else
+          ensure_pkg_cmd curl curl
+          ensure_pkg_cmd unzip unzip
+          ensure_pkg_cmd ca-certificates update-ca-certificates
+        fi
         if ! HAVE yazi; then
-          if confirm_yazi_install "GitHub prebuilt binary (Debian)"; then
+          if confirm_yazi_install "GitHub prebuilt binary (Debian, GNU)"; then
             install_from_github || echo "[warn] GitHub install failed; Yazi not installed" >&2
           else
             echo "[skip] yazi install (AUTO_INSTALL not set)"
