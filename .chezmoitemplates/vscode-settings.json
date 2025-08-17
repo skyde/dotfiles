@@ -1,4 +1,3 @@
-
 {
   // Cursor behavior and line numbers
   "editor.cursorSurroundingLines": 8,
@@ -6,13 +5,19 @@
   "editor.cursorBlinking": "solid",
   "editor.cursorSmoothCaretAnimation": "off",
   "editor.cursorStyle": "line",
-  "editor.fontSize": 14,
-  "editor.fontFamily": "'JetBrainsMono Nerd Font', monospace",
+  "editor.fontSize": 12,
+  "editor.fontFamily": "JetBrains Mono",
+  "editor.fontLigatures": true,
+  "editor.fontWeight": "250",
+  "editor.fontVariations": "'wght' 250",
+  "editor.letterSpacing": 0.35,
+  "terminal.integrated.letterSpacing": 1.0,
+  "terminal.integrated.fontWeight": "normal",
   "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font",
   "editor.lineNumbers": "relative",
   "editor.renderLineHighlight": "all",
-  "workbench.colorTheme": "Kanagawa",
-  "workbench.preferredDarkColorTheme": "Kanagawa",
+  "workbench.colorTheme": "Tokyo Night Storm",
+  "workbench.preferredDarkColorTheme": "Tokyo Night Storm",
   "workbench.colorCustomizations": {
     "editorCursor.foreground": "#D0CCB2",
     "editorCursor.background": "#000000",
