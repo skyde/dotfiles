@@ -31,6 +31,20 @@ chezmoi apply
 
 # Install and upgrade tools without prompting (Personal Use)
 AUTO_INSTALL=1 chezmoi apply
+
+# Manual Yazi Install
+# This would be simpler using brew, but to avoid using another package manager
+
+# Install Dependencies
+sudo apt install ffmpeg 7zip jq poppler-utils fd-find ripgrep fzf zoxide imagemagick unzip
+
+# Download & install (update the version number to latest)
+curl -L -o yazi.zip https://github.com/sxyazi/yazi/releases/download/v25.5.31/yazi-aarch64-unknown-linux-gnu.zip \
+  && unzip -q yazi.zip -d yazi-temp \
+  && mkdir -p ~/.local/bin \
+  && mv yazi-temp/*/yazi ~/.local/bin/ \
+  && chmod +x ~/.local/bin/yazi \
+  && rm -rf yazi.zip yazi-temp
 ```
 
 ### Windows
