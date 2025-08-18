@@ -65,7 +65,8 @@
     "editor.inlineValuesBackground": "#AA333320", // background color (supports transparency)
 
     // Terminal colors (Tokyo Night Storm)
-    "terminal.background": "#24283b",
+    "terminal.background": "#000000",
+    // "terminal.background": "#24283b",
     "terminal.foreground": "#c0caf5",
     "terminalCursor.background": "#c0caf5",
     "terminalCursor.foreground": "#24283b",
@@ -442,7 +443,7 @@
           "args": "Yazi"
         },
         // Click escape so we don't come back to a strange mode
-        "extension.vim_escape",
+        "extension.vim_escape"
         // "workbench.action.terminal.moveToEditor",
         // // Need to call this twice for some reason to have it hide
         // "workbench.action.terminal.toggleTerminal",
