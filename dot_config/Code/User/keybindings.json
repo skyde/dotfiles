@@ -421,7 +421,7 @@
     // When opening files from terminal it leaves the terminal in a half open state at the bottom of the screen - close this if required
     "key": "enter",
     "command": "runCommands",
-    "when": "terminalFocus && closePanelOnEnter",
+    "when": "(terminalFocus || problemFocus) && closePanelOnEnter",
     "args": {
       "commands": [
         {
@@ -431,7 +431,8 @@
           "args": { "text": "\u000D" }
         },
         // Close the terminal
-        "workbench.action.terminal.toggleTerminal"
+        "workbench.action.togglePanel",
+        "extension.vim_escape"
       ]
     }
   }
