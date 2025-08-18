@@ -20,20 +20,20 @@
 # fi      -       # FILE
 
 # file types (with matching order)
-ln             # LINK
-or             # ORPHAN
-tw      t       # STICKY_OTHER_WRITABLE
-ow             # OTHER_WRITABLE
-st      t       # STICKY
-di             # DIR
-pi      p       # FIFO
-so      s       # SOCK
-bd      b       # BLK
-cd      c       # CHR
-su      u       # SETUID
-sg      g       # SETGID
-ex             # EXEC
-fi             # FILE
+ln		01;36	# LINK
+or		01;36	# ORPHAN
+tw	t	30;42	# STICKY_OTHER_WRITABLE
+ow		01;34	# OTHER_WRITABLE
+st	t	30;42	# STICKY
+di		01;34	# DIR
+pi	p	40;33	# FIFO
+so	s	01;35	# SOCK
+bd	b	40;33;01	# BLK
+cd	c	40;33;01	# CHR
+su	u	37;41	# SETUID
+sg	g	30;43	# SETGID
+ex		01;32	# EXEC
+fi		00	# FILE
 
 # disable some default filetype icons, let them choose icon by filename
 # ln             # LINK
@@ -52,187 +52,187 @@ fi             # FILE
 # fi             # FILE
 
 # file extensions (vim-devicons)
-*.styl          
-*.sass          
-*.scss          
-*.htm           
-*.html          
-*.slim          
-*.haml          
-*.ejs           
-*.css           
-*.less          
-*.md            
-*.mdx           
-*.markdown      
-*.rmd           
-*.json          
-*.webmanifest   
-*.js            
-*.mjs           
-*.jsx           
-*.rb            
-*.gemspec       
-*.rake          
-*.php           
-*.py            
-*.pyc           
-*.pyo           
-*.pyd           
-*.coffee        
-*.mustache      
-*.hbs           
-*.conf          
-*.ini           
-*.yml           
-*.yaml          
-*.toml          
-*.bat           
-*.mk            
-*.jpg           
-*.jpeg          
-*.bmp           
-*.png           
-*.webp          
-*.gif           
-*.ico           
-*.twig          
-*.cpp           
-*.c++           
-*.cxx           
-*.cc            
-*.cp            
-*.c             
-*.cs            󰌛
-*.h             
-*.hh            
-*.hpp           
-*.hxx           
-*.hs            
-*.lhs           
-*.nix           
-*.lua           
-*.java          
-*.sh            
-*.fish          
-*.bash          
-*.zsh           
-*.ksh           
-*.csh           
-*.awk           
-*.ps1           
-*.ml            λ
-*.mli           λ
-*.diff          
-*.db            
-*.sql           
-*.dump          
-*.clj           
-*.cljc          
-*.cljs          
-*.edn           
-*.scala         
-*.go            
-*.dart          
-*.xul           
-*.sln           
-*.suo           
-*.pl            
-*.pm            
-*.t             
-*.rss           
+*.styl		01;31
+*.sass		01;32
+*.scss		01;32
+*.htm		01;33
+*.html		01;33
+*.slim		01;33
+*.haml		01;33
+*.ejs		01;33
+*.css		01;34
+*.less		01;34
+*.md		01;35
+*.mdx		01;35
+*.markdown		01;35
+*.rmd		01;35
+*.json		01;36
+*.webmanifest		01;36
+*.js		01;90
+*.mjs		01;90
+*.jsx		01;91
+*.rb		01;92
+*.gemspec		01;92
+*.rake		01;92
+*.php		01;93
+*.py		01;94
+*.pyc		01;94
+*.pyo		01;94
+*.pyd		01;94
+*.coffee		01;95
+*.mustache		01;96
+*.hbs		01;96
+*.conf		01;31
+*.ini		01;31
+*.yml		01;31
+*.yaml		01;31
+*.toml		01;31
+*.bat		01;31
+*.mk		01;31
+*.jpg		01;32
+*.jpeg		01;32
+*.bmp		01;32
+*.png		01;32
+*.webp		01;32
+*.gif		01;32
+*.ico		01;32
+*.twig		01;33
+*.cpp		01;34
+*.c++		01;34
+*.cxx		01;34
+*.cc		01;34
+*.cp		01;34
+*.c		01;35
+*.cs	󰌛	01;36
+*.h		01;90
+*.hh		01;90
+*.hpp		01;90
+*.hxx		01;90
+*.hs		01;91
+*.lhs		01;91
+*.nix		01;92
+*.lua		01;93
+*.java		01;94
+*.sh		01;95
+*.fish		01;95
+*.bash		01;95
+*.zsh		01;95
+*.ksh		01;95
+*.csh		01;95
+*.awk		01;95
+*.ps1		01;95
+*.ml	λ	01;96
+*.mli	λ	01;96
+*.diff		01;31
+*.db		01;32
+*.sql		01;32
+*.dump		01;32
+*.clj		01;33
+*.cljc		01;33
+*.cljs		01;34
+*.edn		01;34
+*.scala		01;35
+*.go		01;36
+*.dart		01;90
+*.xul		01;91
+*.sln		01;92
+*.suo		01;92
+*.pl		01;93
+*.pm		01;93
+*.t		01;93
+*.rss		01;94
 '*.f#'          
-*.fsscript      
-*.fsx           
-*.fs            
-*.fsi           
-*.rs            
-*.rlib          
-*.d             
-*.erl           
-*.hrl           
-*.ex            
-*.exs           
-*.eex           
-*.leex          
-*.heex          
-*.vim           
-*.ai            
-*.psd           
-*.psb           
-*.ts            
-*.tsx           
-*.jl            
-*.pp            
-*.vue           
-*.elm           
-*.swift         
-*.xcplayground  
-*.tex           󰙩
-*.r             󰟔
-*.rproj         󰗆
-*.sol           󰡪
-*.pem           
+*.fsscript		01;95
+*.fsx		01;95
+*.fs		01;95
+*.fsi		01;95
+*.rs		01;96
+*.rlib		01;96
+*.d		01;31
+*.erl		01;32
+*.hrl		01;32
+*.ex		01;33
+*.exs		01;33
+*.eex		01;33
+*.leex		01;33
+*.heex		01;33
+*.vim		01;34
+*.ai		01;35
+*.psd		01;36
+*.psb		01;36
+*.ts		01;90
+*.tsx		01;91
+*.jl		01;91
+*.pp		01;92
+*.vue		01;93
+*.elm		01;94
+*.swift		01;95
+*.xcplayground		01;95
+*.tex	󰙩	01;96
+*.r	󰟔	01;31
+*.rproj	󰗆	01;32
+*.sol	󰡪	01;33
+*.pem		01;34
 
 # file names (vim-devicons) (case-insensitive not supported in lf)
-*gruntfile.coffee       
-*gruntfile.js           
-*gruntfile.ls           
-*gulpfile.coffee        
-*gulpfile.js            
-*gulpfile.ls            
-*mix.lock               
-*dropbox                
-*.ds_store              
-*.gitconfig             
-*.gitignore             
-*.gitattributes         
-*.gitlab-ci.yml         
-*.bashrc                
-*.zshrc                 
-*.zshenv                
-*.zprofile              
-*.vimrc                 
-*.gvimrc                
-*_vimrc                 
-*_gvimrc                
-*.bashprofile           
-*favicon.ico            
-*license                
-*node_modules           
-*react.jsx              
-*procfile               
-*dockerfile             
-*docker-compose.yml     
-*docker-compose.yaml    
-*compose.yml            
-*compose.yaml           
-*rakefile               
-*config.ru              
-*gemfile                
-*makefile               
-*cmakelists.txt         
-*robots.txt             󰚩
+*gruntfile.coffee		01;35
+*gruntfile.js		01;35
+*gruntfile.ls		01;35
+*gulpfile.coffee		01;36
+*gulpfile.js		01;36
+*gulpfile.ls		01;36
+*mix.lock		01;33
+*dropbox		01;90
+*.ds_store		01;31
+*.gitconfig		01;31
+*.gitignore		01;31
+*.gitattributes		01;31
+*.gitlab-ci.yml		01;91
+*.bashrc		01;31
+*.zshrc		01;31
+*.zshenv		01;31
+*.zprofile		01;31
+*.vimrc		01;34
+*.gvimrc		01;34
+*_vimrc		01;34
+*_gvimrc		01;34
+*.bashprofile		01;31
+*favicon.ico		01;92
+*license		01;93
+*node_modules		01;94
+*react.jsx		01;91
+*procfile		01;95
+*dockerfile		01;96
+*docker-compose.yml		01;96
+*docker-compose.yaml		01;96
+*compose.yml		01;96
+*compose.yaml		01;96
+*rakefile		01;92
+*config.ru		01;92
+*gemfile		01;92
+*makefile		01;31
+*cmakelists.txt		01;31
+*robots.txt	󰚩	01;31
 
 # file names (case-sensitive adaptations)
-*Gruntfile.coffee       
-*Gruntfile.js           
-*Gruntfile.ls           
-*Gulpfile.coffee        
-*Gulpfile.js            
-*Gulpfile.ls            
-*Dropbox                
-*.DS_Store              
-*LICENSE                
-*React.jsx              
-*Procfile               
-*Dockerfile             
-*Docker-compose.yml     
-*Docker-compose.yaml    
-*Rakefile               
-*Gemfile                
-*Makefile               
-*CMakeLists.txt         
+*Gruntfile.coffee		01;35
+*Gruntfile.js		01;35
+*Gruntfile.ls		01;35
+*Gulpfile.coffee		01;36
+*Gulpfile.js		01;36
+*Gulpfile.ls		01;36
+*Dropbox		01;90
+*.DS_Store		01;31
+*LICENSE		01;93
+*React.jsx		01;91
+*Procfile		01;95
+*Dockerfile		01;96
+*Docker-compose.yml		01;96
+*Docker-compose.yaml		01;96
+*Rakefile		01;92
+*Gemfile		01;92
+*Makefile		01;31
+*CMakeLists.txt		01;31
 
 # file patterns (vim-devicons) (patterns not supported in lf)
 # .*jquery.*\.js$         
@@ -246,132 +246,132 @@ fi             # FILE
 # Vagrantfile$            
 
 # file patterns (file name adaptations)
-*jquery.min.js          
-*angular.min.js         
-*backbone.min.js        
-*require.min.js         
-*materialize.min.js     
-*materialize.min.css    
-*mootools.min.js        
-*vimrc                  
-Vagrantfile             
+*jquery.min.js		01;32
+*angular.min.js		01;33
+*backbone.min.js		01;34
+*require.min.js		01;35
+*materialize.min.js		01;36
+*materialize.min.css		01;36
+*mootools.min.js		01;90
+*vimrc		01;34
+Vagrantfile		01;91
 
 # archives or compressed (extensions from dircolors defaults)
-*.tar   
-*.tgz   
-*.arc   
-*.arj   
-*.taz   
-*.lha   
-*.lz4   
-*.lzh   
-*.lzma  
-*.tlz   
-*.txz   
-*.tzo   
-*.t7z   
-*.zip   
-*.z     
-*.dz    
-*.gz    
-*.lrz   
-*.lz    
-*.lzo   
-*.xz    
-*.zst   
-*.tzst  
-*.bz2   
-*.bz    
-*.tbz   
-*.tbz2  
-*.tz    
-*.deb   
-*.rpm   
-*.jar   
-*.war   
-*.ear   
-*.sar   
-*.rar   
-*.alz   
-*.ace   
-*.zoo   
-*.cpio  
-*.7z    
-*.rz    
-*.cab   
-*.wim   
-*.swm   
-*.dwm   
-*.esd   
+*.tar		01;31
+*.tgz		01;31
+*.arc		01;31
+*.arj		01;31
+*.taz		01;31
+*.lha		01;31
+*.lz4		01;31
+*.lzh		01;31
+*.lzma		01;31
+*.tlz		01;31
+*.txz		01;31
+*.tzo		01;31
+*.t7z		01;31
+*.zip		01;31
+*.z		01;31
+*.dz		01;31
+*.gz		01;31
+*.lrz		01;31
+*.lz		01;31
+*.lzo		01;31
+*.xz		01;31
+*.zst		01;31
+*.tzst		01;31
+*.bz2		01;31
+*.bz		01;31
+*.tbz		01;31
+*.tbz2		01;31
+*.tz		01;31
+*.deb		01;31
+*.rpm		01;31
+*.jar		01;31
+*.war		01;31
+*.ear		01;31
+*.sar		01;31
+*.rar		01;31
+*.alz		01;31
+*.ace		01;31
+*.zoo		01;31
+*.cpio		01;31
+*.7z		01;31
+*.rz		01;31
+*.cab		01;31
+*.wim		01;31
+*.swm		01;31
+*.dwm		01;31
+*.esd		01;31
 
 # image formats (extensions from dircolors defaults)
-*.jpg   
-*.jpeg  
-*.mjpg  
-*.mjpeg 
-*.gif   
-*.bmp   
-*.pbm   
-*.pgm   
-*.ppm   
-*.tga   
-*.xbm   
-*.xpm   
-*.tif   
-*.tiff  
-*.png   
-*.svg   
-*.svgz  
-*.mng   
-*.pcx   
-*.mov   
-*.mpg   
-*.mpeg  
-*.m2v   
-*.mkv   
-*.webm  
-*.ogm   
-*.mp4   
-*.m4v   
-*.mp4v  
-*.vob   
-*.qt    
-*.nuv   
-*.wmv   
-*.asf   
-*.rm    
-*.rmvb  
-*.flc   
-*.avi   
-*.fli   
-*.flv   
-*.gl    
-*.dl    
-*.xcf   
-*.xwd   
-*.yuv   
-*.cgm   
-*.emf   
-*.ogv   
-*.ogx   
+*.jpg		01;35
+*.jpeg		01;35
+*.mjpg		01;35
+*.mjpeg		01;35
+*.gif		01;35
+*.bmp		01;35
+*.pbm		01;35
+*.pgm		01;35
+*.ppm		01;35
+*.tga		01;35
+*.xbm		01;35
+*.xpm		01;35
+*.tif		01;35
+*.tiff		01;35
+*.png		01;35
+*.svg		01;35
+*.svgz		01;35
+*.mng		01;35
+*.pcx		01;35
+*.mov		01;35
+*.mpg		01;35
+*.mpeg		01;35
+*.m2v		01;35
+*.mkv		01;35
+*.webm		01;35
+*.ogm		01;35
+*.mp4		01;35
+*.m4v		01;35
+*.mp4v		01;35
+*.vob		01;35
+*.qt		01;35
+*.nuv		01;35
+*.wmv		01;35
+*.asf		01;35
+*.rm		01;35
+*.rmvb		01;35
+*.flc		01;35
+*.avi		01;35
+*.fli		01;35
+*.flv		01;35
+*.gl		01;35
+*.dl		01;35
+*.xcf		01;35
+*.xwd		01;35
+*.yuv		01;35
+*.cgm		01;35
+*.emf		01;35
+*.ogv		01;35
+*.ogx		01;35
 
 # audio formats (extensions from dircolors defaults)
-*.aac   
-*.au    
-*.flac  
-*.m4a   
-*.mid   
-*.midi  
-*.mka   
-*.mp3   
-*.mpc   
-*.ogg   
-*.ra    
-*.wav   
-*.oga   
-*.opus  
-*.spx   
-*.xspf  
+*.aac		01;35
+*.au		01;35
+*.flac		01;35
+*.m4a		01;35
+*.mid		01;35
+*.midi		01;35
+*.mka		01;35
+*.mp3		01;35
+*.mpc		01;35
+*.ogg		01;35
+*.ra		01;35
+*.wav		01;35
+*.oga		01;35
+*.opus		01;35
+*.spx		01;35
+*.xspf		01;35
 
 # other formats
-*.pdf   
+*.pdf		01;31
