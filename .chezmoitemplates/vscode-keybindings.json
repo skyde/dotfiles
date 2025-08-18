@@ -28,7 +28,13 @@
   { "key": "shift+cmd+left",  "command": "-cursorHomeSelect", "when": "editorTextFocus" },
   { "key": "shift+cmd+right", "command": "-cursorEndSelect",  "when": "editorTextFocus" },
   { "key": "shift+cmd+left",  "command": "cursorWordStartLeftSelect", "when": "editorTextFocus" },
-  { "key": "shift+cmd+right", "command": "cursorWordEndRightSelect",  "when": "editorTextFocus" }
+  { "key": "shift+cmd+right", "command": "cursorWordEndRightSelect",  "when": "editorTextFocus" },
+
+  // ----- Open files with Enter in the Explorer -----
+  { "key": "enter",      "command": "-renameFile",         "when": "explorerViewletVisible && filesExplorerFocus && !inputFocus" },
+  { "key": "enter",      "command": "list.select",         "when": "explorerViewletVisible && filesExplorerFocus && !inputFocus" },
+  { "key": "cmd+enter",  "command": "renameFile",          "when": "explorerViewletVisible && filesExplorerFocus && !inputFocus" },
+  { "key": "ctrl+enter", "command": "explorer.openToSide", "when": "explorerViewletVisible && filesExplorerFocus && !inputFocus" },
 {{- end }}
 
   // Page Down - workround to make cursor movement match Nvim
