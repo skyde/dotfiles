@@ -31,10 +31,6 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
     Write-Host "⚠️  zoxide not found. Install with: winget install ajeetdsouza.zoxide"
 }
 
-# Set Yazi file detection tool
-$env:YAZI_FILE_ONE = "C:\Program Files\Git\usr\bin\file.exe"
-# Add Git's usr/bin to PATH for yazi file command
-$env:PATH = $env:PATH + ";C:\Program Files\Git\usr\bin"
 
 # Favor hidden files but ignore common junk, colorized output
 function rg {

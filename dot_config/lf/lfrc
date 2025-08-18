@@ -1,0 +1,28 @@
+set hidden true
+set preview true
+set icons true
+set drawbox true
+set previewer ~/.config/lf/preview.sh
+set cleaner ~/.config/lf/cleaner.sh
+
+map <esc> quit
+map x cut
+map y copy
+map p paste
+map d delete
+map D delete!
+map o :touch
+map O :mkdir
+map i rename
+map c rename
+map v toggle
+map V toggle
+map a unselect
+map f search
+map t search
+map gm cd ~/.local/share/chezmoi
+map go cd ~/Documents
+map gp cd ~/Projects
+map ge cd ~/Desktop
+map gv cd ~/.config/Code/User
+map gn cd ~/.config/nvim

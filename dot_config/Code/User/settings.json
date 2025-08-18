@@ -390,9 +390,8 @@
         // {
         //   "command": "workbench.action.terminal.sendSequence",
         //   "args": {
-        //     // Ensure you use the close panel shorcut to close yazi, not escape
-        //     "text": "bash -lc 'cd \"${fileDirname:-${workspaceFolder:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi'\u000D"
-        //     // "text": "yazi\u000D"
+        //     // Example lf integration:
+        //     // "text": "bash -lc 'cd \"${fileDirname:-${workspaceFolder:-$PWD}}\" && tmp=$(mktemp); lf -selection-path \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi'\u000D"
         //   }
         // },
         // "workbench.action.terminal.moveToEditor",
@@ -407,7 +406,7 @@
         // {
         //   // Terminate the fzf task so we open in the right directory
         //   "command": "workbench.action.tasks.terminate",
-        //   "args": "Yazi"
+        //   "args": "LF"
         // }
         // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
@@ -416,7 +415,7 @@
         {
           // Run the fzf task
           "command": "workbench.action.tasks.runTask",
-          "args": "Yazi"
+          "args": "LF"
         },
         // Click escape so we don't come back to a strange mode
         "extension.vim_escape",

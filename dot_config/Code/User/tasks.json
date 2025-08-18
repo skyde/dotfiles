@@ -22,12 +22,12 @@
       "problemMatcher": []
     },
     {
-      "label": "Yazi",
+      "label": "LF",
       "type": "shell",
       "command": "bash",
       "args": [
         "-lc",
-        "cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi"
+        "cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\" && tmp=$(mktemp); lf -selection-path \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi"
       ],
       "options": {
         "env": {

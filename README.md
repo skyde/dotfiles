@@ -76,7 +76,7 @@ These tools are offered during setup:
 - `fd` as a faster `find`
 - `bat` as a colorful `cat`
 - `eza` as an improved `ls`
-- `yazi` as a modern terminal file manager
+- `lf` as a modern terminal file manager
 - `delta` for modern git diffs (also used in Lazygit)
   - diffs are side-by-side by default, while LazyGit shows inline changes
 - `lazygit` for a simple git TUI
@@ -113,7 +113,7 @@ Allows increased brightness when viewing SDR content on an HDR monitor.
 - Set cursor thickness to 6
 ```
 
-Yazi expects its configuration under `%AppData%\yazi\config` on Windows. These dotfiles create a symlink to `~/.config/yazi` so settings apply across OSes.
+lf expects its configuration under `%AppData%\lf` on Windows. These dotfiles create a symlink to `~/.config/lf` so settings apply across OSes.
 
 ## Powershell 7
 
