@@ -35,3 +35,12 @@ map gn cd ~/.config/nvim
 
 # Open files in VS Code without quitting lf
 cmd open &code -- "$f"
+
+# Make Enter open files/dirs, but Right Arrow only enters directories
+map <enter> open
+cmd open-dir-only &{{
+	if [ -d "$f" ]; then
+		lf -remote "send $id open"
+	fi
+}}
+map <right> open-dir-only
