@@ -8,6 +8,17 @@
   // Make Esc go to LazyGit when it's focused
   {
     "key": "escape",
+    "command": "type",
+    "args": { "text": "\u001b" },
+    "when": "lazygitFocus"
+  },
+  {
+    "key": "escape",
+    "command": "-extension.vim_escape",
+    "when": "lazygitFocus && vim.active"
+  },
+  {
+    "key": "escape",
     "command": "-extension.vim_escape",
     "when": "editorTextFocus && vim.active && !inDebugRepl"
   },
