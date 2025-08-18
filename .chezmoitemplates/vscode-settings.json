@@ -57,7 +57,7 @@
     "HTML (Eex)"
 ],
 "editor.autoClosingQuotes":"never",
-"editor.autoClosingBrackets": "never",
+"editor.autoClosingBrackets": "languageDefined",
 "editor.autoClosingPairs": "never",
 "editor.autoSurround": "never",
 "html.autoCreateQuotes": false,
