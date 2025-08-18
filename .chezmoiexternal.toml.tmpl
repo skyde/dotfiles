@@ -1,30 +1,43 @@
-# .chezmoiexternal.toml.tmpl
-# Download the latest JetBrains Mono release ZIP and extract only the Variable TTFs.
-{{- $asset := gitHubLatestReleaseAssetURL "JetBrains/JetBrainsMono" "JetBrainsMono-*.zip" -}}
 
-{{ if eq .chezmoi.os "linux" }}
-[".local/share/fonts/JetBrainsMono-Variable"]
-type = "archive"
-url = {{ $asset | quote }}
-include = ["*/fonts/variable/*.ttf"]
-stripComponents = 3
-refreshPeriod = "672h"
-{{ end }}
+{{- /* JetBrains Mono version. Allow override via env for CI. */ -}}
+{{- $ver := env "JB_MONO_VERSION" | default "v2.304" -}}
+{{- $vernum := trimPrefix "v" $ver -}}
 
-{{ if eq .chezmoi.os "darwin" }}
-["Library/Fonts/JetBrainsMono-Variable"]
+# macOS - install under user's Fonts
+{{- if eq .chezmoi.os "darwin" }}
+["~/Library/Fonts/JetBrainsMono"]
 type = "archive"
-url = {{ $asset | quote }}
-include = ["*/fonts/variable/*.ttf"]
-stripComponents = 3
-refreshPeriod = "672h"
-{{ end }}
+# Option A: GitHub release asset (static URL, no API call)
+url = "https://github.com/JetBrains/JetBrainsMono/releases/download/{{ $ver }}/JetBrainsMono-{{ $vernum }}.zip"
+# Option B: JetBrains CDN (uncomment to avoid GitHub entirely)
+# url = "https://download.jetbrains.com/fonts/JetBrainsMono-{{ $vernum }}.zip"
+stripComponents = 1
+exact = true
+include = ["fonts/ttf/*.ttf"]
+refreshPeriod = "720h"
+{{- end }}
 
-{{ if eq .chezmoi.os "windows" }}
-["AppData/Local/Microsoft/Windows/Fonts/JetBrainsMono-Variable"]
+# Linux - user fonts dir, subfolder is fine for fc-cache
+{{- if eq .chezmoi.os "linux" }}
+["~/.local/share/fonts/JetBrainsMono"]
 type = "archive"
-url = {{ $asset | quote }}
-include = ["*/fonts/variable/*.ttf"]
-stripComponents = 3
-refreshPeriod = "672h"
-{{ end }}
+url = "https://github.com/JetBrains/JetBrainsMono/releases/download/{{ $ver }}/JetBrainsMono-{{ $vernum }}.zip"
+# url = "https://download.jetbrains.com/fonts/JetBrainsMono-{{ $vernum }}.zip"
+stripComponents = 1
+exact = true
+include = ["fonts/ttf/*.ttf"]
+refreshPeriod = "720h"
+{{- end }}
+
+# Windows - per-user fonts location
+{{- if eq .chezmoi.os "windows" }}
+["~/AppData/Local/Microsoft/Windows/Fonts/JetBrainsMono"]
+type = "archive"
+url = "https://github.com/JetBrains/JetBrainsMono/releases/download/{{ $ver }}/JetBrainsMono-{{ $vernum }}.zip"
+# url = "https://download.jetbrains.com/fonts/JetBrainsMono-{{ $vernum }}.zip"
+stripComponents = 1
+exact = true
+include = ["fonts/ttf/*.ttf"]
+refreshPeriod = "720h"
+{{- end }}
+
