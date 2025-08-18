@@ -1,0 +1,97 @@
+# --- behavior & ui ---
+set shell sh
+set shellopts '-eu'
+set ifs "\n"                  # make $fx split on newlines, not spaces
+set drawbox true
+set info size
+set number true
+set relativenumber true
+set hidden                     # show dotfiles
+set period 1                   # auto-refresh occasionally
+set preview true
+set ratios 1:4:3               # [parent:current:preview] ~ Yazi's [1,4,3]
+set icons true                 # needs Nerd Font + lf built with icons support
+
+# preview plumbing
+set previewer ~/.config/lf/previewer
+set cleaner   ~/.config/lf/cleaner
+
+# --- keymaps (Yazi-ish) ---
+map h updir
+map l open
+map <enter> open
+map j down
+map k up
+map gg top
+map G  bottom
+
+# selection like Yazi
+map <space> toggle
+map v invert
+cmd select-all :unselect; invert
+map V select-all
+
+# copy/cut/paste like yy/dd/pp in Yazi
+map y copy
+map x cut
+map p paste
+
+# safe delete to trash on 'd', force delete on 'D'
+cmd trash %{{ 
+  set -f
+  if command -v trash-put >/dev/null 2>&1; then
+    printf '%s\0' $fx | xargs -0 -I{} trash-put "{}"
+  elif command -v gio >/dev/null 2>&1; then
+    gio trash $fx
+  else
+    printf "No trash utility found, using rm -rf\n"
+    rm -rf -- $fx
+  fi
+}}
+map d trash
+map D delete   # lf's built-in delete (will ask confirmation)
+
+# rename like cw (and r)
+map r rename
+
+# toggles (like Yazi’s quick switches)
+map zh set hidden!
+map zp %{{ set -f; lf -remote "send $id :set preview!"; }}   # toggle preview
+
+# openers
+# - text -> $EDITOR
+# - dir  -> enter
+# - image -> mpv/xdg-open fallback from 'open'
+cmd open %{{ 
+  set -f
+  mime=$(file --mime-type -Lb "$f")
+  case "$mime" in
+    inode/directory) lf -remote "send $id enter" ;;
+    text/*|application/json|application/xml) ${EDITOR:-nvim} $fx ;;
+    *) setsid -f xdg-open "$f" >/dev/null 2>&1 ;;
+  esac
+}}
+map e ${EDITOR:-nvim} $fx
+map C %{{ setsid -f code --reuse-window -- $fx >/dev/null 2>&1 || ${EDITOR:-nvim} $fx }}
+
+# fzf jumps (dirs) and ripgrep picker (files/lines)
+cmd fzf_jump %{{ 
+  set -f
+  target="$(fd -t d -H -c never --follow --exclude .git 2>/dev/null | fzf +m --height=40% --reverse)"
+  [ -n "$target" ] && lf -remote "send $id cd \"$target\""
+}}
+map g fzf_jump
+
+cmd ripgrep %{{ 
+  set -f
+  sel="$(rg --hidden --smart-case --line-number --no-messages . 2>/dev/null \
+      | fzf --delimiter : --nth=3.. --preview 'bat --style=numbers --color=always --line-range {2}: {2}+200 {1}' \
+            --preview-window '+{2}-3,70%:wrap' )"
+  [ -z "$sel" ] && exit
+  file="$(printf '%s' "$sel" | cut -d: -f1)"
+  lf -remote "send $id select \"$file\"; send $id open"
+}}
+map / ripgrep
+
+# quit shortcuts
+map q quit

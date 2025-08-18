@@ -387,14 +387,6 @@
         // "task.custom.openTerminal",
         // // Make a new terminal
         // "workbench.action.terminal.new",
-        // {
-        //   "command": "workbench.action.terminal.sendSequence",
-        //   "args": {
-        //     // Ensure you use the close panel shorcut to close yazi, not escape
-        //     "text": "bash -lc 'cd \"${fileDirname:-${workspaceFolder:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi'\u000D"
-        //     // "text": "yazi\u000D"
-        //   }
-        // },
         // "workbench.action.terminal.moveToEditor",
         // // Need to call this twice for some reason to have it hide
         // "workbench.action.terminal.toggleTerminal",
@@ -416,10 +408,10 @@
         {
           // Run the fzf task
           "command": "workbench.action.tasks.runTask",
-          "args": "Yazi"
+          "args": "Lf"
         },
         // Click escape so we don't come back to a strange mode
-        "extension.vim_escape",
+        "extension.vim_escape"
         // "workbench.action.terminal.moveToEditor",
         // // Need to call this twice for some reason to have it hide
         // "workbench.action.terminal.toggleTerminal",
