@@ -21,34 +21,34 @@
       },
       "problemMatcher": []
     },
-    // {
-    //   "label": "Yazi",
-    //   "type": "shell",
-    //   "command": "bash",
-    //   "args": [
-    //     "-lc",
-    //     "cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi"
-    //   ],
-    //   "options": {
-    //     "env": {
-    //       // VS Code fills these before shell runs
-    //       "VSC_CWD": "${fileDirname}",
-    //       "WORKSPACE": "${workspaceFolder}"
-    //     }
-    //   },
-    //   "presentation": {
-    //     "echo": false,
-    //     "clear": true,
-    //     "reveal": "always",
-    //     "focus": true,
-    //     "close": true,
-    //     "panel": "dedicated"
-    //   },
-    //   "runOptions": {
-    //     "instanceLimit": 1
-    //   },
-    //   "problemMatcher": []
-    // },
+    {
+      "label": "Yazi",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi"
+      ],
+      "options": {
+        "env": {
+          // VS Code fills these before shell runs
+          "VSC_CWD": "${fileDirname}",
+          "WORKSPACE": "${workspaceFolder}"
+        }
+      },
+      "presentation": {
+        "echo": false,
+        "clear": false,
+        "reveal": "always",
+        "focus": true,
+        "close": true,
+        "panel": "dedicated"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
     {
       "label": "LazyGit",
       "type": "shell",

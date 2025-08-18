@@ -382,40 +382,44 @@
     {
       "before": ["<leader>", "f", "e"],
       "commands": [
-        // Custom command when terminal is opened to clear any other context
-        "task.custom.openTerminal",
-        // Make a new terminal
-        "workbench.action.terminal.new",
-        {
-          "command": "workbench.action.terminal.sendSequence",
-          "args": {
-            // Ensure you use the close panel shorcut to close yazi, not escape
-            "text": "bash -lc 'cd \"${fileDirname:-${workspaceFolder:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi'\u000D"
-            // "text": "cd \"${fileDirname:-${workspaceFolder:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi\u000D"
-            // "text": "dir=\"${fileDirname}\"; dir=\"${dir:-${workspaceFolder}}\"; dir=\"${dir:-$PWD}\"; cd \"$dir\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then while read -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi\u000D"
-          }
-        },
-        "workbench.action.terminal.moveToEditor",
-        // Need to call this twice for some reason to have it hide
-        "workbench.action.terminal.toggleTerminal",
-        "workbench.action.terminal.toggleTerminal"
-
+        // // ---- Create new instance every time ----
         // // Custom command when terminal is opened to clear any other context
         // "task.custom.openTerminal",
-        // // Set the fzf context to active
-        // // { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        // // Make a new terminal
+        // "workbench.action.terminal.new",
+        // {
+        //   "command": "workbench.action.terminal.sendSequence",
+        //   "args": {
+        //     // Ensure you use the close panel shorcut to close yazi, not escape
+        //     "text": "bash -lc 'cd \"${fileDirname:-${workspaceFolder:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi'\u000D"
+        //     // "text": "yazi\u000D"
+        //   }
+        // },
+        // "workbench.action.terminal.moveToEditor",
+        // // Need to call this twice for some reason to have it hide
+        // "workbench.action.terminal.toggleTerminal",
+        // "workbench.action.terminal.toggleTerminal"
+
+        // Custom command when terminal is opened to clear any other context
+        // "task.custom.openTerminal",
+        // Set the fzf context to active
+        // { "command": "setContext", "args": ["closePanelOnEnter", true] },
         // {
         //   // Terminate the fzf task so we open in the right directory
         //   "command": "workbench.action.tasks.terminate",
         //   "args": "Yazi"
         // }
-        // {
-        //   // Run the fzf task
-        //   "command": "workbench.action.tasks.runTask",
-        //   "args": "Yazi"
-        // }
-        // // Click escape so we don't come back to a strange mode
-        // "extension.vim_escape",
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.openTerminal",
+        // Set the fzf context to active
+        { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        {
+          // Run the fzf task
+          "command": "workbench.action.tasks.runTask",
+          "args": "Yazi"
+        },
+        // Click escape so we don't come back to a strange mode
+        "extension.vim_escape",
         // "workbench.action.terminal.moveToEditor",
         // // Need to call this twice for some reason to have it hide
         // "workbench.action.terminal.toggleTerminal",
