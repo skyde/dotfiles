@@ -9,7 +9,7 @@ less
 llvm
 nvim
 zoxide
-yazi
+lf
 lazygit
 starship
 tree
