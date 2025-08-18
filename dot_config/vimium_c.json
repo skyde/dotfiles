@@ -1,11 +1,11 @@
 {
 	"name": "Vimium C",
-	"@time": "8/11/2025, 11:16:39 AM",
-	"time": 1754928999852,
+	"@time": "8/18/2025, 11:05:26 AM",
+	"time": 1755533126399,
 	"environment": {
 		"extension": "2.12.2",
 		"platform": "mac",
-		"chromium": 138
+		"chromium": 139
 	},
 	"allBrowserUrls": true,
 	"exclusionRules": [
@@ -29,7 +29,7 @@
 		"map d removeTab",
 		"map D restoreTab",
 		"map e LinkHints.activateEdit",
-		"map f LinkHints.activateFocus",
+		"map i LinkHints.activateFocus",
 		"map <up> scrollUp",
 		"map <down> scrollDown",
 		"# map t Vomnibar.activateInNewTab",
@@ -80,7 +80,7 @@
 		"map bl moveTabRight         # b l -> Move tab right (reorder tab)",
 		"# map bn createTab",
 		"map bm toggleMuteTab",
-		"map bu copyCurrentUrl",
+		"map fl copyCurrentUrl",
 		"",
 		"# UI",
 		"map up zoomIn",
