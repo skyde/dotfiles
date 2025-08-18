@@ -62,7 +62,30 @@
 
     // Red
     "editor.inlineValuesForeground": "#AA3333", // text color of inline values
-    "editor.inlineValuesBackground": "#AA333320" // background color (supports transparency)
+    "editor.inlineValuesBackground": "#AA333320", // background color (supports transparency)
+
+    // Terminal colors (Tokyo Night Storm)
+    "terminal.background": "#24283b",
+    "terminal.foreground": "#c0caf5",
+    "terminalCursor.background": "#c0caf5",
+    "terminalCursor.foreground": "#24283b",
+    "terminal.selectionBackground": "#2e3c64",
+    "terminal.ansiBlack": "#1d202f",
+    "terminal.ansiRed": "#f7768e",
+    "terminal.ansiGreen": "#9ece6a",
+    "terminal.ansiYellow": "#e0af68",
+    "terminal.ansiBlue": "#7aa2f7",
+    "terminal.ansiMagenta": "#bb9af7",
+    "terminal.ansiCyan": "#7dcfff",
+    "terminal.ansiWhite": "#a9b1d6",
+    "terminal.ansiBrightBlack": "#414868",
+    "terminal.ansiBrightRed": "#ff899d",
+    "terminal.ansiBrightGreen": "#9fe044",
+    "terminal.ansiBrightYellow": "#faba4a",
+    "terminal.ansiBrightBlue": "#8db0ff",
+    "terminal.ansiBrightMagenta": "#c7a9ff",
+    "terminal.ansiBrightCyan": "#a4daff",
+    "terminal.ansiBrightWhite": "#c0caf5"
 
     // "editor.inlineValuesForeground": "#666666", // text color of inline values
     // "editor.inlineValuesBackground": "#66666620" // background color (supports transparency)
