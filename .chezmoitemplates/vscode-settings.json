@@ -29,6 +29,12 @@
   "workbench.quickOpen.centered": true,
   "window.commandCenter": false,
   "search.location": "panel",
+  "lazygit-vscode.autoMaximizeWindow": true,
+  "lazygit-vscode.panels": {
+    "sidebar": "hideRestore",
+    "panel": "hide",
+    "secondarySidebar": "keep"
+  },
   // Disable AI code suggestions and built-in tag closing
   "editor.inlineSuggest.enabled": false,
   "github.copilot.enable": {
@@ -1003,13 +1009,7 @@
         "g"
       ],
       "commands": [
-        "workbench.action.terminal.toggleTerminal",
-        {
-          "command": "workbench.action.terminal.sendSequence",
-          "args": {
-            "text": "lazygit\u000D"
-          }
-        }
+        "lazygit-vscode.toggle"
       ]
     },
     {

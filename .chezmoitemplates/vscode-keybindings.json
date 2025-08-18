@@ -4,6 +4,18 @@
   // Disable line move shortcuts
   { "key": "alt+down", "command": "-editor.action.moveLinesDownAction" },
   { "key": "alt+up", "command": "-editor.action.moveLinesUpAction" },
+
+  // Make Esc go to LazyGit when it's focused
+  {
+    "key": "escape",
+    "command": "-extension.vim_escape",
+    "when": "editorTextFocus && vim.active && !inDebugRepl"
+  },
+  {
+    "key": "escape",
+    "command": "extension.vim_escape",
+    "when": "editorTextFocus && vim.active && !inDebugRepl && !lazygitFocus"
+  },
 {{- if eq .chezmoi.os "darwin" }}
   // ----- Word navigation on ⌘ + ← / → -----
   // Remove defaults (line start/end) that would conflict:

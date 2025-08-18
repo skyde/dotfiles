@@ -1,5 +1,6 @@
 {
   "recommendations": [
+    "TomPollak.lazygit-vscode",
     "vscodevim.vim",
     "qufiwefefwoyn.kanagawa",
     "formulahendry.auto-close-tag",
