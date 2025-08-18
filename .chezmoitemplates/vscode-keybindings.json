@@ -594,6 +594,80 @@
     "when": "auxiliaryBarFocus && listFocus && !inputFocus"
   },
 
+  // Page Copilot Chat history from input
+  {
+    "key": "cmd+d",
+    "command": "runCommands",
+    "when": "inChatInput",
+    "args": {
+      "commands": [
+        "workbench.action.chat.focus",
+        "list.focusPageDown",
+        "workbench.action.chat.focusInput"
+      ]
+    }
+  },
+  {
+    "key": "cmd+u",
+    "command": "runCommands",
+    "when": "inChatInput",
+    "args": {
+      "commands": [
+        "workbench.action.chat.focus",
+        "list.focusPageUp",
+        "workbench.action.chat.focusInput"
+      ]
+    }
+  },
+  {
+    "key": "ctrl+d",
+    "command": "runCommands",
+    "when": "inChatInput",
+    "args": {
+      "commands": [
+        "workbench.action.chat.focus",
+        "list.focusPageDown",
+        "workbench.action.chat.focusInput"
+      ]
+    }
+  },
+  {
+    "key": "ctrl+u",
+    "command": "runCommands",
+    "when": "inChatInput",
+    "args": {
+      "commands": [
+        "workbench.action.chat.focus",
+        "list.focusPageUp",
+        "workbench.action.chat.focusInput"
+      ]
+    }
+  },
+  {
+    "key": "pageDown",
+    "command": "runCommands",
+    "when": "inChatInput",
+    "args": {
+      "commands": [
+        "workbench.action.chat.focus",
+        "list.focusPageDown",
+        "workbench.action.chat.focusInput"
+      ]
+    }
+  },
+  {
+    "key": "pageUp",
+    "command": "runCommands",
+    "when": "inChatInput",
+    "args": {
+      "commands": [
+        "workbench.action.chat.focus",
+        "list.focusPageUp",
+        "workbench.action.chat.focusInput"
+      ]
+    }
+  },
+
   // Right (Secondary) Side Bar — single ⌘ stroke
   { "key": "cmd+;", "command": "workbench.action.focusAuxiliaryBar",   "when": "!auxiliaryBarFocus" },
   { "key": "cmd+;", "command": "workbench.action.toggleAuxiliaryBar",  "when": "auxiliaryBarFocus" },
