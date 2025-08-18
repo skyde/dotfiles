@@ -408,10 +408,10 @@
         {
           // Run the fzf task
           "command": "workbench.action.tasks.runTask",
-          "args": "Yazi"
+          "args": "Lf"
         },
         // Click escape so we don't come back to a strange mode
-        "extension.vim_escape",
+        "extension.vim_escape"
         // "workbench.action.terminal.moveToEditor",
         // // Need to call this twice for some reason to have it hide
         // "workbench.action.terminal.toggleTerminal",
