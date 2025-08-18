@@ -1,0 +1,30 @@
+# .chezmoiexternal.toml.tmpl
+# Download the latest JetBrains Mono release ZIP and extract only the Variable TTFs.
+{{- $asset := gitHubLatestReleaseAssetURL "JetBrains/JetBrainsMono" "JetBrainsMono-*.zip" -}}
+
+{{ if eq .chezmoi.os "linux" }}
+[".local/share/fonts/JetBrainsMono-Variable"]
+type = "archive"
+url = {{ $asset | quote }}
+include = ["*/fonts/variable/*.ttf"]
+stripComponents = 3
+refreshPeriod = "672h"
+{{ end }}
+
+{{ if eq .chezmoi.os "darwin" }}
+["Library/Fonts/JetBrainsMono-Variable"]
+type = "archive"
+url = {{ $asset | quote }}
+include = ["*/fonts/variable/*.ttf"]
+stripComponents = 3
+refreshPeriod = "672h"
+{{ end }}
+
+{{ if eq .chezmoi.os "windows" }}
+["AppData/Local/Microsoft/Windows/Fonts/JetBrainsMono-Variable"]
+type = "archive"
+url = {{ $asset | quote }}
+include = ["*/fonts/variable/*.ttf"]
+stripComponents = 3
+refreshPeriod = "672h"
+{{ end }}
