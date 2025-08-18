@@ -1,0 +1,156 @@
+# vim:ft=conf
+# Nerd Font icons for lf
+# Notes:
+# - Requires a Nerd Font (you have JetBrainsMono Nerd Font in kitty.conf).
+# - lf matches in order: path > dirname/ > file type (di/fi/ln/…) > filename > basename/globs > extension > default.
+# - If icons appear as boxes, ensure your terminal uses a Nerd Font and note NF v3 codepoint changes.
+
+# --- File types (override a few sensible defaults) ---
+di      󰉋    # directory
+fi      󰈙    # file
+ln          # symlink
+
+# --- Well-known directories (trailing slash makes it dir-only) ---
+.git/           
+node_modules/   
+.vscode/        
+.config/        󰒓
+
+# --- Exact filenames ---
+README*         
+LICENSE*        
+Makefile        
+CMakeLists.txt  
+Dockerfile      
+.gitignore      
+.gitattributes  
+.gitmodules     
+.env            
+.env.*          
+tsconfig.json   
+package.json    
+package-lock.json 
+yarn.lock       
+pnpm-lock.yaml  
+
+# --- Common languages ---
+# C/C++
+*.c     
+*.h     
+*.cc    
+*.cpp   
+*.cxx   
+*.hh    
+*.hpp   
+*.hxx   
+
+# GN/Ninja (Chromium/Skia build files)
+*.gn    
+*.gni   
+*.ninja 
+
+# Shaders
+*.glsl  
+*.vert  
+*.frag  
+*.metal 
+
+# Rust / Go / Lua / Python / Shell / PowerShell
+*.rs    
+*.go    
+*.lua   
+*.py    
+*.sh    
+*.zsh   
+*.bash  
+*.ps1   
+
+# Java / Swift / ObjC
+*.java  
+*.kt    
+*.swift 
+*.m     
+*.mm    
+
+# JavaScript / TypeScript
+*.js    
+*.mjs   
+*.cjs   
+*.jsx   
+*.ts    
+*.tsx   
+
+# Web / Markup
+*.html  
+*.htm   
+*.css   
+*.scss  
+*.less  
+*.xml   󰗀
+*.json  
+*.toml  
+*.ini   
+*.conf  
+*.yaml  
+*.yml   
+*.md    
+*.rst   
+
+# Images
+*.png   
+*.jpg   
+*.jpeg  
+*.gif   
+*.bmp   
+*.svg   
+*.ico   
+*.webp  
+
+# Audio / Video
+*.mp3   
+*.flac  
+*.wav   
+*.m4a   
+*.ogg   
+*.mp4   
+*.mkv   
+*.webm  
+*.mov   
+
+# Docs
+*.pdf   
+*.epub  
+*.doc   
+*.docx  
+*.xls   
+*.xlsx  
+*.ppt   
+*.pptx  
+
+# Archives / Packages
+*.zip   
+*.tar   
+*.gz    
+*.bz2   
+*.xz    
+*.7z    
+*.rar   
+*.tgz   
+*.deb   
+*.rpm   
+
+# Data / DB
+*.sql   
+*.sqlite 
+*.db    
+*.csv   
+*.parquet  
+
+# Misc dev
+*.lock  
+.DS_Store  󰀶
+*.log   󰌑
+*.bin   󰆧
+*.o     󰆧
+*.obj   󰆧
+*.wasm  󰡘
