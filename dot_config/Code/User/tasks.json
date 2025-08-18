@@ -22,13 +22,28 @@
       "problemMatcher": []
     },
     {
-      "label": "LF",
+      "label": "Switch Running LF to Current Directory",
       "type": "shell",
       "command": "bash",
       "args": [
         "-lc",
-        "cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\" && tmp=$(mktemp); lf -selection-path \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi"
+        "lf -remote \"send cd \\\"${VSC_CWD:-${WORKSPACE:-$PWD}}\\\"\" || true"
       ],
+      "options": {
+        "env": {
+          // VS Code fills these before shell runs
+          "VSC_CWD": "${fileDirname}",
+          "WORKSPACE": "${workspaceFolder}"
+        }
+      },
+      "presentation": {},
+      "problemMatcher": []
+    },
+    {
+      "label": "LF",
+      "type": "shell",
+      "command": "bash",
+      "args": ["-lc", "cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\" && lf"],
       "options": {
         "env": {
           // VS Code fills these before shell runs
@@ -66,7 +81,6 @@
       "label": "FZF Ripgrep",
       "type": "shell",
       "command": "fzf",
-
       "args": [
         "--reverse",
         "--ansi",
@@ -76,22 +90,18 @@
         "inline",
         "--no-cycle",
         "--color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'",
-
         "--bind",
         "\"start:reload:rg",
         "--column",
         "--color=always",
         "--smart-case",
         "{q}\"",
-
         "--bind",
         "\"change:reload:rg",
-
         "--column",
         "--color=always",
         "--smart-case",
         "{q}\"",
-
         "--delimiter",
         ":",
         "--preview",
@@ -103,10 +113,8 @@
         "{1}'",
         "--preview-window",
         "'bottom,30%,+{2}/2'",
-
         "--bind",
         "'enter:execute-silent(code -r -g {1}:{2})'",
-
         "--bind",
         "'esc:clear-query'"
       ],
@@ -126,7 +134,6 @@
       "label": "FZF Files",
       "type": "shell",
       "command": "fzf",
-
       "args": [
         "--reverse",
         "--ansi",
@@ -136,7 +143,6 @@
         "inline",
         "--no-cycle",
         "--color='prompt:#80a0ff,pointer:#ff5000,marker:#afff5f'",
-
         "--delimiter",
         ":",
         "--preview",
@@ -148,10 +154,8 @@
         "{}'",
         "--preview-window",
         "'right,55%'",
-
         "--bind",
         "'enter:execute-silent(code -r -g {1}:{2})'",
-
         "--bind",
         "'esc:clear-query'"
       ],

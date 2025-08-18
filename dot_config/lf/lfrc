@@ -8,6 +8,7 @@ set info size
 set number true
 set relativenumber true
 set ratios 1:4:3
+set ignorecase true
 
 map <esc> quit
 map x cut
@@ -31,3 +32,6 @@ map gp cd ~/Projects
 map ge cd ~/Desktop
 map gv cd ~/.config/Code/User
 map gn cd ~/.config/nvim
+
+# Open files in VS Code without quitting lf
+cmd open &code -- "$f"
