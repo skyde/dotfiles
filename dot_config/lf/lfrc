@@ -9,6 +9,8 @@ set number true
 set relativenumber true
 set ratios 1:4:3
 set ignorecase true
+set ifs "\n"
+set filesep "\n"
 
 map <esc> quit
 map x cut
@@ -16,8 +18,9 @@ map y copy
 map p paste
 map d delete
 map D delete!
-map o :touch
-map O :mkdir
+map o push :touch<space>
+map O push :mkdir<space>
+map o push :touch<space>
 map i rename
 map c rename
 map v toggle
@@ -34,7 +37,11 @@ map gv cd ~/.config/Code/User
 map gn cd ~/.config/nvim
 
 # Open files in VS Code without quitting lf
-cmd open &code -- "$f"
+cmd open &code -r -- $fx
+
+# Create files/dirs via shell, joining args by space for convenience
+cmd mkdir %IFS=" "; mkdir -- "$*"
+cmd touch %IFS=" "; touch -- "$*"
 
 # Make Enter open files/dirs, but Right Arrow only enters directories
 map <enter> open
