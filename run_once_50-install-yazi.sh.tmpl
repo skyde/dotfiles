@@ -1,0 +1,219 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Ensure Yazi works out-of-the-box on Debian via GitHub binary install (no compile)
+
+HAVE() { command -v "$1" >/dev/null 2>&1; }
+
+SUDO_CMD=""
+if [ "$(id -u)" -ne 0 ] && HAVE sudo; then
+  SUDO_CMD="sudo"
+fi
+
+OS="$(uname -s)"
+
+# Try to source shared helpers (truthy/ask) if available
+if [ -n "${CHEZMOI_SOURCE_DIR:-}" ] && [ -f "$CHEZMOI_SOURCE_DIR/lib/run_ensure.sh" ]; then
+  # shellcheck disable=SC1090
+  . "$CHEZMOI_SOURCE_DIR/lib/run_ensure.sh"
+fi
+
+# Fallback prompt helpers if not sourced
+_truthy() {
+  case "${1:-}" in
+    1|true|TRUE|True|yes|YES|Yes|on|ON|On) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_tty() { [ -t 0 ] && [ -t 1 ]; }
+
+ask() {
+  local prompt="$1"
+  if ! is_tty; then
+    echo "[skip] $prompt (non-interactive; default = no)"
+    return 1
+  fi
+  read -r -p "$prompt [y/N] " reply
+  [[ "$reply" =~ ^([yY]|[yY][eE][sS])$ ]]
+}
+
+confirm_yazi_install() {
+  local method_msg="$1"
+  if _truthy "${AUTO_INSTALL:-}"; then
+    echo "[auto] Install yazi via $method_msg (AUTO_INSTALL=1)"
+    return 0
+  fi
+  ask "Install yazi now via $method_msg?"
+}
+
+# Fallback ensure for Debian packages if ensure_apt is unavailable
+ensure_pkg_cmd() {
+  local pkg="$1"; shift
+  local check_cmd="${1:-}"
+  # If a check command is provided and present, treat as installed
+  if [ -n "$check_cmd" ] && HAVE "$check_cmd"; then
+    return 0
+  fi
+  # Otherwise, attempt dpkg check if pkg name is given
+  if [ -n "$pkg" ] && dpkg -s "$pkg" >/dev/null 2>&1; then
+    return 0
+  fi
+  if _truthy "${AUTO_INSTALL:-}"; then
+    echo "[auto] Install dependency $pkg (AUTO_INSTALL=1)"
+    $SUDO_CMD apt-get update -y
+    $SUDO_CMD apt-get install -y "$pkg"
+    return 0
+  fi
+  if ask "Install dependency $pkg?"; then
+    $SUDO_CMD apt-get update -y
+    $SUDO_CMD apt-get install -y "$pkg"
+  else
+    echo "[skip] $pkg not installed"
+  fi
+}
+
+install_from_github() {
+  # Install prebuilt Yazi binaries from GitHub releases (avoids compilation)
+  # Requires: curl, unzip/tar
+  local repo="sxyazi/yazi"
+  local os_arch_triple=""
+  local uname_s="$(uname -s)"
+  local uname_m="$(uname -m)"
+
+  case "$uname_s" in
+    Linux)
+      case "$uname_m" in
+        x86_64) os_arch_triple="x86_64-unknown-linux-gnu" ;;
+        aarch64|arm64) os_arch_triple="aarch64-unknown-linux-gnu" ;;
+        *) echo "Unsupported Linux arch: $uname_m" >&2; return 1 ;;
+      esac
+      ;;
+    *)
+      echo "Unsupported OS: $uname_s" >&2; return 1 ;;
+  esac
+
+  local tag="${YAZI_VERSION:-}"
+  if [ -z "$tag" ]; then
+    # Fetch latest tag via GitHub API (no jq)
+    tag="$(curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null | sed -n 's/.*"tag_name"\s*:\s*"\([^"]\+\)".*/\1/p' | head -n1)"
+  fi
+  if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+    echo "Failed to determine latest Yazi release tag" >&2
+    return 1
+  fi
+
+  # Candidate URLs (GNU only; prefer .zip); try to download each until one succeeds
+  local candidates=(
+    "https://github.com/${repo}/releases/download/${tag}/yazi-${os_arch_triple}.zip"
+    "https://github.com/${repo}/releases/download/${tag}/yazi-${os_arch_triple}.tar.gz"
+    "https://github.com/${repo}/releases/download/${tag}/yazi-${tag}-${os_arch_triple}.zip"
+    "https://github.com/${repo}/releases/download/${tag}/yazi-${tag}-${os_arch_triple}.tar.gz"
+  )
+
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  trap 'if [ -n "${tmp_dir:-}" ]; then rm -rf "${tmp_dir}"; fi' EXIT
+
+  local archive=""
+  local archive_ext=""
+  for u in "${candidates[@]}"; do
+    case "$u" in
+      *.zip) archive_ext="zip" ;;
+      *.tar.gz) archive_ext="tar.gz" ;;
+      *.tar.xz) archive_ext="tar.xz" ;;
+      *) archive_ext="unknown" ;;
+    esac
+    archive="$tmp_dir/yazi.$archive_ext"
+    if curl -fSL "$u" -o "$archive" >/dev/null 2>&1; then
+      # success
+      break
+    else
+      archive=""
+      archive_ext=""
+    fi
+  done
+
+  if [ -z "$archive" ] || [ ! -s "$archive" ]; then
+    echo "Could not download a matching Yazi release asset for $os_arch_triple at tag $tag" >&2
+    return 1
+  fi
+
+  # Extract
+  mkdir -p "$tmp_dir/extract"
+  case "$archive_ext" in
+    zip)
+      if command -v unzip >/dev/null 2>&1; then
+        unzip -q "$archive" -d "$tmp_dir/extract"
+      elif command -v bsdtar >/dev/null 2>&1; then
+        bsdtar -xf "$archive" -C "$tmp_dir/extract"
+      else
+        echo "Need 'unzip' or 'bsdtar' to extract Yazi zip archive" >&2
+        return 1
+      fi
+      ;;
+    tar.gz)
+      tar -xzf "$archive" -C "$tmp_dir/extract" ;;
+    tar.xz)
+      tar -xJf "$archive" -C "$tmp_dir/extract" ;;
+    *)
+      echo "Unknown archive type for $archive" >&2
+      return 1 ;;
+  esac
+
+  # Find binaries (yazi, ya) within extraction
+  local yazi_bin
+  yazi_bin="$(find "$tmp_dir/extract" -type f -name yazi -perm -u+x | head -n1 || true)"
+  local ya_bin
+  ya_bin="$(find "$tmp_dir/extract" -type f -name ya -perm -u+x | head -n1 || true)"
+  if [ -z "$yazi_bin" ]; then
+    echo "yazi binary not found in archive" >&2
+    return 1
+  fi
+
+  $SUDO_CMD install -m 0755 "$yazi_bin" /usr/local/bin/yazi
+  if [ -n "$ya_bin" ]; then
+    $SUDO_CMD install -m 0755 "$ya_bin" /usr/local/bin/ya
+  fi
+
+  if ! command -v yazi >/dev/null 2>&1; then
+    echo "Failed to install yazi to /usr/local/bin" >&2
+    return 1
+  fi
+}
+
+case "$OS" in
+  Linux)
+    # Only run custom Yazi install on Debian
+    if [ -r /etc/os-release ]; then . /etc/os-release; fi
+    if [ "${ID:-}" = "debian" ]; then
+      if HAVE apt-get; then
+        # Ensure minimal dependencies with AUTO_INSTALL/prompt semantics
+        if declare -F ensure_apt >/dev/null 2>&1; then
+          ensure_apt curl
+          ensure_apt unzip
+          ensure_apt ca-certificates
+        else
+          ensure_pkg_cmd curl curl
+          ensure_pkg_cmd unzip unzip
+          ensure_pkg_cmd ca-certificates update-ca-certificates
+        fi
+        if ! HAVE yazi; then
+          if confirm_yazi_install "GitHub prebuilt binary (Debian, GNU)"; then
+            install_from_github || echo "[warn] GitHub install failed; Yazi not installed" >&2
+          else
+            echo "[skip] yazi install (AUTO_INSTALL not set)"
+          fi
+        fi
+      fi
+    fi
+    ;;
+  *)
+    # No custom install on non-Debian OS
+    :
+    ;;
+esac
+
+echo "Yazi installation/configuration complete."
+
+
