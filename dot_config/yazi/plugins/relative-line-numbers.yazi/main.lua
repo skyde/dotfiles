@@ -96,11 +96,15 @@ local render_numbers = ya.sync(function(_, mode)
         end
 
         -- Trigger a final render so the layout accounts for the number column.
-        if ui.render then
-                ui.render()
-        else
-                ya.render()
-        end
+        -- Defer the render slightly so Yazi's UI has fully initialized; rendering
+        -- too early could leave the screen blank until the next user input.
+        ya.defer(function()
+                if ui.render then
+                        ui.render()
+                else
+                        ya.render()
+                end
+        end)
 end)
 
 ----------------------------------------------------------------------
