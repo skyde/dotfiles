@@ -1,4 +1,3 @@
-
 {
   // Cursor behavior and line numbers
   "editor.cursorSurroundingLines": 8,
@@ -36,6 +35,32 @@
     "*": false
   },
   "html.autoClosingTags": false,
+  "auto-close-tag.activationOnLanguage": [
+    "html",
+    "css",
+    "xml",
+    "php",
+    "blade",
+    "ejs",
+    "jinja",
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact",
+    "plaintext",
+    "markdown",
+    "vue",
+    "liquid",
+    "erb",
+    "lang-cfml",
+    "cfml",
+    "HTML (Eex)"
+],
+"editor.autoClosingQuotes":"never",
+"editor.autoClosingBrackets": "never",
+"editor.autoClosingPairs": "never",
+"editor.autoSurround": "never",
+"html.autoCreateQuotes": false,
   // Vim extension settings
   "vim.useSystemClipboard": true,
   "vim.useCtrlKeys": true,
@@ -4539,5 +4564,6 @@
     }
   ]
 }
+
 
 
