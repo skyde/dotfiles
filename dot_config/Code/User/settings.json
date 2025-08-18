@@ -384,20 +384,43 @@
       "commands": [
         // Custom command when terminal is opened to clear any other context
         "task.custom.onOpenTerminal",
-        // Set the fzf context to active
-        { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        // Make a new terminal
+        "workbench.action.terminal.new",
         {
-          // Terminate the fzf task so we open in the right directory
-          "command": "workbench.action.tasks.terminate",
-          "args": "Yazi"
+          "command": "workbench.action.terminal.sendSequence",
+          "args": {
+            // "text": "git log -p --diff-algorithm=histogram --date=short \"${file}\"\u000D"
+            // "text": "cd \"${${fileDirname}:-${${workspaceFolder}:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi\u000D"
+            "text": "bash -lc 'cd \"${fileDirname:-${workspaceFolder:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi'\u000D"
+            // "text": "cd \"${fileDirname:-${workspaceFolder:-$PWD}}\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi\u000D"
+            // "text": "dir=\"${fileDirname}\"; dir=\"${dir:-${workspaceFolder}}\"; dir=\"${dir:-$PWD}\"; cd \"$dir\" && tmp=$(mktemp); yazi --chooser-file \"$tmp\"; if [[ -s \"$tmp\" ]]; then while read -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi\u000D"
+          }
         },
-        {
-          // Run the fzf task
-          "command": "workbench.action.tasks.runTask",
-          "args": "Yazi"
-        },
-        // Click escape so we don't come back to a strange mode
-        "extension.vim_escape"
+        "workbench.action.terminal.moveToEditor",
+        // Need to call this twice for some reason to have it hide
+        "workbench.action.terminal.toggleTerminal",
+        "workbench.action.terminal.toggleTerminal"
+
+        // // Custom command when terminal is opened to clear any other context
+        // "task.custom.onOpenTerminal",
+        // // Set the fzf context to active
+        // // { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        // {
+        //   // Terminate the fzf task so we open in the right directory
+        //   "command": "workbench.action.tasks.terminate",
+        //   "args": "Yazi"
+        // },
+        // {
+        //   // Run the fzf task
+        //   "command": "workbench.action.tasks.runTask",
+        //   "args": "Yazi"
+        // },
+        // // Click escape so we don't come back to a strange mode
+        // "extension.vim_escape",
+        // "workbench.action.terminal.moveToEditor",
+        // // Need to call this twice for some reason to have it hide
+        // "workbench.action.terminal.toggleTerminal",
+        // "workbench.action.terminal.toggleTerminal"
       ]
     },
     {
@@ -630,7 +653,7 @@
     //     // Automatically search for the word under the cursor
     //     "editor.action.addSelectionToNextFindMatch",
     //     // By default we filter & only search relavant files
-    //     "fzf-picker.findWithinFilesWithType",
+    //    "fzf-picker.findWithinFilesWithType",
     //     // Escape to Vim normal mode
     //     "extension.vim_escape"
     //   ]

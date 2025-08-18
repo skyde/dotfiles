@@ -233,7 +233,7 @@
   },
   {
     // Toggle the panel at the bottom of the screen
-    "key": "cmd+t",
+    "key": "ctrl+t",
     "command": "runCommands",
     "args": {
       "commands": ["workbench.action.togglePanel"]
@@ -261,8 +261,8 @@
   //   }
   // },
   {
-    // Close the editor terminal as soon as cmd+t is pressed - things that launch into there should be transient
-    "key": "cmd+t",
+    // Close the editor terminal as soon as ctrl+t is pressed - things that launch into there should be transient
+    "key": "ctrl+t",
     "command": "runCommands",
     "when": "terminalFocus && terminalEditorActive",
     "args": {
@@ -282,7 +282,7 @@
     }
   },
   {
-    // Close the editor terminal as soon as cmd+t is pressed - things that launch into there should be transient
+    // Close the editor terminal as soon as ctrl+/ is pressed - things that launch into there should be transient
     "key": "ctrl+/",
     "command": "runCommands",
     "when": "terminalFocus && terminalEditorActive",
