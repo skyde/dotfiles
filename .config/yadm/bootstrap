@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BOOTSTRAP_DIR="$HOME/.config/yadm/bootstrap.d"
+UNAME=$(uname | tr '[:upper:]' '[:lower:]')
+case "$UNAME" in
+  linux*) OS=linux ;;
+  darwin*) OS=darwin ;;
+  msys*|mingw*|cygwin*|nt*) OS=windows ;;
+  *) OS=unknown ;;
+esac
+
+if [ -d "$BOOTSTRAP_DIR" ]; then
+  for script in "$BOOTSTRAP_DIR"/*.sh; do
+    [ -e "$script" ] || continue
+    base=$(basename "$script")
+    case "$base" in
+      *-linux.sh)   [[ $OS == linux ]] || continue ;;
+      *-darwin.sh)  [[ $OS == darwin ]] || continue ;;
+      *-windows.sh) [[ $OS == windows ]] || continue ;;
+    esac
+    bash "$script"
+  done
+
+  if command -v pwsh >/dev/null 2>&1 && [ "$OS" = windows ]; then
+    for script in "$BOOTSTRAP_DIR"/*.ps1; do
+      [ -e "$script" ] || continue
+      pwsh -File "$script"
+    done
+  fi
+fi

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -e
+EXT_FILE="$HOME/vscode_extensions.txt"
+if command -v code >/dev/null 2>&1; then
+    CODE_CMD="code"
+elif command -v cursor >/dev/null 2>&1; then
+    CODE_CMD="cursor"
+elif [ -f "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" ]; then
+    CODE_CMD="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
+else
+    echo "VS Code 'code' or 'cursor' command not found, skipping extension install"
+    exit 0
+fi
+while IFS= read -r ext || [ -n "$ext" ]; do
+    [ -z "$ext" ] && continue
+    echo "Installing VS Code extension: $ext"
+    "$CODE_CMD" --install-extension "$ext" --force || true
+done < "$EXT_FILE"
