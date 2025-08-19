@@ -4,6 +4,71 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-debian-testing:
+    name: Linux (Debian testing in Docker)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run yadm bootstrap and self-test inside debian:testing
+        run: |
+          set -euxo pipefail
+          docker run --rm -t -v "${GITHUB_WORKSPACE}":/repo debian:testing bash -lc '
+            export DEBIAN_FRONTEND=noninteractive
+            set -e
+            apt-get update -qq
+            apt-get install -y yadm git curl ca-certificates zsh >/dev/null
+            cd /root
+            # Run bootstrap against mounted repo
+            AUTO_INSTALL=1 YADM_SELF_TEST=1 YADM_REPO_ROOT=/repo bash /repo/.config/yadm/bootstrap
+          '
+
+  macos:
+    name: macOS (native)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install yadm
+        run: |
+          set -euxo pipefail
+          brew update >/dev/null
+          brew install yadm >/dev/null || true
+
+      - name: Run bootstrap and self-test
+        run: |
+          set -euxo pipefail
+          AUTO_INSTALL=1 YADM_SELF_TEST=1 YADM_REPO_ROOT="$GITHUB_WORKSPACE" bash .config/yadm/bootstrap
+
+  windows:
+    name: Windows (Git Bash)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run bootstrap (self-test enabled)
+        run: |
+          set -euxo pipefail
+          # Use Git Bash to run the bootstrap; this validates OS detection and Code path mirroring logic
+          AUTO_INSTALL=1 YADM_SELF_TEST=1 YADM_REPO_ROOT="$GITHUB_WORKSPACE" bash .config/yadm/bootstrap
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
 jobs:
   test:
     strategy:

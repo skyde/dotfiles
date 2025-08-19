@@ -34,6 +34,7 @@ copy_file() {
 detect_os() {
   case "$(uname -s)" in
     Darwin) echo mac;;
+    MINGW*|MSYS*|CYGWIN*) echo windows;;
     Linux)
       if [ -r /etc/os-release ]; then
         . /etc/os-release
@@ -123,14 +124,29 @@ if [ -d "$CHEZ_DIR/dot_config" ]; then
       dst="$HOME/.config/${entry#./}"
       if [ -d "$src" ]; then
         ensure_dir "$dst"
-        # Link each file within to allow partial overrides later
+        # Link each file within, but skip Cursor/User templates (we manage Cursor via Code mapping below)
         find "$src" -type d -print0 | while IFS= read -r -d '' d; do
           rel="${d#$src}"
+          # always create directory structure
           ensure_dir "$dst$rel"
         done
         find "$src" -type f -print0 | while IFS= read -r -d '' f; do
           rel="${f#$src}"
-          link_file "$f" "$dst$rel"
+          base_name="$(basename "$f")"
+          # Skip mac metadata and chezmoi templates
+          [ "$base_name" = ".DS_Store" ] && continue
+          case "$base_name" in symlink_*.tmpl) continue;; esac
+          case "$entry/$rel" in
+            ./Cursor/User/*) continue;;
+          esac
+          # Translate chezmoi-style dot_* files to hidden files
+          bn="$(basename "$rel")"; dn="$(dirname "$rel")"
+          if [[ "$bn" == dot_* ]]; then
+            dest_rel="$dn/.${bn#dot_}"
+          else
+            dest_rel="$rel"
+          fi
+          link_file "$f" "$dst$dest_rel"
         done
       else
         link_file "$src" "$dst"
@@ -140,7 +156,7 @@ if [ -d "$CHEZ_DIR/dot_config" ]; then
   )
 fi
 
-# VS Code/Code - link macOS "Library/Application Support" paths to ~/.config/Code/User
+# VS Code/Code User data
 CODE_USER="$HOME/.config/Code/User"
 if [ -d "$CODE_USER" ]; then
   case "$OS_ID" in
@@ -150,6 +166,15 @@ if [ -d "$CODE_USER" ]; then
       for f in settings.json keybindings.json tasks.json; do
         [ -f "$CODE_USER/$f" ] && link_file "$CODE_USER/$f" "$mac_user_dir/$f"
       done
+      ;;
+    windows)
+      if [ -n "${APPDATA:-}" ] && have cygpath; then
+        win_code_user="$(cygpath -u "$APPDATA")/Code/User"
+        ensure_dir "$win_code_user"
+        for f in settings.json keybindings.json tasks.json; do
+          [ -f "$CODE_USER/$f" ] && link_file "$CODE_USER/$f" "$win_code_user/$f"
+        done
+      fi
       ;;
   esac
 fi
@@ -216,6 +241,21 @@ if [ "${YADM_SELF_TEST:-0}" = "1" ]; then
   check_same "$HOME/.config/Code/User/settings.json" "$CHEZ_DIR/dot_config/Code/User/settings.json"
   check_same "$HOME/.config/Code/User/keybindings.json" "$CHEZ_DIR/dot_config/Code/User/keybindings.json"
   check_same "$HOME/.config/Code/User/tasks.json" "$CHEZ_DIR/dot_config/Code/User/tasks.json"
+
+  # Recursively verify all files under dot_config → ~/.config
+  if [ -d "$CHEZ_DIR/dot_config" ]; then
+    while IFS= read -r -d '' src_f; do
+      rel="${src_f#$CHEZ_DIR/dot_config}"
+      dst_f="$HOME/.config$rel"
+      # Skip Code files already tested above to reduce noise
+      case "$rel" in
+        /Code/User/settings.json|/Code/User/keybindings.json|/Code/User/tasks.json) continue;;
+      esac
+      if [ -f "$src_f" ]; then
+        check_same "$dst_f" "$src_f"
+      fi
+    done < <(find "$CHEZ_DIR/dot_config" -type f -print0)
+  fi
 
   if [ "$failures" -ne 0 ]; then
     log "Self-test failed with $failures difference(s)."
