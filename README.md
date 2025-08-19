@@ -3,51 +3,26 @@
 ### Mac
 
 ```sh
-# Install Homebrew from https://brew.sh if it's not already present
-brew install chezmoi
-chezmoi init skyde
-# Review changes
-chezmoi diff
-
-# Apply and be prompted before installs/changes
-chezmoi apply
-
-# Install and upgrade tools without prompting
-AUTO_INSTALL=1 chezmoi apply
+brew install yadm
+yadm clone https://github.com/skyde/dotfiles.git
+yadm bootstrap
 ```
 
 ### Linux
 
-```
+```sh
 apt update
-apt install -y curl ca-certificates git zsh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
-export PATH="$HOME/.local/bin:$PATH"
-chezmoi init skyde
-
-# Review changes
-chezmoi diff
-
-# Prompt before install (Corporate Use)
-chezmoi apply
-
-# Install without prompting (Personal Use)
-AUTO_INSTALL=1 chezmoi apply
+apt install -y yadm git
+yadm clone https://github.com/skyde/dotfiles.git
+yadm bootstrap
 ```
 
 ### Windows
 
 ```ps
-winget install twpayne.chezmoi
-chezmoi init skyde
-# Review changes if desired
-chezmoi diff
-
-# Apply and be prompted before installs/changes
-chezmoi apply
-
-# Install and upgrade tools without prompting
-$env:AUTO_INSTALL=1; chezmoi apply
+winget install yadm
+yadm clone https://github.com/skyde/dotfiles.git
+yadm bootstrap
 ```
 
 # Linux Container
@@ -55,13 +30,13 @@ $env:AUTO_INSTALL=1; chezmoi apply
 Try it yourself in a Docker container.
 
 ```sh
-docker run --rm -it debian:testing bash -c 'apt update -qq && apt install -y git curl ca-certificates && sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin && chezmoi init skyde && chezmoi diff && AUTO_INSTALL=1 chezmoi apply && exec bash'
+docker run --rm -it debian:testing bash -c 'apt update -qq && apt install -y yadm git && yadm clone https://github.com/skyde/dotfiles.git && yadm bootstrap && exec bash'
 ```
 
 ### WSL Installation
 
 ```ps
-wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc 'sudo sed -i "s/bookworm/trixie/g" /etc/apt/sources.list && sudo apt update && sudo apt full-upgrade -y && sudo apt install -y chezmoi && chezmoi init skyde && chezmoi diff && chezmoi apply'
+wsl --install -d Debian && wsl --set-default Debian && wsl -d Debian -- bash -lc 'sudo apt update && sudo apt install -y yadm git && yadm clone https://github.com/skyde/dotfiles.git && yadm bootstrap'
 ```
 
 ## Starship Prompt
@@ -166,7 +141,7 @@ Use the “Remote-SSH: Connect to Host…” command in VS Code to start a sessi
 
 # Keyboard
 
-Run 'chezmoi update' with Kinesis Advantage 2 V-Drive connected & key bindings will auto sync.
+Run 'yadm pull' with Kinesis Advantage 2 V-Drive connected & key bindings will auto sync.
 
 I've had issues where the keyboard drive gets totally corrupted when syncing from Mac - so just stick to Windows.
 
