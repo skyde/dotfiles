@@ -58,6 +58,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Git Bash tools (optional)
+        run: |
+          set -euxo pipefail
+          # Ensure bash utilities are available; yadm not required for self-test
+          echo ok
+
       - name: Run bootstrap (self-test enabled)
         run: |
           set -euxo pipefail

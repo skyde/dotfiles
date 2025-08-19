@@ -19,8 +19,13 @@ ensure_dir() {
 link_file() {
   local src="$1" dst="$2"
   ensure_dir "$(dirname "$dst")"
-  # Use relative link when possible for nicer paths
-  ln -snf "$src" "$dst"
+  # Prefer symlink; on Windows runners symlinks may be restricted, so fall back to copy
+  if ln -snf "$src" "$dst" 2>/dev/null; then
+    :
+  else
+    rm -rf "$dst" 2>/dev/null || true
+    cp -af "$src" "$dst"
+  fi
 }
 
 copy_file() {
