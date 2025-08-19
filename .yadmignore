@@ -1,0 +1,11 @@
+.gitattributes
+.gitignore
+.github/
+
+#!if !windows
+AppData/
+#!endif
+
+#!if !darwin
+Library/
+#!endif

@@ -1,2 +1,123 @@
-.DS_Store
-.github
+/*
+!/.gitignore
+!/.bashrc
+!/.config/
+!/.config/Code/User/keybindings.json
+!/.config/Code/User/settings.json
+!/.config/Code/User/tasks.json
+!/.config/Cursor/User/keybindings.json
+!/.config/Cursor/User/settings.json
+!/.config/Cursor/User/tasks.json
+!/.config/docs/neovim-mergetool.md
+!/.config/docs/vim-bindings.md
+!/.config/docs/vimium-keybindings.md
+!/.config/docs/vscode-keybindings.md
+!/.config/git/config
+!/.config/kinesis-advantage2/layouts/1_qwerty.txt
+!/.config/kinesis-advantage2/layouts/dvorak.txt
+!/.config/kinesis-advantage2/layouts/qwerty.txt
+!/.config/kitty/kitty.conf
+!/.config/kitty/themes/tokyo-night-storm.conf
+!/.config/lazygit/config.yml
+!/.config/lf/cleaner.sh
+!/.config/lf/icons
+!/.config/lf/lfrc
+!/.config/lf/preview.sh
+!/.config/nvim/.gitignore
+!/.config/nvim/.neoconf.json
+!/.config/nvim/init.lua
+!/.config/nvim/lazy-lock.json
+!/.config/nvim/lazyvim.json
+!/.config/nvim/lua/config/autocmds.lua
+!/.config/nvim/lua/config/keymaps.lua
+!/.config/nvim/lua/config/lazy.lua
+!/.config/nvim/lua/config/options.lua
+!/.config/nvim/lua/config/print_keys.lua
+!/.config/nvim/lua/plugins/alpha.lua
+!/.config/nvim/lua/plugins/comment.lua
+!/.config/nvim/lua/plugins/disable-blink.lua
+!/.config/nvim/lua/plugins/disable-indent-guides.lua
+!/.config/nvim/lua/plugins/disable-smooth-scroll.lua
+!/.config/nvim/lua/plugins/extra-darkplus.lua
+!/.config/nvim/lua/plugins/git-conflict.lua
+!/.config/nvim/lua/plugins/git.lua
+!/.config/nvim/lua/plugins/github-theme.lua
+!/.config/nvim/lua/plugins/lf.lua
+!/.config/nvim/lua/plugins/mini-files-arrows.lua
+!/.config/nvim/lua/plugins/nvim-tree.lua
+!/.config/nvim/lua/plugins/persistence.lua
+!/.config/nvim/lua/plugins/telescope-ignore.lua
+!/.config/nvim/lua/plugins/tokyonight.lua
+!/.config/nvim/lua/plugins/treesitter-context.lua
+!/.config/nvim/lua/plugins/vim-be-good.lua
+!/.config/nvim/stylua.toml
+!/.config/savant-elite2/layouts/pedals.txt
+!/.config/savant-elite2/layouts/pedals_backup.txt
+!/.config/starship.toml
+!/.config/system/common_apps.txt
+!/.config/vimium_c.json
+!/.config/visual_studio/keyboard_and_color.vssettings
+!/.config/visual_studio/visual_studio_shortcuts.txt
+!/.config/vscode/extensions.txt
+!/.config/yadm/bootstrap
+!/.config/yadm/bootstrap.d/10-set-shell.ps1
+!/.config/yadm/bootstrap.d/30-setup-darwin.sh
+!/.config/yadm/bootstrap.d/30-setup-linux.sh
+!/.config/yadm/bootstrap.d/30-setup-windows.ps1
+!/.config/yadm/bootstrap.d/40-install-vscode-extensions.ps1
+!/.config/yadm/bootstrap.d/40-install-vscode-extensions.sh
+!/.config/yadm/bootstrap.d/50-install-lf.sh
+!/.config/yadm/bootstrap.d/90-sync-kinesis-layouts.ps1
+!/.config/yadm/lib/cask_app_map.sh
+!/.config/yadm/lib/run_ensure.sh
+!/.gitattributes
+!/.github/
+!/.github/workflows/ci.yml
+!/.hammerspoon/
+!/.hammerspoon/init.lua
+!/.tmux.conf
+!/.vsvimrc
+!/.yadmignore
+!/.zshrc
+!/AGENTS.md
+!/LICENSE
+!/README.md
+!/AppData/
+/AppData/*
+!/AppData/Local/
+!/AppData/Local/nvim
+!/AppData/Roaming/
+!/AppData/Roaming/Code/
+!/AppData/Roaming/Code/User/
+!/AppData/Roaming/Code/User/keybindings.json
+!/AppData/Roaming/Code/User/settings.json
+!/AppData/Roaming/Code/User/tasks.json
+!/AppData/Roaming/Cursor/
+!/AppData/Roaming/Cursor/User/
+!/AppData/Roaming/Cursor/User/keybindings.json
+!/AppData/Roaming/Cursor/User/settings.json
+!/AppData/Roaming/Cursor/User/tasks.json
+!/AppData/Roaming/jesseduffield/
+!/AppData/Roaming/jesseduffield/lazygit
+!/AppData/Roaming/lf/
+!/AppData/Roaming/lf/config
+!/Documents/
+/Documents/*
+!/Documents/PowerShell/
+!/Documents/PowerShell/Microsoft.PowerShell_profile.ps1
+!/Library/
+/Library/*
+!/Library/Application Support/
+!/Library/Application Support/Code/
+!/Library/Application Support/Code/User/
+!/Library/Application Support/Code/User/keybindings.json
+!/Library/Application Support/Code/User/settings.json
+!/Library/Application Support/Code/User/tasks.json
+!/Library/Application Support/Cursor/
+!/Library/Application Support/Cursor/User/
+!/Library/Application Support/Cursor/User/keybindings.json
+!/Library/Application Support/Cursor/User/settings.json
+!/Library/Application Support/Cursor/User/tasks.json
+!/Library/Application Support/eza
+!/Library/Application Support/lazygit/
+!/Library/Application Support/lazygit/config.yml
