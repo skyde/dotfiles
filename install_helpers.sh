@@ -28,18 +28,7 @@ ensure_parent() {
   mkdir -p "$(dirname "$path")"
 }
 
-# ensure_file_exists "path/to/file"
-ensure_file_exists() {
-  local path="$1"
-  ensure_parent "$path"
-  if [ ! -e "$path" ]; then
-    if [ "$DRY_RUN" = "1" ]; then
-      echo "DRY_RUN: touch $path"
-    else
-      : > "$path"
-    fi
-  fi
-}
+# ensure_file_exists removed (unused)
 
 # backup_conflict_into_repo_backup "absolute-target-path"
 backup_conflict_into_repo_backup() {
@@ -99,6 +88,12 @@ restow_package() {
     rel_path=${dir#"$pkg/"}
     [ -z "$rel_path" ] && continue
     local target="$target_dir/$rel_path"
+    # Skip backing up top-level aggregator directories (e.g. ".config")
+    # Only back up nested directories like ".config/git" so we don't
+    # repeatedly move the entire ".config" directory for each package.
+    if [[ "$rel_path" != */* ]]; then
+      continue
+    fi
     if [ -d "$target" ] && [ ! -L "$target" ]; then
       local dest="$backup_dir/$rel_path"
       if [ ! -e "$dest" ]; then

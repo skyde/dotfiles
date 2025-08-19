@@ -112,17 +112,6 @@ function Ensure-Directory {
     }
 }
 
-function Ensure-FileExists {
-    param([Parameter(Mandatory)][string]$Path)
-    $dir = Split-Path -Parent $Path
-    if ($dir) { Ensure-Directory -Path $dir }
-    if (-not (Test-Path $Path)) {
-        if ($Global:DotfilesDryRun) {
-            Write-Host "DRY_RUN: New-Item -ItemType File -Path $Path -Force"
-        } else {
-            New-Item -ItemType File -Path $Path -Force | Out-Null
-        }
-    }
-}
+## Ensure-FileExists (removed): no longer used after folder-level VS Code linking
 
 
