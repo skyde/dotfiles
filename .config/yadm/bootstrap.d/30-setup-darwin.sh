@@ -4,7 +4,7 @@ set -euo pipefail
 source "$HOME/.config/yadm/lib/run_ensure.sh"
 source "$HOME/.config/yadm/lib/cask_app_map.sh"
 
-mapfile -t COMMON_APPS < "$HOME/common_apps.txt"
+mapfile -t COMMON_APPS < "$HOME/.config/system/common_apps.txt"
 
 echo "Running macOS setup using Homebrew..."
 

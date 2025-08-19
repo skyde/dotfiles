@@ -1,7 +1,8 @@
 # Requires PowerShell 7+
 
 # Build $COMMON_APPS array correctly from file lines
-$COMMON_APPS = Get-Content "$env:USERPROFILE/common_apps.txt" | Where-Object { $_.Trim() -ne "" }
+$commonAppsPath = Join-Path $env:USERPROFILE '.config/system/common_apps.txt'
+$COMMON_APPS = Get-Content $commonAppsPath | Where-Object { $_.Trim() -ne "" }
 
 Write-Host "COMMON_APPS:"
 $COMMON_APPS | ForEach-Object { Write-Host $_ }
