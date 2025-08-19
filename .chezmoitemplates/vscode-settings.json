@@ -17,8 +17,8 @@
   "terminal.integrated.minimumContrastRatio": 1,
   "editor.lineNumbers": "relative",
   "editor.renderLineHighlight": "all",
-  "workbench.colorTheme": "Tokyo Night Moon",
-  "workbench.preferredDarkColorTheme": "Tokyo Night Moon",
+  "workbench.colorTheme": "Tokyo Night Storm",
+  "workbench.preferredDarkColorTheme": "Tokyo Night Storm",
   "workbench.colorCustomizations": {
     "editorCursor.foreground": "#D0CCB2",
     "editorCursor.background": "#000000",
