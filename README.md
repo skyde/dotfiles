@@ -1,5 +1,46 @@
 # Install
 
+## YADM (new)
+
+Use yadm to manage and deploy these dotfiles cross‑platform. The repo layout keeps all dotfiles under `~/chezmoi` and a yadm bootstrap links them to the correct destinations.
+
+### macOS
+
+```sh
+brew install yadm
+# First time: point yadm at this repo (remote or local path)
+# Recommended when using a remote:
+#   yadm clone --bootstrap git@github.com:skyde/chezmoi.git
+
+# If running from a local checkout of this repo without changing your yadm repo:
+YADM_REPO_ROOT="$PWD" YADM_SELF_TEST=1 bash .config/yadm/bootstrap
+```
+
+### Linux (Debian testing)
+
+```sh
+sudo apt update && sudo apt install -y yadm git curl ca-certificates zsh
+yadm clone --bootstrap https://github.com/skyde/chezmoi.git
+# Optional: self‑test to verify deployed files match sources
+YADM_SELF_TEST=1 yadm bootstrap
+```
+
+### Windows
+
+- Recommended: Use WSL (Debian) and follow the Linux steps inside WSL. Windows‑specific files (e.g., VS settings and PowerShell profile) are still in the repo and linked by the bootstrap where applicable when run under WSL.
+
+### Test in a Debian testing container
+
+```sh
+docker run --rm -t -v "$PWD":/repo debian:testing bash -lc '
+  apt-get update -qq && apt-get install -y yadm git curl ca-certificates zsh && \
+  cd /root && yadm clone --bootstrap /repo && YADM_SELF_TEST=1 yadm bootstrap && echo "[yadm] container test OK"'
+```
+
+## Chezmoi (legacy)
+
+The workflow below was used previously. It remains documented for reference but yadm is now the default.
+
 ### Mac
 
 ```sh

@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# yadm bootstrap: deploy dotfiles from this repo (which currently uses a chezmoi-style tree)
+# This script intentionally preserves the existing repo layout and creates the same outcome
+# you had with chezmoi by linking/copying files into $HOME.
+
+REPO_ROOT="${YADM_REPO_ROOT:-$HOME}" # allow override for local testing; default to $HOME
+CHEZ_DIR="$REPO_ROOT"
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+log() { printf "[yadm] %s\n" "$*"; }
+
+ensure_dir() {
+  mkdir -p "$1"
+}
+
+link_file() {
+  local src="$1" dst="$2"
+  ensure_dir "$(dirname "$dst")"
+  # Use relative link when possible for nicer paths
+  ln -snf "$src" "$dst"
+}
+
+copy_file() {
+  local src="$1" dst="$2"
+  ensure_dir "$(dirname "$dst")"
+  install -m 0644 "$src" "$dst"
+}
+
+# Do not depend on chezmoi helper scripts; keep bootstrap self-contained
+
+detect_os() {
+  case "$(uname -s)" in
+    Darwin) echo mac;;
+    Linux)
+      if [ -r /etc/os-release ]; then
+        . /etc/os-release
+        echo "${ID:-linux}"
+      else
+        echo linux
+      fi
+      ;;
+    *) echo unknown;;
+  esac
+}
+
+OS_ID="$(detect_os)"
+
+# Default to non-interactive installs unless explicitly overridden
+if [ -z "${AUTO_INSTALL:-}" ]; then
+  export AUTO_INSTALL=1
+fi
+
+if [ "$OS_ID" = "debian" ] || [ "$OS_ID" = "ubuntu" ]; then
+  export DEBIAN_FRONTEND=noninteractive
+fi
+
+log "Detected OS: $OS_ID"
+
+# 1) Install foundational tools (non-interactive)
+case "$OS_ID" in
+  debian|ubuntu)
+    SUDO_CMD=""; if [ "$(id -u)" -ne 0 ] && have sudo; then SUDO_CMD="sudo"; fi
+    $SUDO_CMD apt-get update -y >/dev/null 2>&1 || true
+    # Prefer fd-find on Debian (fd is named fdfind)
+    $SUDO_CMD apt-get install -y \
+      zsh \
+      fzf \
+      ripgrep \
+      fd-find \
+      bat \
+      eza \
+      zoxide \
+      lazygit \
+      curl \
+      tar \
+      >/dev/null 2>&1 || true
+    ;;
+  mac|darwin)
+    if have brew; then
+      brew update >/dev/null 2>&1 || true
+      brew install zsh fzf ripgrep fd bat eza zoxide lazygit lf >/dev/null 2>&1 || true
+      brew upgrade zsh fzf ripgrep fd bat eza zoxide lazygit lf >/dev/null 2>&1 || true
+    fi
+    ;;
+  *) : ;;
+esac
+
+# 2) Deploy dotfiles from chezmoi/ tree → $HOME
+if [ ! -d "$CHEZ_DIR" ]; then
+  log "Expected repo subtree '$CHEZ_DIR' not found; nothing to link."
+  exit 0
+fi
+
+# Core files
+for pair in \
+  "dot_zshrc:$HOME/.zshrc" \
+  "dot_bashrc:$HOME/.bashrc" \
+  "dot_tmux.conf:$HOME/.tmux.conf" \
+  "dot_vsvimrc:$HOME/.vsvimrc" \
+  "dot_hammerspoon/init.lua:$HOME/.hammerspoon/init.lua" \
+  "Documents/PowerShell/Microsoft.PowerShell_profile.ps1:$HOME/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" \
+  ; do
+  src_rel="${pair%%:*}"
+  dst="${pair#*:}"
+  src="$CHEZ_DIR/$src_rel"
+  if [ -f "$src" ]; then
+    link_file "$src" "$dst"
+    log "Linked $dst → $src_rel"
+  fi
+done
+
+# .config subtree (link directories/files present in repo)
+if [ -d "$CHEZ_DIR/dot_config" ]; then
+  # Create ~/.config if missing
+  ensure_dir "$HOME/.config"
+  (
+    cd "$CHEZ_DIR/dot_config"
+    find . -mindepth 1 -maxdepth 1 | while read -r entry; do
+      src="$CHEZ_DIR/dot_config/${entry#./}"
+      dst="$HOME/.config/${entry#./}"
+      if [ -d "$src" ]; then
+        ensure_dir "$dst"
+        # Link each file within to allow partial overrides later
+        find "$src" -type d -print0 | while IFS= read -r -d '' d; do
+          rel="${d#$src}"
+          ensure_dir "$dst$rel"
+        done
+        find "$src" -type f -print0 | while IFS= read -r -d '' f; do
+          rel="${f#$src}"
+          link_file "$f" "$dst$rel"
+        done
+      else
+        link_file "$src" "$dst"
+      fi
+      log "Installed ~/.config/${entry#./}"
+    done
+  )
+fi
+
+# VS Code/Code - link macOS "Library/Application Support" paths to ~/.config/Code/User
+CODE_USER="$HOME/.config/Code/User"
+if [ -d "$CODE_USER" ]; then
+  case "$OS_ID" in
+    mac|darwin)
+      mac_user_dir="$HOME/Library/Application Support/Code/User"
+      ensure_dir "$mac_user_dir"
+      for f in settings.json keybindings.json tasks.json; do
+        [ -f "$CODE_USER/$f" ] && link_file "$CODE_USER/$f" "$mac_user_dir/$f"
+      done
+      ;;
+  esac
+fi
+
+# Cursor: mirror Code settings into Cursor if present
+CURSOR_USER="$HOME/.config/Cursor/User"
+if [ -d "$CURSOR_USER" ] && [ -d "$CODE_USER" ]; then
+  for f in settings.json keybindings.json; do
+    [ -f "$CODE_USER/$f" ] && link_file "$CODE_USER/$f" "$CURSOR_USER/$f"
+  done
+fi
+
+# 3) Optional: install VS Code/Cursor extensions from list
+EXT_FILE="$CHEZ_DIR/vscode_extensions.txt"
+if [ -r "$EXT_FILE" ]; then
+  CODE_CMD=""
+  if have code; then CODE_CMD="code"; fi
+  if [ -z "$CODE_CMD" ] && have cursor; then CODE_CMD="cursor"; fi
+  if [ -z "$CODE_CMD" ] && [ -x "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" ]; then
+    CODE_CMD="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
+  fi
+  if [ -n "$CODE_CMD" ]; then
+    while IFS= read -r ext || [ -n "$ext" ]; do
+      [ -z "$ext" ] && continue
+      "$CODE_CMD" --install-extension "$ext" --force >/dev/null 2>&1 || true
+    done < "$EXT_FILE"
+  fi
+fi
+
+# 4) Ensure lf is available on Debian Testing (download if missing)
+if [ "$OS_ID" = "debian" ] || [ "$OS_ID" = "ubuntu" ]; then
+  if ! have lf; then
+    latest="$(curl -fsSL https://api.github.com/repos/gokcehan/lf/releases/latest | sed -n 's/.*\"tag_name\"\s*:\s*\"\([^\"]*\)\".*/\1/p' | head -n1)"
+    tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+    curl -fsSL "https://github.com/gokcehan/lf/releases/download/${latest}/lf-linux-amd64.tar.gz" -o "$tmp/lf.tar.gz"
+    tar -xzf "$tmp/lf.tar.gz" -C "$tmp"
+    SUDO_CMD=""; if [ "$(id -u)" -ne 0 ] && have sudo; then SUDO_CMD="sudo"; fi
+    $SUDO_CMD install -m 0755 "$tmp/lf" /usr/local/bin/lf
+  fi
+fi
+
+# 5) Self-test: verify key files resolve to the same content
+if [ "${YADM_SELF_TEST:-0}" = "1" ]; then
+  failures=0
+  check_same() {
+    local a="$1" b="$2"
+    if [ ! -e "$a" ]; then
+      log "[FAIL] missing deployed: $a"; failures=$((failures+1)); return
+    fi
+    if [ ! -e "$b" ]; then
+      log "[FAIL] missing source:   $b"; failures=$((failures+1)); return
+    fi
+    if ! cmp -s "$a" "$b"; then
+      log "[FAIL] differ: $a vs $b"; failures=$((failures+1))
+    else
+      log "[OK]   same:   ${a#$HOME/}"
+    fi
+  }
+
+  check_same "$HOME/.zshrc" "$CHEZ_DIR/dot_zshrc"
+  check_same "$HOME/.bashrc" "$CHEZ_DIR/dot_bashrc"
+  check_same "$HOME/.tmux.conf" "$CHEZ_DIR/dot_tmux.conf"
+  check_same "$HOME/.vsvimrc" "$CHEZ_DIR/dot_vsvimrc"
+  check_same "$HOME/.config/Code/User/settings.json" "$CHEZ_DIR/dot_config/Code/User/settings.json"
+  check_same "$HOME/.config/Code/User/keybindings.json" "$CHEZ_DIR/dot_config/Code/User/keybindings.json"
+  check_same "$HOME/.config/Code/User/tasks.json" "$CHEZ_DIR/dot_config/Code/User/tasks.json"
+
+  if [ "$failures" -ne 0 ]; then
+    log "Self-test failed with $failures difference(s)."
+    exit 1
+  fi
+  log "Self-test passed."
+fi
+
+log "Bootstrap complete."
+
+
