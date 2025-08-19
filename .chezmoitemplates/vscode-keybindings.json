@@ -227,7 +227,7 @@
   {
     "key": "ctrl+u",
     "command": "runCommands",
-    "when": "textInputFocus",
+    "when": "textInputFocus && !auxiliaryBarFocus",
     "args": {
       "commands": [
         "scrollLineUp",
@@ -269,7 +269,7 @@
   {
     "key": "ctrl+d",
     "command": "runCommands",
-    "when": "textInputFocus",
+    "when": "textInputFocus && !auxiliaryBarFocus",
     "args": {
       "commands": [
         "scrollLineDown",
@@ -593,90 +593,155 @@
   { "key": "cmd+j", "command": "workbench.action.focusPanel", "when": "!panelFocus" },
   { "key": "cmd+j", "command": "workbench.action.closePanel",  "when": "panelFocus" },
 
-  // Scroll Copilot Chat list with Vim-style keys
-  {
-    "key": "ctrl+d",
-    "command": "list.focusPageDown",
-    "when": "auxiliaryBarFocus && listFocus && !inputFocus"
-  },
-  {
-    "key": "ctrl+u",
-    "command": "list.focusPageUp",
-    "when": "auxiliaryBarFocus && listFocus && !inputFocus"
-  },
-
-  // Page Copilot Chat history from input
+  // Page Copilot Chat history from input - macOS
   {
     "key": "cmd+d",
     "command": "runCommands",
     "when": "inChatInput",
-    "args": {
-      "commands": [
-        "workbench.action.chat.focus",
-        "list.focusPageDown",
-        "workbench.action.chat.focusInput"
-      ]
-    }
+    "args": { "commands": [
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+    ] }
   },
   {
     "key": "cmd+u",
     "command": "runCommands",
     "when": "inChatInput",
-    "args": {
-      "commands": [
-        "workbench.action.chat.focus",
-        "list.focusPageUp",
-        "workbench.action.chat.focusInput"
-      ]
-    }
+    "args": { "commands": [
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+    ] }
   },
+
   {
     "key": "ctrl+d",
     "command": "runCommands",
     "when": "inChatInput",
-    "args": {
-      "commands": [
-        "workbench.action.chat.focus",
-        "list.focusPageDown",
-        "workbench.action.chat.focusInput"
-      ]
-    }
+    "args": { "commands": [
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+      "list.scrollDown",
+    ] }
   },
   {
     "key": "ctrl+u",
     "command": "runCommands",
     "when": "inChatInput",
-    "args": {
-      "commands": [
-        "workbench.action.chat.focus",
-        "list.focusPageUp",
-        "workbench.action.chat.focusInput"
-      ]
-    }
-  },
-  {
-    "key": "pageDown",
-    "command": "runCommands",
-    "when": "inChatInput",
-    "args": {
-      "commands": [
-        "workbench.action.chat.focus",
-        "list.focusPageDown",
-        "workbench.action.chat.focusInput"
-      ]
-    }
-  },
-  {
-    "key": "pageUp",
-    "command": "runCommands",
-    "when": "inChatInput",
-    "args": {
-      "commands": [
-        "workbench.action.chat.focus",
-        "list.focusPageUp",
-        "workbench.action.chat.focusInput"
-      ]
-    }
+    "args": { "commands": [
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+      "list.scrollUp",
+    ] }
   },
 
   // Right (Secondary) Side Bar — single ⌘ stroke
@@ -704,10 +769,6 @@
   { "key": "cmd+j",  "command": "workbench.action.closePanel", "when": "panelFocus" },
   { "key": "ctrl+j", "command": "workbench.action.focusPanel", "when": "!panelFocus" },
   { "key": "ctrl+j", "command": "workbench.action.closePanel", "when": "panelFocus" },
-
-  // Scroll Copilot Chat list with Vim-style keys
-  { "key": "ctrl+d", "command": "list.focusPageDown", "when": "auxiliaryBarFocus && listFocus && !inputFocus" },
-  { "key": "ctrl+u", "command": "list.focusPageUp",   "when": "auxiliaryBarFocus && listFocus && !inputFocus" },
 
   // Right (Secondary) Side Bar — single-stroke toggle (Cmd AND Ctrl)
   { "key": "cmd+;",  "command": "workbench.action.focusAuxiliaryBar",  "when": "!auxiliaryBarFocus" },
