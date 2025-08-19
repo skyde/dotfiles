@@ -4,7 +4,9 @@
     "vscodevim.vim",
     "qufiwefefwoyn.kanagawa",
     "formulahendry.auto-close-tag",
-    "RodrigoScola.vscode-textobjects"
+    "RodrigoScola.vscode-textobjects",
+    "TomRijndorp.find-it-faster",
+    "PatrickNasralla.tokyo-night-moon"
   ],
   "unwantedRecommendations": []
 }

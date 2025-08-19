@@ -16,8 +16,8 @@
   "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font",
   "editor.lineNumbers": "relative",
   "editor.renderLineHighlight": "all",
-  "workbench.colorTheme": "Tokyo Night Storm",
-  "workbench.preferredDarkColorTheme": "Tokyo Night Storm",
+  "workbench.colorTheme": "Tokyo Night Moon",
+  "workbench.preferredDarkColorTheme": "Tokyo Night Moon",
   "workbench.colorCustomizations": {
     "editorCursor.foreground": "#D0CCB2",
     "editorCursor.background": "#000000",
@@ -35,6 +35,10 @@
     "panel": "hide",
     "secondarySidebar": "keep"
   },
+  // FindItFaster and terminal setup
+  "find-it-faster.general.useTerminalInEditor": true,
+  "find-it-faster.general.killTerminalAfterUse": true,
+  "terminal.integrated.allowChords": false,
   // Disable AI code suggestions and built-in tag closing
   "editor.inlineSuggest.enabled": false,
   "github.copilot.enable": {
@@ -71,7 +75,7 @@
   "vim.useSystemClipboard": true,
   "vim.useCtrlKeys": true,
   "vim.surround": true,
-  "vim.leader": "<space>",
+  "vim.leader": " ",
   "vim.hlsearch": true,
   "vim.highlightedyank.enable": true,
   "vim.highlightedyank.color": "rgba(255, 223, 93, 0.3)", // warm gold, soft opacity
@@ -563,7 +567,27 @@
         "f"
       ],
       "commands": [
-        "workbench.action.quickOpen"
+        "find-it-faster.findFiles"
+      ]
+    },
+    {
+      "before": [
+        "leader",
+        "f",
+        "g"
+      ],
+      "commands": [
+        "find-it-faster.findWithinFiles"
+      ]
+    },
+    {
+      "before": [
+        "leader",
+        "f",
+        "o"
+      ],
+      "commands": [
+        "find-it-faster.resumeSearch"
       ]
     },
     {
