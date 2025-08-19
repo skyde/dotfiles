@@ -6,27 +6,31 @@ source "$(dirname "$0")/install_helpers.sh"
 initialize_backup_dir
 
 # ------------------------------
-# Packages to stow
+# Auto-discover packages by layout
 # ------------------------------
 
-packages=(bash zsh tmux git kitty lazygit starship lf nvim vsvim visual_studio vimium_c)
+discover_and_stow() {
+  local root="$1"
+  [ -d "$root" ] || return 0
+  while IFS= read -r -d '' dir; do
+    restow_package "$dir" "$HOME"
+  done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0)
+}
+
+discover_and_stow "dotfiles/common"
 
 case "$(uname -s)" in
   Darwin)
-    packages+=(hammerspoon Code)
+    discover_and_stow "dotfiles/mac"
     ;;
   Linux)
-    packages+=(Code)
+    discover_and_stow "dotfiles/linux"
     ;;
   *)
     echo "Unsupported OS: $(uname -s)" >&2
     exit 1
     ;;
 esac
-
-for pkg in "${packages[@]}"; do
-  restow_package "$pkg" "$HOME"
-done
 
 # ------------------------------
 # Cross-OS bridges (reusable via data)

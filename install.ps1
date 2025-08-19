@@ -11,17 +11,21 @@ $home = $env:USERPROFILE
 if ($DryRun) { $Global:DotfilesDryRun = $true }
 
 # ------------------------------
-# Packages to stow
+# Auto-discover packages by layout
 # ------------------------------
 
-$packages = @('bash','zsh','tmux','git','kitty','lazygit','starship','lf','nvim','vsvim','visual_studio','vimium_c','Documents','Code')
-
-foreach ($pkg in $packages) {
-    Restow-Package -Package $pkg -Target $home
+function Discover-And-Stow([string]$Root, [string]$Target) {
+    if (-not (Test-Path $Root)) { return }
+    Get-ChildItem -Path $Root -Directory | ForEach-Object {
+        Restow-Package -Package $_.FullName -Target $Target
+    }
 }
 
-if (Test-Path 'nvim-win') { Restow-Package -Package 'nvim-win' -Target $env:LOCALAPPDATA }
-if (Test-Path 'lf-win')   { Restow-Package -Package 'lf-win'   -Target $env:APPDATA }
+Discover-And-Stow -Root (Join-Path $PSScriptRoot 'dotfiles/common') -Target $home
+
+if ($IsWindows) {
+    Discover-And-Stow -Root (Join-Path $PSScriptRoot 'windows') -Target $home
+}
 
 # ------------------------------
 # Cross-OS bridges (reusable via data)
