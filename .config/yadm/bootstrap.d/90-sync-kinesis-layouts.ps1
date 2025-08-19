@@ -1,3 +1,8 @@
+if (-not (Get-Command Get-Volume -ErrorAction SilentlyContinue)) {
+    Write-Warning "Get-Volume cmdlet not available. Skipping Kinesis layout sync."
+    return
+}
+
 function Get-Adv2Drive {
     # Look at every mounted removable volume
     $vols = Get-Volume -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -eq 'Removable' }
