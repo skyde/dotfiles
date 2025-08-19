@@ -1,2 +1,3 @@
 .DS_Store
-.github
+# Allow GitHub Actions workflows to be committed
+# (Previously ignored to keep repo minimal)
