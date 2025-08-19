@@ -10,7 +10,7 @@ fi
 
 source "$HOME/.config/yadm/lib/run_ensure.sh"
 
-mapfile -t COMMON_APPS < "$HOME/common_apps.txt"
+mapfile -t COMMON_APPS < "$HOME/.config/system/common_apps.txt"
 
 echo "Installing packages using apt..."
 
