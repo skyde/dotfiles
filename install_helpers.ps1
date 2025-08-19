@@ -51,17 +51,28 @@ function Ensure-SymlinkWithBackup {
         }
         Backup-Conflict -Target $Destination
     }
+    $isDir = Test-Path $Source -PathType Container
     if ($Global:DotfilesDryRun) {
-        Write-Host "DRY_RUN: New-Item -ItemType SymbolicLink -Path $Destination -Target $Source -Force"
-    } else {
-        try {
-            New-Item -ItemType SymbolicLink -Path $Destination -Target $Source -Force | Out-Null
-        } catch {
+        $kind = $isDir ? 'Junction/SymbolicLink' : 'SymbolicLink'
+        Write-Host "DRY_RUN: New-Item -ItemType $kind -Path $Destination -Target $Source -Force"
+        return
+    }
+    try {
+        if ($isDir) {
+            # Prefer directory symlink; fall back to Junction which works without admin
             try {
-                New-Item -ItemType HardLink -Path $Destination -Target $Source -Force | Out-Null
+                New-Item -ItemType SymbolicLink -Path $Destination -Target $Source -Force | Out-Null
             } catch {
-                throw "Failed to link $Destination -> $Source. Enable Developer Mode or run as Administrator."
+                New-Item -ItemType Junction -Path $Destination -Target $Source -Force | Out-Null
             }
+        } else {
+            New-Item -ItemType SymbolicLink -Path $Destination -Target $Source -Force | Out-Null
+        }
+    } catch {
+        try {
+            New-Item -ItemType HardLink -Path $Destination -Target $Source -Force | Out-Null
+        } catch {
+            throw "Failed to link $Destination -> $Source. Enable Developer Mode or run as Administrator."
         }
     }
 }

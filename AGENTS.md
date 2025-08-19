@@ -15,7 +15,8 @@ Follow these rules whenever you make changes:
 - In the PR description, mention notable configuration or package changes and cite modified files.
 
 ## Repository layout tips
-- OS specific configs live in dedicated stow packages like `Code-mac` or `nvim-win`.
+
+- OS specific configs live in dedicated stow packages like `nvim-win`.
 - Neovim configuration is in `nvim/.config/nvim`.
 
 Avoid committing secrets or personal data.

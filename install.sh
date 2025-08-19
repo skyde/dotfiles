@@ -13,7 +13,7 @@ packages=(bash zsh tmux git kitty lazygit starship lf nvim vsvim visual_studio v
 
 case "$(uname -s)" in
   Darwin)
-    packages+=(hammerspoon Code Code-mac)
+    packages+=(hammerspoon Code)
     ;;
   Linux)
     packages+=(Code)
@@ -36,16 +36,7 @@ if [ "$(uname -s)" = Darwin ]; then
   mkdir -p "$HOME/.config/Code/User"
   mkdir -p "$HOME/Library/Application Support/Code/User"
 
-  # Ensure source files exist so links are not broken
-  ensure_file_exists "$HOME/.config/Code/User/settings.json"
-  ensure_file_exists "$HOME/.config/Code/User/keybindings.json"
-  ensure_file_exists "$HOME/.config/Code/User/tasks.json"
-
-  declare -a mac_links=(
-    "$HOME/.config/Code/User/settings.json::$HOME/Library/Application Support/Code/User/settings.json"
-    "$HOME/.config/Code/User/keybindings.json::$HOME/Library/Application Support/Code/User/keybindings.json"
-    "$HOME/.config/Code/User/tasks.json::$HOME/Library/Application Support/Code/User/tasks.json"
-  )
-
-  process_symlink_pairs "${mac_links[@]}"
+  # Link the entire VS Code User directory to avoid per-file special casing
+  process_symlink_pairs \
+    "$HOME/.config/Code/User::$HOME/Library/Application Support/Code/User"
 fi

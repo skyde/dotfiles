@@ -34,14 +34,7 @@ Ensure-Directory -Path $vscodeDotConfigUser
 $vscodeAppDataUser = Join-Path $env:APPDATA 'Code\User'
 Ensure-Directory -Path $vscodeAppDataUser
 
-# Ensure source files exist so links are not broken
-foreach ($name in 'settings.json','keybindings.json','tasks.json') {
-    Ensure-FileExists -Path (Join-Path $vscodeDotConfigUser $name)
-}
-
-$vscodePairs = @(
-    (Join-Path $vscodeDotConfigUser 'settings.json') + '::' + (Join-Path $vscodeAppDataUser 'settings.json'),
-    (Join-Path $vscodeDotConfigUser 'keybindings.json') + '::' + (Join-Path $vscodeAppDataUser 'keybindings.json'),
-    (Join-Path $vscodeDotConfigUser 'tasks.json') + '::' + (Join-Path $vscodeAppDataUser 'tasks.json')
+# Link the entire User directory so new files are automatically covered
+Invoke-SymlinkPairs -Pairs @(
+    $vscodeDotConfigUser + '::' + $vscodeAppDataUser
 )
-Invoke-SymlinkPairs -Pairs $vscodePairs
