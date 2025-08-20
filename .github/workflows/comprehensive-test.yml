@@ -2,13 +2,13 @@ name: Comprehensive Dotfiles Testing
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
   schedule:
     # Run tests weekly to catch potential issues
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
 
 jobs:
   # Basic validation checks
@@ -22,14 +22,14 @@ jobs:
       - name: Validate repository structure
         run: |
           echo "🔍 Validating repository structure..."
-          
+
           # Check essential directories exist
           test -d "dotfiles" || { echo "❌ dotfiles directory missing"; exit 1; }
           test -d "dotfiles/common" || { echo "❌ dotfiles/common directory missing"; exit 1; }
           test -d "dotfiles/mac" || { echo "❌ dotfiles/mac directory missing"; exit 1; }
           test -d "dotfiles/windows" || { echo "❌ dotfiles/windows directory missing"; exit 1; }
           echo "✅ Directory structure valid"
-          
+
           # Check essential scripts exist
           test -f "init.sh" || { echo "❌ init.sh missing"; exit 1; }
           test -f "apply.sh" || { echo "❌ apply.sh missing"; exit 1; }
@@ -38,47 +38,47 @@ jobs:
           test -f "apply.ps1" || { echo "❌ apply.ps1 missing"; exit 1; }
           test -f "update.ps1" || { echo "❌ update.ps1 missing"; exit 1; }
           echo "✅ All essential scripts present"
-          
+
           # Check scripts are executable
           test -x "init.sh" || { echo "❌ init.sh not executable"; exit 1; }
           test -x "apply.sh" || { echo "❌ apply.sh not executable"; exit 1; }
           test -x "update.sh" || { echo "❌ update.sh not executable"; exit 1; }
           echo "✅ Shell scripts are executable"
-          
+
           # Validate package structure
           echo "📦 Package validation:"
           common_count=$(find dotfiles/common -mindepth 1 -maxdepth 1 -type d | wc -l)
           echo "  Common packages: $common_count"
           test $common_count -ge 6 || { echo "❌ Expected at least 6 common packages"; exit 1; }
-          
+
           mac_count=$(find dotfiles/mac -mindepth 1 -maxdepth 1 -type d | wc -l)
           echo "  macOS packages: $mac_count"
           test $mac_count -ge 1 || { echo "❌ Expected at least 1 macOS package"; exit 1; }
-          
+
           windows_count=$(find dotfiles/windows -mindepth 1 -maxdepth 1 -type d | wc -l)
           echo "  Windows packages: $windows_count"
           test $windows_count -ge 5 || { echo "❌ Expected at least 5 Windows packages"; exit 1; }
-          
+
           echo "✅ Package structure validation passed"
 
       - name: Validate configuration files
         run: |
           echo "📄 Validating configuration files..."
-          
+
           # Check essential config files exist
           test -f "dotfiles/common/shell/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
           test -f "dotfiles/common/shell/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
           test -f "dotfiles/common/shell/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
           test -f "dotfiles/common/devtools/.config/git/config" || { echo "❌ git config missing"; exit 1; }
           echo "✅ Essential config files present"
-          
+
           # Validate shell script syntax
           echo "🔍 Validating shell script syntax..."
           bash -n init.sh || { echo "❌ init.sh has syntax errors"; exit 1; }
           bash -n apply.sh || { echo "❌ apply.sh has syntax errors"; exit 1; }
           bash -n update.sh || { echo "❌ update.sh has syntax errors"; exit 1; }
           echo "✅ Shell scripts have valid syntax"
-          
+
           # Validate shell config syntax
           echo "🔍 Validating shell configuration syntax..."
           bash -n dotfiles/common/shell/.bashrc || { echo "❌ .bashrc has syntax errors"; exit 1; }
@@ -92,7 +92,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-20.04, macos-latest, macos-12, windows-latest]
+        os:
+          [ubuntu-latest, ubuntu-20.04, macos-latest, macos-12, windows-latest]
         include:
           - os: ubuntu-latest
             platform: linux
@@ -163,7 +164,7 @@ jobs:
       - name: Test script execution (dry run)
         run: |
           echo "🧪 Testing script execution (dry run)..."
-          
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell scripts..."
             pwsh -Command "& './${{ matrix.apply_script }}' --no" || echo "PowerShell script test failed"
@@ -178,7 +179,7 @@ jobs:
       - name: Test full installation
         run: |
           echo "🚀 Testing full installation..."
-          
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Running Windows installation..."
             pwsh -Command '$env:AUTO_INSTALL = "0"; & "./${{ matrix.init_script }}"' || echo "Windows installation failed"
@@ -186,22 +187,22 @@ jobs:
             echo "Running Unix installation..."
             AUTO_INSTALL=0 ${{ matrix.init_script }}
           fi
-          
+
           echo "✅ Installation completed successfully"
         shell: bash
 
       - name: Verify package-based symlinks
         run: |
           echo "🔗 Verifying package-based symlinks..."
-          
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
             home_dir="$USERPROFILE"
           else
             home_dir="$HOME"
           fi
-          
+
           echo "Home directory: $home_dir"
-          
+
           # Count symlinks
           if [ "${{ matrix.platform }}" = "windows" ]; then
             # Windows symlink verification
@@ -221,27 +222,27 @@ jobs:
       - name: Test configuration access
         run: |
           echo "📄 Testing configuration file access..."
-          
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
             home_dir="$USERPROFILE"
           else
             home_dir="$HOME"
           fi
-          
+
           # Test shell configurations
           test -f "$home_dir/shell/.bashrc" || { echo "❌ .bashrc not accessible"; exit 1; }
           test -f "$home_dir/shell/.zshrc" || { echo "❌ .zshrc not accessible"; exit 1; }
           test -f "$home_dir/shell/.tmux.conf" || { echo "❌ .tmux.conf not accessible"; exit 1; }
           echo "✅ Shell configs accessible"
-          
+
           # Test git configuration
           test -f "$home_dir/devtools/.config/git/config" || { echo "❌ git config not accessible"; exit 1; }
           echo "✅ Git config accessible"
-          
+
           # Test VS Code configuration
           test -f "$home_dir/Code/.config/Code/User/settings.json" || { echo "❌ VS Code config not accessible"; exit 1; }
           echo "✅ VS Code config accessible"
-          
+
           # Test Neovim configuration
           test -d "$home_dir/nvim/.config/nvim" || { echo "❌ Neovim config not accessible"; exit 1; }
           echo "✅ Neovim config accessible"
@@ -250,7 +251,7 @@ jobs:
       - name: Test platform-specific configurations
         run: |
           echo "🎯 Testing platform-specific configurations..."
-          
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
             home_dir="$USERPROFILE"
             # Test Windows-specific packages
@@ -273,21 +274,21 @@ jobs:
       - name: Test configuration loading
         run: |
           echo "⚡ Testing configuration loading..."
-          
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
             home_dir="$USERPROFILE"
           else
             home_dir="$HOME"
           fi
-          
+
           # Test bash config syntax
           bash -n "$home_dir/shell/.bashrc" || { echo "❌ .bashrc has syntax errors"; exit 1; }
           echo "✅ Bash config syntax valid"
-          
+
           # Test git config validity
           git config --file "$home_dir/devtools/.config/git/config" --list > /dev/null || { echo "❌ Git config invalid"; exit 1; }
           echo "✅ Git config valid"
-          
+
           # Test if zsh config can be parsed (if zsh available)
           if command -v zsh > /dev/null 2>&1; then
             zsh -n "$home_dir/shell/.zshrc" 2>/dev/null || echo "⚠️ Zsh config has warnings (may be expected)"
@@ -300,7 +301,7 @@ jobs:
       - name: Test package management operations
         run: |
           echo "🔄 Testing package management operations..."
-          
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell package management..."
             pwsh -Command '& "./${{ matrix.apply_script }}" --restow' || echo "PowerShell restow failed"
@@ -322,10 +323,10 @@ jobs:
       - name: Test update functionality
         run: |
           echo "🔄 Testing update functionality..."
-          
+
           # Create a test change
           echo "# Test comment" >> dotfiles/common/shell/.bashrc
-          
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell update script..."
             pwsh -Command 'Select-String -Path "${{ matrix.update_script }}" -Pattern "git pull" -Quiet' || { echo "❌ Update script missing git pull"; exit 1; }
@@ -335,7 +336,7 @@ jobs:
             grep -q "git pull" ${{ matrix.update_script }} || { echo "❌ Update script missing git pull"; exit 1; }
             grep -q "apply.sh.*--restow" ${{ matrix.update_script }} || { echo "❌ Update script missing restow"; exit 1; }
           fi
-          
+
           echo "✅ Update functionality verified"
         shell: bash
 
@@ -356,57 +357,57 @@ jobs:
       - name: Comprehensive shell script analysis
         run: |
           echo "🔍 Running comprehensive shell script analysis..."
-          
+
           # ShellCheck analysis
           echo "Running ShellCheck on all shell scripts..."
           find . -name "*.sh" -type f -exec shellcheck {} \; || echo "⚠️ ShellCheck found issues (review recommended)"
-          
+
           # Function and variable analysis
           echo "Analyzing script dependencies..."
           grep -r "command -v" *.sh || echo "No command checks found"
           grep -r "AUTO_INSTALL" *.sh || echo "No AUTO_INSTALL usage found"
-          
+
           echo "✅ Shell script analysis completed"
 
       - name: Test cross-platform compatibility
         run: |
           echo "🌐 Testing cross-platform compatibility..."
-          
+
           # Test package counts match documentation
           common_actual=$(find dotfiles/common -mindepth 1 -maxdepth 1 -type d | wc -l)
           echo "Common packages: $common_actual"
-          
+
           mac_actual=$(find dotfiles/mac -mindepth 1 -maxdepth 1 -type d | wc -l)
           echo "macOS packages: $mac_actual"
-          
+
           windows_actual=$(find dotfiles/windows -mindepth 1 -maxdepth 1 -type d | wc -l)
           echo "Windows packages: $windows_actual"
-          
+
           # Verify README accuracy
           grep -q "$common_actual packages" README.md || echo "⚠️ README package count may need updating"
-          
+
           echo "✅ Cross-platform compatibility verified"
 
       - name: Performance and edge case testing
         run: |
           echo "⚡ Running performance and edge case tests..."
-          
+
           # Test with existing files (conflict scenario)
           echo "Testing conflict handling..."
           touch ~/.bashrc ~/.zshrc
           AUTO_INSTALL=0 ./init.sh || echo "Expected to handle conflicts"
-          
+
           # Test multiple installs (idempotent behavior)
           echo "Testing idempotent behavior..."
           AUTO_INSTALL=0 ./init.sh
           AUTO_INSTALL=0 ./init.sh
           echo "✅ Multiple installs handled correctly"
-          
+
           # Test cleanup
           echo "Testing cleanup..."
           ./apply.sh --delete
           echo "✅ Cleanup successful"
-          
+
           echo "✅ Performance and edge case testing completed"
 
   # Security and compliance checks
@@ -421,15 +422,15 @@ jobs:
       - name: Security scan
         run: |
           echo "🔒 Running security scans..."
-          
+
           # Check for sensitive information
           echo "Scanning for potential secrets..."
           grep -r -i "password\|secret\|key\|token" --exclude-dir=.git --exclude="*.md" . || echo "✅ No obvious secrets found"
-          
+
           # Check file permissions
           echo "Checking file permissions..."
           find . -type f -perm /111 | grep -v "\.sh$\|\.ps1$\|/bin/\|\.git/" && echo "⚠️ Unexpected executable files found" || echo "✅ File permissions appropriate"
-          
+
           # Check for symlink attacks
           echo "Checking for suspicious symlinks..."
           find . -type l | while read -r link; do
@@ -438,26 +439,26 @@ jobs:
               /*|../*) echo "⚠️ Suspicious symlink: $link -> $target" ;;
             esac
           done
-          
+
           echo "✅ Security scan completed"
 
       - name: Compliance checks
         run: |
           echo "📋 Running compliance checks..."
-          
+
           # License check
           test -f LICENSE || { echo "❌ LICENSE file missing"; exit 1; }
           echo "✅ License file present"
-          
+
           # Documentation check
           test -f README.md || { echo "❌ README.md missing"; exit 1; }
           test -f README-usage.md || { echo "❌ README-usage.md missing"; exit 1; }
           echo "✅ Documentation present"
-          
+
           # Check for required files
           test -f vscode_extensions.txt || { echo "❌ vscode_extensions.txt missing"; exit 1; }
           echo "✅ Extension list present"
-          
+
           echo "✅ Compliance checks passed"
 
   # Final validation
