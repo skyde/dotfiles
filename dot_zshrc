@@ -1,19 +1,12 @@
 # shellcheck shell=bash
-export PATH="$PATH:/Users/freedebreuil/tools/depot_tools"
+export PATH="$HOME/.local/bin:$PATH:/Users/freedebreuil/tools/depot_tools"
 
 # shellcheck source=/Users/freedebreuil/.config/shell/00-editor.sh
 # shellcheck disable=SC1091
 [ -f "/Users/freedebreuil/.config/shell/00-editor.sh" ] && . "/Users/freedebreuil/.config/shell/00-editor.sh"
 
+# Load FZF theme if available
+[ -f "$HOME/.config/fzf/tokyonight.zsh" ] && source "$HOME/.config/fzf/tokyonight.zsh"
+
 # Tokyo Night Moon colors for FindItFaster
 export BAT_THEME="tokyonight_moon"
-
-if [[ $FIND_IT_FASTER_ACTIVE -eq 1 ]]; then
-    # Tokyo Night Moon color palette for fzf (requires Nerd Font for icons)
-    export FZF_DEFAULT_OPTS="\
-      --color=bg:#1a1b26,bg+:#24283b,fg:#c0caf5,fg+:#a9b1d6,\
-             hl:#7aa2f7,hl+:#7dcfff,info:#0db9d7,prompt:#bb9af7,\
-             pointer:#f7768e,marker:#ff9e64 \
-      --prompt=' ' --pointer=' ' \
-      --bind=ctrl-n:down,ctrl-p:up"
-fi

@@ -15,6 +15,26 @@
   "terminal.integrated.fontWeight": "normal",
   "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font",
   "terminal.integrated.minimumContrastRatio": 1,
+  "terminal.integrated.profiles.osx": {
+    "FZF Files": {
+      "path": "/bin/zsh",
+      "args": ["-lc", "~/.local/bin/vf || true; exit 0"],
+      "icon": "search",
+      "overrideName": true
+    },
+    "FZF Text": {
+      "path": "/bin/zsh",
+      "args": ["-lc", "~/.local/bin/vt || true; exit 0"],
+      "icon": "search",
+      "overrideName": true
+    }
+  },
+
+  // You already have these, good for overall speed
+  "terminal.integrated.enablePersistentSessions": true,
+  "terminal.integrated.persistentSessionReviveProcess": "onExit",
+  "terminal.integrated.persistentSessionScrollback": 10000,
+  "terminal.integrated.sendKeybindingsToShell": true,
   "editor.lineNumbers": "relative",
   "editor.renderLineHighlight": "all",
   "workbench.colorTheme": "Tokyo Night Storm",
