@@ -29,7 +29,7 @@ packages="ripgrep fzf bat git neovim tmux delta eza lazygit"
 # Add platform-specific fd package
 case "$(uname)" in
     Darwin) packages="$packages fd" ;;
-    Linux) packages="$packages fd-find" ;;  # Note: binary is called 'fdfind' on Debian/Ubuntu
+    Linux) packages="$packages fd-find" ;;
 esac
 
 install_apps=$(get_user_confirmation "Install packages ($packages)? (y/N): ")
