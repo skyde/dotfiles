@@ -1,4 +1,43 @@
-# Install
+# Dotfiles with GNU Stow
+
+This repository contains my personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/), a symlink farm manager that makes it easy to manage your configuration files across different machines and operating systems.
+
+## Repository Structure
+
+```
+dotfiles/
+├── common/          # Shared configs across all platforms
+│   ├── bash/        # Bash configuration
+│   ├── git/         # Git configuration
+│   ├── nvim/        # Neovim configuration
+│   ├── zsh/         # Zsh configuration
+│   ├── tmux/        # Tmux configuration
+│   ├── Code/        # VS Code configuration
+│   └── ...
+├── mac/             # macOS-specific configs
+│   └── hammerspoon/ # Hammerspoon Lua config
+└── windows/         # Windows-specific configs
+    ├── Documents/   # PowerShell profiles
+    ├── vsvim/       # Visual Studio Vim settings
+    └── ...
+```
+
+## How Stow Works
+
+GNU Stow creates symlinks from your home directory to the configuration files in this repository:
+
+- **Package**: Each subdirectory in `dotfiles/` is a "package" (e.g., `bash`, `git`, `nvim`)
+- **Target**: Your home directory (`~` or `$HOME`)
+- **Symlinks**: Stow creates symlinks in your home directory pointing to files in the packages
+
+### Example
+
+When you run `stow bash` from `dotfiles/common/`:
+```
+~/.bashrc → ~/.dotfiles/dotfiles/common/bash/.bashrc
+```
+
+## Quick Install
 
 ### Mac
 
@@ -28,6 +67,103 @@ git clone https://github.com/skyde/dotfiles.git "$env:USERPROFILE\dotfiles"
 cd "$env:USERPROFILE\dotfiles"
 ./install.ps1
 ```
+
+## Manual Package Management
+
+You can also manage individual packages manually:
+
+### Installing Packages
+
+```sh
+cd ~/.dotfiles/dotfiles/common
+
+# Install individual packages
+stow bash          # Install bash configuration
+stow git           # Install git configuration  
+stow nvim          # Install neovim configuration
+stow tmux          # Install tmux configuration
+
+# Install macOS-specific configs (on Mac)
+cd ../mac
+stow hammerspoon   # Install Hammerspoon config
+```
+
+### Uninstalling Packages
+
+```sh
+cd ~/.dotfiles/dotfiles/common
+
+# Remove symlinks for specific packages
+stow -D bash       # Remove bash configuration
+stow -D git        # Remove git configuration
+```
+
+### Restowing (Update Existing)
+
+```sh
+cd ~/.dotfiles/dotfiles/common
+
+# Update existing installations after changes
+stow -R nvim       # Restow neovim configuration
+stow -R git        # Restow git configuration
+```
+
+## Platform-Specific Instructions
+
+### macOS
+The install script will:
+- Install packages from `dotfiles/common/`
+- Install macOS-specific configs from `dotfiles/mac/`
+- Optionally install CLI tools (ripgrep, fd, bat, eza, etc.)
+
+### Linux  
+The install script will:
+- Install packages from `dotfiles/common/`
+- Set up Linux-specific configurations
+- Optionally install CLI tools via package manager
+
+### Windows
+The PowerShell script will:
+- Install packages from `dotfiles/common/` 
+- Install Windows-specific configs from `dotfiles/windows/`
+- Use PowerShell-compatible stow commands
+
+## Customization
+
+### Adding New Configurations
+
+1. Create a new directory in `dotfiles/common/` (or platform-specific directory)
+2. Structure it exactly as it would appear in your home directory
+3. Use stow to install it:
+
+```sh
+# Example: Adding a new tool called 'mytool'
+mkdir -p dotfiles/common/mytool/.config/mytool
+echo "config=value" > dotfiles/common/mytool/.config/mytool/config.toml
+cd dotfiles/common
+stow mytool
+```
+
+### Handling Conflicts
+
+If stow encounters existing files that aren't symlinks, it will warn you:
+
+```sh
+# Move existing files to backup
+mv ~/.bashrc ~/.bashrc.backup
+
+# Then install the package
+stow bash
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Stow conflicts**: Remove or backup existing files first
+2. **Permission errors**: Ensure you have write access to your home directory  
+3. **Broken symlinks**: Run `stow -R <package>` to restow
+4. **Package not found**: Check you're in the correct directory (`dotfiles/common/` etc.)
 
 ## Starship Prompt
 
