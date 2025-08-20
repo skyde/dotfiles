@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+QUERY="${*:-}"
+RG=(rg --column --line-number --no-heading --smart-case --hidden -g '!.git' --color=always)
+
+SEL="$(
+  FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS}" \
+    fzf --ansi --disabled \
+    --prompt='RG   ' \
+    --bind "start:reload:printf ''" \
+    --bind "change:reload:${RG[*]} {q} || true" \
+    --delimiter ':' \
+    --preview 'if [ -n "{1}" ]; then (bat --style=numbers --color=always --line-range {2}: -- {1} 2>/dev/null || (tail -n +{2} -- {1} 2>/dev/null | head -n 200)); else (bat --style=numbers --color=always -- {1} 2>/dev/null || head -n 200 -- {1}); fi' \
+    --preview-window=right,60%,border \
+    --bind 'alt-p:toggle-preview,enter:execute:code -r --goto {1}:{2}+abort' \
+    --query "$QUERY" ||
+    true
+)"
+
+# When using execute+abort on Enter, fzf quits directly so we usually don't get here.
+# If the user presses Esc, we exit 0 to avoid VS Code error banners.
+exit 0
