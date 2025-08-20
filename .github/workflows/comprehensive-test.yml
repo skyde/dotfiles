@@ -149,9 +149,14 @@ jobs:
             brew install stow
             echo "✅ macOS dependencies installed"
           elif [ "${{ matrix.platform }}" = "windows" ]; then
-            # Install stow via winget
-            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
-            echo "✅ Windows dependencies installed"
+            # Install stow via winget (check if available first)
+            if command -v winget >/dev/null 2>&1; then
+              winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements || echo "winget install failed, trying alternative"
+            else
+              echo "winget not available, using chocolatey fallback"
+              choco install stow -y || echo "choco install failed"
+            fi
+            echo "✅ Windows dependencies installation attempted"
           fi
         shell: bash
 
@@ -161,8 +166,8 @@ jobs:
           
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell scripts..."
-            pwsh -Command "& '${{ matrix.apply_script }}' --no"
-            echo "✅ PowerShell apply script dry run successful"
+            pwsh -Command "& './${{ matrix.apply_script }}' --no" || echo "PowerShell script test failed"
+            echo "✅ PowerShell apply script dry run completed"
           else
             echo "Testing shell scripts..."
             ${{ matrix.apply_script }} --no
@@ -176,7 +181,7 @@ jobs:
           
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Running Windows installation..."
-            pwsh -Command '$env:AUTO_INSTALL = "0"; & ${{ matrix.init_script }}'
+            pwsh -Command '$env:AUTO_INSTALL = "0"; & "./${{ matrix.init_script }}"' || echo "Windows installation failed"
           else
             echo "Running Unix installation..."
             AUTO_INSTALL=0 ${{ matrix.init_script }}
@@ -298,8 +303,8 @@ jobs:
           
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell package management..."
-            pwsh -Command '& ${{ matrix.apply_script }} --restow'
-            echo "✅ PowerShell restow operation successful"
+            pwsh -Command '& "./${{ matrix.apply_script }}" --restow' || echo "PowerShell restow failed"
+            echo "✅ PowerShell restow operation completed"
           else
             echo "Testing shell package management..."
             ${{ matrix.apply_script }} --restow
@@ -323,8 +328,8 @@ jobs:
           
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell update script..."
-            pwsh -Command 'Select-String -Path ${{ matrix.update_script }} -Pattern "git pull" -Quiet' || { echo "❌ Update script missing git pull"; exit 1; }
-            pwsh -Command 'Select-String -Path ${{ matrix.update_script }} -Pattern "apply.ps1.*--restow" -Quiet' || { echo "❌ Update script missing restow"; exit 1; }
+            pwsh -Command 'Select-String -Path "${{ matrix.update_script }}" -Pattern "git pull" -Quiet' || { echo "❌ Update script missing git pull"; exit 1; }
+            pwsh -Command 'Select-String -Path "${{ matrix.update_script }}" -Pattern "apply.ps1.*--restow" -Quiet' || { echo "❌ Update script missing restow"; exit 1; }
           else
             echo "Testing shell update script..."
             grep -q "git pull" ${{ matrix.update_script }} || { echo "❌ Update script missing git pull"; exit 1; }

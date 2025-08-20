@@ -11,6 +11,7 @@ on:
       - '**.sh'
       - '**.ps1'
       - '.github/workflows/**'
+  workflow_dispatch:
 
 jobs:
   shellcheck:
