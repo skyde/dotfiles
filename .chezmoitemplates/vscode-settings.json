@@ -29,8 +29,8 @@
     "Search Grep": {
       "path": "/bin/zsh",
       "args": [
-        "-lc",
-        "export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH; source ~/.config/fzf/tokyonight.zsh 2>/dev/null; export RIPGREP_CONFIG_PATH=~/.ripgreprc; ~/.local/bin/sg || true; exit 0"
+        "-lc", 
+        "export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH; source ~/.config/fzf/tokyonight.zsh 2>/dev/null; ~/.local/bin/sg || true; exit 0"
       ],
       "icon": "search",
       "overrideName": true

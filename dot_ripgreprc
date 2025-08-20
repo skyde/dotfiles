@@ -1,7 +1,6 @@
 
 --hidden
 -g !.git
---max-columns=300
 --colors=path:fg:111
 --colors=line:fg:117
 --colors=column:fg:150
