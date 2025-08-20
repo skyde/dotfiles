@@ -36,7 +36,7 @@ GNU Stow creates symlinks from your home directory to the configuration files in
 Packages are organized logically to reduce complexity:
 
 - **`shell`**: All shell-related configs (bash, zsh, tmux) in one package
-- **`devtools`**: Development tools (git, lazygit, starship, vimium) in one package  
+- **`devtools`**: Development tools (git, lazygit, starship, vimium) in one package
 - **`Code`**: VS Code configuration files
 - **`nvim`**: Neovim configuration and plugins
 - **`kitty`**: Kitty terminal emulator settings
@@ -45,6 +45,7 @@ Packages are organized logically to reduce complexity:
 ### Example
 
 When you run `stow shell` from `dotfiles/common/`:
+
 ```
 ~/.bashrc → ~/dotfiles/dotfiles/common/shell/.bashrc
 ~/.zshrc → ~/dotfiles/dotfiles/common/shell/.zshrc
@@ -60,7 +61,7 @@ When you run `stow shell` from `dotfiles/common/`:
 brew install stow
 git clone https://github.com/skyde/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-./install.sh
+./init.sh
 ```
 
 ### Linux
@@ -70,7 +71,7 @@ sudo apt update
 sudo apt install -y stow git
 git clone https://github.com/skyde/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-./install.sh
+./init.sh
 ```
 
 ### Windows
@@ -79,12 +80,12 @@ cd ~/dotfiles
 winget install stefansundin.gnu-stow
 git clone https://github.com/skyde/dotfiles.git "$env:USERPROFILE\dotfiles"
 cd "$env:USERPROFILE\dotfiles"
-./install.ps1
+./init.ps1
 ```
 
-## What the Install Scripts Do
+## What the Init Scripts Do
 
-The install scripts provide complete automation:
+The init scripts provide complete automation:
 
 1. **📁 Stow Configuration Files**: Symlink all dotfiles to correct locations
 2. **🔧 Install VS Code Extensions**: Auto-install 7 essential extensions from `vscode_extensions.txt`
@@ -99,16 +100,16 @@ For automated setups (CI/CD, scripts):
 
 ```bash
 # Skip app installation prompts
-AUTO_INSTALL=0 ./install.sh
+AUTO_INSTALL=0 ./init.sh
 
 # Auto-install apps without prompting
-AUTO_INSTALL=1 ./install.sh
+AUTO_INSTALL=1 ./init.sh
 ```
 
 ```powershell
 # Windows equivalent
 $env:AUTO_INSTALL = "0"  # or "1" to auto-install
-./install.ps1
+./init.ps1
 ```
 
 ## Manual Package Management
@@ -156,22 +157,29 @@ stow -R devtools   # Restow development tools
 ## Platform-Specific Instructions
 
 ### macOS
-The install script will:
+
+The init script will:
+
 - Install packages from `dotfiles/common/`
 - Install macOS-specific configs from `dotfiles/mac/`
 - Optionally install CLI tools (ripgrep, fd, bat, eza, etc.)
 
-### Linux  
-The install script will:
+### Linux
+
+The init script will:
+
 - Install packages from `dotfiles/common/`
 - Set up Linux-specific configurations
 - Optionally install CLI tools via package manager
 
 ### Windows
+
 The PowerShell script will:
-- Install packages from `dotfiles/common/` 
+
+- Install packages from `dotfiles/common/`
 - Install Windows-specific configs from `dotfiles/windows/`
 - Use PowerShell-compatible stow commands
+- Optionally install CLI tools via winget
 
 ## Customization
 
@@ -190,6 +198,7 @@ stow mytool
 ```
 
 **Or add to existing packages:**
+
 ```sh
 # Add to devtools package
 echo "new-config=value" > dotfiles/common/devtools/.config/newtool/config.yml
@@ -215,7 +224,7 @@ stow shell
 ### Common Issues
 
 1. **Stow conflicts**: Remove or backup existing files first
-2. **Permission errors**: Ensure you have write access to your home directory  
+2. **Permission errors**: Ensure you have write access to your home directory
 3. **Broken symlinks**: Run `stow -R <package>` to restow
 4. **Package not found**: Check you're in the correct directory (`dotfiles/common/` etc.)
 
