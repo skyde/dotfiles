@@ -46,7 +46,7 @@ When you run `stow bash` from `dotfiles/common/`:
 brew install stow
 git clone https://github.com/skyde/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
-./install.sh
+./simple_install.sh
 ```
 
 ### Linux
@@ -56,7 +56,7 @@ sudo apt update
 sudo apt install -y stow git
 git clone https://github.com/skyde/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
-./install.sh
+./simple_install.sh
 ```
 
 ### Windows
@@ -65,7 +65,7 @@ cd ~/.dotfiles
 winget install stefansundin.gnu-stow
 git clone https://github.com/skyde/dotfiles.git "$env:USERPROFILE\dotfiles"
 cd "$env:USERPROFILE\dotfiles"
-./install.ps1
+./simple_install.ps1
 ```
 
 ## Manual Package Management

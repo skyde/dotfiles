@@ -4,40 +4,62 @@ param(
     [switch]$DryRun
 )
 
-$home = $env:USERPROFILE
+# Simple dotfiles installer using stow (PowerShell)
+# Much simpler than the complex install.ps1
 
-# Load helpers
-. "$PSScriptRoot/install_helpers.ps1"
-if ($DryRun) { $Global:DotfilesDryRun = $true }
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$Home = $env:USERPROFILE
 
-# ------------------------------
-# Auto-discover packages by layout
-# ------------------------------
+Write-Host "=== Installing dotfiles with stow ===" -ForegroundColor Green
 
-function Discover-And-Stow([string]$Root, [string]$Target) {
-    if (-not (Test-Path $Root)) { return }
-    Get-ChildItem -Path $Root -Directory | ForEach-Object {
-        Restow-Package -Package $_.FullName -Target $Target
+# Check if stow is installed
+if (-not (Get-Command stow -ErrorAction SilentlyContinue)) {
+    Write-Host "Error: GNU Stow is not installed." -ForegroundColor Red
+    Write-Host "Install it with: winget install stefansundin.gnu-stow"
+    exit 1
+}
+
+# Function to stow packages from a directory
+function Install-Packages {
+    param(
+        [string]$Directory,
+        [string]$Target = $Home
+    )
+    
+    if (-not (Test-Path $Directory)) {
+        Write-Host "Directory $Directory not found, skipping" -ForegroundColor Yellow
+        return
     }
+    
+    Write-Host "Installing packages from $Directory..."
+    Set-Location $Directory
+    
+    Get-ChildItem -Directory | ForEach-Object {
+        $package = $_.Name
+        Write-Host "  Installing $package"
+        
+        if ($DryRun) {
+            Write-Host "    DRY_RUN: stow --target=`"$Target`" `"$package`"" -ForegroundColor Cyan
+        } else {
+            try {
+                & stow --target="$Target" "$package"
+            } catch {
+                Write-Host "    Warning: Failed to stow $package (may already exist)" -ForegroundColor Yellow
+            }
+        }
+    }
+    
+    Set-Location $ScriptDir
 }
 
-Discover-And-Stow -Root (Join-Path $PSScriptRoot 'dotfiles/common') -Target $home
+# Install common packages (all platforms)
+Install-Packages -Directory (Join-Path $ScriptDir "dotfiles\common")
 
-if ($IsWindows) {
-    Discover-And-Stow -Root (Join-Path $PSScriptRoot 'dotfiles/windows') -Target $home
+# Install Windows-specific packages
+if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+    Write-Host "Detected Windows"
+    Install-Packages -Directory (Join-Path $ScriptDir "dotfiles\windows")
 }
 
-# ------------------------------
-# Cross-OS bridges (reusable via data)
-# ------------------------------
-
-$vscodeDotConfigUser = Join-Path $home '.config\Code\User'
-Ensure-Directory -Path $vscodeDotConfigUser
-
-$vscodeAppDataUser = Join-Path $env:APPDATA 'Code\User'
-Ensure-Directory -Path $vscodeAppDataUser
-
-# Link the entire User directory so new files are automatically covered
-Invoke-SymlinkPairs -Pairs @(
-    $vscodeDotConfigUser + '::' + $vscodeAppDataUser
-)
+Write-Host "=== Installation complete! ===" -ForegroundColor Green
+Write-Host "Tip: Use '-DryRun' parameter to preview changes"
