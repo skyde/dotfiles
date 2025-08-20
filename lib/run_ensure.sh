@@ -13,7 +13,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 # Optional: source cask->app mapping if available
 if [ -n "${CHEZMOI_SOURCE_DIR:-}" ] && [ -f "${CHEZMOI_SOURCE_DIR}/lib/cask_app_map.sh" ]; then
-  # shellcheck disable=SC1090
+  # shellcheck disable=SC1090,SC1091
   source "${CHEZMOI_SOURCE_DIR}/lib/cask_app_map.sh"
 fi
 
@@ -65,7 +65,9 @@ ensure() {
 
   if [[ "$present" -eq 1 ]]; then
     if confirm_change "Update/configure" "$name" 1; then
-      [[ -n "$update" ]] && eval "$update" || true
+      if [[ -n "$update" ]]; then
+        eval "$update" || true
+      fi
     fi
   else
     if confirm_change "Install" "$name" 0; then
