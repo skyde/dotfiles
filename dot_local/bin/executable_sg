@@ -17,7 +17,5 @@ SEL="$(
     --query "$QUERY" ||
     true
 )"
-
-# When using execute+abort on Enter, fzf quits directly so we usually don't get here.
-# If the user presses Esc, we exit 0 to avoid VS Code error banners.
+# Enter uses execute+abort, so fzf exits immediately after opening.
 exit 0

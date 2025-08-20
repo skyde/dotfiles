@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Optional initial query: ff "main.ts"
 QUERY="${*:-}"
 
-# Source listing: prefer Git index (fast), else fd -> rg -> find
+# Source list: prefer Git index (fast), else fd -> rg -> find
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   SRC_CMD=(git -c core.quotepath=false ls-files -co --exclude-standard)
 elif command -v fd >/dev/null 2>&1; then
@@ -15,9 +14,7 @@ else
   SRC_CMD=(find . -type f)
 fi
 
-# Preview:
-# - If there's a query, show rg with highlighted matches + context (fast, readable)
-# - Otherwise, show a syntax-highlighted head with bat (fallback to head if bat missing)
+# Preview: if query typed, show rg hits with highlight; else show head/bat
 if command -v bat >/dev/null 2>&1; then
   PREVIEW_MATCH='rg --color=always --line-number --no-heading --smart-case -n -C 6 -- {q} {}'
   PREVIEW_PLAIN='bat --style=numbers --color=always -- {} 2>/dev/null || head -n 200 -- {}'
@@ -26,9 +23,6 @@ else
   PREVIEW_PLAIN='head -n 200 -- {}'
 fi
 
-# Run fzf
-# Enter: open selection in Code and close picker (abort)
-# Alt-P: toggle preview; preview is on the RIGHT (LazyVim/LazyGit feel)
 "${SRC_CMD[@]}" | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS}" \
   fzf --ansi \
   --prompt='Files   ' \
