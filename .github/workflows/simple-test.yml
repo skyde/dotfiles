@@ -35,10 +35,75 @@ jobs:
       
     - name: Verify configs exist
       run: |
+        echo "=== PLATFORM: $RUNNER_OS ==="
+        echo "Testing core configuration files..."
+        
+        # Test shell configs
         if [ -f "$HOME/.bashrc" ] || [ -f "$USERPROFILE/.bashrc" ]; then
-          echo "✓ Shell configs installed"
+          echo "✓ Shell configs (.bashrc) installed"
         else
           echo "✗ Shell configs missing"
           exit 1
         fi
+        
+        if [ -f "$HOME/.zshrc" ] || [ -f "$USERPROFILE/.zshrc" ]; then
+          echo "✓ Zsh config (.zshrc) installed"
+        else
+          echo "✗ Zsh config missing"
+          exit 1
+        fi
+        
+        # Test git config
+        if [ -f "$HOME/.config/git/config" ] || [ -f "$USERPROFILE/.config/git/config" ]; then
+          echo "✓ Git config installed"
+        else
+          echo "✗ Git config missing"
+          exit 1
+        fi
+        
+        # Test tmux config
+        if [ -f "$HOME/.tmux.conf" ] || [ -f "$USERPROFILE/.tmux.conf" ]; then
+          echo "✓ Tmux config installed"
+        else
+          echo "✗ Tmux config missing"
+          exit 1
+        fi
+        
+        echo "✅ All core configs verified for $RUNNER_OS"
+      shell: bash
+      
+    - name: Test platform-specific features
+      run: |
+        echo "=== PLATFORM-SPECIFIC TESTING ==="
+        
+        if [ "$RUNNER_OS" == "macOS" ]; then
+          echo "Testing macOS-specific features..."
+          if [ -f "$HOME/.hammerspoon/init.lua" ]; then
+            echo "✓ Hammerspoon config installed"
+          else
+            echo "⚠️ Hammerspoon config not found (expected if not installed)"
+          fi
+          
+          # Test macOS VS Code symlink
+          if [ -L "$HOME/Library/Application Support/Code/User" ]; then
+            echo "✓ macOS VS Code symlink created"
+          else
+            echo "ℹ️ VS Code symlink not created (expected if VS Code not installed)"
+          fi
+          
+        elif [ "$RUNNER_OS" == "Windows" ]; then
+          echo "Testing Windows-specific features..."
+          if [ -f "$USERPROFILE/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" ]; then
+            echo "✓ PowerShell profile installed"
+          else
+            echo "✗ PowerShell profile missing"
+            exit 1
+          fi
+          
+        elif [ "$RUNNER_OS" == "Linux" ]; then
+          echo "Testing Linux-specific features..."
+          echo "✓ Linux base configuration installed"
+        fi
+        
+        echo "✅ Platform-specific tests completed for $RUNNER_OS"
       shell: bash
