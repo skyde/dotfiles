@@ -72,11 +72,14 @@ monitor_workflow() {
         
         if check_gh_auth; then
             # Get the latest run status
-            local status=$(gh run list --workflow="$WORKFLOW_FILE" --repo "$REPO" --limit 1 --json status,conclusion --jq '.[0]')
+            local status
+            status=$(gh run list --workflow="$WORKFLOW_FILE" --repo "$REPO" --limit 1 --json status,conclusion --jq '.[0]')
             
             if [ "$status" != "null" ] && [ -n "$status" ]; then
-                local run_status=$(echo "$status" | jq -r '.status')
-                local conclusion=$(echo "$status" | jq -r '.conclusion')
+                local run_status
+                local conclusion
+                run_status=$(echo "$status" | jq -r '.status')
+                conclusion=$(echo "$status" | jq -r '.conclusion')
                 
                 echo "Status: $run_status, Conclusion: $conclusion"
                 
@@ -110,7 +113,7 @@ run_platform_tests() {
     
     echo "=== RUNNING $test_count PLATFORM TEST CYCLES ==="
     
-    for i in $(seq 1 $test_count); do
+    for i in $(seq 1 "$test_count"); do
         echo ""
         echo "🚀 TEST CYCLE $i/$test_count"
         echo "===================="
@@ -134,7 +137,7 @@ run_platform_tests() {
         fi
         
         # Wait between cycles if not the last one
-        if [ $i -lt $test_count ]; then
+        if [ "$i" -lt "$test_count" ]; then
             echo "Waiting 120 seconds before next cycle..."
             sleep 120
         fi
@@ -145,7 +148,7 @@ run_platform_tests() {
     echo "Successful cycles: $success_count/$test_count"
     echo "Success rate: $(( success_count * 100 / test_count ))%"
     
-    if [ $success_count -eq $test_count ]; then
+    if [ "$success_count" -eq "$test_count" ]; then
         echo "🎉 ALL PLATFORM TESTS PASSED!"
         return 0
     else
@@ -172,7 +175,7 @@ main() {
     
     # Default to 3 test cycles
     local cycles=${1:-3}
-    run_platform_tests $cycles
+    run_platform_tests "$cycles"
 }
 
 # Check command line arguments
