@@ -14,21 +14,27 @@ else
   SRC_CMD=(find . -type f)
 fi
 
-# Preview: if query typed, show rg hits with highlight; else show head/bat
-if command -v bat >/dev/null 2>&1; then
-  PREVIEW_MATCH='rg --color=always --line-number --no-heading --smart-case -n -C 6 -- {q} {}'
-  PREVIEW_PLAIN='bat --style=numbers --color=always -- {} 2>/dev/null || head -n 200 -- {}'
+# Preview:
+# - With a query -> show the WHOLE file and highlight matches (no filtering)
+# - Without a query -> syntax-highlighted head via bat (fallback to head)
+if command -v rg >/dev/null 2>&1; then
+  PREVIEW_WITH_QUERY='rg --passthru --color=always --line-number --no-heading --smart-case -- {q} {}'
 else
-  PREVIEW_MATCH='rg --color=always --line-number --no-heading --smart-case -n -C 6 -- {q} {}'
-  PREVIEW_PLAIN='head -n 200 -- {}'
+  PREVIEW_WITH_QUERY='cat {}'
 fi
 
-"${SRC_CMD[@]}" | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS}" \
+if command -v bat >/dev/null 2>&1; then
+  PREVIEW_NO_QUERY='bat --style=numbers --color=always -- {} 2>/dev/null || head -n 200 -- {}'
+else
+  PREVIEW_NO_QUERY='head -n 200 -- {}'
+fi
+
+"${SRC_CMD[@]}" | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" \
   fzf --ansi \
   --prompt='Files   ' \
-  --preview 'if [ -n "{q}" ]; then '"$PREVIEW_MATCH"'; else '"$PREVIEW_PLAIN"'; fi' \
+  --preview 'if [ -n "{q}" ]; then '"$PREVIEW_WITH_QUERY"'; else '"$PREVIEW_NO_QUERY"'; fi' \
   --preview-window=right,60%,border \
-  --bind 'alt-p:toggle-preview,enter:execute:code -r -- {+}+abort' \
+  --bind 'alt-p:toggle-preview,enter:execute-silent(code -r -- {+})+abort' \
   --multi \
   --query "$QUERY" ||
   true

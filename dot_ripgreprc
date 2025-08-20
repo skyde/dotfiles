@@ -1,10 +1,10 @@
+
 --hidden
 -g !.git
 --max-columns=300
-
-# 256-color approximations for TokyoNight
 --colors=path:fg:111
 --colors=line:fg:117
 --colors=column:fg:150
 --colors=match:fg:215
 --colors=match:style:bold
+

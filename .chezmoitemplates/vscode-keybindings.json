@@ -795,12 +795,12 @@
   {
     "key": "ctrl+alt+f",
     "command": "workbench.action.terminal.newWithProfile",
-    "args": { "profileName": "FZF Files", "location": "editor" }
+    "args": { "profileName": "Find Files", "location": "editor" }
   },
   {
     "key": "ctrl+alt+shift+f",
     "command": "workbench.action.terminal.newWithProfile",
-    "args": { "profileName": "FZF Text", "location": "editor" }
-  },
+    "args": { "profileName": "Search Grep", "location": "editor" }
+  }
 ]
 
