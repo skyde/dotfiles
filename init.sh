@@ -10,7 +10,13 @@ echo "Installing dotfiles..."
 # Install VS Code extensions
 if command -v code >/dev/null 2>&1; then
     if [ -f "vscode_extensions.txt" ]; then
-        read -r -p "Install VS Code extensions? (y/N): " install_extensions
+        if [ "${AUTO_INSTALL:-}" = "1" ]; then
+            install_extensions="y"
+        elif [ "${AUTO_INSTALL:-}" = "0" ]; then
+            install_extensions="n"
+        else
+            read -r -p "Install VS Code extensions? (y/N): " install_extensions
+        fi
         if [[ "$install_extensions" =~ ^[Yy] ]]; then
             echo "Installing VS Code extensions..."
             while read -r ext; do
@@ -29,7 +35,13 @@ else
 fi
 
 # Install common apps
-read -r -p "Install common development tools? (y/N): " install_apps
+if [ "${AUTO_INSTALL:-}" = "1" ]; then
+    install_apps="y"
+elif [ "${AUTO_INSTALL:-}" = "0" ]; then
+    install_apps="n"
+else
+    read -r -p "Install common development tools? (y/N): " install_apps
+fi
 if [[ "$install_apps" =~ ^[Yy] ]]; then
     case "$(uname)" in
         Darwin)
