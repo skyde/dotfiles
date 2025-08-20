@@ -55,12 +55,17 @@ if ($installApps -match "^[Yy]") {
         $apps = @(
             "Git.Git",
             "BurntSushi.ripgrep.MSVC", 
-            "sharkdp.fd",
+            "junegunn.fzf",
             "sharkdp.bat",
-            "dandavison.delta",
             "Neovim.Neovim",
-            "Microsoft.PowerShell",
-            "Starship.Starship"
+            # "tmux" - Not available on Windows, use Windows Terminal instead
+            "dandavison.delta",
+            "eza-community.eza",
+            "JesseDuffield.lazygit",
+            "sharkdp.fd",
+            "ajeetdsouza.zoxide",
+            "Starship.Starship",
+            "gokcehan.lf"
         )
         
         foreach ($app in $apps) {
