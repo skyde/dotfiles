@@ -801,6 +801,11 @@
     "key": "ctrl+alt+shift+f",
     "command": "workbench.action.terminal.newWithProfile",
     "args": { "profileName": "Search Grep", "location": "editor" }
+  },
+  {
+    "key": "ctrl+alt+g",
+    "command": "workbench.action.terminal.newWithProfile",
+    "args": { "profileName": "Lazy Git", "location": "editor" }
   }
 ]
 
