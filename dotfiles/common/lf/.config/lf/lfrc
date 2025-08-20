@@ -12,6 +12,10 @@ set ignorecase true
 set ifs "\n"
 set filesep "\n"
 
+# Sort by modification time (newest first)
+set sortby time
+set reverse true
+
 map <esc> quit
 map x cut
 map y copy
