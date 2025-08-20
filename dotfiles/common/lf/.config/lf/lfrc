@@ -22,7 +22,6 @@ map y copy
 map p paste
 map d delete
 map D delete!
-map o push :touch<space>
 map O push :mkdir<space>
 map o push :touch<space>
 map i rename

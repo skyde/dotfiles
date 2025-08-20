@@ -42,8 +42,6 @@ Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
 
 ```bash
 ./update.sh
-# or
-stow_update
 ```
 
 **Windows:**

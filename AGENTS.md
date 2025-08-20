@@ -5,11 +5,11 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 ## Required checks
 
 1. Dry-run stow and ensure no errors:
-	- `./apply.sh --no` (from the repo root)
+   - `./apply.sh --no` (from the repo root)
 2. If your change might adopt existing files, preview adoption:
-	- `./apply.sh --no --adopt`
+   - `./apply.sh --no --adopt`
 3. If you changed already-installed packages, verify a restow preview:
-	- `./apply.sh --no --restow`
+   - `./apply.sh --no --restow`
 
 ## Optional checks
 
@@ -29,6 +29,10 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 - OS-specific configs live under `dotfiles/mac/` and `dotfiles/windows/` (e.g., `mac/hammerspoon`, `windows/Documents`).
 - Neovim configuration is under `dotfiles/common/nvim/.config/nvim`.
 - VS Code extensions are listed in `vscode_extensions.txt` and installed by scripts.
+
+Optional helpers present but not wired into the local scripts:
+
+- `lib/run_ensure.sh` and `lib/cask_app_map.sh` are designed to be sourced in a chezmoi environment via `CHEZMOI_SOURCE_DIR`. They are not invoked by `init.sh`/`apply.sh` in this repo. Leave them as-is if you use chezmoi elsewhere; otherwise, they can be ignored.
 
 Avoid committing secrets or personal data.
 

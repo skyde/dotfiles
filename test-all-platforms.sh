@@ -3,7 +3,7 @@ set -e
 
 # GitHub repository and workflow monitoring script
 REPO="skyde/dotfiles"
-BRANCH="stow"
+BRANCH="main"
 WORKFLOW_FILE="simple-test.yml"
 
 echo "=== MULTI-PLATFORM TESTING AUTOMATION ==="
@@ -31,11 +31,16 @@ trigger_workflow_gh() {
 
 # Function to trigger workflow using git push
 trigger_workflow_git() {
-    echo "Triggering workflow via git push..."
-    echo "# Test trigger $(date)" >> .github/test-trigger.md
-    git add .github/test-trigger.md
-    git commit -m "Trigger workflow for platform testing $(date +%H:%M:%S)"
-    git push origin "$BRANCH"
+    echo "Triggering workflow via git push (branch: $BRANCH)..."
+    if git rev-parse --verify "$BRANCH" >/dev/null 2>&1; then
+        echo "# Test trigger $(date)" >> .github/test-trigger.md
+        git add .github/test-trigger.md
+        git commit -m "Trigger workflow for platform testing $(date +%H:%M:%S)" || true
+        git push origin "$BRANCH"
+    else
+        echo "⚠️ Branch '$BRANCH' not found; please create it or change BRANCH variable." >&2
+        return 1
+    fi
 }
 
 # Function to get workflow status using GitHub API
@@ -44,7 +49,12 @@ get_workflow_status() {
     
     # Get latest workflow runs
     if check_gh_auth; then
-        gh run list --workflow="$WORKFLOW_FILE" --repo "$REPO" --limit 1 --json status,conclusion,url,createdAt
+        if command -v jq >/dev/null 2>&1; then
+            gh run list --workflow="$WORKFLOW_FILE" --repo "$REPO" --limit 1 --json status,conclusion,url,createdAt
+        else
+            echo "⚠️ jq not installed; showing raw output" >&2
+            gh run list --workflow="$WORKFLOW_FILE" --repo "$REPO" --limit 1
+        fi
     else
         # Use curl to access public GitHub API
         curl -s "https://api.github.com/repos/$REPO/actions/workflows" | \
@@ -70,7 +80,7 @@ monitor_workflow() {
     while [ $wait_time -lt $max_wait ]; do
         echo "Checking status... (${wait_time}s elapsed)"
         
-        if check_gh_auth; then
+    if check_gh_auth && command -v jq >/dev/null 2>&1; then
             # Get the latest run status
             local status
             status=$(gh run list --workflow="$WORKFLOW_FILE" --repo "$REPO" --limit 1 --json status,conclusion --jq '.[0]')
@@ -93,7 +103,7 @@ monitor_workflow() {
                     fi
                 fi
             fi
-        else
+    else
             echo "ℹ Cannot monitor without authentication - check manually at:"
             echo "https://github.com/$REPO/actions"
         fi

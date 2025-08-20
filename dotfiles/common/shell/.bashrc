@@ -2,16 +2,16 @@
 
 # Disable flow control in interactive shells
 if [[ $- == *i* ]]; then
-  stty -ixon -ixoff
+	stty -ixon -ixoff
 fi
 
 export PATH=/Users/skydebreuil/Projects/depot_tools:$PATH
 
 # Path setup (add custom bins before system paths)
 for d in "$HOME/.local/bin" "$HOME/bin" "/usr/local/bin"; do
-  if [[ -d $d ]] && [[ ":$PATH:" != *":$d:"* ]]; then
-    PATH="$d:$PATH"
-  fi
+	if [[ -d $d ]] && [[ ":$PATH:" != *":$d:"* ]]; then
+		PATH="$d:$PATH"
+	fi
 done
 export PATH
 
@@ -32,16 +32,16 @@ bind '"\e[1;5D": backward-word'
 
 # Bootstrap Starship
 if command -v starship >/dev/null 2>&1; then
-  eval "$(starship init bash)"
+	eval "$(starship init bash)"
 fi
 
 # Autocomplete
 if ! shopt -oq posix; then
-  if [[ -r /usr/share/bash-completion/bash_completion ]]; then
-    source /usr/share/bash-completion/bash_completion
-  elif [[ -r /etc/bash_completion ]]; then
-    source /etc/bash_completion
-  fi
+	if [[ -r /usr/share/bash-completion/bash_completion ]]; then
+		source /usr/share/bash-completion/bash_completion
+	elif [[ -r /etc/bash_completion ]]; then
+		source /etc/bash_completion
+	fi
 fi
 bind 'set show-all-if-ambiguous on'
 bind 'set menu-complete-display-prefix on'
@@ -50,36 +50,36 @@ bind 'TAB:menu-complete'
 
 # zoxide
 if command -v zoxide >/dev/null 2>&1; then
-  eval "$(zoxide init bash)"
+	eval "$(zoxide init bash)"
 fi
 
 # FZF integration
 if command -v fzf >/dev/null 2>&1; then
-  for dir in "/usr/share/fzf" "/usr/local/opt/fzf/shell" "/opt/homebrew/opt/fzf/shell" "/usr/share/doc/fzf/examples" "$HOME/.fzf"; do
-    if [[ -r "$dir/key-bindings.bash" ]]; then
-      source "$dir/key-bindings.bash"
-      break
-    fi
-  done
-  for dir in "/usr/share/fzf" "/usr/local/opt/fzf/shell" "/opt/homebrew/opt/fzf/shell" "/usr/share/doc/fzf/examples" "$HOME/.fzf"; do
-    if [[ -r "$dir/completion.bash" ]]; then
-      source "$dir/completion.bash"
-      break
-    fi
-  done
-  if command -v fd >/dev/null 2>&1; then
-    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git --color=always'
-    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-  fi
+	for dir in "/usr/share/fzf" "/usr/local/opt/fzf/shell" "/opt/homebrew/opt/fzf/shell" "/usr/share/doc/fzf/examples" "$HOME/.fzf"; do
+		if [[ -r "$dir/key-bindings.bash" ]]; then
+			source "$dir/key-bindings.bash"
+			break
+		fi
+	done
+	for dir in "/usr/share/fzf" "/usr/local/opt/fzf/shell" "/opt/homebrew/opt/fzf/shell" "/usr/share/doc/fzf/examples" "$HOME/.fzf"; do
+		if [[ -r "$dir/completion.bash" ]]; then
+			source "$dir/completion.bash"
+			break
+		fi
+	done
+	if command -v fd >/dev/null 2>&1; then
+		export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git --color=always'
+		export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+	fi
 
-  __fzf_history_widget() {
-    local selected
-    selected=$(history | awk '{ $1=""; sub(/^ +/,""); if(!seen[$0]++) print }' |
-      fzf --height=80% --reverse --tiebreak=index --no-sort --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
-    READLINE_LINE=$selected
-    READLINE_POINT=${#selected}
-  }
-  bind -x '"\C-r": "__fzf_history_widget"'
+	__fzf_history_widget() {
+		local selected
+		selected=$(history | awk '{ $1=""; sub(/^ +/,""); if(!seen[$0]++) print }' |
+			fzf --height=80% --reverse --tiebreak=index --no-sort --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
+		READLINE_LINE=$selected
+		READLINE_POINT=${#selected}
+	}
+	bind -x '"\C-r": "__fzf_history_widget"'
 fi
 
 # Aliases
@@ -89,27 +89,27 @@ alias grep="grep --color=auto"
 alias rg='rg --hidden --smart-case --colors match:fg:yellow --glob "!.git" --glob "!node_modules"'
 # Use modern replacements if available
 if command -v bat >/dev/null 2>&1; then
-  alias cat='bat'
+	alias cat='bat'
 elif command -v batcat >/dev/null 2>&1; then
-  alias bat='batcat'
-  alias cat='batcat'
+	alias bat='batcat'
+	alias cat='batcat'
 fi
 if command -v eza >/dev/null 2>&1; then
-  alias ls='eza --color=auto --group-directories-first'
-  alias ll='eza -al --color=auto --group-directories-first'
-  alias la='eza -a --color=auto --group-directories-first'
+	alias ls='eza --color=auto --group-directories-first'
+	alias ll='eza -al --color=auto --group-directories-first'
+	alias la='eza -a --color=auto --group-directories-first'
 fi
 if [[ -z $(command -v fd 2>/dev/null) && -n $(command -v fdfind 2>/dev/null) ]]; then
-  alias fd='fdfind'
+	alias fd='fdfind'
 fi
 
 # Open lf in the current directory and change to its exit path
 lfcd() {
-  local tmp="$(mktemp -t lfcd.XXXXXX)" dir
-  lf "$@" -last-dir-path="$tmp"
-  dir=$(cat "$tmp")
-  rm -f -- "$tmp"
-  [ -n "$dir" ] && [ "$dir" != "$PWD" ] && builtin cd -- "$dir"
+	local tmp="$(mktemp -t lfcd.XXXXXX)" dir
+	lf "$@" -last-dir-path="$tmp"
+	dir=$(cat "$tmp")
+	rm -f -- "$tmp"
+	[ -n "$dir" ] && [ "$dir" != "$PWD" ] && builtin cd -- "$dir"
 }
 alias lf='lfcd'
 

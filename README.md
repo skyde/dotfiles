@@ -4,7 +4,7 @@ This repository contains my personal dotfiles managed with [GNU Stow](https://ww
 
 ## Repository Structure
 
-```
+```text
 dotfiles/
 ├── common/          # Shared configs across all platforms (6 packages)
 │   ├── shell/       # Shell configs (bash, zsh, tmux)
@@ -46,7 +46,7 @@ Packages are organized logically to reduce complexity:
 
 When you run `stow shell` from `dotfiles/common/`, symlinks are created:
 
-```
+```text
 ~/.bashrc → ~/dotfiles/dotfiles/common/shell/.bashrc
 ~/.zshrc → ~/dotfiles/dotfiles/common/shell/.zshrc
 ~/.tmux.conf → ~/dotfiles/dotfiles/common/shell/.tmux.conf
@@ -64,7 +64,7 @@ cd ~/dotfiles
 ./init.sh
 ```
 
-### Linux
+### Linux notes
 
 ```sh
 sudo apt update
@@ -74,7 +74,7 @@ cd ~/dotfiles
 ./init.sh
 ```
 
-### Windows
+### Windows (platform)
 
 ```ps
 winget install stefansundin.gnu-stow
@@ -246,7 +246,9 @@ These tools are offered during setup:
   - diffs are side-by-side by default, while LazyGit shows inline changes
 - `lazygit` for a simple git TUI
 
-# Mac
+On macOS/Linux, `starship` is also installed; Windows installs it via winget.
+
+## Mac notes
 
 ## Custom Alt Tab
 
@@ -266,11 +268,11 @@ Automatically switches mode of fn keys per program. Important as keyboard macros
 
 Allows increased brightness when viewing SDR content on an HDR monitor.
 
-# Windows
+## Windows notes
 
 ## Config
 
-```
+```text
 - To get the Alt Tab switcher to work better
     - Go to Accessibility -> Visual Effects -> Animation effects & turn them off
     - Without this, moving to another tab requires waiting a split second.
@@ -286,7 +288,7 @@ Use this since it's nicer than the default PowerShell 5.
 
 ## Visual Studio
 
-```
+```text
 - For Visual Studio use VSVim with the provided vsvimrc
 - Using the plugin 'Peasy Motion' with the following settings:
 - Allowed jump label characters: tsraneiodhgmplfuc,bjvk
@@ -300,11 +302,11 @@ Use this since it's nicer than the default PowerShell 5.
 
 Ensure you set the correct environment variable to allow the diff to work:
 
-```
+```cmd
 P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe" /Diff %1 %2
 ```
 
-# Visual Studio Code
+## Visual Studio Code
 
 I'm using a few plugins:
 
@@ -314,7 +316,7 @@ I'm using a few plugins:
   Extensions listed in `vscode_extensions.txt` will be installed automatically
   when these dotfiles are applied. Custom keybindings are documented in
   [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
-  On macOS, the init script also checks for the default CLI at
+  On macOS, the init script falls back to
   `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` if the
   `code` command isn't in your `PATH`.
 
@@ -329,7 +331,7 @@ Host devbox
 
 Use the “Remote-SSH: Connect to Host…” command in VS Code to start a session.
 
-# Keyboard
+## Keyboard
 
 Run `kinesis-advantage2/sync-kinesis-layouts.ps1` with the Kinesis Advantage2 V-Drive connected & key bindings will auto sync.
 
@@ -339,7 +341,7 @@ For more detail see the 'Interaction' repo.
 
 ## Macro Bindings
 
-```
+```text
 
 build and run - Shift F2
 find class - Shift F3
@@ -360,7 +362,7 @@ Press Pgrm qwerty to activate on Windows
 
 Note you should always leave the keyboard in 'Windows' mode as the bindings have been manually translated.
 
-# Footpedal
+## Footpedal
 
 The config for the footpedal is located under the savant-elite2 folder.
 
