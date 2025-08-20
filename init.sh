@@ -23,6 +23,35 @@ echo "Installing dotfiles..."
 # Use apply.sh with --adopt to handle conflicts
 ./apply.sh --adopt
 
+# Install packages
+packages="ripgrep fzf bat git neovim tmux delta eza lazygit"
+
+# Add platform-specific fd package
+case "$(uname)" in
+    Darwin) packages="$packages fd" ;;
+    Linux) packages="$packages fd-find" ;;  # Note: binary is called 'fdfind' on Debian/Ubuntu
+esac
+
+install_apps=$(get_user_confirmation "Install packages ($packages)? (y/N): ")
+if [[ "$install_apps" =~ ^[Yy] ]]; then
+    case "$(uname)" in
+        Darwin)
+            if command -v brew >/dev/null 2>&1; then
+                echo "Installing packages..."
+                brew install $packages
+            else
+                echo "Homebrew not found. Install it first: https://brew.sh"
+            fi
+            ;;
+        Linux)
+            if command -v apt >/dev/null 2>&1; then
+                echo "Installing packages..."
+                sudo apt update && sudo apt install -y $packages
+            fi
+            ;;
+    esac
+fi
+
 # Install VS Code extensions
 if command -v code >/dev/null 2>&1; then
     if [ -f "vscode_extensions.txt" ]; then
@@ -42,27 +71,6 @@ if command -v code >/dev/null 2>&1; then
     fi
 else
     echo "VS Code not found, skipping extensions"
-fi
-
-# Install common apps
-install_apps=$(get_user_confirmation "Install common development tools? (y/N): ")
-if [[ "$install_apps" =~ ^[Yy] ]]; then
-    case "$(uname)" in
-        Darwin)
-            if command -v brew >/dev/null 2>&1; then
-                echo "Installing common apps..."
-                brew install ripgrep fd fzf bat delta eza neovim tmux git lazygit
-            else
-                echo "Homebrew not found. Install it first: https://brew.sh"
-            fi
-            ;;
-        Linux)
-            if command -v apt >/dev/null 2>&1; then
-                echo "Installing common apps..."
-                sudo apt update && sudo apt install -y ripgrep fd-find fzf bat git neovim tmux
-            fi
-            ;;
-    esac
 fi
 
 echo "Done! 🎉"
