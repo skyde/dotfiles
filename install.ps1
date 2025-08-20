@@ -24,7 +24,7 @@ function Discover-And-Stow([string]$Root, [string]$Target) {
 Discover-And-Stow -Root (Join-Path $PSScriptRoot 'dotfiles/common') -Target $home
 
 if ($IsWindows) {
-    Discover-And-Stow -Root (Join-Path $PSScriptRoot 'windows') -Target $home
+    Discover-And-Stow -Root (Join-Path $PSScriptRoot 'dotfiles/windows') -Target $home
 }
 
 # ------------------------------

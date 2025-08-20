@@ -1,2 +1,11 @@
 .DS_Store
 .github
+
+# VS Code dynamic/cache files that shouldn't be tracked
+**/Code/User/workspaceStorage/
+**/Code/User/globalStorage/
+**/Code/User/History/
+**/Code/User/sync/
+
+# Backup directories created by install scripts
+.dotfiles_backup_*
