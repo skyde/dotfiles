@@ -1,65 +1,34 @@
+# Ultra-simple dotfiles installer for Windows
 $ErrorActionPreference = 'Stop'
 
-param(
-    [switch]$DryRun
-)
+Write-Host "Installing dotfiles..." -ForegroundColor Green
 
-# Simple dotfiles installer using stow (PowerShell)
-# Much simpler than the complex install.ps1
-
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Home = $env:USERPROFILE
-
-Write-Host "=== Installing dotfiles with stow ===" -ForegroundColor Green
-
-# Check if stow is installed
+# Check for stow
 if (-not (Get-Command stow -ErrorAction SilentlyContinue)) {
-    Write-Host "Error: GNU Stow is not installed." -ForegroundColor Red
-    Write-Host "Install it with: winget install stefansundin.gnu-stow"
+    Write-Host "Please install stow first: winget install stefansundin.gnu-stow" -ForegroundColor Red
     exit 1
 }
 
-# Function to stow packages from a directory
-function Install-Packages {
-    param(
-        [string]$Directory,
-        [string]$Target = $Home
-    )
-    
-    if (-not (Test-Path $Directory)) {
-        Write-Host "Directory $Directory not found, skipping" -ForegroundColor Yellow
-        return
+# Install common configs
+Set-Location "$PSScriptRoot\dotfiles\common"
+Get-ChildItem -Directory | ForEach-Object {
+    Write-Host "Installing $($_.Name)..."
+    try {
+        & stow --target="$env:USERPROFILE" $_.Name
+    } catch {
+        Write-Host "Warning: $($_.Name) may already exist" -ForegroundColor Yellow
     }
-    
-    Write-Host "Installing packages from $Directory..."
-    Set-Location $Directory
-    
-    Get-ChildItem -Directory | ForEach-Object {
-        $package = $_.Name
-        Write-Host "  Installing $package"
-        
-        if ($DryRun) {
-            Write-Host "    DRY_RUN: stow --target=`"$Target`" `"$package`"" -ForegroundColor Cyan
-        } else {
-            try {
-                & stow --target="$Target" "$package"
-            } catch {
-                Write-Host "    Warning: Failed to stow $package (may already exist)" -ForegroundColor Yellow
-            }
-        }
-    }
-    
-    Set-Location $ScriptDir
 }
 
-# Install common packages (all platforms)
-Install-Packages -Directory (Join-Path $ScriptDir "dotfiles\common")
-
-# Install Windows-specific packages
-if ($IsWindows -or $env:OS -eq 'Windows_NT') {
-    Write-Host "Detected Windows"
-    Install-Packages -Directory (Join-Path $ScriptDir "dotfiles\windows")
+# Install Windows-specific configs
+Set-Location "..\windows"
+Get-ChildItem -Directory | ForEach-Object {
+    Write-Host "Installing Windows config: $($_.Name)..."
+    try {
+        & stow --target="$env:USERPROFILE" $_.Name
+    } catch {
+        Write-Host "Warning: $($_.Name) may already exist" -ForegroundColor Yellow
+    }
 }
 
-Write-Host "=== Installation complete! ===" -ForegroundColor Green
-Write-Host "Tip: Use '-DryRun' parameter to preview changes"
+Write-Host "Done! Dotfiles installed." -ForegroundColor Green

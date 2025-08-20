@@ -1,0 +1,43 @@
+name: Test Dotfiles
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install stow
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt update && sudo apt install -y stow
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          brew install stow
+        elif [ "$RUNNER_OS" == "Windows" ]; then
+          winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+        fi
+      shell: bash
+      
+    - name: Test installation
+      run: |
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          pwsh -File simple.ps1
+        else
+          ./simple.sh
+        fi
+      shell: bash
+      
+    - name: Verify configs exist
+      run: |
+        if [ -f "$HOME/.bashrc" ] || [ -f "$USERPROFILE/.bashrc" ]; then
+          echo "✓ Shell configs installed"
+        else
+          echo "✗ Shell configs missing"
+          exit 1
+        fi
+      shell: bash
