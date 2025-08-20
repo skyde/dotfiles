@@ -18,13 +18,13 @@
   "terminal.integrated.profiles.osx": {
     "FZF Files": {
       "path": "/bin/zsh",
-      "args": ["-lc", "~/.local/bin/vf || true; exit 0"],
+      "args": ["-lc", "source ~/.config/fzf/tokyonight.zsh 2>/dev/null; ~/.local/bin/vf || true; exit 0"],
       "icon": "search",
       "overrideName": true
     },
     "FZF Text": {
       "path": "/bin/zsh",
-      "args": ["-lc", "~/.local/bin/vt || true; exit 0"],
+      "args": ["-lc", "source ~/.config/fzf/tokyonight.zsh 2>/dev/null; ~/.local/bin/vt || true; exit 0"],
       "icon": "search",
       "overrideName": true
     }

@@ -795,24 +795,12 @@
   {
     "key": "ctrl+alt+f",
     "command": "workbench.action.terminal.newWithProfile",
-    "args": { "profileName": "FZF Files", "location": "panel" }
+    "args": { "profileName": "FZF Files", "location": "editor" }
   },
   {
     "key": "ctrl+alt+shift+f",
     "command": "workbench.action.terminal.newWithProfile",
-    "args": { "profileName": "FZF Text", "location": "panel" }
+    "args": { "profileName": "FZF Text", "location": "editor" }
   },
-  {
-    "key": "ctrl+alt+f",
-    "command": "workbench.action.terminal.sendSequence",
-    "args": { "text": "vf\u000D" },
-    "when": "terminalIsOpen"
-  },
-  {
-    "key": "ctrl+alt+shift+f",
-    "command": "workbench.action.terminal.sendSequence",
-    "args": { "text": "vt\u000D" },
-    "when": "terminalIsOpen"
-  }
 ]
 
