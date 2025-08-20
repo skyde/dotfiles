@@ -3,12 +3,6 @@ set -euo pipefail
 
 QUERY="${*:-}"
 
-# If you like: seed from clipboard on macOS so it shows results immediately.
-# Comment the next 3 lines if you want a blank list until you type.
-if [ -z "$QUERY" ] && command -v pbpaste >/dev/null 2>&1; then
-  QUERY="$(pbpaste | tr -d '\r' | head -c 200)"
-fi
-
 # Require ripgrep; exit cleanly if not found (avoid VS Code banner)
 if ! command -v rg >/dev/null 2>&1; then
   echo "ripgrep (rg) not found on PATH." >&2
