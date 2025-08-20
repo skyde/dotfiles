@@ -14,7 +14,35 @@ fi
 # Go to dotfiles directory
 cd "$(dirname "$0")/dotfiles"
 
-# Pass all arguments directly to stow with sensible defaults
-stow --target="$HOME" --verbose "$@" -- */
+# Function to stow all packages in a directory
+stow_dir() {
+    local dir="$1"
+    shift
+    [ -d "$dir" ] || return 0
+    cd "$dir"
+    local packages=(*/); packages=("${packages[@]%/}")
+    [ -d "${packages[0]}" ] || { cd ..; return 0; }
+    echo "📦 Installing $dir packages: ${packages[*]}"
+    stow --target="$HOME" --verbose "$@" "${packages[@]}"
+    cd ..
+}
+
+# Stow common packages (always)
+stow_dir "common" "$@"
+
+# Stow platform-specific packages
+case "$(uname)" in
+    Darwin)
+        echo "🍎 macOS detected"
+        stow_dir "mac" "$@"
+        ;;
+    Linux)
+        echo "🐧 Linux detected"
+        stow_dir "linux" "$@"
+        ;;
+    *)
+        echo "ℹ️ Unknown platform - common packages only"
+        ;;
+esac
 
 echo "✅ Stow operation completed"
