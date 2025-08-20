@@ -1,0 +1,157 @@
+name: Stow Configuration Validation
+
+on:
+  push:
+    branches: [ stow ]
+    paths: 
+      - 'dotfiles/**'
+      - 'install.*'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ stow ]
+  workflow_dispatch:
+
+jobs:
+  validate-structure:
+    name: Validate Repository Structure
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Validate directory structure
+      run: |
+        echo "=== Validating repository structure ==="
+        
+        # Check required directories exist
+        [ -d "dotfiles/common" ] && echo "✓ dotfiles/common exists" || { echo "✗ dotfiles/common missing"; exit 1; }
+        [ -d "dotfiles/mac" ] && echo "✓ dotfiles/mac exists" || { echo "✗ dotfiles/mac missing"; exit 1; }
+        [ -d "dotfiles/windows" ] && echo "✓ dotfiles/windows exists" || { echo "✗ dotfiles/windows missing"; exit 1; }
+        
+        # Check install scripts exist
+        [ -f "install.sh" ] && echo "✓ install.sh exists" || { echo "✗ install.sh missing"; exit 1; }
+        [ -f "install.ps1" ] && echo "✓ install.ps1 exists" || { echo "✗ install.ps1 missing"; exit 1; }
+        
+        # Validate no forbidden files
+        echo "=== Checking for unwanted files ==="
+        if find dotfiles -name "workspaceStorage" -o -name "globalStorage" -o -name "sync" | grep -q .; then
+          echo "✗ Found VS Code cache files that should be gitignored"
+          find dotfiles -name "workspaceStorage" -o -name "globalStorage" -o -name "sync"
+          exit 1
+        else
+          echo "✓ No VS Code cache files found"
+        fi
+        
+        if find . -name ".DS_Store" | grep -q .; then
+          echo "✗ Found .DS_Store files"
+          find . -name ".DS_Store"
+          exit 1
+        else
+          echo "✓ No .DS_Store files found"
+        fi
+        
+    - name: Count packages and files
+      run: |
+        echo "=== Repository statistics ==="
+        echo "Common packages: $(ls dotfiles/common | wc -l)"
+        echo "Mac packages: $(ls dotfiles/mac | wc -l)"  
+        echo "Windows packages: $(ls dotfiles/windows | wc -l)"
+        echo "Total config files: $(find dotfiles -type f | wc -l)"
+        echo ""
+        echo "Package breakdown:"
+        for dir in dotfiles/common/*; do
+          count=$(find "$dir" -type f | wc -l)
+          echo "  $(basename "$dir"): $count files"
+        done
+
+  test-stow-dry-run:
+    name: Test Stow Dry Run
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install stow
+      run: sudo apt-get update && sudo apt-get install -y stow
+      
+    - name: Test individual package stowing
+      run: |
+        echo "=== Testing individual package stowing ==="
+        cd dotfiles/common
+        
+        for package in */; do
+          package=${package%/}
+          echo "Testing package: $package"
+          
+          # Test dry run doesn't fail
+          stow --target="$HOME" --simulate "$package" || {
+            echo "✗ Stow simulation failed for $package"
+            exit 1
+          }
+          echo "✓ Package $package stow simulation successful"
+        done
+        
+    - name: Test full installation dry run
+      run: |
+        echo "=== Testing full installation dry run ==="
+        DRY_RUN=1 ./install.sh
+
+  validate-configs:
+    name: Validate Configuration Files
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Validate JSON files
+      run: |
+        echo "=== Validating JSON configuration files ==="
+        find dotfiles -name "*.json" | while read -r file; do
+          echo "Validating: $file"
+          if python3 -m json.tool "$file" > /dev/null; then
+            echo "✓ Valid JSON: $file"
+          else
+            echo "✗ Invalid JSON: $file"
+            exit 1
+          fi
+        done
+        
+    - name: Validate shell scripts
+      run: |
+        echo "=== Validating shell scripts ==="
+        find dotfiles -name "*.sh" | while read -r file; do
+          echo "Validating: $file"
+          if bash -n "$file"; then
+            echo "✓ Valid shell script: $file"
+          else
+            echo "✗ Invalid shell script: $file"
+            exit 1
+          fi
+        done
+        
+        # Check install scripts
+        bash -n install.sh && echo "✓ install.sh syntax valid" || { echo "✗ install.sh syntax error"; exit 1; }
+        
+    - name: Check for common issues
+      run: |
+        echo "=== Checking for common configuration issues ==="
+        
+        # Check for absolute paths that shouldn't be there
+        if grep -r "$HOME" dotfiles/ 2>/dev/null; then
+          echo "✗ Found hardcoded HOME paths in configs:"
+          grep -r "$HOME" dotfiles/
+          exit 1
+        else
+          echo "✓ No hardcoded HOME paths found"
+        fi
+        
+        # Check for user-specific data
+        if grep -ri "$(whoami)" dotfiles/ 2>/dev/null | grep -v git; then
+          echo "⚠ Found potential user-specific data (review recommended):"
+          grep -ri "$(whoami)" dotfiles/ | grep -v git
+        else
+          echo "✓ No obvious user-specific data found"
+        fi

@@ -1,0 +1,213 @@
+name: Test Dotfiles Installation
+
+on:
+  push:
+    branches: [ stow, main ]
+  pull_request:
+    branches: [ stow, main ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  test-linux:
+    name: Test Linux Installation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-20.04]
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install stow
+      run: |
+        sudo apt update
+        sudo apt install -y stow git
+        
+    - name: Test dry run
+      run: |
+        echo "=== Testing dry run ==="
+        DRY_RUN=1 ./install.sh
+        
+    - name: Test actual installation
+      run: |
+        echo "=== Testing actual installation ==="
+        ./install.sh
+        
+    - name: Verify installations
+      run: |
+        echo "=== Verifying installations ==="
+        if [ -f "$HOME/.bashrc" ]; then echo "✓ bashrc installed"; else echo "✗ bashrc missing"; exit 1; fi
+        if [ -f "$HOME/.zshrc" ]; then echo "✓ zshrc installed"; else echo "✗ zshrc missing"; exit 1; fi
+        if [ -f "$HOME/.config/git/config" ]; then echo "✓ git config installed"; else echo "✗ git config missing"; exit 1; fi
+        if [ -f "$HOME/.tmux.conf" ]; then echo "✓ tmux config installed"; else echo "✗ tmux config missing"; exit 1; fi
+        if [ -f "$HOME/.config/nvim/init.lua" ]; then echo "✓ neovim config installed"; else echo "✗ neovim config missing"; exit 1; fi
+        
+    - name: Test configuration functionality
+      run: |
+        echo "=== Testing bash configuration ==="
+        bash -c "source $HOME/.bashrc && echo 'Bash config works'"
+        
+        echo "=== Testing git configuration ==="
+        git config --global --list | grep user || echo "Git config loaded"
+        
+        echo "=== Verifying symlinks ==="
+        ls -la "$HOME/.bashrc" | grep -q "/dotfiles/common/bash" && echo "✓ bashrc symlink correct"
+        ls -la "$HOME/.zshrc" | grep -q "/dotfiles/common/zsh" && echo "✓ zshrc symlink correct"
+
+  test-macos:
+    name: Test macOS Installation  
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install stow
+      run: |
+        brew install stow
+        
+    - name: Test dry run
+      run: |
+        echo "=== Testing macOS dry run ==="
+        DRY_RUN=1 ./install.sh
+        
+    - name: Test actual installation
+      run: |
+        echo "=== Testing macOS installation ==="
+        ./install.sh
+        
+    - name: Verify installations
+      run: |
+        echo "=== Verifying macOS installations ==="
+        if [ -f "$HOME/.bashrc" ]; then echo "✓ bashrc installed"; else echo "✗ bashrc missing"; exit 1; fi
+        if [ -f "$HOME/.zshrc" ]; then echo "✓ zshrc installed"; else echo "✗ zshrc missing"; exit 1; fi
+        if [ -f "$HOME/.config/git/config" ]; then echo "✓ git config installed"; else echo "✗ git config missing"; exit 1; fi
+        if [ -f "$HOME/.hammerspoon/init.lua" ]; then echo "✓ hammerspoon config installed"; else echo "✗ hammerspoon config missing"; exit 1; fi
+        
+    - name: Test macOS-specific features
+      run: |
+        echo "=== Testing macOS-specific features ==="
+        if [ -L "$HOME/Library/Application Support/Code/User" ]; then
+          echo "✓ VS Code macOS symlink created"
+        else
+          echo "ℹ VS Code symlink not created (expected if VS Code not installed)"
+        fi
+        
+        echo "=== Verifying Hammerspoon config ==="
+        if [ -f "$HOME/.hammerspoon/init.lua" ]; then
+          head -5 "$HOME/.hammerspoon/init.lua"
+        fi
+
+  test-windows:
+    name: Test Windows Installation
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install stow
+      run: |
+        winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+        
+    - name: Test PowerShell script syntax
+      run: |
+        Write-Host "=== Testing PowerShell script syntax ==="
+        try {
+          $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content install.ps1 -Raw), [ref]$null)
+          Write-Host "✓ PowerShell script syntax is valid"
+        } catch {
+          Write-Host "✗ PowerShell script syntax error: $_"
+          exit 1
+        }
+        
+    - name: Test dry run
+      run: |
+        Write-Host "=== Testing Windows dry run ==="
+        .\install.ps1 -DryRun
+        
+    - name: Test actual installation
+      run: |
+        Write-Host "=== Testing Windows installation ==="
+        .\install.ps1
+        
+    - name: Verify installations
+      run: |
+        Write-Host "=== Verifying Windows installations ==="
+        
+        if (Test-Path "$env:USERPROFILE\.bashrc") { 
+          Write-Host "✓ bashrc installed" 
+        } else { 
+          Write-Host "✗ bashrc missing"; exit 1 
+        }
+        
+        if (Test-Path "$env:USERPROFILE\.zshrc") { 
+          Write-Host "✓ zshrc installed" 
+        } else { 
+          Write-Host "✗ zshrc missing"; exit 1 
+        }
+        
+        if (Test-Path "$env:USERPROFILE\.config\git\config") { 
+          Write-Host "✓ git config installed" 
+        } else { 
+          Write-Host "✗ git config missing"; exit 1 
+        }
+        
+        if (Test-Path "$env:USERPROFILE\Documents\PowerShell\Microsoft.PowerShell_profile.ps1") {
+          Write-Host "✓ PowerShell profile installed"
+        } else {
+          Write-Host "✗ PowerShell profile missing"; exit 1
+        }
+        
+    - name: Test Windows-specific configurations
+      run: |
+        Write-Host "=== Testing Windows-specific configurations ==="
+        
+        if (Test-Path "$env:USERPROFILE\.vsvimrc") {
+          Write-Host "✓ VSVim config installed"
+          Get-Content "$env:USERPROFILE\.vsvimrc" | Select-Object -First 3
+        }
+        
+        Write-Host "=== Verifying symlinks were created ==="
+        Get-ChildItem "$env:USERPROFILE" -Force | Where-Object { $_.LinkType -eq "SymbolicLink" } | Select-Object Name, Target
+
+  test-containers:
+    name: Test in Multiple Linux Distributions
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container: [
+          "debian:testing",
+          "ubuntu:22.04", 
+          "fedora:latest",
+          "archlinux:latest"
+        ]
+        
+    container:
+      image: ${{ matrix.container }}
+      
+    steps:
+    - name: Install basic tools
+      run: |
+        if command -v apt-get >/dev/null 2>&1; then
+          apt-get update && apt-get install -y git stow
+        elif command -v dnf >/dev/null 2>&1; then
+          dnf install -y git stow
+        elif command -v pacman >/dev/null 2>&1; then
+          pacman -Sy --noconfirm git stow
+        fi
+        
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Test installation
+      run: |
+        echo "=== Testing in ${{ matrix.container }} ==="
+        DRY_RUN=1 ./install.sh | head -5
+        ./install.sh
+        
+        # Verify key files
+        [ -f "$HOME/.bashrc" ] && echo "✓ bashrc" || echo "✗ bashrc missing"
+        [ -f "$HOME/.zshrc" ] && echo "✓ zshrc" || echo "✗ zshrc missing"  
+        [ -f "$HOME/.config/git/config" ] && echo "✓ git config" || echo "✗ git config missing"

@@ -1,5 +1,4 @@
 .DS_Store
-.github
 
 # VS Code dynamic/cache files that shouldn't be tracked
 **/Code/User/workspaceStorage/
