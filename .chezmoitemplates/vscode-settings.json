@@ -1,3 +1,4 @@
+
 {
   // Cursor behavior and line numbers
   "editor.cursorSurroundingLines": 8,
@@ -63,9 +64,6 @@
     "panel": "hide",
     "secondarySidebar": "keep"
   },
-  // FindItFaster and terminal setup
-  "find-it-faster.general.useTerminalInEditor": true,
-  "find-it-faster.general.killTerminalAfterUse": true,
   // Disable AI code suggestions and built-in tag closing
   "editor.inlineSuggest.enabled": false,
   "github.copilot.enable": {
@@ -577,6 +575,19 @@
         "search.action.openPreviousSearchResults"
       ]
     },
+    {
+      "before": [
+        "leader",
+        "s",
+        "g"
+      ],
+      "commands": [
+        {
+          "command": "workbench.action.terminal.newWithProfile",
+          "args": { "profileName": "Search Grep", "location": "editor" }
+        }
+      ]
+    },
     // File search and buffers
     {
       "before": [
@@ -584,7 +595,10 @@
         " "
       ],
       "commands": [
-        "workbench.action.quickOpen"
+        {
+          "command": "workbench.action.terminal.newWithProfile",
+          "args": { "profileName": "Find Files", "location": "editor" }
+        }
       ]
     },
     {
@@ -594,27 +608,10 @@
         "f"
       ],
       "commands": [
-        "find-it-faster.findFiles"
-      ]
-    },
-    {
-      "before": [
-        "leader",
-        "f",
-        "g"
-      ],
-      "commands": [
-        "find-it-faster.findWithinFiles"
-      ]
-    },
-    {
-      "before": [
-        "leader",
-        "f",
-        "o"
-      ],
-      "commands": [
-        "find-it-faster.resumeSearch"
+        {
+          "command": "workbench.action.terminal.newWithProfile",
+          "args": { "profileName": "Find Files", "location": "editor" }
+        }
       ]
     },
     {
@@ -623,7 +620,10 @@
         "/"
       ],
       "commands": [
-        "workbench.action.findInFiles"
+        {
+          "command": "workbench.action.terminal.newWithProfile",
+          "args": { "profileName": "Search Grep", "location": "editor" }
+        }
       ]
     },
     {
@@ -4615,6 +4615,7 @@
     }
   ]
 }
+
 
 
 
