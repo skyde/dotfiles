@@ -44,7 +44,7 @@ Packages are organized logically to reduce complexity:
 
 ### Example
 
-When you run `stow shell` from `dotfiles/common/`:
+When you run `stow shell` from `dotfiles/common/`, symlinks are created:
 
 ```
 ~/.bashrc → ~/dotfiles/dotfiles/common/shell/.bashrc
@@ -52,12 +52,12 @@ When you run `stow shell` from `dotfiles/common/`:
 ~/.tmux.conf → ~/dotfiles/dotfiles/common/shell/.tmux.conf
 ```
 
-## Quick Install
+## Quick Setup
 
 ### Mac
 
 ```sh
-# Install Homebrew from https://brew.sh if it's not already present
+# Install Homebrew from https://brew.sh if not already present
 brew install stow
 git clone https://github.com/skyde/dotfiles.git ~/dotfiles
 cd ~/dotfiles
@@ -88,11 +88,11 @@ cd "$env:USERPROFILE\dotfiles"
 The init scripts provide complete automation:
 
 1. **📁 Stow Configuration Files**: Symlink all dotfiles to correct locations
-2. **🔧 Install VS Code Extensions**: Auto-install 7 essential extensions from `vscode_extensions.txt`
+2. **🔧 Install VS Code Extensions**: Auto-install essential extensions from `vscode_extensions.txt`
 3. **📦 Install Development Tools**: Optionally install common CLI tools:
    - **macOS**: ripgrep, fd, fzf, bat, delta, eza, neovim, tmux, git, lazygit
    - **Linux**: ripgrep, fd-find, fzf, bat, git, neovim, tmux
-   - **Windows**: Git, ripgrep, fd, bat, delta, Neovim, PowerShell
+   - **Windows**: Git, ripgrep, fd, bat, delta, Neovim, PowerShell, Starship
 
 ### Non-Interactive Mode
 
@@ -280,9 +280,9 @@ Allows increased brightness when viewing SDR content on an HDR monitor.
 
 lf expects its configuration under `%AppData%\lf` on Windows. These dotfiles create a symlink to `~/.config/lf` so settings apply across OSes.
 
-## Powershell 7
+## PowerShell 7
 
-Use this since it's nicer than the default one.
+Use this since it's nicer than the default PowerShell 5.
 
 ## Visual Studio
 
@@ -314,7 +314,7 @@ I'm using a few plugins:
   Extensions listed in `vscode_extensions.txt` will be installed automatically
   when these dotfiles are applied. Custom keybindings are documented in
   [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
-  On macOS, the install script also checks for the default CLI at
+  On macOS, the init script also checks for the default CLI at
   `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` if the
   `code` command isn't in your `PATH`.
 
