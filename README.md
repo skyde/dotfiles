@@ -46,9 +46,9 @@ Packages are organized logically to reduce complexity:
 
 When you run `stow shell` from `dotfiles/common/`:
 ```
-~/.bashrc → ~/.dotfiles/dotfiles/common/shell/.bashrc
-~/.zshrc → ~/.dotfiles/dotfiles/common/shell/.zshrc
-~/.tmux.conf → ~/.dotfiles/dotfiles/common/shell/.tmux.conf
+~/.bashrc → ~/dotfiles/dotfiles/common/shell/.bashrc
+~/.zshrc → ~/dotfiles/dotfiles/common/shell/.zshrc
+~/.tmux.conf → ~/dotfiles/dotfiles/common/shell/.tmux.conf
 ```
 
 ## Quick Install
@@ -58,8 +58,8 @@ When you run `stow shell` from `dotfiles/common/`:
 ```sh
 # Install Homebrew from https://brew.sh if it's not already present
 brew install stow
-git clone https://github.com/skyde/dotfiles.git ~/.dotfiles
-cd ~/.dotfiles
+git clone https://github.com/skyde/dotfiles.git ~/dotfiles
+cd ~/dotfiles
 ./install.sh
 ```
 
@@ -68,8 +68,8 @@ cd ~/.dotfiles
 ```sh
 sudo apt update
 sudo apt install -y stow git
-git clone https://github.com/skyde/dotfiles.git ~/.dotfiles
-cd ~/.dotfiles
+git clone https://github.com/skyde/dotfiles.git ~/dotfiles
+cd ~/dotfiles
 ./install.sh
 ```
 
@@ -118,7 +118,7 @@ You can also manage individual packages manually:
 ### Installing Packages
 
 ```sh
-cd ~/.dotfiles/dotfiles/common
+cd ~/dotfiles/dotfiles/common
 
 # Install individual packages
 stow shell         # Install shell configs (bash, zsh, tmux)
@@ -136,7 +136,7 @@ stow hammerspoon   # Install Hammerspoon config
 ### Uninstalling Packages
 
 ```sh
-cd ~/.dotfiles/dotfiles/common
+cd ~/dotfiles/dotfiles/common
 
 # Remove symlinks for specific packages
 stow -D shell      # Remove shell configurations
@@ -146,7 +146,7 @@ stow -D devtools   # Remove development tools
 ### Restowing (Update Existing)
 
 ```sh
-cd ~/.dotfiles/dotfiles/common
+cd ~/dotfiles/dotfiles/common
 
 # Update existing installations after changes
 stow -R nvim       # Restow neovim configuration
