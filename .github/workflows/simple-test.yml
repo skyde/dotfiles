@@ -26,10 +26,10 @@ jobs:
     - name: Test installation
       run: |
         if [ "$RUNNER_OS" == "Windows" ]; then
-          $env:INSTALL_APPS = "0"
+          $env:AUTO_INSTALL = "0"
           pwsh -File install.ps1
         else
-          INSTALL_APPS=0 ./install.sh
+          AUTO_INSTALL=0 ./install.sh
         fi
       shell: bash
       

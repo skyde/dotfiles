@@ -40,9 +40,9 @@ if command -v code >/dev/null 2>&1; then
 fi
 
 # Install common apps (optional)
-# Set INSTALL_APPS=1 to auto-install, or INSTALL_APPS=0 to skip
-if [ -n "${INSTALL_APPS:-}" ]; then
-    install_apps="$INSTALL_APPS"
+# Set AUTO_INSTALL=1 to auto-install, or AUTO_INSTALL=0 to skip
+if [ -n "${AUTO_INSTALL:-}" ]; then
+    install_apps="$AUTO_INSTALL"
 else
     echo ""
     read -p "Install common development tools? (y/N): " install_apps

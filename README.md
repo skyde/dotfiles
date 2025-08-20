@@ -6,35 +6,49 @@ This repository contains my personal dotfiles managed with [GNU Stow](https://ww
 
 ```
 dotfiles/
-├── common/          # Shared configs across all platforms
-│   ├── bash/        # Bash configuration
-│   ├── git/         # Git configuration
-│   ├── nvim/        # Neovim configuration
-│   ├── zsh/         # Zsh configuration
-│   ├── tmux/        # Tmux configuration
+├── common/          # Shared configs across all platforms (6 packages)
+│   ├── shell/       # Shell configs (bash, zsh, tmux)
+│   ├── devtools/    # Development tools (git, lazygit, starship, vimium)
 │   ├── Code/        # VS Code configuration
-│   └── ...
-├── mac/             # macOS-specific configs
+│   ├── nvim/        # Neovim configuration
+│   ├── kitty/       # Kitty terminal configuration
+│   └── lf/          # LF file manager configuration
+├── mac/             # macOS-specific configs (1 package)
 │   └── hammerspoon/ # Hammerspoon Lua config
-└── windows/         # Windows-specific configs
+└── windows/         # Windows-specific configs (5 packages)
     ├── Documents/   # PowerShell profiles
     ├── vsvim/       # Visual Studio Vim settings
-    └── ...
+    ├── visual_studio/ # Visual Studio settings
+    ├── kinesis-advantage2/ # Kinesis keyboard layouts
+    └── savant-elite2/ # Footpedal configurations
 ```
 
 ## How Stow Works
 
 GNU Stow creates symlinks from your home directory to the configuration files in this repository:
 
-- **Package**: Each subdirectory in `dotfiles/` is a "package" (e.g., `bash`, `git`, `nvim`)
+- **Package**: Each subdirectory in `dotfiles/` is a "package" (e.g., `shell`, `devtools`, `nvim`)
 - **Target**: Your home directory (`~` or `$HOME`)
 - **Symlinks**: Stow creates symlinks in your home directory pointing to files in the packages
 
+### Package Organization
+
+Packages are organized logically to reduce complexity:
+
+- **`shell`**: All shell-related configs (bash, zsh, tmux) in one package
+- **`devtools`**: Development tools (git, lazygit, starship, vimium) in one package  
+- **`Code`**: VS Code configuration files
+- **`nvim`**: Neovim configuration and plugins
+- **`kitty`**: Kitty terminal emulator settings
+- **`lf`**: LF file manager configuration
+
 ### Example
 
-When you run `stow bash` from `dotfiles/common/`:
+When you run `stow shell` from `dotfiles/common/`:
 ```
-~/.bashrc → ~/.dotfiles/dotfiles/common/bash/.bashrc
+~/.bashrc → ~/.dotfiles/dotfiles/common/shell/.bashrc
+~/.zshrc → ~/.dotfiles/dotfiles/common/shell/.zshrc
+~/.tmux.conf → ~/.dotfiles/dotfiles/common/shell/.tmux.conf
 ```
 
 ## Quick Install
@@ -73,7 +87,7 @@ cd "$env:USERPROFILE\dotfiles"
 The install scripts provide complete automation:
 
 1. **📁 Stow Configuration Files**: Symlink all dotfiles to correct locations
-2. **🔧 Install VS Code Extensions**: Auto-install extensions from `vscode_extensions.txt`
+2. **🔧 Install VS Code Extensions**: Auto-install 7 essential extensions from `vscode_extensions.txt`
 3. **📦 Install Development Tools**: Optionally install common CLI tools:
    - **macOS**: ripgrep, fd, fzf, bat, delta, eza, neovim, tmux, git, lazygit
    - **Linux**: ripgrep, fd-find, fzf, bat, git, neovim, tmux
@@ -85,15 +99,15 @@ For automated setups (CI/CD, scripts):
 
 ```bash
 # Skip app installation prompts
-INSTALL_APPS=0 ./install.sh
+AUTO_INSTALL=0 ./install.sh
 
 # Auto-install apps without prompting
-INSTALL_APPS=1 ./install.sh
+AUTO_INSTALL=1 ./install.sh
 ```
 
 ```powershell
 # Windows equivalent
-$env:INSTALL_APPS = "0"  # or "1" to auto-install
+$env:AUTO_INSTALL = "0"  # or "1" to auto-install
 ./install.ps1
 ```
 
@@ -107,10 +121,12 @@ You can also manage individual packages manually:
 cd ~/.dotfiles/dotfiles/common
 
 # Install individual packages
-stow bash          # Install bash configuration
-stow git           # Install git configuration  
+stow shell         # Install shell configs (bash, zsh, tmux)
+stow devtools      # Install development tools (git, lazygit, starship)
 stow nvim          # Install neovim configuration
-stow tmux          # Install tmux configuration
+stow Code          # Install VS Code configuration
+stow kitty         # Install kitty terminal configuration
+stow lf            # Install lf file manager configuration
 
 # Install macOS-specific configs (on Mac)
 cd ../mac
@@ -123,8 +139,8 @@ stow hammerspoon   # Install Hammerspoon config
 cd ~/.dotfiles/dotfiles/common
 
 # Remove symlinks for specific packages
-stow -D bash       # Remove bash configuration
-stow -D git        # Remove git configuration
+stow -D shell      # Remove shell configurations
+stow -D devtools   # Remove development tools
 ```
 
 ### Restowing (Update Existing)
@@ -134,7 +150,7 @@ cd ~/.dotfiles/dotfiles/common
 
 # Update existing installations after changes
 stow -R nvim       # Restow neovim configuration
-stow -R git        # Restow git configuration
+stow -R devtools   # Restow development tools
 ```
 
 ## Platform-Specific Instructions
@@ -173,6 +189,14 @@ cd dotfiles/common
 stow mytool
 ```
 
+**Or add to existing packages:**
+```sh
+# Add to devtools package
+echo "new-config=value" > dotfiles/common/devtools/.config/newtool/config.yml
+cd dotfiles/common
+stow -R devtools  # Restow to pick up new files
+```
+
 ### Handling Conflicts
 
 If stow encounters existing files that aren't symlinks, it will warn you:
@@ -180,9 +204,10 @@ If stow encounters existing files that aren't symlinks, it will warn you:
 ```sh
 # Move existing files to backup
 mv ~/.bashrc ~/.bashrc.backup
+mv ~/.zshrc ~/.zshrc.backup
 
 # Then install the package
-stow bash
+stow shell
 ```
 
 ## Troubleshooting

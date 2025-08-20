@@ -45,9 +45,9 @@ if (Get-Command code -ErrorAction SilentlyContinue) {
 }
 
 # Install common development tools (optional)
-# Set $env:INSTALL_APPS=1 to auto-install, or $env:INSTALL_APPS=0 to skip
-if ($env:INSTALL_APPS) {
-    $installApps = $env:INSTALL_APPS
+# Set $env:AUTO_INSTALL=1 to auto-install, or $env:AUTO_INSTALL=0 to skip
+if ($env:AUTO_INSTALL) {
+    $installApps = $env:AUTO_INSTALL
 } else {
     Write-Host ""
     $installApps = Read-Host "Install common development tools via winget? (y/N)"
