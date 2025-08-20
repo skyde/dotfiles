@@ -15,6 +15,6 @@ fi
 cd "$(dirname "$0")/dotfiles"
 
 # Pass all arguments directly to stow with sensible defaults
-stow --target="$HOME" --verbose "$@" */
+stow --target="$HOME" --verbose "$@" -- */
 
 echo "✅ Stow operation completed"

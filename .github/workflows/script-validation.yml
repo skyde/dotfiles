@@ -150,18 +150,18 @@ jobs:
           vscode_count=$(grep -v '^#' vscode_extensions.txt | grep -v '^$' | wc -l)
           echo "  VS Code extensions: $vscode_count"
 
-          # Verify README mentions the correct scripts
-          if grep -q "init.ps1" README.md && grep -q "apply.ps1" README.md && grep -q "update.ps1" README.md; then
-            echo "✅ README mentions PowerShell scripts"
+          # Verify script documentation exists (in README.md or README-usage.md)
+          if (grep -q "init.ps1" README.md README-usage.md) && (grep -q "apply.ps1" README.md README-usage.md) && (grep -q "update.ps1" README.md README-usage.md); then
+            echo "✅ PowerShell scripts are documented"
           else
-            echo "❌ README missing PowerShell script references"
+            echo "❌ PowerShell script documentation missing"
             exit 1
           fi
 
-          if grep -q "init.sh" README.md && grep -q "apply.sh" README.md && grep -q "update.sh" README.md; then
-            echo "✅ README mentions shell scripts"
+          if (grep -q "init.sh" README.md README-usage.md) && (grep -q "apply.sh" README.md README-usage.md) && (grep -q "update.sh" README.md README-usage.md); then
+            echo "✅ Shell scripts are documented"
           else
-            echo "❌ README missing shell script references"
+            echo "❌ Shell script documentation missing"
             exit 1
           fi
 
