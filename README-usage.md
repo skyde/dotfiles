@@ -20,11 +20,13 @@
 
 Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
 
-### `stow_update` - Update from remote
+### `update.sh` - Update from remote
 ```bash
+./update.sh
+# or
 stow_update
 ```
-Pulls latest changes from the repository and runs init to apply them.
+Pulls latest changes from the repository and applies them using `--restow`.
 
 ## Common Operations
 
@@ -88,7 +90,7 @@ stow_update                  # Pull latest from repo and apply
 ./init.sh
 
 # Update from remote repository
-stow_update
+./update.sh
 
 # See what would happen before adopting conflicts
 ./apply.sh --no --adopt
@@ -96,7 +98,7 @@ stow_update
 # Actually adopt conflicts
 ./apply.sh --adopt
 
-# Update after making changes to dotfiles
+# Update after local changes to dotfiles
 ./apply.sh --restow
 
 # Remove everything
