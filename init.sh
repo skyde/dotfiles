@@ -24,32 +24,61 @@ echo "Installing dotfiles..."
 ./apply.sh --adopt
 
 # Install packages
-packages="ripgrep fzf bat git neovim tmux delta eza lazygit"
-
-# Add platform-specific fd package
-case "$(uname)" in
-    Darwin) packages="$packages fd" ;;
-    Linux) packages="$packages fd-find" ;;
-esac
-
-install_apps=$(get_user_confirmation "Install packages ($packages)? (y/N): ")
-if [[ "$install_apps" =~ ^[Yy] ]]; then
-    case "$(uname)" in
-        Darwin)
-            if command -v brew >/dev/null 2>&1; then
-                echo "Installing packages..."
-                brew install $packages
-            else
-                echo "Homebrew not found. Install it first: https://brew.sh"
-            fi
-            ;;
-        Linux)
-            if command -v apt >/dev/null 2>&1; then
-                echo "Installing packages..."
-                sudo apt update && sudo apt install -y $packages
-            fi
-            ;;
-    esac
+if [ -f "packages.txt" ]; then
+    # Read packages from file and handle platform-specific names
+    packages=""
+    while read -r pkg; do
+        if [ -n "$pkg" ] && [[ ! "$pkg" =~ ^[[:space:]]*# ]]; then
+            # Handle platform-specific package names
+            case "$pkg" in
+                fd)
+                    case "$(uname)" in
+                        Darwin|MINGW*|MSYS*|CYGWIN*) packages="$packages fd" ;;
+                        Linux) packages="$packages fd-find" ;;  # Note: binary is called 'fdfind' on Debian/Ubuntu
+                    esac
+                    ;;
+                *)
+                    packages="$packages $pkg"
+                    ;;
+            esac
+        fi
+    done < packages.txt
+    
+    install_apps=$(get_user_confirmation "Install packages ($packages)? (y/N): ")
+    if [[ "$install_apps" =~ ^[Yy] ]]; then
+        case "$(uname)" in
+            Darwin)
+                if command -v brew >/dev/null 2>&1; then
+                    echo "Installing packages..."
+                    brew install $packages
+                else
+                    echo "Homebrew not found. Install it first: https://brew.sh"
+                fi
+                ;;
+            Linux)
+                if command -v apt >/dev/null 2>&1; then
+                    echo "Installing packages..."
+                    sudo apt update && sudo apt install -y $packages
+                fi
+                ;;
+            MINGW*|MSYS*|CYGWIN*)
+                if command -v winget >/dev/null 2>&1; then
+                    echo "Installing packages..."
+                    for pkg in $packages; do
+                        echo "  Installing: $pkg"
+                        winget install "$pkg" --silent --accept-source-agreements --accept-package-agreements
+                    done
+                elif command -v choco >/dev/null 2>&1; then
+                    echo "Installing packages..."
+                    choco install $packages -y
+                else
+                    echo "Neither winget nor chocolatey found. Please install packages manually: $packages"
+                fi
+                ;;
+        esac
+    fi
+else
+    echo "packages.txt not found, skipping package installation"
 fi
 
 # Install VS Code extensions

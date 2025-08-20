@@ -1,0 +1,10 @@
+ripgrep
+fzf
+bat
+git
+neovim
+tmux
+delta
+eza
+lazygit
+fd
