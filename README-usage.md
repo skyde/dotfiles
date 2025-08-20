@@ -21,11 +21,13 @@
 Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
 
 ### `update.sh` - Update from remote
+
 ```bash
 ./update.sh
 # or
 stow_update
 ```
+
 Pulls latest changes from the repository and applies them using `--restow`.
 
 ## Common Operations
