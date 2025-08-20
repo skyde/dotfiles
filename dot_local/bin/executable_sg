@@ -3,7 +3,7 @@ set -euo pipefail
 
 QUERY="${*:-}"
 
-# Require ripgrep; exit cleanly if not found (so no VS Code error banner)
+# Require ripgrep; exit cleanly if not found (avoid VS Code banner)
 if ! command -v rg >/dev/null 2>&1; then
   echo "ripgrep (rg) not found on PATH." >&2
   exit 0
@@ -11,17 +11,17 @@ fi
 
 RG=(rg --column --line-number --no-heading --smart-case --hidden -g '!.git' --color=always)
 
-SEL="$(
-  FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" \
-    fzf --ansi --disabled \
-    --prompt='RG   ' \
-    --bind "start:reload:printf ''" \
-    --bind "change:reload:${RG[*]} {q} || true" \
-    --delimiter ':' \
-    --preview 'if [ -n "{1}" ]; then (bat --style=numbers --color=always --line-range {2}: -- {1} 2>/dev/null || (tail -n +{2} -- {1} 2>/dev/null | head -n 200)); else (bat --style=numbers --color=always -- {1} 2>/dev/null || head -n 200 -- {1}); fi' \
-    --preview-window=right,60%,border \
-    --bind 'alt-p:toggle-preview,enter:execute-silent(code -r --goto {1}:{2})+abort' \
-    --query "$QUERY" ||
-    true
-)"
+# Use --phony so fzf doesn't filter the list itself; we control it via reload
+FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" \
+  fzf --ansi --phony \
+  --prompt='RG   ' \
+  --bind "start:reload:${RG[*]} {q} || true" \
+  --bind "change:reload:${RG[*]} {q} || true" \
+  --delimiter ':' \
+  --preview 'if [ -n "{1}" ]; then (bat --style=numbers --color=always --line-range {2}: -- {1} 2>/dev/null || (tail -n +{2} -- {1} 2>/dev/null | head -n 200)); else (bat --style=numbers --color=always -- {1} 2>/dev/null || head -n 200 -- {1}); fi' \
+  --preview-window=right,60%,border \
+  --bind 'alt-p:toggle-preview,enter:execute-silent(code -r --goto {1}:{2})+abort' \
+  --query "$QUERY" ||
+  true
+
 exit 0
