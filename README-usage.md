@@ -12,10 +12,10 @@
 - Installs VS Code extensions
 - Optionally installs common development tools
 
-### `update.sh` - Stow wrapper
+### `apply.sh` - Stow wrapper
 
 ```bash
-./update.sh [STOW_OPTIONS]
+./apply.sh [STOW_OPTIONS]
 ```
 
 Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
@@ -31,36 +31,36 @@ Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
 ### 🔍 **Preview changes**
 
 ```bash
-./update.sh --no              # Dry-run, see what would happen
-./update.sh --no --verbose    # Dry-run with detailed output
+./apply.sh --no              # Dry-run, see what would happen
+./apply.sh --no --verbose    # Dry-run with detailed output
 ```
 
 ### 🔄 **Update existing**
 
 ```bash
-./update.sh --restow          # Re-install everything
-./update.sh                   # Normal stow (only new packages)
+./apply.sh --restow          # Re-install everything
+./apply.sh                   # Normal stow (only new packages)
 ```
 
 ### ⚠️ **Handle conflicts**
 
 ```bash
-./update.sh --adopt           # Take over existing files
-./update.sh --no --adopt      # Preview what would be adopted
+./apply.sh --adopt           # Take over existing files
+./apply.sh --no --adopt      # Preview what would be adopted
 ```
 
 ### 🗑️ **Remove dotfiles**
 
 ```bash
-./update.sh --delete          # Remove all symlinks
+./apply.sh --delete          # Remove all symlinks
 ```
 
 ### 🎯 **Advanced operations**
 
 ```bash
-./update.sh --restow --verbose=2    # Verbose restow
-./update.sh --ignore="*.log"        # Ignore log files
-./update.sh --no --adopt --verbose  # Preview adoption with details
+./apply.sh --restow --verbose=2    # Verbose restow
+./apply.sh --ignore="*.log"        # Ignore log files
+./apply.sh --no --adopt --verbose  # Preview adoption with details
 ```
 
 ## Stow Arguments Reference
@@ -81,14 +81,14 @@ Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
 ./install.sh
 
 # See what would happen before adopting conflicts
-./update.sh --no --adopt
+./apply.sh --no --adopt
 
 # Actually adopt conflicts
-./update.sh --adopt
+./apply.sh --adopt
 
 # Update after making changes to dotfiles
-./update.sh --restow
+./apply.sh --restow
 
 # Remove everything
-./update.sh --delete
+./apply.sh --delete
 ```

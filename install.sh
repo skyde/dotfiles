@@ -4,8 +4,8 @@ set -e
 
 echo "Installing dotfiles..."
 
-# Use update.sh with --adopt to handle conflicts
-./update.sh --adopt
+# Use apply.sh with --adopt to handle conflicts
+./apply.sh --adopt
 
 # Install VS Code extensions
 if command -v code >/dev/null 2>&1; then
