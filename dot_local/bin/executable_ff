@@ -3,40 +3,87 @@ set -euo pipefail
 
 QUERY="${*:-}"
 
-# 1) Start from project root (like LazyVim/Telescope)
-if git rev-parse --show-toplevel >/dev/null 2>&1; then
+# 0) Jump to repo root (like LazyVim/Telescope rooter)
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   cd "$(git rev-parse --show-toplevel)"
 fi
 
-# 2) Build the file list (prefer Git index for speed)
+# 1) Source list (NUL-separated for safety)
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  SRC_CMD=(git -c core.quotepath=false ls-files -co --exclude-standard)
+  EMIT=(git -c core.quotepath=false ls-files -co --exclude-standard -z)
 elif command -v fd >/dev/null 2>&1; then
-  SRC_CMD=(fd --type f --hidden --follow --exclude .git)
+  EMIT=(fd -0 --type f --hidden --follow --exclude .git)
 elif command -v rg >/dev/null 2>&1; then
-  SRC_CMD=(rg --files --hidden --follow -g '!.git')
+  EMIT=(rg -0 --files --hidden -g '!.git')
 else
-  SRC_CMD=(find . -type f)
+  EMIT=(find . -type f -print0)
 fi
 
-# 3) Preview: show the WHOLE file (no filtering), syntax‑highlight if bat exists
-if command -v bat >/dev/null 2>&1; then
-  # --style=full keeps header, grid and numbers -> very close to LazyVim preview
-  PREVIEW_CMD='bat --style=full --color=always --paging=never -- {} 2>/dev/null || head -n 300 -- {}'
-else
-  PREVIEW_CMD='head -n 300 -- {}'
-fi
+# 2) Minimal icon mapper (Nerd Font). Keep Bash 3.2-friendly (no associative arrays).
+icon_for() {
+  local base="${1##*/}"
+  local ext="${base##*.}"
+  case "$base" in
+    .gitignore|.gitattributes|.gitmodules) printf ""; return;;
+  esac
+  case "$ext" in
+    js)   printf "";;   jsx)  printf "";;
+    ts)   printf "";;   tsx)  printf "";;
+    json) printf "";;   html|htm) printf "";;
+    css|scss|sass|less) printf "";;
+    md|markdown) printf "";;
+    go)   printf "";;   rs)   printf "";;
+    py)   printf "";;   rb)   printf "";;
+    php)  printf "";;   java) printf "";;
+    kt)   printf "";;   c|h|hpp|hh|hxx|cpp|cc|cxx) printf "";;
+    m|mm) printf "";;   sh|bash|zsh) printf "";;
+    yaml|yml|toml|ini|conf) printf "";;
+    png|jpg|jpeg|gif|webp|svg|ico) printf "";;
+    pdf)  printf "";;   log|txt) printf "";;
+    *)    printf "";;
+  esac
+}
 
-# 4) fzf UI/behavior (TokyoNight theme comes from your FZF_DEFAULT_OPTS)
-#    - Preview on the RIGHT
-#    - Alt‑P toggles preview
-#    - Enter opens selection(s) and closes picker
-"${SRC_CMD[@]}" | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" \
-  fzf --ansi \
-  --prompt='Files   ' \
-  --preview "$PREVIEW_CMD" \
-  --preview-window=right,60%,border \
-  --bind 'alt-p:toggle-preview,enter:execute-silent(code -r -- {+})+abort' \
-  --multi \
-  --query "$QUERY" ||
-  true
+# 3) Build decorated NUL-stream: "<icon>\t<basename>\t<path>\0"
+decorate() {
+  local file base icon
+  while IFS= read -r -d '' file; do
+    case "$file" in ./*) file="${file#./}";; esac
+    base="${file##*/}"
+    icon="$(icon_for "$file")"
+    printf '%s\t%s\t%s\0' "$icon" "$base" "$file"
+  done
+}
+
+# 4) Run fzf with optional path-search toggle (Alt-s)
+nth="2"
+prompt='Files   '
+while true; do
+  out=$("${EMIT[@]}" \
+    | decorate \
+    | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" \
+      fzf --read0 --ansi \
+          --prompt="$prompt" \
+          --delimiter='\t' \
+          --with-nth=1,2 \
+          --nth="$nth" \
+          --tiebreak=begin,index \
+          --preview 'bat --style=full --color=always --paging=never -- {3} 2>/dev/null || head -n 300 -- {3}' \
+          --preview-window=right,60%,border,wrap \
+          --bind 'alt-p:toggle-preview,enter:execute-silent(code -r -- {+3})+abort' \
+          --expect=alt-s \
+          --print-query \
+          --multi \
+          --query "$QUERY")
+  key=$(printf '%s\n' "$out" | head -n1)
+  QUERY=$(printf '%s\n' "$out" | sed -n '2p')
+  [ "$key" != 'alt-s' ] && break
+  if [ "$nth" = '2' ]; then
+    nth='2,3'
+    prompt='Path   '
+  else
+    nth='2'
+    prompt='Files   '
+  fi
+done || true
+
