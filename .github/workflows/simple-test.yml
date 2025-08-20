@@ -26,9 +26,10 @@ jobs:
     - name: Test installation
       run: |
         if [ "$RUNNER_OS" == "Windows" ]; then
-          pwsh -File simple.ps1
+          $env:INSTALL_APPS = "0"
+          pwsh -File install.ps1
         else
-          ./simple.sh
+          INSTALL_APPS=0 ./install.sh
         fi
       shell: bash
       

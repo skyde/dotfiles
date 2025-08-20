@@ -46,7 +46,7 @@ When you run `stow bash` from `dotfiles/common/`:
 brew install stow
 git clone https://github.com/skyde/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
-./simple_install.sh
+./install.sh
 ```
 
 ### Linux
@@ -56,7 +56,7 @@ sudo apt update
 sudo apt install -y stow git
 git clone https://github.com/skyde/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
-./simple_install.sh
+./install.sh
 ```
 
 ### Windows
@@ -65,7 +65,36 @@ cd ~/.dotfiles
 winget install stefansundin.gnu-stow
 git clone https://github.com/skyde/dotfiles.git "$env:USERPROFILE\dotfiles"
 cd "$env:USERPROFILE\dotfiles"
-./simple_install.ps1
+./install.ps1
+```
+
+## What the Install Scripts Do
+
+The install scripts provide complete automation:
+
+1. **📁 Stow Configuration Files**: Symlink all dotfiles to correct locations
+2. **🔧 Install VS Code Extensions**: Auto-install extensions from `vscode_extensions.txt`
+3. **📦 Install Development Tools**: Optionally install common CLI tools:
+   - **macOS**: ripgrep, fd, fzf, bat, delta, eza, neovim, tmux, git, lazygit
+   - **Linux**: ripgrep, fd-find, fzf, bat, git, neovim, tmux
+   - **Windows**: Git, ripgrep, fd, bat, delta, Neovim, PowerShell
+
+### Non-Interactive Mode
+
+For automated setups (CI/CD, scripts):
+
+```bash
+# Skip app installation prompts
+INSTALL_APPS=0 ./install.sh
+
+# Auto-install apps without prompting
+INSTALL_APPS=1 ./install.sh
+```
+
+```powershell
+# Windows equivalent
+$env:INSTALL_APPS = "0"  # or "1" to auto-install
+./install.ps1
 ```
 
 ## Manual Package Management
