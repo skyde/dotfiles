@@ -1375,5 +1375,6 @@
   "search.seedWithNearestWord": true,
   "search.smartCase": true,
   "panel.opensMaximized": true,
-  "workbench.panel.opensMaximized": "always"
+  "workbench.panel.opensMaximized": "always",
+  "chromiumide.metrics.showMessage": false
 }
