@@ -2,6 +2,22 @@
 # Simple dotfiles installer
 set -e
 
+# Function to get user confirmation with auto-install support
+get_user_confirmation() {
+    local prompt="$1"
+    local response
+    
+    if [ "${AUTO_INSTALL:-}" = "1" ]; then
+        response="y"
+    elif [ "${AUTO_INSTALL:-}" = "0" ]; then
+        response="n"
+    else
+        read -r -p "$prompt" response
+    fi
+    
+    echo "$response"
+}
+
 echo "Installing dotfiles..."
 
 # Use apply.sh with --adopt to handle conflicts
@@ -10,13 +26,7 @@ echo "Installing dotfiles..."
 # Install VS Code extensions
 if command -v code >/dev/null 2>&1; then
     if [ -f "vscode_extensions.txt" ]; then
-        if [ "${AUTO_INSTALL:-}" = "1" ]; then
-            install_extensions="y"
-        elif [ "${AUTO_INSTALL:-}" = "0" ]; then
-            install_extensions="n"
-        else
-            read -r -p "Install VS Code extensions? (y/N): " install_extensions
-        fi
+        install_extensions=$(get_user_confirmation "Install VS Code extensions? (y/N): ")
         if [[ "$install_extensions" =~ ^[Yy] ]]; then
             echo "Installing VS Code extensions..."
             while read -r ext; do
@@ -35,13 +45,7 @@ else
 fi
 
 # Install common apps
-if [ "${AUTO_INSTALL:-}" = "1" ]; then
-    install_apps="y"
-elif [ "${AUTO_INSTALL:-}" = "0" ]; then
-    install_apps="n"
-else
-    read -r -p "Install common development tools? (y/N): " install_apps
-fi
+install_apps=$(get_user_confirmation "Install common development tools? (y/N): ")
 if [[ "$install_apps" =~ ^[Yy] ]]; then
     case "$(uname)" in
         Darwin)
