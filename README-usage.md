@@ -9,8 +9,8 @@
 ```
 
 - Installs dotfiles with `--adopt` (takes over existing files)
-- Installs VS Code extensions
-- Optionally installs common development tools
+- Prompts to install VS Code extensions
+- Prompts to install common development tools
 
 ### `apply.sh` - Stow wrapper
 

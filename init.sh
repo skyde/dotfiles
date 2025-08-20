@@ -10,12 +10,22 @@ echo "Installing dotfiles..."
 # Install VS Code extensions
 if command -v code >/dev/null 2>&1; then
     if [ -f "vscode_extensions.txt" ]; then
-        echo "Installing VS Code extensions..."
-        while read -r ext; do
-            [ -n "$ext" ] && [[ ! "$ext" =~ ^[[:space:]]*# ]] && code --install-extension "$ext" --force >/dev/null 2>&1
-        done < vscode_extensions.txt
-        echo "✅ VS Code extensions processed"
+        read -p "Install VS Code extensions? (y/N): " install_extensions
+        if [[ "$install_extensions" =~ ^[Yy] ]]; then
+            echo "Installing VS Code extensions..."
+            while read -r ext; do
+                if [ -n "$ext" ] && [[ ! "$ext" =~ ^[[:space:]]*# ]]; then
+                    echo "  Installing: $ext"
+                    code --install-extension "$ext" --force >/dev/null 2>&1
+                fi
+            done < vscode_extensions.txt
+            echo "✅ VS Code extensions installed"
+        else
+            echo "Skipping VS Code extensions"
+        fi
     fi
+else
+    echo "VS Code not found, skipping extensions"
 fi
 
 # Install common apps
