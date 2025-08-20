@@ -148,6 +148,7 @@ alias z='cd'
 alias grep="grep --color=auto"
 alias stow_apply='~/dotfiles/apply.sh'
 alias stow_init='~/dotfiles/init.sh'
+alias stow_update='cd ~/dotfiles && git pull && ./init.sh && cd -'
 # Favor hidden files but ignore common junk, colorized output
 alias rg='rg --hidden --smart-case --colors match:fg:yellow --glob "!.git" --glob "!node_modules"'
 # Use modern replacements if available

@@ -20,6 +20,12 @@
 
 Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
 
+### `stow_update` - Update from remote
+```bash
+stow_update
+```
+Pulls latest changes from the repository and runs init to apply them.
+
 ## Common Operations
 
 ### 📦 **First install**
@@ -38,6 +44,7 @@ Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
 ### 🔄 **Update existing**
 
 ```bash
+stow_update                  # Pull latest from repo and apply
 ./apply.sh --restow          # Re-install everything
 ./apply.sh                   # Normal stow (only new packages)
 ```
@@ -79,6 +86,9 @@ Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
 ```bash
 # First time setup
 ./init.sh
+
+# Update from remote repository
+stow_update
 
 # See what would happen before adopting conflicts
 ./apply.sh --no --adopt
