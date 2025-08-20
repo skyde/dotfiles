@@ -3,20 +3,28 @@ set -euo pipefail
 
 QUERY="${*:-}"
 
+# If you like: seed from clipboard on macOS so it shows results immediately.
+# Comment the next 3 lines if you want a blank list until you type.
+if [ -z "$QUERY" ] && command -v pbpaste >/dev/null 2>&1; then
+  QUERY="$(pbpaste | tr -d '\r' | head -c 200)"
+fi
+
 # Require ripgrep; exit cleanly if not found (avoid VS Code banner)
 if ! command -v rg >/dev/null 2>&1; then
   echo "ripgrep (rg) not found on PATH." >&2
   exit 0
 fi
 
-RG=(rg --column --line-number --no-heading --smart-case --hidden -g '!.git' --color=always)
+RG=(rg --column --line-number --no-heading --smart-case --hidden --glob=!.git --color=always)
 
-# Use --phony so fzf doesn't filter the list itself; we control it via reload
+# Only reload when the query is non-empty
+RELOAD_CMD='if [ -n "{q}" ]; then '"${RG[*]}"' {q}; else printf ""; fi'
+
 FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" \
   fzf --ansi --phony \
   --prompt='RG   ' \
-  --bind "start:reload:${RG[*]} {q} || true" \
-  --bind "change:reload:${RG[*]} {q} || true" \
+  --bind "start:reload:${RELOAD_CMD}" \
+  --bind "change:reload:${RELOAD_CMD}" \
   --delimiter ':' \
   --preview 'if [ -n "{1}" ]; then (bat --style=numbers --color=always --line-range {2}: -- {1} 2>/dev/null || (tail -n +{2} -- {1} 2>/dev/null | head -n 200)); else (bat --style=numbers --color=always -- {1} 2>/dev/null || head -n 200 -- {1}); fi' \
   --preview-window=right,60%,border \
