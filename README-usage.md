@@ -2,10 +2,10 @@
 
 ## Scripts
 
-### `install.sh` - First-time setup
+### `init.sh` - First-time setup
 
 ```bash
-./install.sh
+./init.sh
 ```
 
 - Installs dotfiles with `--adopt` (takes over existing files)
@@ -25,7 +25,7 @@ Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
 ### 📦 **First install**
 
 ```bash
-./install.sh
+./init.sh
 ```
 
 ### 🔍 **Preview changes**
@@ -78,7 +78,7 @@ Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
 
 ```bash
 # First time setup
-./install.sh
+./init.sh
 
 # See what would happen before adopting conflicts
 ./apply.sh --no --adopt
