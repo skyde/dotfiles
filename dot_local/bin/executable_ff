@@ -3,7 +3,12 @@ set -euo pipefail
 
 QUERY="${*:-}"
 
-# Source list: prefer Git index (fast), else fd -> rg -> find
+# 1) Start from project root (like LazyVim/Telescope)
+if git rev-parse --show-toplevel >/dev/null 2>&1; then
+  cd "$(git rev-parse --show-toplevel)"
+fi
+
+# 2) Build the file list (prefer Git index for speed)
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   SRC_CMD=(git -c core.quotepath=false ls-files -co --exclude-standard)
 elif command -v fd >/dev/null 2>&1; then
@@ -14,24 +19,22 @@ else
   SRC_CMD=(find . -type f)
 fi
 
-# Preview:
-# - With a query -> show WHOLE file, just highlight matches (no filtering)
-# - Without a query -> show syntax-highlighted head
-if command -v rg >/dev/null 2>&1; then
-  PREVIEW_WITH_QUERY='rg --passthru --color=always --line-number --no-heading --smart-case -- {q} {}'
-else
-  PREVIEW_WITH_QUERY='cat {}'
-fi
+# 3) Preview: show the WHOLE file (no filtering), syntax‑highlight if bat exists
 if command -v bat >/dev/null 2>&1; then
-  PREVIEW_NO_QUERY='bat --style=numbers --color=always -- {} 2>/dev/null || head -n 200 -- {}'
+  # --style=full keeps header, grid and numbers -> very close to LazyVim preview
+  PREVIEW_CMD='bat --style=full --color=always --paging=never -- {} 2>/dev/null || head -n 300 -- {}'
 else
-  PREVIEW_NO_QUERY='head -n 200 -- {}'
+  PREVIEW_CMD='head -n 300 -- {}'
 fi
 
+# 4) fzf UI/behavior (TokyoNight theme comes from your FZF_DEFAULT_OPTS)
+#    - Preview on the RIGHT
+#    - Alt‑P toggles preview
+#    - Enter opens selection(s) and closes picker
 "${SRC_CMD[@]}" | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" \
   fzf --ansi \
   --prompt='Files   ' \
-  --preview 'if [ -n "{q}" ]; then '"$PREVIEW_WITH_QUERY"'; else '"$PREVIEW_NO_QUERY"'; fi' \
+  --preview "$PREVIEW_CMD" \
   --preview-window=right,60%,border \
   --bind 'alt-p:toggle-preview,enter:execute-silent(code -r -- {+})+abort' \
   --multi \
