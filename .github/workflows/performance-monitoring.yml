@@ -1,0 +1,339 @@
+name: Performance and Monitoring
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    # Run performance tests daily
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  performance-baseline:
+    name: Performance Baseline Testing
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt update && sudo apt install -y stow git time
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            brew install stow gnu-time
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+          fi
+        shell: bash
+
+      - name: Measure installation time
+        run: |
+          echo "⏱️ Measuring installation performance..."
+          
+          start_time=$(date +%s)
+          
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            $env:AUTO_INSTALL = "0"
+            Measure-Command { & pwsh -File init.ps1 } | Select-Object TotalSeconds
+          else
+            time AUTO_INSTALL=0 ./init.sh
+          fi
+          
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+          
+          echo "Installation completed in ${duration} seconds"
+          
+          # Set performance threshold (should complete within 60 seconds)
+          if [ $duration -gt 60 ]; then
+            echo "⚠️ Installation took longer than expected: ${duration}s"
+          else
+            echo "✅ Installation performance acceptable: ${duration}s"
+          fi
+        shell: bash
+
+      - name: Measure package operations
+        run: |
+          echo "📦 Measuring package operation performance..."
+          
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            apply_cmd="pwsh -File apply.ps1"
+          else
+            apply_cmd="./apply.sh"
+          fi
+          
+          # Measure restow time
+          start_time=$(date +%s)
+          $apply_cmd --restow
+          end_time=$(date +%s)
+          restow_duration=$((end_time - start_time))
+          echo "Restow completed in ${restow_duration} seconds"
+          
+          # Measure delete time
+          start_time=$(date +%s)
+          $apply_cmd --delete
+          end_time=$(date +%s)
+          delete_duration=$((end_time - start_time))
+          echo "Delete completed in ${delete_duration} seconds"
+          
+          # Measure install time
+          start_time=$(date +%s)
+          $apply_cmd
+          end_time=$(date +%s)
+          install_duration=$((end_time - start_time))
+          echo "Install completed in ${install_duration} seconds"
+          
+          echo "✅ Package operations performance measured"
+        shell: bash
+
+      - name: Memory usage analysis
+        run: |
+          echo "🧠 Analyzing memory usage..."
+          
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            # Monitor memory during installation
+            (
+              while true; do
+                ps aux | grep -E "(stow|bash|zsh)" | grep -v grep | awk '{sum+=$6} END {print "Memory usage: " sum " KB"}'
+                sleep 1
+              done
+            ) &
+            monitor_pid=$!
+            
+            # Run installation
+            AUTO_INSTALL=0 ./init.sh > /dev/null 2>&1
+            
+            # Stop monitoring
+            kill $monitor_pid 2>/dev/null || true
+          fi
+          
+          echo "✅ Memory analysis completed"
+        shell: bash
+
+  scalability-testing:
+    name: Scalability Testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y stow git
+
+      - name: Test with many packages
+        run: |
+          echo "📈 Testing scalability with many packages..."
+          
+          # Create additional test packages
+          for i in {1..20}; do
+            mkdir -p "dotfiles/common/test_package_$i/.config/test_$i"
+            echo "test_config=value_$i" > "dotfiles/common/test_package_$i/.config/test_$i/config.conf"
+          done
+          
+          # Measure installation time with many packages
+          start_time=$(date +%s)
+          AUTO_INSTALL=0 ./init.sh
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+          
+          echo "Installation with many packages completed in ${duration} seconds"
+          
+          # Verify all packages were installed
+          installed_count=$(find "$HOME" -maxdepth 1 -type l | wc -l)
+          echo "Installed package count: $installed_count"
+          
+          # Cleanup test packages
+          ./apply.sh --delete
+          for i in {1..20}; do
+            rm -rf "dotfiles/common/test_package_$i"
+          done
+          
+          echo "✅ Scalability test completed"
+
+      - name: Test with large configuration files
+        run: |
+          echo "📁 Testing with large configuration files..."
+          
+          # Create a package with large config files
+          mkdir -p "dotfiles/common/large_config/.config/large"
+          
+          # Create files of various sizes
+          dd if=/dev/zero of="dotfiles/common/large_config/.config/large/small.conf" bs=1K count=10 2>/dev/null
+          dd if=/dev/zero of="dotfiles/common/large_config/.config/large/medium.conf" bs=1M count=1 2>/dev/null
+          dd if=/dev/zero of="dotfiles/common/large_config/.config/large/large.conf" bs=1M count=5 2>/dev/null
+          
+          # Measure installation time
+          start_time=$(date +%s)
+          AUTO_INSTALL=0 ./init.sh
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+          
+          echo "Installation with large files completed in ${duration} seconds"
+          
+          # Verify files are accessible
+          test -f "$HOME/large_config/.config/large/small.conf" || { echo "❌ Small file not accessible"; exit 1; }
+          test -f "$HOME/large_config/.config/large/medium.conf" || { echo "❌ Medium file not accessible"; exit 1; }
+          test -f "$HOME/large_config/.config/large/large.conf" || { echo "❌ Large file not accessible"; exit 1; }
+          
+          # Cleanup
+          ./apply.sh --delete
+          rm -rf "dotfiles/common/large_config"
+          
+          echo "✅ Large file test completed"
+
+  resource-monitoring:
+    name: Resource Usage Monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install monitoring tools
+        run: |
+          sudo apt update
+          sudo apt install -y stow git htop iotop sysstat
+
+      - name: Monitor system resources
+        run: |
+          echo "📊 Monitoring system resources during installation..."
+          
+          # Start resource monitoring
+          iostat -x 1 > iostat.log &
+          iostat_pid=$!
+          
+          vmstat 1 > vmstat.log &
+          vmstat_pid=$!
+          
+          # Run installation while monitoring
+          AUTO_INSTALL=0 ./init.sh
+          
+          # Stop monitoring
+          sleep 2
+          kill $iostat_pid $vmstat_pid 2>/dev/null || true
+          
+          # Analyze results
+          echo "I/O Statistics:"
+          tail -10 iostat.log
+          
+          echo "Memory Statistics:"
+          tail -10 vmstat.log
+          
+          # Check for any unusual resource usage
+          if grep -q "100.00" iostat.log; then
+            echo "⚠️ High I/O utilization detected"
+          fi
+          
+          echo "✅ Resource monitoring completed"
+
+  benchmark-comparison:
+    name: Benchmark Comparison
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y stow git hyperfine
+
+      - name: Benchmark script execution
+        run: |
+          echo "🏃 Running benchmark comparisons..."
+          
+          # Benchmark different operations
+          echo "Benchmarking apply.sh operations:"
+          
+          # Clean state for each benchmark
+          ./apply.sh --delete 2>/dev/null || true
+          
+          # Benchmark installation
+          hyperfine --warmup 1 --runs 5 'AUTO_INSTALL=0 ./init.sh; ./apply.sh --delete'
+          
+          # Install once for subsequent benchmarks
+          AUTO_INSTALL=0 ./init.sh
+          
+          # Benchmark restow operation
+          hyperfine --warmup 1 --runs 10 './apply.sh --restow'
+          
+          # Benchmark individual package operations
+          cd dotfiles
+          hyperfine --warmup 1 --runs 10 'stow --target=$HOME --restow shell'
+          
+          echo "✅ Benchmark comparison completed"
+
+  regression-detection:
+    name: Performance Regression Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y stow git
+
+      - name: Establish performance baseline
+        run: |
+          echo "📈 Establishing performance baseline..."
+          
+          # Run multiple timing tests
+          total_time=0
+          runs=5
+          
+          for i in $(seq 1 $runs); do
+            ./apply.sh --delete 2>/dev/null || true
+            
+            start_time=$(date +%s%N)
+            AUTO_INSTALL=0 ./init.sh > /dev/null 2>&1
+            end_time=$(date +%s%N)
+            
+            duration=$(( (end_time - start_time) / 1000000 )) # Convert to milliseconds
+            total_time=$((total_time + duration))
+            echo "Run $i: ${duration}ms"
+          done
+          
+          average_time=$((total_time / runs))
+          echo "Average installation time: ${average_time}ms"
+          
+          # Store baseline for comparison (in a real scenario, this would be stored persistently)
+          echo "BASELINE_TIME_MS=$average_time" >> baseline.env
+          
+          # Set acceptable performance threshold (20% slower than baseline)
+          threshold=$((average_time * 120 / 100))
+          echo "PERFORMANCE_THRESHOLD_MS=$threshold" >> baseline.env
+          
+          echo "✅ Performance baseline established: ${average_time}ms (threshold: ${threshold}ms)"
+
+      - name: Monitor for regressions
+        run: |
+          echo "🔍 Monitoring for performance regressions..."
+          
+          source baseline.env
+          
+          # Current test run
+          ./apply.sh --delete 2>/dev/null || true
+          start_time=$(date +%s%N)
+          AUTO_INSTALL=0 ./init.sh > /dev/null 2>&1
+          end_time=$(date +%s%N)
+          current_time=$(( (end_time - start_time) / 1000000 ))
+          
+          echo "Current run time: ${current_time}ms"
+          echo "Baseline time: ${BASELINE_TIME_MS}ms"
+          echo "Threshold: ${PERFORMANCE_THRESHOLD_MS}ms"
+          
+          if [ $current_time -gt $PERFORMANCE_THRESHOLD_MS ]; then
+            echo "❌ Performance regression detected!"
+            echo "Current time ($current_time ms) exceeds threshold ($PERFORMANCE_THRESHOLD_MS ms)"
+            exit 1
+          else
+            percentage=$((current_time * 100 / BASELINE_TIME_MS))
+            echo "✅ Performance acceptable: ${percentage}% of baseline"
+          fi

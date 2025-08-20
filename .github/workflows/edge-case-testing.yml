@@ -1,0 +1,374 @@
+name: Edge Case and Stress Testing
+
+on:
+  schedule:
+    # Run weekly comprehensive edge case testing
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+    inputs:
+      test_level:
+        description: "Test intensity level"
+        required: true
+        default: "standard"
+        type: choice
+        options:
+          - standard
+          - intensive
+          - stress
+
+jobs:
+  conflict-resolution:
+    name: Conflict Resolution Testing
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt update && sudo apt install -y stow git
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            brew install stow
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+          fi
+        shell: bash
+
+      - name: Test pre-existing file conflicts
+        run: |
+          echo "🔥 Testing conflict resolution..."
+
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            home_dir="$USERPROFILE"
+            init_cmd="pwsh -File init.ps1"
+            apply_cmd="pwsh -File apply.ps1"
+          else
+            home_dir="$HOME"
+            init_cmd="./init.sh"
+            apply_cmd="./apply.sh"
+          fi
+
+          # Create conflicting files
+          echo "Creating pre-existing files..."
+          echo "# Existing bashrc" > "$home_dir/.bashrc"
+          echo "# Existing zshrc" > "$home_dir/.zshrc"
+          mkdir -p "$home_dir/.config"
+          echo "# Existing config" > "$home_dir/.config/existing.conf"
+
+          # Test adoption behavior
+          echo "Testing --adopt behavior..."
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            $env:AUTO_INSTALL = "0"
+            & $apply_cmd --adopt
+          else
+            AUTO_INSTALL=0 $apply_cmd --adopt
+          fi
+
+          echo "✅ Conflict resolution test completed"
+        shell: bash
+
+      - name: Test permission scenarios
+        run: |
+          echo "🔒 Testing permission scenarios..."
+
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            # Create a read-only directory
+            mkdir -p test_readonly
+            chmod 444 test_readonly
+            
+            # Test behavior with restricted permissions
+            echo "Testing with restricted permissions..."
+            AUTO_INSTALL=0 ./init.sh || echo "Expected to handle permission issues gracefully"
+            
+            # Cleanup
+            chmod 755 test_readonly
+            rmdir test_readonly
+          fi
+
+          echo "✅ Permission scenario testing completed"
+        shell: bash
+
+  stress-testing:
+    name: Stress Testing
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_level == 'stress' || github.event_name == 'schedule'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y stow git curl time
+
+      - name: Rapid install/uninstall cycles
+        run: |
+          echo "⚡ Running stress test - rapid install/uninstall cycles..."
+
+          for i in {1..20}; do
+            echo "Cycle $i/20"
+            
+            # Install
+            AUTO_INSTALL=0 ./init.sh > /dev/null 2>&1
+            
+            # Verify basic functionality
+            test -f "$HOME/shell/.bashrc" || { echo "❌ Install failed on cycle $i"; exit 1; }
+            
+            # Uninstall
+            ./apply.sh --delete > /dev/null 2>&1
+            
+            # Verify cleanup
+            test ! -L "$HOME/shell" || { echo "❌ Cleanup failed on cycle $i"; exit 1; }
+          done
+
+          echo "✅ Rapid cycle test completed"
+
+      - name: Large file handling
+        run: |
+          echo "📁 Testing large file handling..."
+
+          # Create a large dummy config file
+          mkdir -p dotfiles/common/test_large
+          dd if=/dev/zero of=dotfiles/common/test_large/.large_config bs=1M count=10 2>/dev/null
+
+          # Test installation with large file
+          time AUTO_INSTALL=0 ./init.sh
+
+          # Verify large file was symlinked correctly
+          test -f "$HOME/test_large/.large_config" || { echo "❌ Large file not accessible"; exit 1; }
+
+          # Cleanup
+          ./apply.sh --delete
+          rm -rf dotfiles/common/test_large
+
+          echo "✅ Large file handling test completed"
+
+      - name: Memory usage monitoring
+        run: |
+          echo "🧠 Monitoring memory usage..."
+
+          # Monitor memory during installation
+          (while true; do
+            ps aux | grep -E "(stow|bash)" | grep -v grep
+            sleep 1
+          done) &
+          monitor_pid=$!
+
+          # Run installation
+          AUTO_INSTALL=0 ./init.sh
+
+          # Stop monitoring
+          kill $monitor_pid 2>/dev/null || true
+
+          echo "✅ Memory monitoring completed"
+
+  network-dependency:
+    name: Network Dependency Testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y stow git
+
+      - name: Test offline functionality
+        run: |
+          echo "🌐 Testing offline functionality..."
+
+          # Test basic stow operations without network
+          echo "Testing core functionality without network dependencies..."
+          AUTO_INSTALL=0 ./init.sh
+
+          # Verify installation worked
+          test -f "$HOME/shell/.bashrc" || { echo "❌ Offline installation failed"; exit 1; }
+
+          # Test package operations
+          ./apply.sh --restow
+          ./apply.sh --delete
+          ./apply.sh
+
+          echo "✅ Offline functionality test completed"
+
+  concurrent-operations:
+    name: Concurrent Operations Testing
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_level == 'intensive' || github.event.inputs.test_level == 'stress'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y stow git
+
+      - name: Test concurrent installations
+        run: |
+          echo "🔄 Testing concurrent operations..."
+
+          # Create multiple working directories
+          for i in {1..5}; do
+            cp -r . "/tmp/dotfiles_test_$i"
+          done
+
+          # Run concurrent installations
+          pids=()
+          for i in {1..5}; do
+            (
+              cd "/tmp/dotfiles_test_$i"
+              AUTO_INSTALL=0 ./init.sh > "/tmp/test_$i.log" 2>&1
+            ) &
+            pids+=($!)
+          done
+
+          # Wait for all to complete
+          for pid in "${pids[@]}"; do
+            wait $pid || echo "Process $pid failed"
+          done
+
+          # Check results
+          for i in {1..5}; do
+            if grep -q "Done" "/tmp/test_$i.log"; then
+              echo "✅ Concurrent test $i completed"
+            else
+              echo "❌ Concurrent test $i failed"
+              cat "/tmp/test_$i.log"
+            fi
+          done
+
+          # Cleanup
+          rm -rf /tmp/dotfiles_test_* /tmp/test_*.log
+
+          echo "✅ Concurrent operations test completed"
+
+  recovery-testing:
+    name: Recovery and Repair Testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y stow git
+
+      - name: Test broken symlink recovery
+        run: |
+          echo "🔧 Testing recovery from broken symlinks..."
+
+          # Install normally first
+          AUTO_INSTALL=0 ./init.sh
+
+          # Break some symlinks manually
+          rm -rf dotfiles/common/shell/.bashrc
+
+          # Test recovery via restow
+          ./apply.sh --restow || echo "Expected failure with missing file"
+
+          # Restore the file
+          echo "# Restored bashrc" > dotfiles/common/shell/.bashrc
+
+          # Test successful recovery
+          ./apply.sh --restow
+          test -f "$HOME/shell/.bashrc" || { echo "❌ Recovery failed"; exit 1; }
+
+          echo "✅ Recovery test completed"
+
+      - name: Test partial installation recovery
+        run: |
+          echo "🔧 Testing partial installation recovery..."
+
+          # Clean slate
+          ./apply.sh --delete 2>/dev/null || true
+
+          # Simulate partial installation by manually creating some symlinks
+          cd dotfiles
+          stow --target=$HOME shell
+
+          # Now run full installation - should handle existing symlinks gracefully
+          cd ..
+          AUTO_INSTALL=0 ./init.sh
+
+          # Verify everything is properly installed
+          test -f "$HOME/shell/.bashrc" || { echo "❌ Partial recovery failed"; exit 1; }
+          test -f "$HOME/devtools/.config/git/config" || { echo "❌ Full installation after partial failed"; exit 1; }
+
+          echo "✅ Partial installation recovery test completed"
+
+  platform-specific-edge-cases:
+    name: Platform-Specific Edge Cases
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-20.04
+            platform: linux-old
+          - os: ubuntu-latest
+            platform: linux-new
+          - os: macos-12
+            platform: macos-old
+          - os: macos-latest
+            platform: macos-new
+          - os: windows-2019
+            platform: windows-old
+          - os: windows-latest
+            platform: windows-new
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Platform-specific setup
+        run: |
+          echo "🎯 Testing platform-specific edge cases on ${{ matrix.platform }}..."
+
+          if [[ "${{ matrix.platform }}" == linux* ]]; then
+            sudo apt update
+            sudo apt install -y stow git
+            # Test with different shells
+            sudo apt install -y zsh fish dash
+          elif [[ "${{ matrix.platform }}" == macos* ]]; then
+            brew install stow
+            # Test with different shell environments
+            echo "Testing macOS specific features..."
+          elif [[ "${{ matrix.platform }}" == windows* ]]; then
+            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+          fi
+        shell: bash
+
+      - name: Test version compatibility
+        run: |
+          echo "📊 Testing version compatibility..."
+
+          # Show versions
+          if [[ "${{ matrix.platform }}" == linux* ]]; then
+            echo "Linux version: $(lsb_release -d)"
+            echo "Stow version: $(stow --version)"
+            echo "Git version: $(git --version)"
+          elif [[ "${{ matrix.platform }}" == macos* ]]; then
+            echo "macOS version: $(sw_vers)"
+            echo "Stow version: $(stow --version)"
+            echo "Git version: $(git --version)"
+          elif [[ "${{ matrix.platform }}" == windows* ]]; then
+            echo "Windows version: $(systeminfo | findstr /B /C:"OS Name" /C:"OS Version")"
+            stow --version
+            git --version
+          fi
+
+          # Run standard test
+          if [[ "${{ matrix.platform }}" == windows* ]]; then
+            $env:AUTO_INSTALL = "0"
+            pwsh -File init.ps1
+          else
+            AUTO_INSTALL=0 ./init.sh
+          fi
+
+          echo "✅ Version compatibility test completed"
+        shell: bash

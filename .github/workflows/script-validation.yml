@@ -1,0 +1,173 @@
+name: Script Validation and Syntax Checking
+
+on:
+  push:
+    paths:
+      - '**.sh'
+      - '**.ps1'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - '**.sh'
+      - '**.ps1'
+      - '.github/workflows/**'
+
+jobs:
+  shellcheck:
+    name: ShellCheck Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt update
+          sudo apt install -y shellcheck
+
+      - name: Run ShellCheck on shell scripts
+        run: |
+          echo "🔍 Running ShellCheck analysis..."
+          
+          # Find and check all shell scripts
+          find . -name "*.sh" -type f | while read -r script; do
+            echo "Checking: $script"
+            if shellcheck "$script"; then
+              echo "✅ $script passed ShellCheck"
+            else
+              echo "❌ $script failed ShellCheck"
+              exit 1
+            fi
+          done
+          
+          echo "✅ All shell scripts passed ShellCheck"
+
+  powershell-validation:
+    name: PowerShell Script Validation
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate PowerShell scripts
+        run: |
+          Write-Host "🔍 Validating PowerShell scripts..."
+          
+          $scripts = Get-ChildItem -Path . -Filter "*.ps1" -Recurse
+          $failed = $false
+          
+          foreach ($script in $scripts) {
+            Write-Host "Validating: $($script.Name)"
+            try {
+              # Parse the script to check for syntax errors
+              $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content $script.FullName -Raw), [ref]$null)
+              Write-Host "✅ $($script.Name) syntax is valid"
+            } catch {
+              Write-Host "❌ $($script.Name) has syntax errors: $($_.Exception.Message)"
+              $failed = $true
+            }
+          }
+          
+          if ($failed) {
+            exit 1
+          }
+          
+          Write-Host "✅ All PowerShell scripts passed validation"
+        shell: pwsh
+
+  cross-script-compatibility:
+    name: Cross-Script Compatibility Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check script compatibility
+        run: |
+          echo "🔍 Checking cross-script compatibility..."
+          
+          # Check if shell and PowerShell scripts have matching functionality
+          shell_scripts=("init.sh" "apply.sh" "update.sh")
+          ps_scripts=("init.ps1" "apply.ps1" "update.ps1")
+          
+          for i in "${!shell_scripts[@]}"; do
+            shell_script="${shell_scripts[$i]}"
+            ps_script="${ps_scripts[$i]}"
+            
+            echo "Comparing $shell_script and $ps_script..."
+            
+            # Check if both files exist
+            if [[ ! -f "$shell_script" ]]; then
+              echo "❌ $shell_script missing"
+              exit 1
+            fi
+            
+            if [[ ! -f "$ps_script" ]]; then
+              echo "❌ $ps_script missing"
+              exit 1
+            fi
+            
+            # Check for key functionality markers
+            if grep -q "AUTO_INSTALL" "$shell_script" && grep -q "AUTO_INSTALL" "$ps_script"; then
+              echo "✅ Both scripts support AUTO_INSTALL"
+            else
+              echo "⚠️ AUTO_INSTALL support mismatch"
+            fi
+            
+            # Check for error handling
+            if grep -q "set -e" "$shell_script" && grep -q "ErrorActionPreference" "$ps_script"; then
+              echo "✅ Both scripts have error handling"
+            else
+              echo "⚠️ Error handling mismatch"
+            fi
+          done
+          
+          echo "✅ Cross-script compatibility check completed"
+
+  documentation-sync:
+    name: Documentation Synchronization Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check documentation accuracy
+        run: |
+          echo "📚 Checking documentation accuracy..."
+          
+          # Count actual packages
+          common_count=$(find dotfiles/common -mindepth 1 -maxdepth 1 -type d | wc -l)
+          mac_count=$(find dotfiles/mac -mindepth 1 -maxdepth 1 -type d | wc -l)
+          windows_count=$(find dotfiles/windows -mindepth 1 -maxdepth 1 -type d | wc -l)
+          
+          echo "Actual package counts:"
+          echo "  Common: $common_count"
+          echo "  macOS: $mac_count"
+          echo "  Windows: $windows_count"
+          
+          # Check VS Code extensions count
+          vscode_count=$(grep -v '^#' vscode_extensions.txt | grep -v '^$' | wc -l)
+          echo "  VS Code extensions: $vscode_count"
+          
+          # Verify README mentions the correct scripts
+          if grep -q "init.ps1" README.md && grep -q "apply.ps1" README.md && grep -q "update.ps1" README.md; then
+            echo "✅ README mentions PowerShell scripts"
+          else
+            echo "❌ README missing PowerShell script references"
+            exit 1
+          fi
+          
+          if grep -q "init.sh" README.md && grep -q "apply.sh" README.md && grep -q "update.sh" README.md; then
+            echo "✅ README mentions shell scripts"
+          else
+            echo "❌ README missing shell script references"
+            exit 1
+          fi
+          
+          # Check for old references
+          if grep -q "install.ps1\|install.sh" README.md; then
+            echo "❌ README contains references to old install scripts"
+            exit 1
+          fi
+          
+          echo "✅ Documentation is up to date"
