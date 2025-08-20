@@ -790,6 +790,29 @@
   { "key": "cmd+3",  "command": "workbench.action.focusThirdEditorGroup" },
   { "key": "ctrl+1", "command": "workbench.action.focusFirstEditorGroup" },
   { "key": "ctrl+2", "command": "workbench.action.focusSecondEditorGroup" },
-  { "key": "ctrl+3", "command": "workbench.action.focusThirdEditorGroup" }
+  { "key": "ctrl+3", "command": "workbench.action.focusThirdEditorGroup" },
+  // FZF search tools
+  {
+    "key": "ctrl+alt+f",
+    "command": "workbench.action.terminal.newWithProfile",
+    "args": { "profileName": "FZF Files", "location": "panel" }
+  },
+  {
+    "key": "ctrl+alt+shift+f",
+    "command": "workbench.action.terminal.newWithProfile",
+    "args": { "profileName": "FZF Text", "location": "panel" }
+  },
+  {
+    "key": "ctrl+alt+f",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "vf\u000D" },
+    "when": "terminalIsOpen"
+  },
+  {
+    "key": "ctrl+alt+shift+f",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "vt\u000D" },
+    "when": "terminalIsOpen"
+  }
 ]
 
