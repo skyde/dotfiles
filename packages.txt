@@ -8,3 +8,6 @@ delta
 eza
 lazygit
 fd
+zoxide
+starship
+lf
