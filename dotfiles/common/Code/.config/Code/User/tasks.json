@@ -25,23 +25,29 @@
       "label": "Switch Running LF to Current Directory",
       "type": "shell",
       "command": "bash",
-      "args": [
-        "-lc",
-        "lf -remote \"send cd \\\"${VSC_CWD:-${WORKSPACE:-$PWD}}\\\"\" || true"
-      ],
+      "args": ["-lc", "$HOME/dotfiles/lib/lf_switch_and_select.sh || true"],
       "options": {
         "env": {
           // VS Code fills these before shell runs
+
+          "VSC_FILE": "${file}",
           "VSC_CWD": "${fileDirname}",
           "WORKSPACE": "${workspaceFolder}"
         }
       },
       "presentation": {
-        "echo": false,
-        "clear": true,
-        "reveal": "silent",
-        "focus": false,
-        "close": true,
+        // "echo": false,
+        // "clear": true,
+        // "reveal": "silent",
+        // "focus": false,
+        // "close": true,
+        // "panel": "dedicated"
+
+        "echo": true,
+        "clear": false,
+        "reveal": "always",
+        "focus": true,
+        "close": false,
         "panel": "dedicated"
       },
       "problemMatcher": []
