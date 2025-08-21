@@ -1,0 +1,95 @@
+# Global ripgrep config to mirror VS Code search.exclude
+# Directory/file globs are excluded via -g '!pattern'
+
+# Version Control
+-g '!**/.git'
+-g '!**/.svn'
+-g '!**/.hg'
+
+# IDE / Editor / OS junk
+-g '!**/.vscode'
+-g '!**/.idea'
+-g '!**/.DS_Store'
+-g '!**/.vs'
+-g '!**/*.swp'
+-g '!**/*.swo'
+-g '!**/*.bak'
+
+# General build / cache / temp
+-g '!**/out'
+-g '!**/obj'
+-g '!**/dist'
+-g '!**/build'
+-g '!**/tmp'
+-g '!**/temp'
+-g '!**/cache'
+-g '!**/.cache'
+-g '!**/logs'
+-g '!**/*.log'
+-g '!**/*.tmp'
+-g '!**/*.dSYM'
+
+# Node / Frontend
+-g '!**/node_modules'
+-g '!**/bower_components'
+-g '!**/jspm_packages'
+-g '!**/coverage'
+-g '!**/.next'
+-g '!**/.nuxt'
+-g '!**/.svelte-kit'
+-g '!**/.turbo'
+-g '!**/.vercel'
+-g '!**/.cache-loader'
+
+# Python
+-g '!**/__pycache__'
+-g '!**/.mypy_cache'
+-g '!**/.pytest_cache'
+-g '!**/.tox'
+-g '!**/.eggs'
+-g '!**/*.egg-info'
+-g '!**/.ipynb_checkpoints'
+-g '!**/.venv'
+-g '!**/env'
+
+# Java / JVM
+-g '!**/.gradle'
+-g '!**/.mvn'
+-g '!**/target'
+-g '!**/build/classes'
+-g '!**/build/generated'
+-g '!**/*.class'
+
+# PHP / Composer
+-g '!**/vendor'
+
+# C / C++
+-g '!**/CMakeFiles'
+-g '!**/CMakeCache.txt'
+-g '!**/Debug'
+-g '!**/Release'
+-g '!**/*.o'
+-g '!**/*.obj'
+-g '!**/*.exe'
+-g '!**/*.pdb'
+-g '!**/*.ilk'
+
+# Go
+-g '!**/pkg'
+-g '!**/bin'
+
+# Infra / DevOps
+-g '!**/.terraform'
+-g '!**/.ansible'
+-g '!**/.chef'
+-g '!**/.serverless'
+
+# Static Site Generators
+-g '!**/.jekyll-cache'
+-g '!**/_site'
+-g '!**/.docusaurus'
+
+# Generated / build system artifacts
+-g '!**/gen'
+-g '!**/*.ninja'
+-g '!**/*.stamp'
