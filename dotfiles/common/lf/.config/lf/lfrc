@@ -39,8 +39,25 @@ map ge cd ~/Desktop
 map gv cd ~/.config/Code/User
 map gn cd ~/.config/nvim
 
-# Open files in VS Code without quitting lf
-cmd open &code -r -- $fx
+# Context-aware file opening (no custom env; detect VS Code via TERM_PROGRAM/VSCODE_* vars)
+cmd open ${{
+	# If running inside VS Code integrated terminal, open in VS Code
+	if [ "$TERM_PROGRAM" = "vscode" ] || [ -n "$VSCODE_PID" ] || [ -n "$VSCODE_GIT_IPC_HANDLE" ]; then
+		code -r -- $fx
+	else
+		# Default: open in neovim and quit lf
+		lf -remote "send $id quit"
+		nvim -- $fx
+	fi
+}}
+
+# Open files with macOS default application (e.g., PDFs in Preview)
+cmd open-default ${{
+	open -- $fx
+}}
+
+# Map shift+enter to open with default macOS application
+map <s-enter> open-default
 
 # Create files/dirs via shell, joining args by space for convenience
 cmd mkdir %IFS=" "; mkdir -- "$*"
