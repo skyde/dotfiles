@@ -106,7 +106,8 @@ fi
 # Open lf in the current directory and change to its exit path
 lfcd() {
 	local tmp="$(mktemp -t lfcd.XXXXXX)" dir
-	lf "$@" -last-dir-path="$tmp"
+	# Pass flag before positional args and use -- to avoid misparsing
+	lf -last-dir-path "$tmp" -- "$@"
 	dir=$(cat "$tmp")
 	rm -f -- "$tmp"
 	[ -n "$dir" ] && [ "$dir" != "$PWD" ] && builtin cd -- "$dir"

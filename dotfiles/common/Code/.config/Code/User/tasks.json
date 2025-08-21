@@ -36,7 +36,14 @@
           "WORKSPACE": "${workspaceFolder}"
         }
       },
-      "presentation": {},
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "silent",
+        "focus": false,
+        "close": true,
+        "panel": "dedicated"
+      },
       "problemMatcher": []
     },
     {

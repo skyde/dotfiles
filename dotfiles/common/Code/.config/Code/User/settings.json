@@ -407,37 +407,38 @@
     // File
     {
       "before": ["<leader>", "f", "e"],
-      "commands": [
-        // // ---- Create new instance every time ----
-        // // Custom command when terminal is opened to clear any other context
-        // "task.custom.openTerminal",
-        // // Make a new terminal
-        // "workbench.action.terminal.new",
-        // {
-        //   "command": "workbench.action.terminal.sendSequence",
-        //   "args": {
-        //     // Example lf integration:
-        //     // "text": "bash -lc 'cd \"${fileDirname:-${workspaceFolder:-$PWD}}\" && tmp=$(mktemp); lf -selection-path \"$tmp\"; if [[ -s \"$tmp\" ]]; then mapfile -t sel < \"$tmp\"; rm -f \"$tmp\"; code -- \"${sel[@]}\"; else rm -f \"$tmp\"; fi'\u000D"
-        //   }
-        // },
-        // "workbench.action.terminal.moveToEditor",
-        // // Need to call this twice for some reason to have it hide
-        // "workbench.action.terminal.toggleTerminal",
-        // "workbench.action.terminal.toggleTerminal"
 
+      // "commands": [
+      //   // Custom command when terminal is opened to clear any other context
+      //   "task.custom.openTerminal",
+      //   // Make a new terminal
+      //   "workbench.action.terminal.new",
+      //   {
+      //     "command": "workbench.action.terminal.sendSequence",
+      //     "args": {
+      //       "text": "lf \"${file}\"\u000D"
+      //     }
+      //   },
+      //   "workbench.action.terminal.moveToEditor",
+      //   // Need to call this twice for some reason to have it hide
+      //   "workbench.action.terminal.toggleTerminal",
+      //   "workbench.action.terminal.toggleTerminal"
+      // ]
+
+      "commands": [
         // Custom command when terminal is opened to clear any other context
-        // "task.custom.openTerminal",
+        "task.custom.openTerminal",
         // Set the fzf context to active
-        // { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        { "command": "setContext", "args": ["closePanelOnEnter", true] },
         // {
         //   // Terminate the fzf task so we open in the right directory
         //   "command": "workbench.action.tasks.terminate",
         //   "args": "LF"
         // }
         // Custom command when terminal is opened to clear any other context
-        "task.custom.openTerminal",
+        // "task.custom.openTerminal",
         // Set the fzf context to active
-        { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        // { "command": "setContext", "args": ["closePanelOnEnter", true] },
         {
           "command": "workbench.action.tasks.runTask",
           "args": "Switch Running LF to Current Directory"
@@ -448,10 +449,6 @@
         },
         // Click escape so we don't come back to a strange mode
         "extension.vim_escape"
-        // "workbench.action.terminal.moveToEditor",
-        // // Need to call this twice for some reason to have it hide
-        // "workbench.action.terminal.toggleTerminal",
-        // "workbench.action.terminal.toggleTerminal"
       ]
     },
     {
@@ -1128,7 +1125,7 @@
       "commands": ["diffEditor.switchSide"]
     },
     {
-      // Revert the current change
+      // Revert the current change within the diff view (which uses Git)
       "before": ["<leader>", "c", "v"],
       "commands": ["git.revertSelectedRanges"]
     },
