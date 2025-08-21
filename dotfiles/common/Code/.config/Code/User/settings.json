@@ -1305,8 +1305,122 @@
   },
   // Fuzzy Finder
   "search.exclude": {
-    // Ignore hidden folders
-    "**/.*": true
+    // -------------------
+    // Version Control
+    // -------------------
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+
+    // -------------------
+    // IDE / Editor / OS junk
+    // -------------------
+    "**/.vscode": true,
+    "**/.idea": true,
+    "**/.DS_Store": true,
+    "**/.vs": true,
+    "**/*.swp": true,
+    "**/*.swo": true,
+    "**/*.bak": true,
+
+    // -------------------
+    // General build / cache / temp
+    // -------------------
+    "**/out": true,
+    "**/obj": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/tmp": true,
+    "**/temp": true,
+    "**/cache": true,
+    "**/.cache": true,
+    "**/logs": true,
+    "**/*.log": true,
+    "**/*.tmp": true,
+    "**/*.dSYM": true,
+
+    // -------------------
+    // Node / Frontend
+    // -------------------
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/jspm_packages": true,
+    "**/coverage": true,
+    "**/.next": true,
+    "**/.nuxt": true,
+    "**/.svelte-kit": true,
+    "**/.turbo": true,
+    "**/.vercel": true,
+    "**/.cache-loader": true,
+
+    // -------------------
+    // Python
+    // -------------------
+    "**/__pycache__": true,
+    "**/.mypy_cache": true,
+    "**/.pytest_cache": true,
+    "**/.tox": true,
+    "**/.eggs": true,
+    "**/*.egg-info": true,
+    "**/.ipynb_checkpoints": true,
+    "**/.venv": true,
+    "**/env": true,
+
+    // -------------------
+    // Java / JVM
+    // -------------------
+    "**/.gradle": true,
+    "**/.mvn": true,
+    "**/target": true,
+    "**/build/classes": true,
+    "**/build/generated": true,
+    "**/*.class": true,
+
+    // -------------------
+    // PHP / Composer
+    // -------------------
+    "**/vendor": true,
+
+    // -------------------
+    // C / C++
+    // -------------------
+    "**/CMakeFiles": true,
+    "**/CMakeCache.txt": true,
+    "**/Debug": true,
+    "**/Release": true,
+    "**/*.o": true,
+    "**/*.obj": true,
+    "**/*.exe": true,
+    "**/*.pdb": true,
+    "**/*.ilk": true,
+
+    // -------------------
+    // Go
+    // -------------------
+    "**/pkg": true,
+    "**/bin": true,
+
+    // -------------------
+    // Infra / DevOps
+    // -------------------
+    "**/.terraform": true,
+    "**/.ansible": true,
+    "**/.chef": true,
+    "**/.serverless": true,
+
+    // -------------------
+    // Static Site Generators
+    // -------------------
+    "**/.jekyll-cache": true,
+    "**/_site": true,
+    "**/.docusaurus": true,
+
+    // -------------------
+    // Generated / build system artifacts
+    // -------------------
+    "**/gen": true,
+    "**/*.ninja": true,
+    "**/*.stamp": true
   },
   "search.useGlobalIgnoreFiles": true,
   "search.useParentIgnoreFiles": true,
