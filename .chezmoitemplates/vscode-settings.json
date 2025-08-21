@@ -1069,7 +1069,10 @@
         "g"
       ],
       "commands": [
-        "lazygit-vscode.toggle"
+        {
+          "command": "workbench.action.terminal.newWithProfile",
+          "args": { "profileName": "Lazy Git", "location": "editor" }
+        }
       ]
     },
     {
