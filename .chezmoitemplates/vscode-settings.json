@@ -7,14 +7,14 @@
   "editor.cursorSmoothCaretAnimation": "off",
   "editor.cursorStyle": "line",
   "editor.fontSize": 12,
-  "editor.fontFamily": "JetBrains Mono",
+  "editor.fontFamily": "'JetBrains Mono', 'JetBrainsMono Nerd Font', monospace",
   "editor.fontLigatures": true,
   "editor.fontWeight": "250",
   "editor.fontVariations": "'wght' 250",
   "editor.letterSpacing": 0.35,
   "terminal.integrated.letterSpacing": 1.0,
   "terminal.integrated.fontWeight": "normal",
-  "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font",
+  "terminal.integrated.fontFamily": "'JetBrainsMono Nerd Font', monospace",
   "terminal.integrated.minimumContrastRatio": 1,
   "terminal.integrated.profiles.osx": {
     "Find Files": {
