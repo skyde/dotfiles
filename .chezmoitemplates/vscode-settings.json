@@ -360,6 +360,15 @@
         "workbench.action.splitEditorRight"
       ]
     },
+    // Buffer switching
+    {
+      "before": ["[", "b"],
+      "commands": ["workbench.action.previousEditor"]
+    },
+    {
+      "before": ["]", "b"],
+      "commands": ["workbench.action.nextEditor"]
+    },
     // Misc
     {
       "before": [
