@@ -178,6 +178,9 @@ lfcd() {
 }
 alias lf='lfcd'
 
+# Unaliased lf helper to bypass the alias/function when needed
+lf_raw() { command lf "$@"; }
+
 # Load machine-specific overrides, if present
 # shellcheck disable=SC1090
 [[ -r "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"

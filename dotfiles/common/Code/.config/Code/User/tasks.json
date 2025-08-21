@@ -22,33 +22,58 @@
       "problemMatcher": []
     },
     {
-      "label": "Switch Running LF to Current Directory",
+      "label": "Switch Running LF to Current File",
       "type": "shell",
-      "command": "bash",
+      "command": "lf",
       "args": [
-        "-lc",
-        "lf -remote \"send cd \\\"${VSC_CWD:-${WORKSPACE:-$PWD}}\\\"\" || true"
+        "-remote",
+        "send cd \"${env:VSC_FILE_DIR}\"; select \"${env:VSC_FILE_BASE}\""
       ],
       "options": {
         "env": {
           // VS Code fills these before shell runs
-          "VSC_CWD": "${fileDirname}",
-          "WORKSPACE": "${workspaceFolder}"
+          "VSC_FILE": "${file}",
+          "VSC_FILE_DIR": "${fileDirname}",
+          "VSC_FILE_BASE": "${fileBasename}"
         }
       },
       "presentation": {},
       "problemMatcher": []
     },
     {
+      "label": "Switch Running LF to Current File (Debug)",
+      "type": "shell",
+      "command": "zsh",
+      "args": [
+        "-lc",
+        "set -euo pipefail; echo VSC_FILE=\"$VSC_FILE\"; echo VSC_FILE_DIR=\"$VSC_FILE_DIR\"; echo VSC_FILE_BASE=\"$VSC_FILE_BASE\"; REMOTE=\"send cd \\\"$VSC_FILE_DIR\\\"; select \\\"$VSC_FILE_BASE\\\"\"; echo REMOTE=\"$REMOTE\"; echo CMD: lf -remote \"$REMOTE\"; lf -remote \"$REMOTE\""
+      ],
+      "options": {
+        "env": {
+          "VSC_FILE": "${file}",
+          "VSC_FILE_DIR": "${fileDirname}",
+          "VSC_FILE_BASE": "${fileBasename}"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "clear": false,
+        "reveal": "always",
+        "focus": true,
+        "close": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "LF",
       "type": "shell",
-      "command": "bash",
-      "args": ["-lc", "cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\" && lf"],
+      "command": "lf",
+      "args": ["-server", "\"$VSC_FILE\""],
       "options": {
         "env": {
           // VS Code fills these before shell runs
-          "VSC_CWD": "${fileDirname}",
-          "WORKSPACE": "${workspaceFolder}"
+          "VSC_FILE": "${file}"
         }
       },
       "presentation": {
