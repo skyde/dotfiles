@@ -36,19 +36,19 @@
         }
       },
       "presentation": {
-        // "echo": false,
-        // "clear": true,
-        // "reveal": "silent",
-        // "focus": false,
-        // "close": true,
-        // "panel": "dedicated"
-
-        "echo": true,
-        "clear": false,
-        "reveal": "always",
-        "focus": true,
-        "close": false,
+        "echo": false,
+        "clear": true,
+        "reveal": "silent",
+        "focus": false,
+        "close": true,
         "panel": "dedicated"
+
+        // "echo": true,
+        // "clear": false,
+        // "reveal": "always",
+        // "focus": true,
+        // "close": false,
+        // "panel": "dedicated"
       },
       "problemMatcher": []
     },
@@ -56,12 +56,13 @@
       "label": "LF",
       "type": "shell",
       "command": "bash",
-      "args": ["-lc", "cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\" && lf"],
+      "args": ["-lc", "$HOME/dotfiles/lib/lf_open.sh"],
       "options": {
         "env": {
           // VS Code fills these before shell runs
-          "VSC_CWD": "${fileDirname}",
-          "WORKSPACE": "${workspaceFolder}"
+          // "VSC_CWD": "${fileDirname}",
+          // "WORKSPACE": "${workspaceFolder}"
+          "VSC_FILE": "${file}"
         }
       },
       "presentation": {
