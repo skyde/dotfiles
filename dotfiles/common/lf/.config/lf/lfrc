@@ -38,6 +38,7 @@ map gp cd ~/Projects
 map ge cd ~/Desktop
 map gv cd ~/.config/Code/User
 map gn cd ~/.config/nvim
+map gs cd ~/dotfiles
 
 # Context-aware file opening (no custom env; detect VS Code via TERM_PROGRAM/VSCODE_* vars)
 cmd open ${{
