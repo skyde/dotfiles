@@ -1,19 +1,4 @@
-.DS_Store
-
-# VS Code dynamic/cache files that shouldn't be tracked
-**/Code/User/workspaceStorage/
-**/Code/User/globalStorage/
-**/Code/User/History/
-**/Code/User/sync/
-**/Code/User/snippets/
-**/Code/User/logs/
-
-# Additional VS Code cache patterns
-**/Code/User/**/state.vscdb
-**/Code/User/**/lastSync*
+**/.DS_Store
 
 # Backup directories created by install scripts
 .dotfiles_backup_*
-
-# Transient logs
-windows_failure.log

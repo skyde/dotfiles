@@ -1,0 +1,11 @@
+# VS Code dynamic/cache files that shouldn't be tracked
+workspaceStorage/
+globalStorage/
+History/
+sync/
+snippets/
+logs/
+
+# Additional VS Code cache patterns
+**/state.vscdb
+**/lastSync*
