@@ -46,7 +46,8 @@
       "overrideName": true
     }
   },
-
+   
+  "vim.timeout": 1000,
   // You already have these, good for overall speed
   "terminal.integrated.enablePersistentSessions": true,
   "terminal.integrated.persistentSessionReviveProcess": "onExit",
@@ -109,7 +110,7 @@
   "vim.useSystemClipboard": true,
   "vim.useCtrlKeys": true,
   "vim.surround": true,
-  "vim.leader": " ",
+  "vim.leader": "<space>",
   "vim.hlsearch": true,
   "vim.highlightedyank.enable": true,
   "vim.highlightedyank.color": "rgba(255, 223, 93, 0.3)", // warm gold, soft opacity
@@ -190,7 +191,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "c",
         "a"
       ],
@@ -200,7 +201,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "c",
         "f"
       ],
@@ -343,7 +344,7 @@
     // Window splits
     {
       "before": [
-        "leader",
+        "<leader>",
         "-"
       ],
       "commands": [
@@ -352,7 +353,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "|"
       ],
       "commands": [
@@ -586,7 +587,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "s",
         "g"
       ],
@@ -600,8 +601,8 @@
     // File search and buffers
     {
       "before": [
-        "leader",
-        " "
+        "<leader>",
+        "<leader>"
       ],
       "commands": [
         {
@@ -612,7 +613,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "f",
         "f"
       ],
@@ -625,7 +626,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "/"
       ],
       "commands": [
@@ -637,7 +638,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "f",
         "b"
       ],
@@ -712,7 +713,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "b",
         "b"
       ],
@@ -722,7 +723,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "`"
       ],
       "commands": [
@@ -933,7 +934,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "c",
         "r"
       ],
@@ -943,7 +944,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "c",
         "a"
       ],
@@ -953,7 +954,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "c",
         "A"
       ],
@@ -963,7 +964,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "c",
         "f"
       ],
@@ -1022,7 +1023,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "c",
         "d"
       ],
@@ -1033,7 +1034,7 @@
     // Misc. toggles
     {
       "before": [
-        "leader",
+        "<leader>",
         "u",
         "w"
       ],
@@ -1043,7 +1044,7 @@
     },
     {
       "before": [
-        "leader",
+        "<leader>",
         "q",
         "q"
       ],
@@ -1067,19 +1068,6 @@
         "<leader>",
         "g",
         "g"
-      ],
-      "commands": [
-        {
-          "command": "workbench.action.terminal.newWithProfile",
-          "args": { "profileName": "Lazy Git", "location": "editor" }
-        }
-      ]
-    },
-    {
-      "before": [
-        "<leader>",
-        "g",
-        "l"
       ],
       "commands": [
         {
@@ -4640,6 +4628,7 @@
     }
   ]
 }
+
 
 
 
