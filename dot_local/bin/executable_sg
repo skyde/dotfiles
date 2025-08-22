@@ -93,14 +93,14 @@ PREVIEW_CMD='
 FZF_ARGS=(
   --ansi
   --multi
-  --phony                # do not filter locally, we reload from rg
+  --phony # do not filter locally, we reload from rg
   --bind "start:reload:${RELOAD_CMD}"
   --bind "change:reload:${RELOAD_CMD}"
   --prompt='> '
-  --header=''            # keep top clean just like LazyVim Grep
-  --border --height=90% --layout=reverse
   --margin=1,2           # float-like feel
-  --info=inline          # shows 1/65 on the right
+  --header='' # keep top clean just like LazyVim Grep
+  --border --layout=reverse
+  --info=inline # shows 1/65 on the right
   --delimiter=':'
   --preview="${PREVIEW_CMD}"
   --preview-window='right,60%,border,wrap'
@@ -121,4 +121,3 @@ FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" fzf \
   --query "$QUERY" || true
 
 exit 0
-
