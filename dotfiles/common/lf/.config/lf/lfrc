@@ -59,38 +59,38 @@ cmd open-default ${{
 }}
 
 # Map shift+enter to open with default macOS application
-map <s-enter> open-default
+map E open-default
 
-# Custom command: adjust per-file scroll offset and redraw
-cmd pvscroll %{{
-  step="${1:-3}"
-  cache="${XDG_CACHE_HOME:-$HOME/.cache}/lf/preview"
-  mkdir -p "$cache"
-  key="$(printf '%s' "$f" | sha1sum | awk '{print $1}')"
-  state="$cache/$key.scroll"
+# # Custom command: adjust per-file scroll offset and redraw
+# cmd pvscroll %{{
+#   step="${1:-3}"
+#   cache="${XDG_CACHE_HOME:-$HOME/.cache}/lf/preview"
+#   mkdir -p "$cache"
+#   key="$(printf '%s' "$f" | sha1sum | awk '{print $1}')"
+#   state="$cache/$key.scroll"
 
-  off=0
-  [ -f "$state" ] && off="$(cat "$state" 2>/dev/null || echo 0)"
-  [[ "$off" =~ ^-?[0-9]+$ ]] || off=0
+#   off=0
+#   [ -f "$state" ] && off="$(cat "$state" 2>/dev/null || echo 0)"
+#   [[ "$off" =~ ^-?[0-9]+$ ]] || off=0
 
-  off=$(( off + step ))
-  [ "$off" -lt 0 ] && off=0
-  printf '%s' "$off" > "$state"
+#   off=$(( off + step ))
+#   [ "$off" -lt 0 ] && off=0
+#   printf '%s' "$off" > "$state"
 
-  # Clear any cached preview for this file to force refresh
-  rm -f "$cache/$key"* 2>/dev/null || true
+#   # Clear any cached preview for this file to force refresh
+#   rm -f "$cache/$key"* 2>/dev/null || true
   
-  # Force a repaint so the previewer re-runs with the new offset
-  lf -remote "send $id redraw"
-}}
+#   # Force a repaint so the previewer re-runs with the new offset
+#   lf -remote "send $id redraw"
+# }}
 
-# Scroll preview a few lines at a time
-map J pvscroll 3
-map K pvscroll -3
+# # Scroll preview a few lines at a time
+# map J pvscroll 3
+# map K pvscroll -3
 
-# Optional: "page" the preview
-map <c-d> pvscroll 10
-map <c-u> pvscroll -10
+# # Optional: "page" the preview
+# map <c-d> pvscroll 10
+# map <c-u> pvscroll -10
 
 # Create files/dirs via shell, joining args by space for convenience
 cmd mkdir %IFS=" "; mkdir -- "$*"
