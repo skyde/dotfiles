@@ -49,6 +49,7 @@
   },
    
   "vim.timeout": 1000000,
+  "workbench.panel.opensMaximized":"always",
   // You already have these, good for overall speed
   "terminal.integrated.enablePersistentSessions": true,
   "terminal.integrated.persistentSessionReviveProcess": "onExit",
