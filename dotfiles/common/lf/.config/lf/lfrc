@@ -4,6 +4,7 @@ set icons true
 set drawbox true
 set previewer ~/.config/lf/preview.sh
 set cleaner ~/.config/lf/cleaner.sh
+set previewer_flags --static
 set info size
 set number true
 set relativenumber true
@@ -76,6 +77,9 @@ cmd pvscroll %{{
   [ "$off" -lt 0 ] && off=0
   printf '%s' "$off" > "$state"
 
+  # Clear any cached preview for this file to force refresh
+  rm -f "$cache/$key"* 2>/dev/null || true
+  
   # Force a repaint so the previewer re-runs with the new offset
   lf -remote "send $id redraw"
 }}

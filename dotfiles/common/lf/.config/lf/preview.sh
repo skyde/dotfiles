@@ -29,8 +29,8 @@ case "$mimetype" in
     end=$(( offset + height ))
 
     if command -v bat >/dev/null 2>&1; then
-      # bat's line-range is inclusive
-      bat --style=numbers --color=always --line-range="${start}:${end}" -- "$file"
+      # Use bat with paging disabled and plain style for less flicker
+      bat --style=numbers --color=always --paging=never --line-range="${start}:${end}" -- "$file"
     else
       # sed is inclusive too
       sed -n "${start},${end}p" -- "$file"
@@ -39,17 +39,34 @@ case "$mimetype" in
 
   image/*)
     if command -v chafa >/dev/null 2>&1; then
-      chafa -f sixel -s "${width}x${height}" -- "$file"
+      # Use terminal size and avoid unnecessary options that can cause flicker
+      chafa --size="${width}x${height}" --animate=off -- "$file"
+    elif command -v identify >/dev/null 2>&1; then
+      # Fallback to image info if chafa not available
+      identify "$file"
+    else
+      printf '%s\n' "$mimetype"
+    fi
+    ;;
+
+  application/pdf)
+    if command -v pdftotext >/dev/null 2>&1; then
+      # Quick text preview for PDFs
+      pdftotext -l 1 "$file" - | head -n "$height"
     else
       printf '%s\n' "$mimetype"
     fi
     ;;
 
   *)
-    printf '%s\n' "$mimetype"
+    # Try to show a preview for other file types
+    if command -v bat >/dev/null 2>&1; then
+      bat --style=plain --color=always --paging=never --line-range=":$height" -- "$file" 2>/dev/null || printf '%s\n' "$mimetype"
+    else
+      head -n "$height" "$file" 2>/dev/null || printf '%s\n' "$mimetype"
+    fi
     ;;
 esac
 
-# IMPORTANT: exit non-zero so lf doesn't cache the preview for this file.
-# That way, when the offset changes we actually re-run the script.
-exit 1
+# Exit successfully to allow caching and reduce flicker
+exit 0
