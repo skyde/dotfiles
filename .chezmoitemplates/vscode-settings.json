@@ -1,4 +1,5 @@
 
+
 {
   // Cursor behavior and line numbers
   "editor.cursorSurroundingLines": 8,
@@ -53,6 +54,12 @@
   "terminal.integrated.persistentSessionReviveProcess": "onExit",
   "terminal.integrated.persistentSessionScrollback": 10000,
   "terminal.integrated.sendKeybindingsToShell": true,
+  "terminal.integrated.confirmOnExit": "never",
+  "terminal.integrated.defaultLocation": "view",
+  "terminal.integrated.focusAfterRun": "accessible-buffer",
+  "terminal.integrated.hideOnLastClosed": true,
+  "terminal.integrated.hideOnStartup": true,
+  "terminal.integrated.showExitAlert": false,
   "editor.lineNumbers": "relative",
   "editor.renderLineHighlight": "all",
   "workbench.colorTheme": "Tokyo Night Storm",
@@ -603,7 +610,20 @@
       "commands": [
         {
           "command": "workbench.action.terminal.newWithProfile",
-          "args": { "profileName": "Search Grep", "location": "editor" }
+          "args": { "profileName": "Search Grep" }
+        }
+      ]
+    },
+    {
+      "before": [
+        "<leader>",
+        "g",
+        "g"
+      ],
+      "commands": [
+        {
+          "command": "workbench.action.terminal.newWithProfile",
+          "args": { "profileName": "Lazy Git" }
         }
       ]
     },
@@ -616,7 +636,7 @@
       "commands": [
         {
           "command": "workbench.action.terminal.newWithProfile",
-          "args": { "profileName": "Find Files", "location": "editor" }
+          "args": { "profileName": "Find Files" }
         }
       ]
     },
@@ -629,7 +649,7 @@
       "commands": [
         {
           "command": "workbench.action.terminal.newWithProfile",
-          "args": { "profileName": "Find Files", "location": "editor" }
+          "args": { "profileName": "Find Files" }
         }
       ]
     },
@@ -641,7 +661,7 @@
       "commands": [
         {
           "command": "workbench.action.terminal.newWithProfile",
-          "args": { "profileName": "Search Grep", "location": "editor" }
+          "args": { "profileName": "Search Grep" }
         }
       ]
     },
@@ -1070,19 +1090,6 @@
       ],
       "commands": [
         "workbench.view.scm"
-      ]
-    },
-    {
-      "before": [
-        "<leader>",
-        "g",
-        "g"
-      ],
-      "commands": [
-        {
-          "command": "workbench.action.terminal.newWithProfile",
-          "args": { "profileName": "Lazy Git", "location": "editor" }
-        }
       ]
     },
     {
@@ -4637,6 +4644,7 @@
     }
   ]
 }
+
 
 
 
