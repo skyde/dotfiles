@@ -1004,36 +1004,6 @@
     // Diagnostics
     {
       "before": [
-        "<leader>",
-        "e",
-        "e"
-      ],
-      "commands": [
-        "workbench.actions.view.problems"
-      ]
-    },
-    {
-      "before": [
-        "<leader>",
-        "e",
-        "n"
-      ],
-      "commands": [
-        "editor.action.marker.next"
-      ]
-    },
-    {
-      "before": [
-        "<leader>",
-        "e",
-        "p"
-      ],
-      "commands": [
-        "editor.action.marker.prev"
-      ]
-    },
-    {
-      "before": [
         "[",
         "d"
       ],
@@ -4644,6 +4614,7 @@
     }
   ]
 }
+
 
 
 
