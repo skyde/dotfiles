@@ -5,7 +5,7 @@ file="$1"
 width="${2:-80}"
 height="${3:-20}"
 
-# Per-file scroll state
+# Per-file scroll state using the same mechanism as your existing script
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/lf/preview"
 mkdir -p "$cache_dir"
 
@@ -36,16 +36,16 @@ case "$mimetype" in
 
     if command -v bat >/dev/null 2>&1; then
       # bat's line-range is inclusive
-      bat --style=numbers --color=always --line-range="${start}:${end}" -- "$file" || true
+      bat --style=numbers --color=always --line-range="${start}:${end}" -- "$file" 2>/dev/null || true
     else
       # sed is inclusive too
-      sed -n "${start},${end}p" -- "$file" || true
+      sed -n "${start},${end}p" -- "$file" 2>/dev/null || true
     fi
     ;;
 
   image/*)
     if command -v chafa >/dev/null 2>&1; then
-      chafa -f sixel -s "${width}x${height}" -- "$file" || true
+      chafa -f sixel -s "${width}x${height}" -- "$file" 2>/dev/null || true
     else
       printf '%s\n' "$mimetype"
     fi
@@ -56,5 +56,5 @@ case "$mimetype" in
     ;;
 esac
 
-# Exit non-zero so lf does not cache the preview; required for dynamic scrolling.
-exit 1
+# Don't exit with error - let lf cache the preview for better performance
+exit 0

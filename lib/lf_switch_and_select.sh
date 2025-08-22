@@ -1,14 +1,19 @@
 #!/bin/bash
 
-# Script to switch LF to current directory and select the current file
+#!/bin/bash
+# Script to launch/switch Ranger to current directory and preselect the current file
 # Usage: Called from VS Code tasks with VSC_CWD and VSC_FILE environment variables
 
-# Navigate LF to the current directory
-# echo "send cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\""
-lf -remote "send cd \"${VSC_CWD:-${WORKSPACE:-$PWD}}\""
+cd "${VSC_CWD:-${WORKSPACE:-$PWD}}" || exit 1
 
-# Select the current file (basename only since we're already in the directory)
-if [ -n "$VSC_FILE" ]; then
-    # echo "send select \"$(basename "$VSC_FILE")\""
-    lf -remote "send select \"$(basename "$VSC_FILE")\""
+if command -v ranger >/dev/null 2>&1; then
+    # If a ranger instance is running in the terminal, just start normally; --selectfile preserves UX
+    if [ -n "$VSC_FILE" ] && [ -e "$VSC_FILE" ]; then
+        exec ranger --selectfile="$VSC_FILE"
+    else
+        exec ranger
+    fi
+else
+    echo "ranger is not installed. Install with: brew install ranger" >&2
+    exit 127
 fi
