@@ -39,19 +39,19 @@
 --ignore=\.idea
 --ignore=\.sublime-project
 --ignore=\.sublime-workspace
---ignore=\*\.swp
---ignore=\*\.swo
---ignore=\*~
+--ignore=.*\.swp$
+--ignore=.*\.swo$
+--ignore=.*~$
 --ignore=\#.*\#
 
 # Backup files
---ignore=\*\.bak
---ignore=\*\.backup
---ignore=\*\.orig
---ignore=\*\.tmp
+--ignore=.*\.bak$
+--ignore=.*\.backup$
+--ignore=.*\.orig$
+--ignore=.*\.tmp$
 
 # Log files
---ignore=\*\.log
+--ignore=.*\.log$
 
 # Cache directories
 --ignore=\.cache
