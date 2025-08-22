@@ -1,0 +1,71 @@
+# Stow configuration file
+# This file tells GNU Stow which files and directories to ignore when stowing packages
+
+# macOS system files
+--ignore=\.DS_Store
+--ignore=\.AppleDouble
+--ignore=\.LSOverride
+--ignore=Icon
+
+# Thumbnails
+--ignore=\._.*
+
+# Files that might appear in the root of a volume
+--ignore=\.DocumentRevisions-V100
+--ignore=\.fseventsd
+--ignore=\.Spotlight-V100
+--ignore=\.TemporaryItems
+--ignore=\.Trashes
+--ignore=\.VolumeIcon\.icns
+--ignore=\.com\.apple\.timemachine\.donotpresent
+
+# Directories potentially created on remote AFP share
+--ignore=\.AppleDB
+--ignore=\.AppleDesktop
+--ignore=Network\ Trash\ Folder
+--ignore=Temporary\ Items
+--ignore=\.apdisk
+
+# Version control
+--ignore=\.git
+--ignore=\.gitignore
+--ignore=\.gitmodules
+--ignore=\.svn
+--ignore=\.hg
+--ignore=\.bzr
+
+# Editor and IDE files
+--ignore=\.vscode
+--ignore=\.idea
+--ignore=\.sublime-project
+--ignore=\.sublime-workspace
+--ignore=\*\.swp
+--ignore=\*\.swo
+--ignore=\*~
+--ignore=\#.*\#
+
+# Backup files
+--ignore=\*\.bak
+--ignore=\*\.backup
+--ignore=\*\.orig
+--ignore=\*\.tmp
+
+# Log files
+--ignore=\*\.log
+
+# Cache directories
+--ignore=\.cache
+--ignore=__pycache__
+--ignore=\.pytest_cache
+--ignore=node_modules
+
+# OS generated files
+--ignore=Thumbs\.db
+--ignore=ehthumbs\.db
+--ignore=Desktop\.ini
+
+# README and documentation that shouldn't be stowed
+--ignore=README.*
+--ignore=LICENSE.*
+--ignore=CHANGELOG.*
+--ignore=\.md$
