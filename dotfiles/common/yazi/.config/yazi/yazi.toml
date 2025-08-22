@@ -1,0 +1,18 @@
+# Basic Yazi configuration
+# Schema: https://yazi-rs.github.io/schemas/yazi.json
+
+[mgr]
+ratio = [1, 4, 7]
+show_hidden = true
+sort_by = "mtime"
+sort_reverse = true
+
+# [[plugin.prepend_fetchers]]
+# id = "git"
+# name = "*"
+# run = "git"
+#
+# [[plugin.prepend_fetchers]]
+# id = "git"
+# name = "*/"
+# run = "git"
