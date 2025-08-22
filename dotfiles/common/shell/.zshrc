@@ -169,6 +169,16 @@ if [[ -z $(command -v fd 2>/dev/null) && -n $(command -v fdfind 2>/dev/null) ]];
   alias fd='fdfind'
 fi
 
+# Open yazi in the current directory and change to its exit path
+function y() {
+  local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+  yazi "$@" --cwd-file="$tmp"
+  IFS= read -r -d '' cwd < "$tmp"
+  [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+  rm -f -- "$tmp"
+}
+alias yazi='y'
+
 # Open lf in the current directory and change to its exit path
 lfcd() {
   local tmp="$(mktemp -t lfcd.XXXXXX)" dir
