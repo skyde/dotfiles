@@ -302,6 +302,14 @@
     }
   },
   {
+    "key": "ctrl+q",
+    "command": "runCommands",
+    "when": "terminalFocus",
+    "args": {
+      "commands": ["workbench.action.terminal.kill"]
+    }
+  },
+  {
     "key": "cmd+d",
     "command": "runCommands",
     "when": "terminalFocus",
