@@ -426,6 +426,16 @@
     "when": "editorTextFocus && resourceLangId == 'c' || editorTextFocus && resourceLangId == 'cpp' || editorTextFocus && resourceLangId == 'cuda-cpp' || editorTextFocus && resourceLangId == 'objective-c' || editorTextFocus && resourceLangId == 'objective-cpp'"
   },
   {
+    // This fixes an issue where when going to definition VS Code selects text unexpectedly
+    "key": "enter",
+    "command": "runCommands",
+    "args": {
+      "commands": ["revealReference", "extension.vim_escape"]
+    },
+    "when": "listFocus && referenceSearchVisible && !inputFocus && !treeElementCanCollapse && !treeElementCanExpand && !treestickyScrollFocused"
+    // "when": "referenceSearchVisible && !config.editor.stablePeek"
+  },
+  {
     // When opening files from terminal it leaves the terminal in a half open state at the bottom of the screen - close this if required
     "key": "enter",
     "command": "runCommands",
