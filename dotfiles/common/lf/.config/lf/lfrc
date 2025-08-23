@@ -1,12 +1,8 @@
 set hidden true
-# set preview true
+set preview true
 set icons true
 set drawbox true
-# set previewer bat
-set preview true
 set previewer ~/.config/lf/preview.sh
-# set cleaner ~/.config/lf/cleaner.sh
-# set previewer_flags --static
 set info size
 set number true
 set relativenumber true
@@ -33,8 +29,8 @@ map v toggle
 map V toggle
 map a unselect
 map f search
-# Scroll mode (pager)
-map s $bat --paging=always --style=numbers,changes --color=always --decorations=always --file-name="$f" "$f"
+# Pager for viewing files with syntax highlighting
+map s $bat --paging=always --style=numbers,changes --color=always --decorations=always "$f"
 # map e nvim -- $fx
 map gm cd ~/.local/share/chezmoi
 map go cd ~/Documents

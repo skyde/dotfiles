@@ -1,13 +1,5 @@
-# ~/.config/lf/pv.sh
-#!/usr/bin/env bash
-f="$1"
-mime=$(file --mime-type -Lb "$f")
-
-case "$mime" in
-  text/*|application/json|application/xml)
-    exec bat --color=always --paging=never --style=numbers,changes "$f"
-    ;;
-  *)  # fallback
-    exec file -b "$f"
-    ;;
-esac
+#!/usr/bin/env sh
+# lf passes: $1=file, $2=width, $3=height, $4=x, $5=y
+# Basic text preview with bat; ignore x/y and use width for wrapping.
+exec bat --color=always --style=numbers,changes --paging=never \
+         --terminal-width="${2:-80}" -- "$1"
