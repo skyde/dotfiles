@@ -55,9 +55,10 @@ cd ~/dotfiles
 
 ```ps
 # stow will be installed automatically via winget if missing
+# Install Git if needed: winget install Git.Git
 git clone https://github.com/skyde/dotfiles.git "$env:USERPROFILE\dotfiles"
 cd "$env:USERPROFILE\dotfiles"
-./init.ps1
+.\init.ps1
 ```
 
 ## What the Init Scripts Do
@@ -86,7 +87,7 @@ AUTO_INSTALL=1 ./init.sh
 ```powershell
 # Windows equivalent
 $env:AUTO_INSTALL = "0"  # or "1" to auto-install
-./init.ps1
+.\init.ps1
 ```
 
 ## Manual Package Management
