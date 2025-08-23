@@ -1,10 +1,9 @@
 # VSVim Bindings Cheat Sheet
 
-This guide lists all custom key mappings defined in [`dot_vsvimrc`](../dot_vsvimrc).
-The `Space` key is the leader and `,` is the local leader.
-Equivalent mappings are configured for the VSCodeVim extension via
-[`dot_config/Code/User/settings.json`](../dot_config/Code/User/settings.json),
-which is also symlinked for use by the Cursor editor.
+This guide lists my custom key mappings for the VSVim plugin in Visual Studio.
+The `Space` key acts as the leader and `,` is the local leader.
+Equivalent mappings can be configured for the VSCodeVim extension (and Cursor)
+using that extension's settings.
 
 ## General
 - `zl` – reload `.vsvimrc`.
@@ -112,7 +111,7 @@ which is also symlinked for use by the Cursor editor.
 - `Shift+Alt+L` – go to previous difference region.
 
 ## Hardware Macro Keys
-These key combinations are implemented via keyboard macros rather than in `dot_vsvimrc`:
+These key combinations are implemented via keyboard macros rather than the VSVim configuration:
 
 ```
 build and run   – Shift+F2
