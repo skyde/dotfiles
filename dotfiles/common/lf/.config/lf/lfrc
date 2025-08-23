@@ -1,14 +1,16 @@
 set hidden true
-set preview true
+# set preview true
 set icons true
 set drawbox true
+# set previewer bat
+set preview true
 set previewer ~/.config/lf/preview.sh
-set cleaner ~/.config/lf/cleaner.sh
-set previewer_flags --static
+# set cleaner ~/.config/lf/cleaner.sh
+# set previewer_flags --static
 set info size
 set number true
 set relativenumber true
-set ratios 1:4:3
+set ratios 1:3:4
 set ignorecase true
 set ifs "\n"
 set filesep "\n"
@@ -31,7 +33,9 @@ map v toggle
 map V toggle
 map a unselect
 map f search
-map t search
+# Scroll mode (pager)
+map s $bat --paging=always --style=numbers,changes --color=always --decorations=always --file-name="$f" "$f"
+# map e nvim -- $fx
 map gm cd ~/.local/share/chezmoi
 map go cd ~/Documents
 map gd cd ~/Downloads
