@@ -1218,6 +1218,12 @@
   ],
   "vim.visualModeKeyBindings": [
     {
+      // Easy way to exit, useful for some VS Code issues like going to definition though
+      // a peek auto selects the text (just press enter twice)
+      "before": ["<Enter>"],
+      "after": ["<Escape>"]
+    },
+    {
       "before": ["<tab>"],
       "commands": ["editor.action.indentLines"]
     },
