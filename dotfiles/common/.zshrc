@@ -92,11 +92,6 @@ if command -v fzf >/dev/null; then
     export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git --color=always'
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
   fi
-  # if [[ $FIND_IT_FASTER_ACTIVE -eq 1 ]]; then
-    # export FZF_DEFAULT_OPTS='--reverse --style=minimal --delimiter : --with-nth 1,4.. --ansi --no-hscroll --keep-right --hscroll-off=60'
-    # export FZF_DEFAULT_OPTS='--bind=preview-up:ignore,preview-down:ignore,preview-page-up:ignore,preview-page-down:ignore'
-    # "FZF_DEFAULT_OPTS": "--delimiter : --with-nth 1,4.. --ansi --no-hscroll --keep-right --hscroll-off=60"
-  # fi
 fi
 
 if (( $+commands[fzf] )); then
