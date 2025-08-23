@@ -765,8 +765,6 @@
   { "key": "ctrl+b", "command": "workbench.action.closeSidebar", "when": "sideBarFocus" },
 
   // Toggle Explorer with Space e
-  { "key": "space e", "command": "workbench.view.explorer", "when": "!explorerViewletVisible && !editorTextFocus" },
-  { "key": "space e", "command": "workbench.files.action.focusFilesExplorer", "when": "explorerViewletVisible && !filesExplorerFocus && !editorTextFocus" },
   { "key": "space e", "command": "workbench.action.closeSidebar", "when": "explorerViewletVisible && filesExplorerFocus && !editorTextFocus" },
 
   // Bottom Panel (Terminal/Problems/Output/Debug Console)
