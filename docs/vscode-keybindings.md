@@ -49,6 +49,7 @@ This document lists the custom shortcuts I use in VS Code. The same keybindings 
 ## Vim Extension Mappings
 
 The following shortcuts are configured through the VS Code Vim extension's settings.
+Space is mapped as `<leader>`.
 
 ### Normal Mode
 - `<leader> v` – <C-v>
@@ -75,7 +76,7 @@ The following shortcuts are configured through the VS Code Vim extension's setti
 - `] b` – next tab
 - `[ b` – previous tab
 - `<leader> b d` – close tab
-- `<leader> b o` – close other tabs
+- `<leader> b o` – close other tabs and pin current
 - `<leader> b b` – <C-6>
 - `<leader> b u` – unpin tab
 - `<leader> b p` – pin tab
@@ -114,6 +115,8 @@ The following shortcuts are configured through the VS Code Vim extension's setti
 - `<leader> c r` – rename symbol
 - `<leader> c i` – show parameter hints
 - `<leader> c e` – Quick Fix / Code Actions
+- `<leader> c s` – switch diff side
+- `<leader> c v` – revert selected ranges
 - `<leader> e e` – open problems view
 - `<leader> e n` – next problem
 - `<leader> e p` – previous problem
@@ -127,16 +130,15 @@ The following shortcuts are configured through the VS Code Vim extension's setti
 - `<leader> g G` – open Source Control (SCM) view
 - `<leader> g d` – view file diff
 - `<leader> g w` – open file in repo
-- `<leader> g r` – revert selected ranges
 - `<leader> g h` – show commit details
-- `<leader> g l` – open timeline
-- `<leader> t r` – run current test
-- `<leader> t d` – debug current test
-- `<leader> t a` – run all tests
-- `<leader> t R` – rerun last tests
-- `<leader> t o` – show test output
-- `<leader> t f` – run tests in file
-- `<leader> t e` – open test view
+- `<leader> g l` – open git log for current file
+- `<leader> T r` – run current test
+- `<leader> T d` – debug current test
+- `<leader> T a` – run all tests
+- `<leader> T R` – rerun last tests
+- `<leader> T o` – show test output
+- `<leader> T f` – run tests in file
+- `<leader> T e` – open test view
 - `<leader> m b` – run build task
 - `<leader> m c` – terminate task
 - `<leader> m r` – start debugging
