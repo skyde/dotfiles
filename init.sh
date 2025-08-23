@@ -84,7 +84,7 @@ fi
 
 # Optional: Install Yazi with enhanced features (GitHub binary for Linux)
 if [ -f "install-yazi.sh" ]; then
-  install_yazi=$(get_user_confirmation "Run Yazi installation script for enhanced features? (y/N): ")
+  install_yazi=$(get_user_confirmation "Install Yazi (may prompt again for install method)? (y/N): ")
   if [[ "$install_yazi" =~ ^[Yy] ]]; then
     echo "Running Yazi installation script..."
     ./install-yazi.sh
