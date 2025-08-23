@@ -185,6 +185,8 @@ lfcd() {
 }
 alias lf='lfcd'
 
+alias tree='eza --tree --level=1 --icons --group-directories-first'
+
 # Load machine-specific overrides, if present
 # shellcheck disable=SC1090
 [[ -r "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
