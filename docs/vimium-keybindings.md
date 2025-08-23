@@ -1,6 +1,6 @@
 # Vimium Keybindings Cheat Sheet
 
-Custom key mappings defined in [`dot_config/vimium_c.json`](../dot_config/vimium_c.json) for the Vimium C Chrome extension.
+Custom key mappings for the Vimium C Chrome extension.
 
 ## Scrolling
 - `Space` – scroll one page down.

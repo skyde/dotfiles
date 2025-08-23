@@ -1,6 +1,6 @@
 # VSCode Keybindings Cheat Sheet
 
-This document lists all custom shortcuts defined in [`dot_config/Code/User/keybindings.json`](../dot_config/Code/User/keybindings.json). The same file is symlinked for the Cursor editor.
+This document lists the custom shortcuts I use in VS Code. The same keybindings can also be used in the Cursor editor.
 
 ## Navigation
 - `Ctrl+Tab` – switch to the next tab (Windows only).
@@ -48,7 +48,7 @@ This document lists all custom shortcuts defined in [`dot_config/Code/User/keybi
 
 ## Vim Extension Mappings
 
-The following shortcuts are configured through the VS Code Vim extension via [`settings.json`](../dot_config/Code/User/settings.json).
+The following shortcuts are configured through the VS Code Vim extension's settings.
 
 ### Normal Mode
 - `<leader> v` – <C-v>
