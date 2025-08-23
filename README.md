@@ -6,50 +6,27 @@ This repository contains my personal dotfiles managed with [GNU Stow](https://ww
 
 ```text
 dotfiles/
-├── common/          # Shared configs across all platforms (6 packages)
-│   ├── shell/       # Shell configs (bash, zsh, tmux)
-│   ├── devtools/    # Development tools (git, lazygit, starship, vimium)
-│   ├── Code/        # VS Code configuration
-│   ├── nvim/        # Neovim configuration
-│   ├── kitty/       # Kitty terminal configuration
-│   └── lf/          # LF file manager configuration
-├── mac/             # macOS-specific configs (1 package)
-│   └── hammerspoon/ # Hammerspoon Lua config
-└── windows/         # Windows-specific configs (5 packages)
-    ├── Documents/   # PowerShell profiles
-    ├── vsvim/       # Visual Studio Vim settings
-    ├── visual_studio/ # Visual Studio settings
-    ├── kinesis-advantage2/ # Kinesis keyboard layouts
-    └── savant-elite2/ # Footpedal configurations
+├── common/   # Shared configs across all platforms
+├── mac/      # macOS-specific configs
+└── windows/  # Windows-specific configs
 ```
 
 ## How Stow Works
 
 GNU Stow creates symlinks from your home directory to the configuration files in this repository:
 
-- **Package**: Each subdirectory in `dotfiles/` is a "package" (e.g., `shell`, `devtools`, `nvim`)
+- **Package**: Top-level directories in `dotfiles/` (`common`, `mac`, `windows`)
 - **Target**: Your home directory (`~` or `$HOME`)
-- **Symlinks**: Stow creates symlinks in your home directory pointing to files in the packages
-
-### Package Organization
-
-Packages are organized logically to reduce complexity:
-
-- **`shell`**: All shell-related configs (bash, zsh, tmux) in one package
-- **`devtools`**: Development tools (git, lazygit, starship, vimium) in one package
-- **`Code`**: VS Code configuration files
-- **`nvim`**: Neovim configuration and plugins
-- **`kitty`**: Kitty terminal emulator settings
-- **`lf`**: LF file manager configuration
+- **Symlinks**: Stow mirrors the directory structure inside each package to your home directory
 
 ### Example
 
-When you run `stow shell` from `dotfiles/common/`, symlinks are created:
+When you run `stow common` from `dotfiles/`, symlinks are created:
 
 ```text
-~/.bashrc → ~/dotfiles/dotfiles/common/shell/.bashrc
-~/.zshrc → ~/dotfiles/dotfiles/common/shell/.zshrc
-~/.tmux.conf → ~/dotfiles/dotfiles/common/shell/.tmux.conf
+~/.bashrc → ~/dotfiles/dotfiles/common/.bashrc
+~/.zshrc → ~/dotfiles/dotfiles/common/.zshrc
+~/.tmux.conf → ~/dotfiles/dotfiles/common/.tmux.conf
 ```
 
 ## Quick Setup
@@ -114,44 +91,39 @@ $env:AUTO_INSTALL = "0"  # or "1" to auto-install
 
 ## Manual Package Management
 
-You can also manage individual packages manually:
+You can also manage packages manually:
 
 ### Installing Packages
 
 ```sh
-cd ~/dotfiles/dotfiles/common
+cd ~/dotfiles/dotfiles
 
-# Install individual packages
-stow shell         # Install shell configs (bash, zsh, tmux)
-stow devtools      # Install development tools (git, lazygit, starship)
-stow nvim          # Install neovim configuration
-stow Code          # Install VS Code configuration
-stow kitty         # Install kitty terminal configuration
-stow lf            # Install lf file manager configuration
+# Install shared configs
+stow common
 
 # Install macOS-specific configs (on Mac)
-cd ../mac
-stow hammerspoon   # Install Hammerspoon config
+stow mac
+
+# Install Windows-specific configs (on Windows)
+stow windows
 ```
 
 ### Uninstalling Packages
 
 ```sh
-cd ~/dotfiles/dotfiles/common
+cd ~/dotfiles/dotfiles
 
-# Remove symlinks for specific packages
-stow -D shell      # Remove shell configurations
-stow -D devtools   # Remove development tools
+# Remove symlinks for a package
+stow -D common
 ```
 
 ### Restowing (Update Existing)
 
 ```sh
-cd ~/dotfiles/dotfiles/common
+cd ~/dotfiles/dotfiles
 
-# Update existing installations after changes
-stow -R nvim       # Restow neovim configuration
-stow -R devtools   # Restow development tools
+# Update an installed package after changes
+stow -R common
 ```
 
 ## Platform-Specific Instructions
@@ -160,7 +132,7 @@ stow -R devtools   # Restow development tools
 
 The init script will:
 
-- Install packages from `dotfiles/common/`
+- Install configs from `dotfiles/common/`
 - Install macOS-specific configs from `dotfiles/mac/`
 - Optionally install CLI tools (ripgrep, fd, bat, eza, etc.)
 
@@ -168,7 +140,7 @@ The init script will:
 
 The init script will:
 
-- Install packages from `dotfiles/common/`
+- Install configs from `dotfiles/common/`
 - Set up Linux-specific configurations
 - Optionally install CLI tools via package manager
 
@@ -176,7 +148,7 @@ The init script will:
 
 The PowerShell script will:
 
-- Install packages from `dotfiles/common/`
+- Install configs from `dotfiles/common/`
 - Install Windows-specific configs from `dotfiles/windows/`
 - Use PowerShell-compatible stow commands
 - Optionally install CLI tools via winget
@@ -185,25 +157,15 @@ The PowerShell script will:
 
 ### Adding New Configurations
 
-1. Create a new directory in `dotfiles/common/` (or platform-specific directory)
-2. Structure it exactly as it would appear in your home directory
-3. Use stow to install it:
+1. Add files under `dotfiles/common/` (or the platform-specific directory) following the same structure as your home directory.
+2. Restow the package to apply the changes:
 
 ```sh
 # Example: Adding a new tool called 'mytool'
-mkdir -p dotfiles/common/mytool/.config/mytool
-echo "config=value" > dotfiles/common/mytool/.config/mytool/config.toml
-cd dotfiles/common
-stow mytool
-```
-
-**Or add to existing packages:**
-
-```sh
-# Add to devtools package
-echo "new-config=value" > dotfiles/common/devtools/.config/newtool/config.yml
-cd dotfiles/common
-stow -R devtools  # Restow to pick up new files
+mkdir -p dotfiles/common/.config/mytool
+echo "config=value" > dotfiles/common/.config/mytool/config.toml
+cd dotfiles
+stow -R common
 ```
 
 ### Handling Conflicts
@@ -216,7 +178,7 @@ mv ~/.bashrc ~/.bashrc.backup
 mv ~/.zshrc ~/.zshrc.backup
 
 # Then install the package
-stow shell
+stow common
 ```
 
 ## Troubleshooting
@@ -226,7 +188,7 @@ stow shell
 1. **Stow conflicts**: Remove or backup existing files first
 2. **Permission errors**: Ensure you have write access to your home directory
 3. **Broken symlinks**: Run `stow -R <package>` to restow
-4. **Package not found**: Check you're in the correct directory (`dotfiles/common/` etc.)
+4. **Package not found**: Check you're in the correct directory (`dotfiles/` etc.)
 
 ## Starship Prompt
 

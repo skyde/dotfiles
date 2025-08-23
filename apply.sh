@@ -14,34 +14,29 @@ fi
 # Go to dotfiles directory
 cd "$(dirname "$0")/dotfiles"
 
-# Function to stow all packages in a directory
-stow_dir() {
-    local dir="$1"
+stow_package() {
+    local pkg="$1"
     shift
-    [ -d "$dir" ] || return 0
-    cd "$dir"
-    local packages=(*/); packages=("${packages[@]%/}")
-    [ -d "${packages[0]}" ] || { cd ..; return 0; }
-    echo "📦 Installing $dir packages: ${packages[*]}"
-    stow --target="$HOME" --verbose "$@" "${packages[@]}"
-    cd ..
+    [ -d "$pkg" ] || return 0
+    echo "📦 Installing $pkg package"
+    stow --target="$HOME" --verbose "$@" "$pkg"
 }
 
-# Stow common packages (always)
-stow_dir "common" "$@"
+# Stow common package (always)
+stow_package common "$@"
 
 # Stow platform-specific packages
 case "$(uname)" in
     Darwin)
         echo "🍎 macOS detected"
-        stow_dir "mac" "$@"
+        stow_package mac "$@"
         ;;
     Linux)
         echo "🐧 Linux detected"
-        stow_dir "linux" "$@"
+        stow_package linux "$@"
         ;;
     *)
-        echo "ℹ️ Unknown platform - common packages only"
+        echo "ℹ️ Unknown platform - common package only"
         ;;
 esac
 

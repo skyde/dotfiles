@@ -16,30 +16,23 @@ if (-not (Get-Command stow -ErrorAction SilentlyContinue)) {
 $dotfilesPath = Join-Path $PSScriptRoot "dotfiles"
 Set-Location $dotfilesPath
 
-function Invoke-StowDir {
+function Invoke-StowPackage {
     param(
-        [Parameter(Mandatory=$true)][string]$Dir,
+        [Parameter(Mandatory=$true)][string]$Package,
         [string[]]$ExtraArgs
     )
 
-    if (-not (Test-Path $Dir)) { return }
+    if (-not (Test-Path $Package)) { return }
 
-    Push-Location $Dir
-    try {
-        $packages = Get-ChildItem -Directory | ForEach-Object { $_.Name }
-        if ($packages.Count -eq 0) { return }
-        Write-Host "📦 Installing $Dir packages: $($packages -join ', ')"
-        & stow --target=$env:USERPROFILE --verbose @ExtraArgs @packages
-    } finally {
-        Pop-Location
-    }
+    Write-Host "📦 Installing $Package package"
+    & stow --target=$env:USERPROFILE --verbose @ExtraArgs $Package
 }
 
 try {
-    # Always install common packages
-    Invoke-StowDir -Dir "common" -ExtraArgs $args
-    # Windows-specific packages
-    Invoke-StowDir -Dir "windows" -ExtraArgs $args
+    # Always install common package
+    Invoke-StowPackage -Package "common" -ExtraArgs $args
+    # Windows-specific package
+    Invoke-StowPackage -Package "windows" -ExtraArgs $args
     Write-Host "✅ Stow operation completed" -ForegroundColor Green
 } catch {
     Write-Host "❌ Stow operation failed: $($_.Exception.Message)" -ForegroundColor Red
