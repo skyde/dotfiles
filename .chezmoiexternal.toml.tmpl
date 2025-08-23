@@ -5,7 +5,7 @@
 
 # macOS - install under user's Fonts
 {{- if eq .chezmoi.os "darwin" }}
-["~/Library/Fonts/JetBrainsMono"]
+["Library/Fonts/JetBrainsMono"]
 type = "archive"
 # Option A: GitHub release asset (static URL, no API call)
 url = "https://github.com/JetBrains/JetBrainsMono/releases/download/{{ $ver }}/JetBrainsMono-{{ $vernum }}.zip"
@@ -19,7 +19,7 @@ refreshPeriod = "720h"
 
 # Linux - user fonts dir, subfolder is fine for fc-cache
 {{- if eq .chezmoi.os "linux" }}
-["~/.local/share/fonts/JetBrainsMono"]
+[".local/share/fonts/JetBrainsMono"]
 type = "archive"
 url = "https://github.com/JetBrains/JetBrainsMono/releases/download/{{ $ver }}/JetBrainsMono-{{ $vernum }}.zip"
 # url = "https://download.jetbrains.com/fonts/JetBrainsMono-{{ $vernum }}.zip"
@@ -31,7 +31,7 @@ refreshPeriod = "720h"
 
 # Windows - per-user fonts location
 {{- if eq .chezmoi.os "windows" }}
-["~/AppData/Local/Microsoft/Windows/Fonts/JetBrainsMono"]
+["AppData/Local/Microsoft/Windows/Fonts/JetBrainsMono"]
 type = "archive"
 url = "https://github.com/JetBrains/JetBrainsMono/releases/download/{{ $ver }}/JetBrainsMono-{{ $vernum }}.zip"
 # url = "https://download.jetbrains.com/fonts/JetBrainsMono-{{ $vernum }}.zip"
