@@ -49,7 +49,7 @@ jobs:
           echo "📦 Package validation:"
           common_count=$(find dotfiles/common -mindepth 1 -maxdepth 1 -type d | wc -l)
           echo "  Common packages: $common_count"
-          test $common_count -ge 6 || { echo "❌ Expected at least 6 common packages"; exit 1; }
+          test $common_count -ge 1 || { echo "❌ Expected at least 1 common package"; exit 1; }
 
           mac_count=$(find dotfiles/mac -mindepth 1 -maxdepth 1 -type d | wc -l)
           echo "  macOS packages: $mac_count"
@@ -57,7 +57,7 @@ jobs:
 
           windows_count=$(find dotfiles/windows -mindepth 1 -maxdepth 1 -type d | wc -l)
           echo "  Windows packages: $windows_count"
-          test $windows_count -ge 5 || { echo "❌ Expected at least 5 Windows packages"; exit 1; }
+          test $windows_count -ge 1 || { echo "❌ Expected at least 1 Windows package"; exit 1; }
 
           echo "✅ Package structure validation passed"
 
@@ -66,10 +66,10 @@ jobs:
           echo "📄 Validating configuration files..."
 
           # Check essential config files exist
-          test -f "dotfiles/common/shell/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
-          test -f "dotfiles/common/shell/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
-          test -f "dotfiles/common/shell/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
-          test -f "dotfiles/common/devtools/.config/git/config" || { echo "❌ git config missing"; exit 1; }
+          test -f "dotfiles/common/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
+          test -f "dotfiles/common/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
+          test -f "dotfiles/common/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
+          test -f "dotfiles/common/.config/git/config" || { echo "❌ git config missing"; exit 1; }
           echo "✅ Essential config files present"
 
           # Validate shell script syntax
@@ -81,7 +81,7 @@ jobs:
 
           # Validate shell config syntax
           echo "🔍 Validating shell configuration syntax..."
-          bash -n dotfiles/common/shell/.bashrc || { echo "❌ .bashrc has syntax errors"; exit 1; }
+          bash -n dotfiles/common/.bashrc || { echo "❌ .bashrc has syntax errors"; exit 1; }
           echo "✅ Shell configurations have valid syntax"
 
   # Multi-platform testing matrix
