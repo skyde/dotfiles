@@ -457,11 +457,12 @@
       // ]
     },
     {
+      // Open in OS
       "before": ["<leader>", "f", "E"],
       "commands": ["revealFileInOS"]
     },
     {
-      // Explorer
+      // Tree Explorer
       "before": ["<leader>", "f", "t"],
       "commands": [
         // ️Ensure the Explorer is visible / takes focus
