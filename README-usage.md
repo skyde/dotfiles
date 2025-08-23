@@ -13,7 +13,7 @@
 **Windows:**
 
 ```powershell
-./init.ps1
+.\init.ps1
 ```
 
 - Installs dotfiles with `--adopt` (takes over existing files)
@@ -31,7 +31,7 @@
 **Windows:**
 
 ```powershell
-./apply.ps1 [STOW_OPTIONS]
+.\apply.ps1 [STOW_OPTIONS]
 ```
 
 Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
@@ -47,7 +47,7 @@ Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
 **Windows:**
 
 ```powershell
-./update.ps1
+.\update.ps1
 ```
 
 Pulls latest changes from the repository and applies them using `--restow`.
@@ -65,7 +65,7 @@ Pulls latest changes from the repository and applies them using `--restow`.
 **Windows:**
 
 ```powershell
-./init.ps1
+.\init.ps1
 ```
 
 ### 🔍 **Preview changes**
@@ -80,8 +80,8 @@ Pulls latest changes from the repository and applies them using `--restow`.
 **Windows:**
 
 ```powershell
-./apply.ps1 --no             # Dry-run, see what would happen
-./apply.ps1 --no --verbose   # Dry-run with detailed output
+.\apply.ps1 --no             # Dry-run, see what would happen
+.\apply.ps1 --no --verbose   # Dry-run with detailed output
 ```
 
 ### 🔄 **Update existing**
@@ -97,9 +97,9 @@ Pulls latest changes from the repository and applies them using `--restow`.
 **Windows:**
 
 ```powershell
-./update.ps1                 # Pull latest from repo and apply
-./apply.ps1 --restow         # Re-install everything
-./apply.ps1                  # Normal stow (only new packages)
+.\update.ps1                 # Pull latest from repo and apply
+.\apply.ps1 --restow         # Re-install everything
+.\apply.ps1                  # Normal stow (only new packages)
 ```
 
 ### ⚠️ **Handle conflicts**
@@ -114,8 +114,8 @@ Pulls latest changes from the repository and applies them using `--restow`.
 **Windows:**
 
 ```powershell
-./apply.ps1 --adopt          # Take over existing files
-./apply.ps1 --no --adopt     # Preview what would be adopted
+.\apply.ps1 --adopt          # Take over existing files
+.\apply.ps1 --no --adopt     # Preview what would be adopted
 ```
 
 ### 🗑️ **Remove dotfiles**
@@ -129,7 +129,7 @@ Pulls latest changes from the repository and applies them using `--restow`.
 **Windows:**
 
 ```powershell
-./apply.ps1 --delete         # Remove all symlinks
+.\apply.ps1 --delete         # Remove all symlinks
 ```
 
 ### 🎯 **Advanced operations**
@@ -145,9 +145,9 @@ Pulls latest changes from the repository and applies them using `--restow`.
 **Windows:**
 
 ```powershell
-./apply.ps1 --restow --verbose=2   # Verbose restow
-./apply.ps1 --ignore="*.log"       # Ignore log files
-./apply.ps1 --no --adopt --verbose # Preview adoption with details
+.\apply.ps1 --restow --verbose=2   # Verbose restow
+.\apply.ps1 --ignore="*.log"       # Ignore log files
+.\apply.ps1 --no --adopt --verbose # Preview adoption with details
 ```
 
 ## Stow Arguments Reference
@@ -189,20 +189,20 @@ Pulls latest changes from the repository and applies them using `--restow`.
 
 ```powershell
 # First time setup
-./init.ps1
+.\init.ps1
 
 # Update from remote repository
-./update.ps1
+.\update.ps1
 
 # See what would happen before adopting conflicts
-./apply.ps1 --no --adopt
+.\apply.ps1 --no --adopt
 
 # Actually adopt conflicts
-./apply.ps1 --adopt
+.\apply.ps1 --adopt
 
 # Update after local changes to dotfiles
-./apply.ps1 --restow
+.\apply.ps1 --restow
 
 # Remove everything
-./apply.ps1 --delete
+.\apply.ps1 --delete
 ```
