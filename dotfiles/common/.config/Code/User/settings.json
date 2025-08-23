@@ -407,9 +407,7 @@
     // File
     {
       "before": ["<leader>", "f", "e"],
-      "commands": [
-        "task.custom.openTerminal",
-        "yazi-vscode.toggle"]
+      "commands": ["task.custom.openTerminal", "yazi-vscode.toggle"]
 
       // Run LF in an editor tab
       // "commands": [
@@ -553,11 +551,6 @@
       "commands": ["workbench.action.closeOtherEditors"]
     },
     // Windows
-    {
-      // Memonic is 'fullscreen'
-      "before": ["<leader>", "w", "F"],
-      "commands": ["workbench.action.toggleZenMode"]
-    },
     {
       // This actually just toggles fullscreen if you need it
       "before": ["<leader>", "w", "f"],
