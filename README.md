@@ -35,7 +35,7 @@ When you run `stow common` from `dotfiles/`, symlinks are created:
 
 ```sh
 # Install Homebrew from https://brew.sh if not already present
-brew install stow
+# stow will be installed automatically by the init script
 git clone https://github.com/skyde/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 ./init.sh
@@ -45,7 +45,7 @@ cd ~/dotfiles
 
 ```sh
 sudo apt update
-sudo apt install -y stow git
+sudo apt install -y git   # stow installed automatically
 git clone https://github.com/skyde/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 ./init.sh
@@ -54,7 +54,7 @@ cd ~/dotfiles
 ### Windows (platform)
 
 ```ps
-winget install stefansundin.gnu-stow
+# stow will be installed automatically via winget if missing
 git clone https://github.com/skyde/dotfiles.git "$env:USERPROFILE\dotfiles"
 cd "$env:USERPROFILE\dotfiles"
 ./init.ps1
