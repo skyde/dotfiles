@@ -120,12 +120,15 @@ stow -D common
 
 ### Restowing (Update Existing)
 
-```sh
-cd ~/dotfiles/dotfiles
+After editing files, restow to update the symlinks:
 
-# Update an installed package after changes
-stow -R common
+```sh
+cd ~/dotfiles
+./apply.sh --restow        # Reapply all installed packages
+./apply.sh --no --restow   # Preview restow without making changes
 ```
+
+To restow a single package manually, run `stow -R <package>` from the `dotfiles` directory.
 
 ## Platform-Specific Instructions
 
