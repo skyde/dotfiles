@@ -6,3 +6,4 @@ llvm-vs-code-extensions.vscode-clangd
 chaitanyashahare.lazygit
 ms-vscode-remote.remote-ssh
 ryuta46.multi-command
+dautroc.yazi-vscode

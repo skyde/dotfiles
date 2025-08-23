@@ -5,7 +5,6 @@
     {
       "label": "StandardTerminal",
       "type": "shell",
-      // "command": "{env:COMSPEC}",
       "command": "zsh",
       "args": [],
       "presentation": {
@@ -21,63 +20,51 @@
       },
       "problemMatcher": []
     },
-    {
-      "label": "Switch Running LF to Current Directory",
-      "type": "shell",
-      "command": "bash",
-      "args": ["-lc", "$HOME/dotfiles/lib/lf_switch_and_select.sh || true"],
-      "options": {
-        "env": {
-          // VS Code fills these before shell runs
-
-          "VSC_FILE": "${file}",
-          "VSC_CWD": "${fileDirname}",
-          "WORKSPACE": "${workspaceFolder}"
-        }
-      },
-      "presentation": {
-        "echo": false,
-        "clear": true,
-        "reveal": "silent",
-        "focus": false,
-        "close": true,
-        "panel": "dedicated"
-
-        // "echo": true,
-        // "clear": false,
-        // "reveal": "always",
-        // "focus": true,
-        // "close": false,
-        // "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "LF",
-      "type": "shell",
-      "command": "bash",
-      "args": ["-lc", "$HOME/dotfiles/lib/lf_open.sh"],
-      "options": {
-        "env": {
-          // VS Code fills these before shell runs
-          // "VSC_CWD": "${fileDirname}",
-          // "WORKSPACE": "${workspaceFolder}"
-          "VSC_FILE": "${file}"
-        }
-      },
-      "presentation": {
-        "echo": false,
-        "clear": false,
-        "reveal": "always",
-        "focus": true,
-        "close": true,
-        "panel": "dedicated"
-      },
-      "runOptions": {
-        "instanceLimit": 1
-      },
-      "problemMatcher": []
-    },
+    // {
+    //   "label": "Switch Running LF to Current Directory",
+    //   "type": "shell",
+    //   "command": "bash",
+    //   "args": ["-lc", "$HOME/dotfiles/lib/lf_switch_and_select.sh || true"],
+    //   "options": {
+    //     "env": {
+    //       "VSC_FILE": "${file}",
+    //       "VSC_CWD": "${fileDirname}",
+    //       "WORKSPACE": "${workspaceFolder}"
+    //     }
+    //   },
+    //   "presentation": {
+    //     "echo": false,
+    //     "clear": true,
+    //     "reveal": "silent",
+    //     "focus": false,
+    //     "close": true,
+    //     "panel": "dedicated"
+    //   },
+    //   "problemMatcher": []
+    // },
+    // {
+    //   "label": "LF",
+    //   "type": "shell",
+    //   "command": "bash",
+    //   "args": ["-lc", "$HOME/dotfiles/lib/lf_open.sh"],
+    //   "options": {
+    //     "env": {
+    //       "VSC_FILE": "${file}"
+    //     }
+    //   },
+    //   "presentation": {
+    //     "echo": false,
+    //     "clear": false,
+    //     "reveal": "always",
+    //     "focus": true,
+    //     "close": true,
+    //     "panel": "dedicated"
+    //   },
+    //   "runOptions": {
+    //     "instanceLimit": 1
+    //   },
+    //   "problemMatcher": []
+    // },
     {
       "label": "LazyGit",
       "type": "shell",

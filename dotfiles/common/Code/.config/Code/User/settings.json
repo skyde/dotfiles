@@ -407,9 +407,9 @@
     // File
     {
       "before": ["<leader>", "f", "e"],
-
       "commands": ["yazi-vscode.toggle"]
 
+      // Run LF in an editor tab
       // "commands": [
       //   // Custom command when terminal is opened to clear any other context
       //   "task.custom.openTerminal",
@@ -427,6 +427,7 @@
       //   "workbench.action.terminal.toggleTerminal"
       // ]
 
+      // Persistent LF Task
       // "commands": [
       //   // Custom command when terminal is opened to clear any other context
       //   "task.custom.openTerminal",
