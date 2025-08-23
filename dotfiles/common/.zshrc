@@ -29,8 +29,8 @@ setopt hist_ignore_space      # Ignore commands starting with spaces
 setopt globdots               # Include dotfiles in globbing
 
 # History
-HISTSIZE=50000
-SAVEHIST=50000
+HISTSIZE=1000000
+SAVEHIST=1000000
 HISTFILE=~/.zsh_history
 
 # # Key Bindings

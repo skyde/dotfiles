@@ -21,8 +21,9 @@ export VISUAL="$EDITOR"
 
 # Shell options
 shopt -s nocaseglob dotglob extglob histappend
-HISTSIZE=50000
+HISTSIZE=1000000
 HISTFILE=~/.bash_history
+HISTFILESIZE=1000000
 HISTCONTROL=ignoreboth:erasedups
 PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
 
