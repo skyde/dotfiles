@@ -13,6 +13,7 @@
   "editor.fontWeight": "250",
   "editor.fontVariations": "'wght' 250",
   "editor.letterSpacing": 0.35,
+  "editor.minimap.enabled": false,
   "terminal.integrated.letterSpacing": 1.0,
   "terminal.integrated.fontWeight": "normal",
   "terminal.integrated.fontFamily": "'JetBrainsMono Nerd Font', monospace",
