@@ -72,7 +72,10 @@
     "editor.lineHighlightBackground": "#2F334D",
     "editorLineNumber.activeForeground": "#FF9E3B",
     "editor.selectionBackground": "#313F72",
-    "editor.background": "#222436"
+    "editor.background": "#222436",
+    "editorSuggestWidget.selectedBackground": "#2F334D",
+    "editorSuggestWidget.selectedForeground": "#FFFFFF",
+    "editorSuggestWidget.selectedIconForeground": "#FFFFFF"
   },
   "workbench.quickOpen.centered": true,
   "window.commandCenter": false,
