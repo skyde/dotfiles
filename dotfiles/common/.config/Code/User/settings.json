@@ -11,6 +11,25 @@
   "chat.agent.maxRequests": 10000,
   "chat.editing.confirmEditRequestRemoval": false,
   "chat.editing.confirmEditRequestRetry": false,
+  // Auto-approval settings for Agent Mode
+  "github.copilot.chat.agent.runTasks": true,
+  "task.allowAutomaticTasks": "on",
+  "chat.tools.autoApprove": true,
+  // "chat.tools.terminal.autoApprove": {
+  //   "cmake": true,
+  //   "ctest": true,
+  //   "/^ninja(\\s|$)/": true,
+  //   "/^npm (run|install)\\b/": true,
+  //   "/^git\\b/": true,
+  //   "/^cargo\\b/": true,
+  //   "/^python\\b/": true,
+  //   "/^node\\b/": true,
+  //   "/^yarn\\b/": true,
+  //   "/^pnpm\\b/": true,
+  //   "/^make\\b/": true,
+  //   "/^docker\\b/": true,
+  //   "/^kubectl\\b/": true
+  // },
   // Prompt when opening files from untrusted workspaces
   "security.workspace.trust.untrustedFiles": "prompt",
   // Increase terminal scrollback similar to using a terminal split in Neovim
