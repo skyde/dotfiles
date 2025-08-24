@@ -21,7 +21,53 @@
         "command": "overlayTerminals.pickProfile",
         "title": "Overlay Terminals: Pick Profile and Return Focus"
       }
-    ]
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Overlay Terminals",
+      "properties": {
+        "overlayTerminals.hideUI.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide other UI areas while an overlay terminal is open."
+        },
+        "overlayTerminals.hideUI.sideBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide the primary Side Bar."
+        },
+        "overlayTerminals.hideUI.panel": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide the bottom Panel (Problems, Output, Debug Console, Terminal). Ignored if the terminal opens in the panel."
+        },
+        "overlayTerminals.hideUI.auxiliaryBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide the Auxiliary Bar (secondary side bar)."
+        },
+        "overlayTerminals.hideUI.activityBar": {
+          "type": "boolean",
+          "default": false,
+          "description": "Hide the Activity Bar."
+        },
+        "overlayTerminals.hideUI.statusBar": {
+          "type": "boolean",
+          "default": false,
+          "description": "Hide the Status Bar."
+        },
+        "overlayTerminals.hideUI.editorTabs": {
+          "type": "boolean",
+          "default": false,
+          "description": "Hide editor tabs."
+        },
+        "overlayTerminals.restoreVimNormal": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send Escape to return to VSCodeVim Normal mode after restoring."
+        }
+      }
+    }
   },
   "scripts": {
     "compile": "tsc -p .",
