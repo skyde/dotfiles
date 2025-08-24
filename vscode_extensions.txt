@@ -7,3 +7,4 @@ esbenp.prettier-vscode
 llvm-vs-code-extensions.vscode-clangd
 chaitanyashahare.lazygit
 ms-vscode-remote.remote-ssh
+pkief.material-icon-theme

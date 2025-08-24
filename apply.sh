@@ -2,13 +2,33 @@
 # Stow wrapper for dotfiles management
 set -e
 
+# Parse arguments to detect dry-run mode
+DRY_RUN=false
+ARGS=()
+
+for arg in "$@"; do
+    case $arg in
+        --no-act|--no|--simulate|-n)
+            DRY_RUN=true
+            ARGS+=(--no)
+            ;;
+        *)
+            ARGS+=("$arg")
+            ;;
+    esac
+done
+
 # Install stow if needed
 if ! command -v stow >/dev/null; then
-    echo "Installing stow..."
-    case "$(uname)" in
-        Darwin) brew install stow ;;
-        Linux) sudo apt install stow ;;
-    esac
+    if $DRY_RUN; then
+        echo "[DRY RUN] Would install stow"
+    else
+        echo "Installing stow..."
+        case "$(uname)" in
+            Darwin) brew install stow ;;
+            Linux) sudo apt install stow ;;
+        esac
+    fi
 fi
 
 # Go to dotfiles directory
@@ -21,7 +41,13 @@ stow_package() {
     echo "📦 Installing $pkg package"
     
     # Use restow to handle any conflicts or missing symlinks
-    stow --target="$HOME" --restow --verbose=1 "$@" "$pkg"
+    stow --target="$HOME" --restow --verbose=1 "${ARGS[@]}" "$pkg"
+
+    # Skip verification in dry-run mode
+    if $DRY_RUN; then
+        echo "  [DRY RUN] Skipping verification"
+        return 0
+    fi
 
     # Check only the directories that this package actually affects
     # Skip problematic directories like Library which can have massive cache data
@@ -58,13 +84,13 @@ stow_package() {
 }
 
 # Stow common package (always)
-stow_package common "$@"
+stow_package common
 
 # Stow platform-specific packages
 case "$(uname)" in
     Darwin)
         echo "🍎 macOS detected"
-        stow_package mac "$@"
+        stow_package mac
         ;;
     Linux)
         echo "🐧 Linux detected"
@@ -72,11 +98,15 @@ case "$(uname)" in
         ;;
     MINGW*|MSYS*|CYGWIN*)
         echo "🪟 Windows detected"
-        stow_package windows "$@"
+        stow_package windows
         ;;
     *)
         echo "ℹ️ Unknown platform - common package only"
         ;;
 esac
 
-echo "✅ Stow operation completed"
+if $DRY_RUN; then
+    echo "✅ Dry run completed - no changes were made"
+else
+    echo "✅ Stow operation completed"
+fi
