@@ -3,7 +3,9 @@
   "displayName": "Overlay Terminals: Return Focus on Close",
   "version": "0.1.0",
   "publisher": "local",
-  "engines": { "vscode": "^1.82.0" },
+  "engines": {
+    "vscode": "^1.82.0"
+  },
   "main": "dist/extension.js",
   "activationEvents": [
     "onCommand:overlayTerminals.openProfile",
@@ -11,8 +13,14 @@
   ],
   "contributes": {
     "commands": [
-      { "command": "overlayTerminals.openProfile", "title": "Overlay Terminals: Open Profile and Return Focus" },
-      { "command": "overlayTerminals.pickProfile",  "title": "Overlay Terminals: Pick Profile and Return Focus" }
+      {
+        "command": "overlayTerminals.openProfile",
+        "title": "Overlay Terminals: Open Profile and Return Focus"
+      },
+      {
+        "command": "overlayTerminals.pickProfile",
+        "title": "Overlay Terminals: Pick Profile and Return Focus"
+      }
     ]
   },
   "scripts": {
@@ -23,9 +31,9 @@
     "package:npx": "npx @vscode/vsce package"
   },
   "devDependencies": {
+    "@types/node": "^24.3.0",
     "@types/vscode": "^1.82.0",
     "@vscode/vsce": "^3.0.0",
     "typescript": "^5.4.0"
   }
 }
-

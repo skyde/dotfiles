@@ -114,16 +114,12 @@ class SessionManager {
     );
   }
 
-  public queuePending(p: PendingOpen): void {
+  public queuePending(p: Omit<PendingOpen, 'createdAt' | 'deadline'>): void 
+  {
     const now = Date.now();
-    this.pending.push({
-      ...p,
-      createdAt: now,
-      deadline: now + 4000 // 4s to pair with the newly opened terminal
-    });
-    // Cleanup expired pending entries to avoid leaks
+    this.pending.push({ ...p, createdAt: now, deadline: now + 4000 });
     this.pending = this.pending.filter(x => x.deadline > now);
-  }
+  } 
 
   private onOpen(t: vscode.Terminal): void {
     const now = Date.now();
