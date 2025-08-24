@@ -46,3 +46,12 @@
   side-by-side = true
   line-numbers = true
   syntax-theme = base16-256
+
+[pager]
+  diff = true
+  show = true
+  log = true
+[pager]
+	diff = true
+	show = true
+	log = true
