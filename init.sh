@@ -70,7 +70,7 @@ if command -v code >/dev/null 2>&1; then
       while read -r ext; do
         if [ -n "$ext" ] && [[ ! "$ext" =~ ^[[:space:]]*# ]]; then
           echo "  Installing: $ext"
-          code --install-extension "$ext" --force >/dev/null 2>&1
+          code --install-extension "$ext" --force
         fi
       done <vscode_extensions.txt
       echo "✅ VS Code extensions installed"

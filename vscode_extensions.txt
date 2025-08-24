@@ -1,9 +1,9 @@
 vscodevim.vim
+dautroc.yazi-vscode
+ryuta46.multi-command
 jeff-hykin.better-cpp-syntax
 ms-vscode.cpptools-themes
 esbenp.prettier-vscode
 llvm-vs-code-extensions.vscode-clangd
 chaitanyashahare.lazygit
 ms-vscode-remote.remote-ssh
-ryuta46.multi-command
-dautroc.yazi-vscode
