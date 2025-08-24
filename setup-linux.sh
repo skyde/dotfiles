@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Linux setup script
-echo "🐧 Running Linux setup..."
+# Linux-specific setup script
+echo "🐧 Running Linux-specific setup..."
 
 # Use sudo only if not running as root
 if [ "$(id -u)" -eq 0 ]; then
@@ -17,36 +17,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Source helper functions
 source "${SCRIPT_DIR}/lib/run_ensure.sh"
 
-# Read common apps from packages.txt
-if [ -f "${SCRIPT_DIR}/packages.txt" ]; then
-    COMMON_APPS=($(grep -v '^[[:space:]]*$' "${SCRIPT_DIR}/packages.txt" | grep -v '^[[:space:]]*#' | tr '\n' ' '))
-else
-    COMMON_APPS=()
-fi
+echo "Installing Linux-specific packages..."
 
-echo "Installing packages using apt..."
-
-# Map package names from packages.txt to their apt package names when they differ
-declare -A APT_PACKAGE_MAP=(
-    [fd]=fd-find
-    [delta]=git-delta
-    [nvim]=neovim
-)
-
-for pkg in "${COMMON_APPS[@]}"; do
-    apt_pkg="${APT_PACKAGE_MAP[$pkg]:-$pkg}"
-    if apt-cache show "$apt_pkg" >/dev/null 2>&1; then
-        ensure_apt "$apt_pkg"
-    else
-        echo "Skipping unavailable package: $apt_pkg"
-    fi
-done
-
+# Install zsh shell enhancements and fonts not in packages.txt
 ensure_apt zsh
 ensure_apt zsh-autosuggestions
 ensure_apt zsh-syntax-highlighting
 ensure_apt fonts-jetbrains-mono
 
+# Change default shell to zsh
 if have zsh; then
     ZSH_PATH=$(command -v zsh)
     TARGET_USER="${SUDO_USER:-${USER:-$(id -un)}}"
@@ -62,4 +41,4 @@ if have zsh; then
     fi
 fi
 
-echo "✅ Linux setup complete using apt!"
+echo "✅ Linux-specific setup complete!"
