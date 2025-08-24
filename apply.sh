@@ -33,7 +33,11 @@ case "$(uname)" in
         ;;
     Linux)
         echo "🐧 Linux detected"
-        stow_package linux "$@"
+        # Linux uses common package for VS Code (already stowed above)
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        echo "🪟 Windows detected"
+        stow_package windows "$@"
         ;;
     *)
         echo "ℹ️ Unknown platform - common package only"
