@@ -607,68 +607,48 @@
         "search.action.openPreviousSearchResults"
       ]
     },
+    // <leader> s g  -> Search Grep in an editor tab, return to file when it closes
     {
-      "before": [
-        "<leader>",
-        "s",
-        "g"
-      ],
+      "before": ["<leader>", "s", "g"],
       "commands": [
-        {
-          "command": "workbench.action.terminal.newWithProfile",
-          "args": { "profileName": "Search Grep" }
-        }
+        { "command": "overlayTerminals.openProfile",
+          "args": { "profileName": "Search Grep", "location": "editor" } }
       ]
     },
+
+    // <leader> g g  -> Lazy Git in an editor tab, return on close
     {
-      "before": [
-        "<leader>",
-        "g",
-        "g"
-      ],
+      "before": ["<leader>", "g", "g"],
       "commands": [
-        {
-          "command": "workbench.action.terminal.newWithProfile",
-          "args": { "profileName": "Lazy Git" }
-        }
+        { "command": "overlayTerminals.openProfile",
+          "args": { "profileName": "Lazy Git", "location": "editor" } }
       ]
     },
-    // File search and buffers
+
+    // <leader> <leader>  -> Find Files in an editor tab, return on close
     {
-      "before": [
-        "<leader>",
-        "<leader>"
-      ],
+      "before": ["<leader>", "<leader>"],
       "commands": [
-        {
-          "command": "workbench.action.terminal.newWithProfile",
-          "args": { "profileName": "Find Files" }
-        }
+        { "command": "overlayTerminals.openProfile",
+          "args": { "profileName": "Find Files", "location": "editor" } }
       ]
     },
+
+    // <leader> f f  -> Find Files. You no longer need the manual "openPrevious..." hop
     {
-      "before": [
-        "<leader>",
-        "f",
-        "f"
-      ],
+      "before": ["<leader>", "f", "f"],
       "commands": [
-        {
-          "command": "workbench.action.terminal.newWithProfile",
-          "args": { "profileName": "Find Files" }
-        }
+        { "command": "overlayTerminals.openProfile",
+          "args": { "profileName": "Find Files", "location": "editor" } }
       ]
     },
+
+    // <leader> /  -> Search Grep in an editor tab, return on close
     {
-      "before": [
-        "<leader>",
-        "/"
-      ],
+      "before": ["<leader>", "/"],
       "commands": [
-        {
-          "command": "workbench.action.terminal.newWithProfile",
-          "args": { "profileName": "Search Grep" }
-        }
+        { "command": "overlayTerminals.openProfile",
+          "args": { "profileName": "Search Grep", "location": "editor" } }
       ]
     },
     {
