@@ -19,7 +19,40 @@ stow_package() {
     shift
     [ -d "$pkg" ] || return 0
     echo "📦 Installing $pkg package"
-    stow --target="$HOME" --verbose "$@" "$pkg"
+    stow --target="$HOME" --verbose=1 "$@" "$pkg"
+
+    # Check only the directories that this package actually affects
+    # Skip problematic directories like Library which can have massive cache data
+    if [ -d "$pkg" ]; then
+        echo "🔍 Checking stowed files for $pkg package..."
+        for item in "$pkg"/*; do
+            if [ -e "$item" ]; then
+                item_name=$(basename "$item")
+                target_path="$HOME/$item_name"
+                
+                # Skip Library and other problematic directories
+                case "$item_name" in
+                    Library|Caches|Cache|.cache)
+                        echo "  Skipping $item_name (too large/problematic)"
+                        continue
+                        ;;
+                esac
+                
+                if [ -e "$target_path" ]; then
+                    echo "  Checking $target_path..."
+                    # Only run chkstow on directories, files are handled by the directory check
+                    if [ -d "$target_path" ]; then
+                        # Broken symlinks
+                        chkstow --badlinks -t "$target_path" 2>/dev/null || true
+                        # Non-symlink "alien" files (things Stow doesn't manage) in the target
+                        chkstow --aliens -t "$target_path" 2>/dev/null | head -20 || true
+                        # What package owns each link
+                        chkstow --list -t "$target_path" 2>/dev/null | head -10 || true
+                    fi
+                fi
+            fi
+        done
+    fi
 }
 
 # Stow common package (always)
