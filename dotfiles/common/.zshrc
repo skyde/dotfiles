@@ -185,7 +185,7 @@ lfcd() {
 }
 alias lf='lfcd'
 
-alias tree='eza --tree --level=1 --icons --group-directories-first'
+alias tree='eza --tree --icons --group-directories-first'
 
 # Load machine-specific overrides, if present
 # shellcheck disable=SC1090
