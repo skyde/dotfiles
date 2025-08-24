@@ -18,6 +18,9 @@ cask_app_paths() {
         betterdisplay)
             echo "/Applications/BetterDisplay.app" "$HOME/Applications/BetterDisplay.app"
             ;;
+        kitty)
+            echo "/Applications/kitty.app" "$HOME/Applications/kitty.app"
+            ;;
         *)
             echo "" ""
             ;;
