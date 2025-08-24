@@ -1,19 +1,15 @@
 git:
   paging:
     colorArg: always
-    pager: delta --dark --paging=never
+    pager: delta --dark --paging=never --line-numbers --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
+  parseEmoji: false
 
-# Do not pause after closing external tools like merge tools
 promptToReturnFromSubprocess: false
 promptToOpenMergeTool: false
 
 os:
   editPreset: nvim
-
-  # Make "open" (o) go to VS Code
   open: "code --reuse-window {{filename}}"
-
-  # Open the current repo/folder in Code when the action is triggered
   openDirInEditor: "code --reuse-window {{dir}}"
 
 gui:
