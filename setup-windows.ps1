@@ -1,0 +1,132 @@
+# Windows setup script
+# Requires PowerShell 7+
+
+Write-Host "🪟 Running Windows setup..."
+
+# Get the directory where this script is located
+$SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+# Build $COMMON_APPS array correctly from file lines
+$packagesFile = Join-Path $SCRIPT_DIR "packages.txt"
+if (Test-Path $packagesFile) {
+    $COMMON_APPS = Get-Content $packagesFile | Where-Object { $_.Trim() -ne "" -and -not $_.Trim().StartsWith("#") }
+} else {
+    $COMMON_APPS = @()
+}
+
+Write-Host "COMMON_APPS:"
+$COMMON_APPS | ForEach-Object { Write-Host $_ }
+
+Write-Host 'Running Windows setup...'
+
+function Test-Truthy($val) {
+    return $val -match '^(1|true|TRUE|True|yes|YES|Yes|on|ON|On)$'
+}
+
+function Confirm-Change($verb, $name, $present) {
+    if ($present -eq 1) { 
+        # Auto-update without prompting
+        return $true 
+    }
+    # Prompt for installs
+    $response = Read-Host "${verb} ${name}? [y/N]"
+    return $response -match '^(y|Y)(es)?$'
+}
+
+function Ensure-Winget($name, $id) {
+    $present = winget list --id $id --exact 2>$null | Select-String $id
+    if ($present) {
+        if (Confirm-Change 'Update' $name 1) {
+            winget upgrade --id $id --exact --accept-source-agreements --accept-package-agreements | Out-Null
+        }
+    } else {
+        if (Confirm-Change 'Install' $name 0) {
+            winget install --id $id --exact --accept-source-agreements --accept-package-agreements | Out-Null
+        }
+    }
+}
+
+if (Get-Command winget -ErrorAction SilentlyContinue) {
+    # Map app names to winget IDs
+    $wingetAppMap = @{
+        'git'      = 'Git.Git'
+        'ripgrep'  = 'BurntSushi.ripgrep.MSVC'
+        'fd'       = 'sharkdp.fd'
+        'fzf'      = 'junegunn.fzf'
+        'bat'      = 'sharkdp.bat'
+        'delta'    = 'dandavison.delta'
+        'eza'      = 'eza-community.eza'
+        'less'     = 'jftuga.less'
+        'llvm'     = 'LLVM.LLVM'
+        'nvim'     = 'Neovim.Neovim'
+        'starship' = 'Starship.Starship'
+        'zoxide'   = 'ajeetdsouza.zoxide'
+        'lf'       = 'gokcehan.lf'
+        'lazygit'  = 'JesseDuffield.lazygit'
+    }
+    foreach ($pkg in $COMMON_APPS) {
+        if ($wingetAppMap.ContainsKey($pkg)) {
+            Ensure-Winget $pkg $wingetAppMap[$pkg]
+        } else {
+            Write-Host "No winget mapping for $pkg, skipping."
+        }
+    }
+} else {
+    Write-Warning "winget is not available. Skipping winget app installs."
+}
+# Install fonts (Windows-specific: JetBrainsMono-NF)
+$fontName = "JetBrainsMono Nerd Font"
+$fontInstalled = (Get-ChildItem -Path "$env:WINDIR\Fonts" -Include "*JetBrainsMono*NF*.ttf" -Recurse -ErrorAction SilentlyContinue | Measure-Object).Count -gt 0
+if (-not $fontInstalled) {
+    Write-Warning "JetBrainsMono-NF font is not installed. Please install it manually from https://github.com/ryanoasis/nerd-fonts/releases."
+} else {
+    Write-Host "JetBrainsMono-NF font is already installed."
+}
+# Ensure Yazi uses Git's file.exe for MIME detection
+$gitFile = "$env:ProgramFiles\Git\usr\bin\file.exe"
+if (Test-Path $gitFile) {
+    $current = [System.Environment]::GetEnvironmentVariable('YAZI_FILE_ONE', 'User')
+    if ($current -ne $gitFile) {
+        [System.Environment]::SetEnvironmentVariable('YAZI_FILE_ONE', $gitFile, 'User')
+        Write-Host "Set YAZI_FILE_ONE to $gitFile"
+    } else {
+        Write-Host "YAZI_FILE_ONE is already set to $gitFile"
+    }
+    $env:YAZI_FILE_ONE = $gitFile
+} else {
+    Write-Warning "file.exe not found at $gitFile. Install Git for Windows."
+}
+# Ensure LLVM (clang) is in PATH for C compiler support
+$llvmBin = "$env:ProgramFiles\LLVM\bin"
+if (Test-Path "$llvmBin\clang.exe") {
+    $userPath = [System.Environment]::GetEnvironmentVariable('PATH', 'User')
+    if (-not ($userPath -split ';' | Where-Object { $_ -eq $llvmBin })) {
+        [System.Environment]::SetEnvironmentVariable('PATH', "$userPath;$llvmBin", 'User')
+        Write-Host "Added LLVM to user PATH. You may need to restart your terminal or log out/in for this to take effect."
+    } else {
+        Write-Host "LLVM is already in your user PATH."
+    }
+    if (-not ($env:PATH -split ';' | Where-Object { $_ -eq $llvmBin })) {
+        $env:PATH += ";$llvmBin"
+        Write-Host "Temporarily added LLVM to PATH for this session."
+    }
+    $clangVersion = & "$llvmBin\clang.exe" --version
+    Write-Host "clang is available: $clangVersion"
+} else {
+    Write-Warning "LLVM is installed but clang.exe was not found in $llvmBin. You may need to reinstall or check your LLVM installation."
+}
+
+# Configure key repeat behavior for Vim and general usage
+Write-Host "Setting Windows key repeat registry values..."
+try {
+    $keyboardRegPath = "HKCU:\Control Panel\Keyboard"
+    # Shorter delay before key repeat starts (0 = shortest)
+    Set-ItemProperty -Path $keyboardRegPath -Name "KeyboardDelay" -Value "0"
+    # Faster repeat rate (31 = fastest)
+    Set-ItemProperty -Path $keyboardRegPath -Name "KeyboardSpeed" -Value "31"
+    Write-Host "Key repeat settings applied. You may need to sign out and back in for changes to take effect."
+} catch {
+    Write-Warning "Failed to update key repeat settings: $_"
+}
+
+Write-Host "✅ Windows setup complete!"
