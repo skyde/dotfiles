@@ -19,7 +19,9 @@ stow_package() {
     shift
     [ -d "$pkg" ] || return 0
     echo "📦 Installing $pkg package"
-    stow --target="$HOME" --verbose=1 "$@" "$pkg"
+    
+    # Use restow to handle any conflicts or missing symlinks
+    stow --target="$HOME" --restow --verbose=1 "$@" "$pkg"
 
     # Check only the directories that this package actually affects
     # Skip problematic directories like Library which can have massive cache data
