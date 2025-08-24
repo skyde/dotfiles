@@ -93,4 +93,38 @@ if [ -f "install-yazi.sh" ]; then
   fi
 fi
 
+# Run platform-specific initialization
+platform_init=$(get_user_confirmation "Run platform-specific setup? (y/N): ")
+if [[ "$platform_init" =~ ^[Yy] ]]; then
+  echo "Running platform-specific initialization..."
+  case "$(uname)" in
+    Darwin)
+      if [ -f "init-macos.sh" ]; then
+        echo "Running macOS-specific setup..."
+        ./init-macos.sh
+      else
+        echo "init-macos.sh not found, skipping macOS setup"
+      fi
+      ;;
+    Linux)
+      if [ -f "init-linux.sh" ]; then
+        echo "Running Linux-specific setup..."
+        ./init-linux.sh
+      else
+        echo "init-linux.sh not found, skipping Linux setup"
+      fi
+      ;;
+    MINGW* | MSYS* | CYGWIN*)
+      if [ -f "init-windows.ps1" ]; then
+        echo "Running Windows-specific setup..."
+        powershell.exe -ExecutionPolicy Bypass -File "./init-windows.ps1"
+      else
+        echo "init-windows.ps1 not found, skipping Windows setup"
+      fi
+      ;;
+  esac
+else
+  echo "Skipping platform-specific setup"
+fi
+
 echo "Done! 🎉"
