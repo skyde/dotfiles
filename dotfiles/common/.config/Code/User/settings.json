@@ -1017,7 +1017,7 @@
         {
           "command": "workbench.action.terminal.sendSequence",
           "args": {
-            "text": "git log -p --diff-algorithm=histogram --date=short \"${file}\"\u000D"
+            "text": "if [[ \"${file}\" =~ ^[a-z-]+: ]]; then echo \"Cannot run git log on URI scheme file: ${file}\"; else git log -p --diff-algorithm=histogram --date=short \"${file}\" 2>/dev/null || echo \"File not in git repository or not found: ${file}\"; fi\u000D"
           }
         },
         "workbench.action.terminal.moveToEditor",
