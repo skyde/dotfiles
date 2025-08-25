@@ -81,7 +81,7 @@
     {
       "label": "FZF Ripgrep",
       "type": "shell",
-      "command": "set +o pipefail; fzf",
+      "command": "fzf",
       "args": [
         "--reverse",
         "--ansi",
@@ -96,13 +96,13 @@
         "--column",
         "--color=always",
         "--smart-case",
-        "{q} || true\"",
+        "{q}||true\"",
         "--bind",
         "\"change:reload:rg",
         "--column",
         "--color=always",
         "--smart-case",
-        "{q} || true\"",
+        "{q}||true\"",
         "--delimiter",
         ":",
         "--preview",
@@ -119,12 +119,6 @@
         "--bind",
         "'esc:clear-query'"
       ],
-      "options": {
-        "shell": {
-          "executable": "bash",
-          "args": ["-lc"]
-        }
-      },
       "presentation": {
         "echo": false,
         "clear": true,
