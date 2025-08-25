@@ -58,6 +58,11 @@ defaults write -g InitialKeyRepeat -int 15
 defaults write -g KeyRepeat -int 2
 echo "Key repeat settings applied. You may need to log out and back in for changes to take effect."
 
+# Scroll direction: invert (disable Apple's 'natural' scrolling)
+echo "Setting scroll direction (inverted; natural scrolling OFF)..."
+defaults write -g com.apple.swipescrolldirection -bool false
+echo "Scroll direction set to inverted. You may need to log out and back in for changes to take full effect."
+
 # Disable system audio feedback
 defaults write -g com.apple.sound.beep.volume -float 0
 defaults write -g com.apple.sound.uiaudio.enabled -bool false
