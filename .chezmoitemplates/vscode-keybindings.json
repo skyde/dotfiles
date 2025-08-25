@@ -1,4 +1,3 @@
-
 // Place your key bindings in this file to override the defaults
 [
   // Disable line move shortcuts
@@ -479,6 +478,16 @@
     "key": "d",
     "when": "filesExplorerFocus && !inputFocus"
   },
+  {
+    "key": "a",
+    "command": "runCommands",
+    "when": "filesExplorerFocus && !inputFocus",
+    "args": {
+      "commands": [
+        "explorer.newFile"
+      ]
+    }
+  },
   // Diff
   {
     // Goto next change
@@ -796,19 +805,13 @@
   { "key": "ctrl+3", "command": "workbench.action.focusThirdEditorGroup" },
   // FZF search tools
   {
-    "key": "ctrl+alt+f",
-    "command": "workbench.action.terminal.newWithProfile",
-    "args": { "profileName": "Find Files", "location": "editor" }
+    "key": "f8",
+    "command": "workbench.action.debug.stop",
+    "when": "inDebugMode && !focusedSessionIsAttach"
   },
   {
-    "key": "ctrl+alt+shift+f",
-    "command": "workbench.action.terminal.newWithProfile",
-    "args": { "profileName": "Search Grep", "location": "editor" }
-  },
-  {
-    "key": "ctrl+alt+g",
-    "command": "workbench.action.terminal.newWithProfile",
-    "args": { "profileName": "Lazy Git", "location": "editor" }
+    "key": "f8",
+    "command": "-editor.action.marker.nextInFiles",
+    "when": "editorFocus"
   }
 ]
-
