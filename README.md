@@ -13,7 +13,7 @@ dotfiles/
 
 ## How Stow Works
 
-GNU Stow creates symlinks from your home directory to the configuration files in this repository:
+GNU Stow creates symlinks from your home directory to the configuration files in this repository. This setup is configured to link individual files rather than entire directories for better granularity:
 
 - **Package**: Top-level directories in `dotfiles/` (`common`, `mac`, `windows`)
 - **Target**: Your home directory (`~` or `$HOME`)
@@ -21,13 +21,17 @@ GNU Stow creates symlinks from your home directory to the configuration files in
 
 ### Example
 
-When you run `stow common` from `dotfiles/`, symlinks are created:
+When you run `stow --no-folding common` from `dotfiles/`, individual file symlinks are created:
 
 ```text
 ~/.bashrc → ~/dotfiles/dotfiles/common/.bashrc
 ~/.zshrc → ~/dotfiles/dotfiles/common/.zshrc
 ~/.tmux.conf → ~/dotfiles/dotfiles/common/.tmux.conf
+~/.config/git/config → ~/dotfiles/dotfiles/common/.config/git/config
+~/.config/kitty/kitty.conf → ~/dotfiles/dotfiles/common/.config/kitty/kitty.conf
 ```
+
+This approach links individual files rather than entire directories, which means you can have some files from your dotfiles and some local files in the same directory (like `~/.config/`).
 
 ## Quick Setup
 
@@ -99,14 +103,14 @@ You can also manage packages manually:
 ```sh
 cd ~/dotfiles/dotfiles
 
-# Install shared configs
-stow common
+# Install shared configs (links individual files, not directories)
+stow --no-folding common
 
 # Install macOS-specific configs (on Mac)
-stow mac
+stow --no-folding mac
 
 # Install Windows-specific configs (on Windows)
-stow windows
+stow --no-folding windows
 ```
 
 ### Uninstalling Packages
@@ -115,7 +119,7 @@ stow windows
 cd ~/dotfiles/dotfiles
 
 # Remove symlinks for a package
-stow -D common
+stow -D --no-folding common
 ```
 
 ### Restowing (Update Existing)
@@ -128,7 +132,7 @@ cd ~/dotfiles
 ./apply.sh --no --restow   # Preview restow without making changes
 ```
 
-To restow a single package manually, run `stow -R <package>` from the `dotfiles` directory.
+To restow a single package manually, run `stow -R --no-folding <package>` from the `dotfiles` directory.
 
 ## Platform-Specific Instructions
 
@@ -169,7 +173,7 @@ The PowerShell script will:
 mkdir -p dotfiles/common/.config/mytool
 echo "config=value" > dotfiles/common/.config/mytool/config.toml
 cd dotfiles
-stow -R common
+stow -R --no-folding common
 ```
 
 ### Handling Conflicts

@@ -25,7 +25,8 @@ function Invoke-StowPackage {
     if (-not (Test-Path $Package)) { return }
 
     Write-Host "📦 Installing $Package package"
-    & stow --target=$env:USERPROFILE --verbose @ExtraArgs $Package
+    # --no-folding ensures individual files are linked rather than entire directories
+    & stow --target=$env:USERPROFILE --verbose --no-folding @ExtraArgs $Package
 }
 
 try {
