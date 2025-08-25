@@ -32,7 +32,6 @@ map f search
 # Pager for viewing files with syntax highlighting
 map s $bat --paging=always --style=numbers,changes --color=always --decorations=always "$f"
 # map e nvim -- $fx
-map gm cd ~/.local/share/chezmoi
 map go cd ~/Documents
 map gd cd ~/Downloads
 map gp cd ~/Projects
