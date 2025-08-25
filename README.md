@@ -222,6 +222,13 @@ I use the 'Alt Tab' program for easy window switching.
 
 Activate with footpedal + r. Navigate with arrow keys and space to select.
 
+Settings are stored in `dotfiles/mac/Library/Preferences/com.lwouis.alt-tab-macos.plist` and include:
+
+- Custom appearance size and alignment
+- Arrow keys enabled for navigation
+- UI elements hidden (badges, colored circles, status icons, menubar icon)
+- Control key as hold shortcut
+
 ## Hammerspoon
 
 Spotlight opens when the Cmd key is quickly tapped by itself. A short delay prevents accidental triggers.
@@ -229,6 +236,11 @@ Spotlight opens when the Cmd key is quickly tapped by itself. A short delay prev
 ## Fluor
 
 Automatically switches mode of fn keys per program. Important as keyboard macros use F... keys.
+
+Settings are stored in `dotfiles/mac/Library/Preferences/com.pyrolyse.Fluor.plist` and include:
+
+- App-specific rules for VS Code and kitty (behavior mode 2)
+- Notification preferences
 
 ## Better Display
 
