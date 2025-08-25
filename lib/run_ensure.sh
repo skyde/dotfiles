@@ -12,9 +12,10 @@ _truthy() {
 have() { command -v "$1" >/dev/null 2>&1; }
 
 # Optional: source cask->app mapping if available
-if [ -n "${CHEZMOI_SOURCE_DIR:-}" ] && [ -f "${CHEZMOI_SOURCE_DIR}/lib/cask_app_map.sh" ]; then
-  # shellcheck disable=SC1090,SC1091
-  source "${CHEZMOI_SOURCE_DIR}/lib/cask_app_map.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "${SCRIPT_DIR}/cask_app_map.sh" ]; then
+  # shellcheck disable=SC1091
+  source "${SCRIPT_DIR}/cask_app_map.sh"
 fi
 
 is_tty() { [ -t 0 ] && [ -t 1 ]; }

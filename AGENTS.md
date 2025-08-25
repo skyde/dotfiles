@@ -32,7 +32,7 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 Optional helpers present but not wired into the local scripts:
 
-- `lib/run_ensure.sh` and `lib/cask_app_map.sh` are designed to be sourced in a chezmoi environment via `CHEZMOI_SOURCE_DIR`. They are not invoked by `init.sh`/`apply.sh` in this repo. Leave them as-is if you use chezmoi elsewhere; otherwise, they can be ignored.
+- `lib/run_ensure.sh` and `lib/cask_app_map.sh` are optional utilities for package management. They are not invoked by `init.sh`/`apply.sh` in this repo but can be sourced manually if desired.
 
 Avoid committing secrets or personal data.
 
