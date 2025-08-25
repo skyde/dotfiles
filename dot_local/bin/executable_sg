@@ -97,6 +97,7 @@ FZF_ARGS=(
   --bind "start:reload:${RELOAD_CMD}"
   --bind "change:reload:${RELOAD_CMD}"
   --prompt='> '
+  --height=100%
   --margin=1,2           # float-like feel
   --header='' # keep top clean just like LazyVim Grep
   --border --layout=reverse

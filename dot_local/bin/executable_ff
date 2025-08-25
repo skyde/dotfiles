@@ -63,6 +63,7 @@ while true; do
     | decorate \
     | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" \
       fzf --read0 --ansi \
+          --height=100% \
           --prompt="$prompt" \
           --delimiter='\t' \
           --with-nth=1,2 \
