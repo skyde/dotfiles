@@ -306,15 +306,12 @@
     "command": "runCommands",
     "when": "terminalFocus",
     "args": {
-      "commands": ["workbench.action.terminal.kill"]
-    }
-  },
-  {
-    "key": "cmd+d",
-    "command": "runCommands",
-    "when": "terminalFocus",
-    "args": {
-      "commands": ["workbench.action.terminal.kill"]
+      "commands": [
+        "workbench.action.terminal.kill",
+        // Closing a terminal can 'open' the next one
+        // In practice this means that custom state that was set on open of the previous terminal is cleared
+        "task.custom.openTerminal"
+      ]
     }
   },
   // File explorer & Git
