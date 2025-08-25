@@ -81,9 +81,9 @@ This directory contains a comprehensive GitHub Actions CI/CD pipeline for testin
 - ✅ **Feature Parity:** Automated verification between platforms
 
 ### Package Coverage
-- ✅ **Common Packages:** shell, devtools, nvim, Code, kitty, lf
-- ✅ **macOS Packages:** hammerspoon
-- ✅ **Windows Packages:** Documents, vsvim, visual_studio, kinesis-advantage2, savant-elite2
+- ✅ **Common Package:** `dotfiles/common` (shell configs, editor settings, etc.)
+- ✅ **macOS Package:** `dotfiles/mac` (e.g., Hammerspoon)
+- ✅ **Windows Package:** `dotfiles/windows` (Documents, vsvim, device configs, etc.)
 
 ### Test Scenarios
 - ✅ **Fresh Installation:** Clean environment setup

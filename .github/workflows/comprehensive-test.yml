@@ -47,18 +47,9 @@ jobs:
 
           # Validate package structure
           echo "📦 Package validation:"
-          common_count=$(find dotfiles/common -mindepth 1 -maxdepth 1 -type d | wc -l)
-          echo "  Common packages: $common_count"
-          test $common_count -ge 6 || { echo "❌ Expected at least 6 common packages"; exit 1; }
-
-          mac_count=$(find dotfiles/mac -mindepth 1 -maxdepth 1 -type d | wc -l)
-          echo "  macOS packages: $mac_count"
-          test $mac_count -ge 1 || { echo "❌ Expected at least 1 macOS package"; exit 1; }
-
-          windows_count=$(find dotfiles/windows -mindepth 1 -maxdepth 1 -type d | wc -l)
-          echo "  Windows packages: $windows_count"
-          test $windows_count -ge 5 || { echo "❌ Expected at least 5 Windows packages"; exit 1; }
-
+          test -f "dotfiles/common/.bashrc" || { echo "❌ dotfiles/common/.bashrc missing"; exit 1; }
+          test -d "dotfiles/mac/Library" || { echo "❌ dotfiles/mac/Library missing"; exit 1; }
+          test -f "dotfiles/windows/.vsvimrc" || { echo "❌ dotfiles/windows/.vsvimrc missing"; exit 1; }
           echo "✅ Package structure validation passed"
 
       - name: Validate configuration files
@@ -66,10 +57,10 @@ jobs:
           echo "📄 Validating configuration files..."
 
           # Check essential config files exist
-          test -f "dotfiles/common/shell/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
-          test -f "dotfiles/common/shell/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
-          test -f "dotfiles/common/shell/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
-          test -f "dotfiles/common/devtools/.config/git/config" || { echo "❌ git config missing"; exit 1; }
+          test -f "dotfiles/common/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
+          test -f "dotfiles/common/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
+          test -f "dotfiles/common/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
+          test -f "dotfiles/common/.config/git/config" || { echo "❌ git config missing"; exit 1; }
           echo "✅ Essential config files present"
 
           # Validate shell script syntax
@@ -81,7 +72,7 @@ jobs:
 
           # Validate shell config syntax
           echo "🔍 Validating shell configuration syntax..."
-          bash -n dotfiles/common/shell/.bashrc || { echo "❌ .bashrc has syntax errors"; exit 1; }
+          bash -n dotfiles/common/.bashrc || { echo "❌ .bashrc has syntax errors"; exit 1; }
           echo "✅ Shell configurations have valid syntax"
 
   # Multi-platform testing matrix
@@ -235,13 +226,13 @@ jobs:
 
           echo "Home directory: $home_dir"
 
-          # Check common packages that should exist on all platforms
-          echo "Checking for common package directories..."
-          test -d "$home_dir/shell" || { echo "❌ shell package directory missing"; exit 1; }
-          test -d "$home_dir/devtools" || { echo "❌ devtools package directory missing"; exit 1; }
-          test -d "$home_dir/nvim" || { echo "❌ nvim package directory missing"; exit 1; }
-          test -d "$home_dir/Code" || { echo "❌ Code package directory missing"; exit 1; }
-          
+          # Check for expected configuration files
+          echo "Checking for expected configuration files..."
+          test -f "$home_dir/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
+          test -f "$home_dir/.config/git/config" || { echo "❌ git config missing"; exit 1; }
+          test -d "$home_dir/.config/nvim" || { echo "❌ nvim config missing"; exit 1; }
+          test -f "$home_dir/.config/Code/User/settings.json" || { echo "❌ VS Code config missing"; exit 1; }
+
           # Count total symlinks for verification
           if [ "${{ matrix.platform }}" = "windows" ]; then
             # On Windows, count junction points and symlinks
@@ -270,21 +261,21 @@ jobs:
           fi
 
           # Test shell configurations
-          test -f "$home_dir/shell/.bashrc" || { echo "❌ .bashrc not accessible"; exit 1; }
-          test -f "$home_dir/shell/.zshrc" || { echo "❌ .zshrc not accessible"; exit 1; }
-          test -f "$home_dir/shell/.tmux.conf" || { echo "❌ .tmux.conf not accessible"; exit 1; }
+          test -f "$home_dir/.bashrc" || { echo "❌ .bashrc not accessible"; exit 1; }
+          test -f "$home_dir/.zshrc" || { echo "❌ .zshrc not accessible"; exit 1; }
+          test -f "$home_dir/.tmux.conf" || { echo "❌ .tmux.conf not accessible"; exit 1; }
           echo "✅ Shell configs accessible"
 
           # Test git configuration
-          test -f "$home_dir/devtools/.config/git/config" || { echo "❌ git config not accessible"; exit 1; }
+          test -f "$home_dir/.config/git/config" || { echo "❌ git config not accessible"; exit 1; }
           echo "✅ Git config accessible"
 
           # Test VS Code configuration
-          test -f "$home_dir/Code/.config/Code/User/settings.json" || { echo "❌ VS Code config not accessible"; exit 1; }
+          test -f "$home_dir/.config/Code/User/settings.json" || { echo "❌ VS Code config not accessible"; exit 1; }
           echo "✅ VS Code config accessible"
 
           # Test Neovim configuration
-          test -d "$home_dir/nvim/.config/nvim" || { echo "❌ Neovim config not accessible"; exit 1; }
+          test -d "$home_dir/.config/nvim" || { echo "❌ Neovim config not accessible"; exit 1; }
           echo "✅ Neovim config accessible"
         shell: bash
 
@@ -340,16 +331,16 @@ jobs:
           fi
 
           # Test bash config syntax
-          bash -n "$home_dir/shell/.bashrc" || { echo "❌ .bashrc has syntax errors"; exit 1; }
+          bash -n "$home_dir/.bashrc" || { echo "❌ .bashrc has syntax errors"; exit 1; }
           echo "✅ Bash config syntax valid"
 
           # Test git config validity
-          git config --file "$home_dir/devtools/.config/git/config" --list > /dev/null || { echo "❌ Git config invalid"; exit 1; }
+          git config --file "$home_dir/.config/git/config" --list > /dev/null || { echo "❌ Git config invalid"; exit 1; }
           echo "✅ Git config valid"
 
           # Test if zsh config can be parsed (if zsh available)
           if command -v zsh > /dev/null 2>&1; then
-            zsh -n "$home_dir/shell/.zshrc" 2>/dev/null || echo "⚠️ Zsh config has warnings (may be expected)"
+            zsh -n "$home_dir/.zshrc" 2>/dev/null || echo "⚠️ Zsh config has warnings (may be expected)"
             echo "✅ Zsh config tested"
           else
             echo "ℹ️ Zsh not available for testing"
@@ -371,9 +362,9 @@ jobs:
             
             # Test individual package operations  
             cd dotfiles
-            stow --target=$HOME --verbose shell
-            stow --target=$HOME --delete shell  
-            stow --target=$HOME shell
+            stow --target=$HOME --verbose common
+            stow --target=$HOME --delete common
+            stow --target=$HOME common
             echo "✅ Individual package operations successful"
           fi
         shell: bash
@@ -383,7 +374,7 @@ jobs:
           echo "🔄 Testing update functionality..."
 
           # Create a test change
-          echo "# Test comment" >> dotfiles/common/shell/.bashrc
+          echo "# Test comment" >> dotfiles/common/.bashrc
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell update script..."
@@ -431,18 +422,19 @@ jobs:
         run: |
           echo "🌐 Testing cross-platform compatibility..."
 
-          # Test package counts match documentation
-          common_actual=$(find dotfiles/common -mindepth 1 -maxdepth 1 -type d | wc -l)
-          echo "Common packages: $common_actual"
+          # Display entry counts for reference
+          common_actual=$(find dotfiles/common -mindepth 1 -maxdepth 1 | wc -l)
+          echo "Common entries: $common_actual"
 
-          mac_actual=$(find dotfiles/mac -mindepth 1 -maxdepth 1 -type d | wc -l)
-          echo "macOS packages: $mac_actual"
+          mac_actual=$(find dotfiles/mac -mindepth 1 -maxdepth 1 | wc -l)
+          echo "macOS entries: $mac_actual"
 
-          windows_actual=$(find dotfiles/windows -mindepth 1 -maxdepth 1 -type d | wc -l)
-          echo "Windows packages: $windows_actual"
+          windows_actual=$(find dotfiles/windows -mindepth 1 -maxdepth 1 | wc -l)
+          echo "Windows entries: $windows_actual"
 
-          # Verify README accuracy
-          grep -q "$common_actual packages" README.md || echo "⚠️ README package count may need updating"
+          if ! grep -q 'dotfiles/common' README.md; then
+            echo "⚠️ README structure reference may need updating"
+          fi
 
           echo "✅ Cross-platform compatibility verified"
 

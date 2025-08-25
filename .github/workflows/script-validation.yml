@@ -136,15 +136,15 @@ jobs:
         run: |
           echo "📚 Checking documentation accuracy..."
 
-          # Count actual packages
-          common_count=$(find dotfiles/common -mindepth 1 -maxdepth 1 -type d | wc -l)
-          mac_count=$(find dotfiles/mac -mindepth 1 -maxdepth 1 -type d | wc -l)
-          windows_count=$(find dotfiles/windows -mindepth 1 -maxdepth 1 -type d | wc -l)
-
-          echo "Actual package counts:"
-          echo "  Common: $common_count"
-          echo "  macOS: $mac_count"
-          echo "  Windows: $windows_count"
+          # Verify expected package directories exist
+          for dir in dotfiles/common dotfiles/mac dotfiles/windows; do
+            if [ -d "$dir" ]; then
+              echo "  Found $dir"
+            else
+              echo "❌ Missing expected directory: $dir"
+              exit 1
+            fi
+          done
 
           # Check VS Code extensions count
           vscode_count=$(grep -v '^#' vscode_extensions.txt | grep -v '^$' | wc -l)

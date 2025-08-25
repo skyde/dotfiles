@@ -116,13 +116,13 @@ jobs:
             AUTO_INSTALL=0 ./init.sh > /dev/null 2>&1
             
             # Verify basic functionality
-            test -f "$HOME/shell/.bashrc" || { echo "❌ Install failed on cycle $i"; exit 1; }
-            
+            test -f "$HOME/.bashrc" || { echo "❌ Install failed on cycle $i"; exit 1; }
+
             # Uninstall
             ./apply.sh --delete > /dev/null 2>&1
-            
+
             # Verify cleanup
-            test ! -L "$HOME/shell" || { echo "❌ Cleanup failed on cycle $i"; exit 1; }
+            test ! -e "$HOME/.bashrc" || { echo "❌ Cleanup failed on cycle $i"; exit 1; }
           done
 
           echo "✅ Rapid cycle test completed"
@@ -187,7 +187,7 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Verify installation worked
-          test -f "$HOME/shell/.bashrc" || { echo "❌ Offline installation failed"; exit 1; }
+          test -f "$HOME/.bashrc" || { echo "❌ Offline installation failed"; exit 1; }
 
           # Test package operations
           ./apply.sh --restow
@@ -268,17 +268,17 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Break some symlinks manually
-          rm -rf dotfiles/common/shell/.bashrc
+          rm -rf dotfiles/common/.bashrc
 
           # Test recovery via restow
           ./apply.sh --restow || echo "Expected failure with missing file"
 
           # Restore the file
-          echo "# Restored bashrc" > dotfiles/common/shell/.bashrc
+          echo "# Restored bashrc" > dotfiles/common/.bashrc
 
           # Test successful recovery
           ./apply.sh --restow
-          test -f "$HOME/shell/.bashrc" || { echo "❌ Recovery failed"; exit 1; }
+          test -f "$HOME/.bashrc" || { echo "❌ Recovery failed"; exit 1; }
 
           echo "✅ Recovery test completed"
 
@@ -291,15 +291,15 @@ jobs:
 
           # Simulate partial installation by manually creating some symlinks
           cd dotfiles
-          stow --target=$HOME shell
+          stow --target=$HOME common
 
           # Now run full installation - should handle existing symlinks gracefully
           cd ..
           AUTO_INSTALL=0 ./init.sh
 
           # Verify everything is properly installed
-          test -f "$HOME/shell/.bashrc" || { echo "❌ Partial recovery failed"; exit 1; }
-          test -f "$HOME/devtools/.config/git/config" || { echo "❌ Full installation after partial failed"; exit 1; }
+          test -f "$HOME/.bashrc" || { echo "❌ Partial recovery failed"; exit 1; }
+          test -f "$HOME/.config/git/config" || { echo "❌ Full installation after partial failed"; exit 1; }
 
           echo "✅ Partial installation recovery test completed"
 
