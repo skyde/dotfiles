@@ -41,8 +41,7 @@ stow_package() {
     echo "📦 Installing $pkg package"
     
     # Use restow to handle any conflicts or missing symlinks
-    # --no-folding ensures individual files are linked rather than entire directories
-    stow --target="$HOME" --restow --verbose=1 --no-folding "${ARGS[@]}" "$pkg"
+    stow --target="$HOME" --restow --verbose=1 "${ARGS[@]}" "$pkg"
 
     # Skip verification in dry-run mode
     if $DRY_RUN; then
