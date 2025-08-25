@@ -137,7 +137,9 @@
     "<D-c>": false,
     "<D-v>": true,
     "<D-x>": false,
-    "<D-a>": false
+    "<D-a>": false,
+    "<D-o>": true,
+    "<D-i>": true
   },
   "vim.cursorStylePerMode": {
     "normal": "block",
@@ -349,6 +351,24 @@
       "after": [
         "g",
         "k"
+      ]
+    },
+    // Cmd+O for backwards navigation
+    {
+      "before": [
+        "<D-o>"
+      ],
+      "commands": [
+        "workbench.action.navigateBack"
+      ]
+    },
+    // Cmd+I for forward navigation
+    {
+      "before": [
+        "<D-i>"
+      ],
+      "commands": [
+        "workbench.action.navigateForward"
       ]
     },
     // Window splits
@@ -648,6 +668,7 @@
           "args": { "profileName": "Search Grep", "location": "editor" } }
       ]
     },
+
     {
       "before": [
         "<leader>",
@@ -864,15 +885,6 @@
       ]
     },
     // LSP & Code Actions
-    {
-      "before": [
-        "g",
-        "d"
-      ],
-      "commands": [
-        "editor.action.goToDefinition"
-      ]
-    },
     {
       "before": [
         "g",
