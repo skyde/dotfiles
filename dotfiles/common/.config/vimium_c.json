@@ -1,7 +1,7 @@
 {
 	"name": "Vimium C",
-	"@time": "8/18/2025, 11:05:26 AM",
-	"time": 1755533126399,
+	"@time": "8/24/2025, 9:08:00 PM",
+	"time": 1756087680588,
 	"environment": {
 		"extension": "2.12.2",
 		"platform": "mac",
@@ -69,8 +69,8 @@
 		"unmap B",
 		"# map bd removeTab            # b d -> Close current tab",
 		"# map bD restoreTab",
-		"# map bx closeTabsOnRight",
-		"# map bX closeTabsOnLeft",
+		"map bxr closeTabsOnRight",
+		"map bxl closeTabsOnLeft",
 		"map bo closeOtherTabs ",
 		"map bP closeOtherTabs",
 		"map bp togglePinTab         # b p -> Pin current tab",
