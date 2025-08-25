@@ -5,8 +5,6 @@ if [[ $- == *i* ]]; then
 	stty -ixon -ixoff
 fi
 
-export PATH=/Users/skydebreuil/Projects/depot_tools:$PATH
-
 # Path setup (add custom bins before system paths)
 for d in "$HOME/.local/bin" "$HOME/bin" "/usr/local/bin"; do
 	if [[ -d $d ]] && [[ ":$PATH:" != *":$d:"* ]]; then
