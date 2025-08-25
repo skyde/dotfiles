@@ -1,5 +1,9 @@
 ## To build and install project, run in shell
 ```
+npm run deploy
+```
+
+```
 npm i -D @types/node
 npm i
 npm run build

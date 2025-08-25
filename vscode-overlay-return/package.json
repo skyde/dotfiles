@@ -73,7 +73,8 @@
     "compile": "tsc -p .",
     "build": "npm run compile",
     "watch": "tsc -w -p .",
-    "package": "vsce package",
+    "package": "vsce package --allow-missing-repository",
+    "deploy": "npm run build && npm run package && code --install-extension overlay-terminals-return-*.vsix --force",
     "package:npx": "npx @vscode/vsce package"
   },
   "devDependencies": {
