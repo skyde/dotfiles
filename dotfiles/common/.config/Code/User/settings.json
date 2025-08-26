@@ -420,7 +420,7 @@
     },
     {
       // Toggle inline parameter name hints
-      "before": ["<leader>", "u", "i"],
+      "before": ["<leader>", "u", "h"],
       "commands": ["clangd.inlayHints.toggle"]
     },
     // File
