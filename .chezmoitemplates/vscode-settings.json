@@ -66,6 +66,9 @@
   "terminal.integrated.hideOnLastClosed": true,
   "terminal.integrated.hideOnStartup": true,
   "terminal.integrated.showExitAlert": false,
+  "terminal.integrated.commandsToSkipShell": [
+    "workbench.action.focusActiveEditorGroup"
+  ],
   "editor.lineNumbers": "relative",
   "editor.renderLineHighlight": "all",
   "workbench.colorTheme": "Tokyo Night Storm",

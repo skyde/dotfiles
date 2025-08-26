@@ -26,6 +26,12 @@
     "command": "extension.vim_escape",
     "when": "editorTextFocus && vim.active && !inDebugRepl && !lazygitFocus"
   },
+  // Focus the active editor when Esc is pressed in the panel terminal
+  {
+    "key": "escape",
+    "command": "workbench.action.focusActiveEditorGroup",
+    "when": "terminalFocus && terminalLocation == 'panel' && !lazygitFocus"
+  },
 {{- if eq .chezmoi.os "darwin" }}
   // ----- Word navigation on ⌘ + ← / → -----
   // Remove defaults (line start/end) that would conflict:
