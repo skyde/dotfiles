@@ -1,16 +1,22 @@
 {
+  // ─────────────────────────────────────────────────────────────────────────────
   // Cursor navigation settings
+  // ─────────────────────────────────────────────────────────────────────────────
   "editor.cursorSurroundingLines": 8,
   "editor.cursorSurroundingLinesStyle": "all",
   "editor.scrollBeyondLastLine": false,
   "editor.stickyScroll.enabled": false,
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Copilot Chat configuration
+  // ─────────────────────────────────────────────────────────────────────────────
   "github.copilot.chat.agent.thinkingTool": true,
   "chat.agent.enabled": true,
   "github.copilot.chat.codesearch.enabled": true,
   "chat.agent.maxRequests": 10000,
   "chat.editing.confirmEditRequestRemoval": false,
   "chat.editing.confirmEditRequestRetry": false,
+
   // Auto-approval settings for Agent Mode
   "github.copilot.chat.agent.runTasks": true,
   "task.allowAutomaticTasks": "on",
@@ -30,36 +36,48 @@
   //   "/^docker\\b/": true,
   //   "/^kubectl\\b/": true
   // },
+
   // Prompt when opening files from untrusted workspaces
   "security.workspace.trust.untrustedFiles": "prompt",
+
   // Increase terminal scrollback similar to using a terminal split in Neovim
   "terminal.integrated.scrollback": 10000,
+
+  // Fonts / ligs
   "editor.fontFamily": "JetBrainsMono Nerd Font, JetBrains Mono, monospace",
   "editor.fontLigatures": true,
   "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font, JetBrains Mono, monospace",
   "terminal.integrated.defaultProfile.linux": "zsh",
   "terminal.integrated.defaultProfile.osx": "zsh",
   "terminal.integrated.defaultProfile.windows": "PowerShell",
-  // Forward Cmd/Ctrl+S to the terminal by removing the save command from the skip list
-  // This subtracts from VS Code's default list rather than replacing it
+
+  // Forward Cmd/Ctrl+S to the terminal by removing save from the skip list
+  // (subtracts from VS Code default list rather than replacing it)
   "terminal.integrated.commandsToSkipShell": ["-workbench.action.files.save"],
+
   "editor.formatOnSave": true,
   "window.zoomLevel": 0.2,
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Cursor Shape & Style
+  // ─────────────────────────────────────────────────────────────────────────────
   "editor.cursorStyle": "block-outline",
   // Used when VIM is disabled
   "editor.cursorWidth": 3,
-  // Highlighting
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Highlighting / theming
+  // ─────────────────────────────────────────────────────────────────────────────
   "editor.semanticHighlighting.enabled": true,
   "editor.selectionHighlight": false,
   "editor.occurrencesHighlight": "off",
   "vim.searchMatchColor": "#FF002890",
   // "vim.searchHighlightColor": "#FF500050"
+
   "workbench.colorCustomizations": {
     // Custom cursor color - do not change
     "editorCursor.foreground": "#FF5000",
     "editorCursor.background": "#000000",
-    // "statusBar.background": "#1E1E1E"
 
     // Simple Black Background
     "statusBar.background": "#000000",
@@ -77,942 +95,358 @@
     "editorInlayHint.foreground": "#606060",
     "editorInlayHint.background": "#00000000",
 
-    // Debug Mode
-
-    // Red
+    // Debug Mode (inline values)
     "editor.inlineValuesForeground": "#AA3333", // text color of inline values
-    "editor.inlineValuesBackground": "#AA333320", // background color (supports transparency)
-
-    // Terminal colors (Tokyo Night Storm)
-    "terminal.background": "#000000",
-    // "terminal.background": "#24283b",
-    "terminal.foreground": "#c0caf5",
-    "terminalCursor.background": "#000000",
-    "terminalCursor.foreground": "#FF5000",
-    // "editorCursor.foreground": "#FF5000",
-    // "editorCursor.background": "#000000",
-    "terminal.selectionBackground": "#2e3c64",
-    "terminal.ansiBlack": "#1d202f",
-    "terminal.ansiRed": "#f7768e",
-    "terminal.ansiGreen": "#9ece6a",
-    "terminal.ansiYellow": "#e0af68",
-    "terminal.ansiBlue": "#7aa2f7",
-    "terminal.ansiMagenta": "#bb9af7",
-    "terminal.ansiCyan": "#7dcfff",
-    "terminal.ansiWhite": "#a9b1d6",
-    "terminal.ansiBrightBlack": "#414868",
-    "terminal.ansiBrightRed": "#ff899d",
-    "terminal.ansiBrightGreen": "#9fe044",
-    "terminal.ansiBrightYellow": "#faba4a",
-    "terminal.ansiBrightBlue": "#8db0ff",
-    "terminal.ansiBrightMagenta": "#c7a9ff",
-    "terminal.ansiBrightCyan": "#a4daff",
-    "terminal.ansiBrightWhite": "#c0caf5"
-
-    // "editor.inlineValuesForeground": "#666666", // text color of inline values
-    // "editor.inlineValuesBackground": "#66666620" // background color (supports transparency)
-
-    // Gray
-    // "editor.inlineValuesForeground": "#444444", // text color of inline values
-    // "editor.inlineValuesBackground": "#00000088" // background color (supports transparency)
-
-    // Invert
-    // "editor.inlineValuesForeground": "#000000", // text color of inline values
-    // "editor.inlineValuesBackground": "#FFFFFF40" // background color (supports transparency)
+    "editor.inlineValuesBackground": "#AA333320" // background color (supports transparency)
   },
-  // Custom color scheme
+
+  // Custom color scheme (token colors)
   "editor.tokenColorCustomizations": {
     "textMateRules": [
       { "scope": "source", "settings": { "foreground": "#D4D4D4" } },
       { "scope": "keyword", "settings": { "foreground": "#86C9EF" } },
-      {
-        "scope": "entity.name.function.preprocessor",
-        "settings": { "foreground": "#C255C5" }
-      },
-      {
-        "scope": "string.quoted",
-        "settings": { "foreground": "#DFA67C" }
-      },
-      {
-        "scope": "keyword.control",
-        "settings": { "foreground": "#ECBC6F" }
-      },
-      {
-        "scope": "keyword.operator",
-        "settings": { "foreground": "#DFDFBE" }
-      },
-      {
-        "scope": ["constant.numeric", "keyword.other.unit.suffix"],
-        "settings": { "foreground": "#5796BE" }
-      },
+      { "scope": "entity.name.function.preprocessor", "settings": { "foreground": "#C255C5" } },
+      { "scope": "string.quoted", "settings": { "foreground": "#DFA67C" } },
+      { "scope": "keyword.control", "settings": { "foreground": "#ECBC6F" } },
+      { "scope": "keyword.operator", "settings": { "foreground": "#DFDFBE" } },
+      { "scope": ["constant.numeric", "keyword.other.unit.suffix"], "settings": { "foreground": "#5796BE" } },
       { "scope": "string", "settings": { "foreground": "#8FAFDF" } },
-      {
-        "scope": "constant.character.escape",
-        "settings": { "foreground": "#D7BA7D" }
-      },
+      { "scope": "constant.character.escape", "settings": { "foreground": "#D7BA7D" } },
       { "scope": "punctuation", "settings": { "foreground": "#DFDDB9" } },
-      {
-        "scope": ["comment", "punctuation.definition.comment"],
-        "settings": { "foreground": "#7A987A" }
-      },
-      {
-        "scope": "punctuation.section.arguments",
-        "settings": { "foreground": "#F89500" }
-      },
-      {
-        "scope": "punctuation.definition.tag",
-        "settings": { "foreground": "#808080" }
-      },
+      { "scope": ["comment", "punctuation.definition.comment"], "settings": { "foreground": "#7A987A" } },
+      { "scope": "punctuation.section.arguments", "settings": { "foreground": "#F89500" } },
+      { "scope": "punctuation.definition.tag", "settings": { "foreground": "#808080" } },
       { "scope": "entity.name.type", "settings": { "foreground": "#4EC9B0" } },
+      { "scope": "entity.name.type.interface", "settings": { "foreground": "#B8D7A3" } },
+      { "scope": "variable.other.enummember", "settings": { "foreground": "#4FC1FF" } },
+      { "scope": "entity.name.function", "settings": { "foreground": "#DCDCAA" } },
+      { "scope": "meta.head.namespace", "settings": { "foreground": "#7BCFE6" } },
       {
-        "scope": "entity.name.type.interface",
-        "settings": { "foreground": "#B8D7A3" }
-      },
-      {
-        "scope": "variable.other.enummember",
-        "settings": { "foreground": "#4FC1FF" }
-      },
-      // Functions
-      {
-        "scope": "entity.name.function",
-        "settings": { "foreground": "#DCDCAA" }
-      },
-      // Namespace
-      {
-        "scope": "meta.head.namespace",
-        "settings": { "foreground": "#7BCFE6" }
-      },
-      // Built in types
-      {
-        "scope": [
-          "storage.type",
-          "storage.type.built-in",
-          "keyword.type",
-          "support.type"
-        ],
+        "scope": ["storage.type", "storage.type.built-in", "keyword.type", "support.type"],
         "settings": { "foreground": "#ECB763" }
       },
-      // Casts
-      {
-        "scope": "keyword.operator.cast",
-        "settings": { "foreground": "#ECB763" }
-      },
-      // Local variable
-      {
-        "scope": "variable",
-        "settings": { "foreground": "#9CDCFE" }
-      },
-      // Class member variable
-      {
-        "scope": "variable.other.object",
-        "settings": { "foreground": "#DD9DC2" }
-      },
-      {
-        "scope": "markup.underline.link",
-        "settings": { "foreground": "#8FAFDF" }
-      }
+      { "scope": "keyword.operator.cast", "settings": { "foreground": "#ECB763" } },
+      { "scope": "variable", "settings": { "foreground": "#9CDCFE" } },
+      { "scope": "variable.other.object", "settings": { "foreground": "#DD9DC2" } },
+      { "scope": "markup.underline.link", "settings": { "foreground": "#8FAFDF" } }
     ]
   },
-  // "editor.semanticTokenColorCustomizations": {
-  //   "enabled": true,
-  //   "rules": {
-  //     // "variable.local": "#EFC986",
-  //     "variable.readonly": "#D4D4D4",
-  //     "parameter": "#D4D4D4",
-  //     "property": "#D4D4D4",
-  //     "enumMember": "#4FC1FF",
-  //     "function": "#9CDCFE",
-  //     "method": "#9CDCFE",
-  //     "class": "#4EC9B0",
-  //     "struct": "#4EC9B0",
-  //     "interface": "#B8D7A3",
-  //     "typeParameter": "#4EC9B0",
-  //     "type": "#4EC9B0",
-  //     "number": "#BE966E",
-  //     "string": "#8FAFDF",
-  //     "comment": "#7A987A",
-  //     "keyword": "#86C9EF",
-  //     "operator": "#666666",
-  //     "namespace": "#4EC9B0"
-  //     // "type.defaultLibrary": "#00FFCC bold" // built-in types like float
-  //     // "type": "#00FFCC italic" // fallback for other types
-  //   }
-  // },
+  // "editor.semanticTokenColorCustomizations": { ... } // (kept commented)
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Cursor
+  // ─────────────────────────────────────────────────────────────────────────────
   "editor.cursorBlinking": "solid", // options: "blink", "smooth", "phase", "expand", "solid"
   "editor.cursorSmoothCaretAnimation": "off", // only with "smooth" blinking
+
   // Editor UI to match Vim configuration
   "editor.lineNumbers": "relative",
   "editor.renderLineHighlight": "none",
+
   // Use system clipboard in Vim extension
   "vim.useSystemClipboard": true,
+
   // Control select keys in Vim
   "vim.useCtrlKeys": true,
+
+  // NOTE: We keep <Tab> free for indent behavior; <C-i> is still jumplist forward in VIM,
+  // but in terminals <Tab> and <C-i> collide. VSCodeVim handles <Tab> mapping explicitly.
   "vim.handleKeys": {
     "<tab>": false,
     "<S-tab>": false,
     "<C-o>": true,
     "<C-i>": true
   },
+
   // Use physical key codes so Alt based shortcuts work on custom layouts
   "keyboard.dispatch": "keyCode",
+
   // Search behaviour like Vim
   "vim.ignorecase": true,
   "vim.smartcase": true,
   "vim.incsearch": true,
   "vim.hlsearch": true,
   "vim.startofline": false,
+
   // Highlighted Yank
   "vim.highlightedyank.enable": true,
   "vim.highlightedyank.duration": 125,
+
   // Surround
   "vim.surround": true,
-  // Camel Case Motion - disabed for now as conflicts with other bindings
+
+  // Camel Case Motion - disabled for now as conflicts with other bindings
   // "vim.camelCaseMotion.enable": true,
+
   // Optimized for Colemak-Mod-DH
   "vim.easymotionKeys": "tsraneiodhgmplfuc,bjvk",
-  // Leader key and custom key mappings
+
+  // Leader key
   "vim.leader": "<space>",
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // LAZYVIM-PARITY KEYMAPS (Normal mode)
+  // Grouped & heavily commented for quick scanning / tweaking.
+  // ─────────────────────────────────────────────────────────────────────────────
   "vim.normalModeKeyBindingsNonRecursive": [
-    {
-      "before": ["<leader>", "v"],
-      "after": ["<C-v>"]
-    },
-    {
-      "before": ["<tab>"],
-      "commands": ["editor.action.indentLines"]
-    },
-    {
-      "before": ["<S-tab>"],
-      "commands": ["editor.action.outdentLines"]
-    },
-    {
-      "before": ["<D-Left>"],
-      "commands": ["workbench.action.navigateBack"]
-    },
-    {
-      "before": ["<D-Right>"],
-      "commands": ["workbench.action.navigateForward"]
-    },
-    { "before": ["<C-o>"], "commands": ["workbench.action.navigateBack"] },
-    { "before": ["<C-i>"], "commands": ["workbench.action.navigateForward"] },
-    { "before": ["<C-h>"], "commands": ["workbench.action.focusLeftGroup"] },
-    { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] },
-    { "before": ["<C-j>"], "commands": ["workbench.action.focusBelowGroup"] },
-    { "before": ["<C-k>"], "commands": ["workbench.action.focusAboveGroup"] },
+    // ── CORE / MOTION / UI ────────────────────────────────────────────────────
+    { "before": ["<leader>", "v"], "after": ["<C-v>"] }, // block-visual via leader
+    { "before": ["<tab>"], "commands": ["editor.action.indentLines"] }, // indent line/selection
+    { "before": ["<S-tab>"], "commands": ["editor.action.outdentLines"] }, // outdent
+    { "before": ["<D-Left>"], "commands": ["workbench.action.navigateBack"] }, // mac back
+    { "before": ["<D-Right>"], "commands": ["workbench.action.navigateForward"] }, // mac forward
+    { "before": ["<C-o>"], "commands": ["workbench.action.navigateBack"] }, // jumplist back (editor)
+    { "before": ["<C-i>"], "commands": ["workbench.action.navigateForward"] }, // jumplist forward (editor)
+    { "before": ["<C-h>"], "commands": ["workbench.action.focusLeftGroup"] }, // window left
+    { "before": ["<C-l>"], "commands": ["workbench.action.focusRightGroup"] }, // window right
+    { "before": ["<C-j>"], "commands": ["workbench.action.focusBelowGroup"] }, // window down
+    // LazyVim-style: use K for hover; give <C-k> to signature help in code context
+    { "before": ["<C-k>"], "commands": ["editor.action.triggerParameterHints"] }, // signature help
     {
       "before": ["<Esc>"],
       "after": ["<Esc>"],
-      "commands": [":nohl", "closeParameterHints"]
+      "commands": [":nohl", "closeParameterHints"] // clear search & hint UI
     },
-    {
-      // Use Visual Studio code undo rather than VSVim
-      "before": ["u"],
-      "commands": [{ "command": "undo" }]
-    },
-    {
-      // Use Visual Studio code redo rather than VSVim
-      "before": ["<C-r>"],
-      "commands": [{ "command": "redo" }]
-    },
-    {
-      "before": ["Y"],
-      "after": ["y", "$"]
-    },
-    {
-      // Preferences
-      "before": ["<leader>", "p"],
-      "commands": ["workbench.action.showCommands"]
-    },
-    {
-      // Sideba(r)
-      "before": ["<leader>", "r"],
-      "commands": ["workbench.action.toggleSidebarVisibility"]
-    },
-    {
-      // (O)pen terminal
-      "before": ["<leader>", "x"],
-      "commands": [
-        // Custom command when terminal is opened to clear any other context
-        "task.custom.openTerminal",
-        {
-          // Run the fzf task
-          "command": "workbench.action.tasks.runTask",
-          "args": "StandardTerminal"
-        },
-        // Click escape so we don't come back to a strange mode
-        "extension.vim_escape"
-      ]
-      // "commands": [
-      //   // Custom command when terminal is opened to clear any other context
-      //   "task.custom.openTerminal",
-      //   // Show the terminal
-      //   "workbench.action.terminal.toggleTerminal",
-      //   // Auto select the main terminal
-      //   "workbench.action.terminal.focusAtIndex1"
-      // ]
-    },
-    // Copilot Chat
-    {
-      // Open auxiliary bar (focus Copilot chat)
-      "before": ["<leader>", "a"],
-      "commands": ["workbench.action.chat.open"]
-    },
-    {
-      // Close auxiliary bar
-      "before": ["<leader>", "A"],
-      "commands": ["workbench.action.toggleAuxiliaryBar"]
-    },
-    // Artificial (Intelligence)
-    {
-      // Accept Ours (don't take the AI edit)
-      "before": ["<leader>", "i", "o"],
-      "commands": ["chatEditor.action.undoHunk"]
-    },
-    {
-      // Accept All of Ours (don't take the AI edit)
-      "before": ["<leader>", "i", "O"],
-      "commands": ["chatEditor.action.reject"]
-    },
-    {
-      // Accept Theirs (take the AI edit)
-      "before": ["<leader>", "i", "t"],
-      "commands": ["chatEditor.action.acceptHunk"]
-    },
-    {
-      // Accept All of Theirs (take the AI edit)
-      "before": ["<leader>", "i", "T"],
-      "commands": ["chatEditor.action.acceptAllEdits"]
-    },
-    {
-      "before": ["<leader>", "i", "n"],
-      "commands": ["chatEditor.action.navigateNext"]
-    },
-    {
-      "before": ["<leader>", "i", "N"],
-      "commands": ["chatEditor.action.navigatePrevious"]
-    },
-    // UI
-    {
-      // Toggle word wrap
-      "before": ["<leader>", "u", "w"],
-      "commands": ["editor.action.toggleWordWrap"]
-    },
-    {
-      // Toggle zen mode
-      "before": ["<leader>", "u", "z"],
-      "commands": ["workbench.action.toggleZenMode"]
-    },
-    {
-      // Render whitespace (conceal)
-      "before": ["<leader>", "u", "c"],
-      "commands": ["editor.action.toggleRenderWhitespace"]
-    },
-    {
-      // Increase text size (plus)
-      "before": ["<leader>", "u", "p"],
-      "commands": ["editor.action.fontZoomIn"]
-    },
-    {
-      // Decrease text size (minus)
-      "before": ["<leader>", "u", "m"],
-      "commands": ["editor.action.fontZoomOut"]
-    },
-    {
-      // Toggle inline parameter name hints
-      "before": ["<leader>", "u", "i"],
-      "commands": ["clangd.inlayHints.toggle"]
-    },
-    // File
-    {
-      "before": ["<leader>", "f", "e"],
-      "commands": ["task.custom.openTerminal", "yazi-vscode.toggle"]
+    { "before": ["u"], "commands": [{ "command": "undo" }] }, // VSCode undo engine
+    { "before": ["<C-r>"], "commands": [{ "command": "redo" }] }, // VSCode redo engine
+    { "before": ["Y"], "after": ["y", "$"] }, // parity with Neovim (Y == y$)
 
-      // Run LF in an editor tab
-      // "commands": [
-      //   // Custom command when terminal is opened to clear any other context
-      //   "task.custom.openTerminal",
-      //   // Make a new terminal
-      //   "workbench.action.terminal.new",
-      //   {
-      //     "command": "workbench.action.terminal.sendSequence",
-      //     "args": {
-      //       "text": "lf \"${file}\"\u000D"
-      //     }
-      //   },
-      //   "workbench.action.terminal.moveToEditor",
-      //   // Need to call this twice for some reason to have it hide
-      //   "workbench.action.terminal.toggleTerminal",
-      //   "workbench.action.terminal.toggleTerminal"
-      // ]
+    // ── COMMAND PALETTE (LazyVim: <leader>:) ───────────────────────────────────
+    { "before": ["<leader>", ":"], "commands": ["workbench.action.showCommands"] },
+    // Legacy alias: keep your muscle memory on <leader>p for a while (optional)
+    { "before": ["<leader>", "p"], "commands": ["workbench.action.showCommands"] },
 
-      // Persistent LF Task
-      // "commands": [
-      //   // Custom command when terminal is opened to clear any other context
-      //   "task.custom.openTerminal",
-      //   // Set the fzf context to active
-      //   { "command": "setContext", "args": ["closePanelOnEnter", true] },
-      //   // {
-      //   //   // Terminate the fzf task so we open in the right directory
-      //   //   "command": "workbench.action.tasks.terminate",
-      //   //   "args": "LF"
-      //   // }
-      //   // Custom command when terminal is opened to clear any other context
-      //   // "task.custom.openTerminal",
-      //   // Set the fzf context to active
-      //   // { "command": "setContext", "args": ["closePanelOnEnter", true] },
-      //   {
-      //     "command": "workbench.action.tasks.runTask",
-      //     "args": "Switch Running LF to Current Directory"
-      //   },
-      //   {
-      //     "command": "workbench.action.tasks.runTask",
-      //     "args": "LF"
-      //   },
-      //   // Click escape so we don't come back to a strange mode
-      //   "extension.vim_escape"
-      // ]
-    },
+    // ── UI TOGGLES (LazyVim uses <leader>u*) ───────────────────────────────────
+    { "before": ["<leader>", "u", "w"], "commands": ["editor.action.toggleWordWrap"] },  // wrap
+    { "before": ["<leader>", "u", "z"], "commands": ["workbench.action.toggleZenMode"] }, // zen
+    { "before": ["<leader>", "u", "c"], "commands": ["editor.action.toggleRenderWhitespace"] }, // whitespace
+    { "before": ["<leader>", "u", "p"], "commands": ["editor.action.fontZoomIn"] }, // zoom in
+    { "before": ["<leader>", "u", "m"], "commands": ["editor.action.fontZoomOut"] }, // zoom out
+    // Inlay hints → standardize on <leader>uh (LazyVim); keep <leader>ui as an alias for a bit
+    { "before": ["<leader>", "u", "h"], "commands": ["clangd.inlayHints.toggle"] }, // new
+    { "before": ["<leader>", "u", "i"], "commands": ["clangd.inlayHints.toggle"] }, // legacy alias
+
+    // ── FILES / EXPLORER / PICKERS (LazyVim-style) ────────────────────────────
+    // Canonical Explorer key (<leader>e) + show active file
     {
-      // Open in OS
-      "before": ["<leader>", "f", "E"],
-      "commands": ["revealFileInOS"]
-    },
-    {
-      // Tree Explorer
-      "before": ["<leader>", "f", "t"],
+      "before": ["<leader>", "e"],
       "commands": [
-        // ️Ensure the Explorer is visible / takes focus
         "workbench.view.explorer",
-
-        // Scroll-to-and-select the file open in the active editor
         "workbench.files.action.showActiveFileInExplorer"
       ]
     },
+    // Keep Yazi on <leader>fe (nice complement)
+    { "before": ["<leader>", "f", "e"], "commands": ["task.custom.openTerminal", "yazi-vscode.toggle"] },
+    // Open in OS (same as before)
+    { "before": ["<leader>", "f", "E"], "commands": ["revealFileInOS"] },
+
+    // **Find files** (map your FZF Files task to the standard <leader>ff)
     {
-      "before": ["<leader>", "f", "r"],
-      "commands": ["workbench.action.openRecent"]
-    },
-    {
-      "before": ["<leader>", "f", "l"],
-      "commands": ["workbench.action.files.copyPathOfActiveFile"]
-    },
-    {
-      "before": ["<leader>", "f", "n"],
-      "commands": ["workbench.action.files.newUntitledFile"]
-    },
-    // Buffers
-    {
-      // New tab
-      "before": ["<leader>", "b", "n"],
-      "commands": ["workbench.action.files.newUntitledFile"]
-    },
-    {
-      // Next tab
-      "before": ["]", "b"],
-      "commands": ["workbench.action.nextEditor"]
-    },
-    {
-      // Previous tab
-      "before": ["[", "b"],
-      "commands": ["workbench.action.previousEditor"]
-    },
-    {
-      // Move tab left
-      "before": ["<leader>", "b", "h"],
-      "commands": ["workbench.action.moveEditorLeftInGroup"]
-    },
-    {
-      // Move tab right
-      "before": ["<leader>", "b", "l"],
-      "commands": ["workbench.action.moveEditorRightInGroup"]
-    },
-    {
-      // Close current tab
-      "before": ["<leader>", "b", "d"],
+      "before": ["<leader>", "f", "f"],
       "commands": [
-        "workbench.action.unpinEditor",
-        "workbench.action.closeActiveEditor"
-      ]
-    },
-    {
-      // Reopen closed tab
-      "before": ["<leader>", "b", "D"],
-      "commands": ["workbench.action.reopenClosedEditor"]
-    },
-    {
-      // Close other tabs
-      "before": ["<leader>", "b", "o"],
-      "commands": [
-        "workbench.action.closeAllGroups",
-        "workbench.action.reopenClosedEditor",
-        "workbench.action.pinEditor"
-      ]
-    },
-    {
-      // Goto 'other' tab (switch to the last active tab)
-      "before": ["<leader>", "b", "b"],
-      "after": ["<C-6>"]
-    },
-    {
-      // TODO: Ideally <leader>bp is a toggle, but non-trivial to get this to work
-      "before": ["<leader>", "b", "u"],
-      "commands": ["workbench.action.unpinEditor"],
-      "when": "activeEditorIsPinned"
-    },
-    {
-      "before": ["<leader>", "b", "p"],
-      "commands": ["workbench.action.pinEditor"],
-      "when": "!activeEditorIsPinned"
-    },
-    {
-      "before": ["<leader>", "b", "P"],
-      "commands": ["workbench.action.closeOtherEditors"]
-    },
-    // Windows
-    {
-      // This actually just toggles fullscreen if you need it
-      "before": ["<leader>", "w", "f"],
-      "commands": ["workbench.action.toggleFullScreen"]
-    },
-    {
-      // Split the current window vertically
-      // This duplicates the current window
-      "before": ["<leader>", "w", "v"],
-      "commands": [":vsplit"]
-    },
-    {
-      // Split the current window horizontally
-      // This duplicates the current window
-      "before": ["<leader>", "w", "s"],
-      "commands": [":split"]
-    },
-    {
-      // Split the current window in a direction
-      "before": ["<leader>", "w", "L"],
-      "commands": ["workbench.action.moveEditorToRightGroup"]
-    },
-    {
-      "before": ["<leader>", "w", "H"],
-      "commands": ["workbench.action.moveEditorToLeftGroup"]
-    },
-    {
-      "before": ["<leader>", "w", "K"],
-      "commands": ["workbench.action.moveEditorToAboveGroup"]
-    },
-    {
-      "before": ["<leader>", "w", "J"],
-      "commands": ["workbench.action.moveEditorToBelowGroup"]
-    },
-    {
-      // Focus window
-      "before": ["<leader>", "w", "h"],
-      "commands": ["workbench.action.focusLeftGroup"]
-    },
-    {
-      "before": ["<leader>", "w", "j"],
-      "commands": ["workbench.action.focusBelowGroup"]
-    },
-    {
-      "before": ["<leader>", "w", "k"],
-      "commands": ["workbench.action.focusAboveGroup"]
-    },
-    {
-      "before": ["<leader>", "w", "l"],
-      "commands": ["workbench.action.focusRightGroup"]
-    },
-    {
-      // Close the current window
-      "before": ["<leader>", "w", "d"],
-      "commands": ["workbench.action.closeActiveEditor"]
-    },
-    // Search
-    {
-      "before": ["<leader>", "<leader>"],
-      "commands": ["workbench.action.quickOpen"]
-    },
-    {
-      // Search within files
-      "before": ["<leader>", "s", "f"],
-      "commands": [
-        // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
-        // Set the fzf context to active
         { "command": "setContext", "args": ["closePanelOnEnter", true] },
-        {
-          // Run the fzf task
-          "command": "workbench.action.tasks.runTask",
-          "args": "FZF Files"
-        },
-        // Click escape so we don't come back to a strange mode
+        { "command": "workbench.action.tasks.runTask", "args": "FZF Files" },
         "extension.vim_escape"
       ]
     },
+    // **Grep** (standard <leader>sg); keep <leader>/ below too
     {
-      // Search within files
-      "before": ["<leader>", "s", "t"],
+      "before": ["<leader>", "s", "g"],
       "commands": [
-        // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
-        // Set the fzf context to active
         { "command": "setContext", "args": ["closePanelOnEnter", true] },
-        {
-          // Run the fzf task
-          "command": "workbench.action.tasks.runTask",
-          "args": "FZF Ripgrep"
-        },
-        // Click escape so we don't come back to a strange mode
+        { "command": "workbench.action.tasks.runTask", "args": "FZF Ripgrep" },
         "extension.vim_escape"
       ]
     },
+    // Quick Open (MRU)
+    { "before": ["<leader>", "<leader>"], "commands": ["workbench.action.quickOpen"] },
+    // Grep via /
     {
-      // Search within files
       "before": ["<leader>", "/"],
       "commands": [
-        // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
-        // Set the fzf context to active
         { "command": "setContext", "args": ["fzfActive", true] },
-        {
-          // Run the fzf task
-          "command": "workbench.action.tasks.runTask",
-          "args": "FZF Ripgrep"
-        },
-        // Click escape so we don't come back to a strange mode
+        { "command": "workbench.action.tasks.runTask", "args": "FZF Ripgrep" },
+        "extension.vim_escape"
+      ]
+    },
+    // Keep your search tasks too
+    {
+      "before": ["<leader>", "s", "f"],
+      "commands": [
+        "task.custom.openTerminal",
+        { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        { "command": "workbench.action.tasks.runTask", "args": "FZF Files" },
         "extension.vim_escape"
       ]
     },
     {
-      // Start a new search within files using VS Code search
-      "before": ["<leader>", "s", "T"],
-      "commands": ["workbench.action.findInFiles"]
-    },
-    {
-      // Fuzzy search open editors
-      "before": ["<leader>", "s", "b"],
-      "commands": ["workbench.action.showAllEditorsByMostRecentlyUsed"],
-      "when": "editorTextFocus"
-    },
-    // {
-    //   "before": ["<leader>", "s", "T"],
-    //   "commands": [
-    //     // Automatically search for the word under the cursor
-    //     "editor.action.addSelectionToNextFindMatch",
-    //     // By default we filter & only search relavant files
-    //    "fzf-picker.findWithinFilesWithType",
-    //     // Escape to Vim normal mode
-    //     "extension.vim_escape"
-    //   ]
-    // },
-    {
-      "before": ["<leader>", "s", "r"],
+      "before": ["<leader>", "s", "t"],
       "commands": [
-        {
-          "command": "workbench.action.tasks.reRunTask"
-        }
+        "task.custom.openTerminal",
+        { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        { "command": "workbench.action.tasks.runTask", "args": "FZF Ripgrep" },
+        "extension.vim_escape"
       ]
     },
-    // Jump to tab
+    { "before": ["<leader>", "s", "T"], "commands": ["workbench.action.findInFiles"] }, // VSCode search
+    // Buffers picker (alias commonly found as <leader>fb)
+    { "before": ["<leader>", "f", "b"], "commands": ["workbench.action.showAllEditorsByMostRecentlyUsed"], "when": "editorTextFocus" },
+    // Recents / file ops as you had
+    { "before": ["<leader>", "f", "r"], "commands": ["workbench.action.openRecent"] },
+    { "before": ["<leader>", "f", "l"], "commands": ["workbench.action.files.copyPathOfActiveFile"] },
+    { "before": ["<leader>", "f", "n"], "commands": ["workbench.action.files.newUntitledFile"] },
+
+    // ── BUFFERS ────────────────────────────────────────────────────────────────
+    { "before": ["<leader>", "b", "n"], "commands": ["workbench.action.files.newUntitledFile"] }, // new tab
+    { "before": ["]", "b"], "commands": ["workbench.action.nextEditor"] }, // cycle next
+    { "before": ["[", "b"], "commands": ["workbench.action.previousEditor"] }, // cycle prev
+    // NOTE: LazyVim with bufferline uses <leader>bl/br for delete-left/right.
+    // You use them to move editors (kept). If you adopt bufferline, consider remapping.
+    { "before": ["<leader>", "b", "h"], "commands": ["workbench.action.moveEditorLeftInGroup"] },
+    { "before": ["<leader>", "b", "l"], "commands": ["workbench.action.moveEditorRightInGroup"] },
+    { "before": ["<leader>", "b", "d"], "commands": ["workbench.action.unpinEditor", "workbench.action.closeActiveEditor"] },
+    { "before": ["<leader>", "b", "D"], "commands": ["workbench.action.reopenClosedEditor"] },
+    { "before": ["<leader>", "b", "o"], "commands": ["workbench.action.closeAllGroups", "workbench.action.reopenClosedEditor", "workbench.action.pinEditor"] },
+    { "before": ["<leader>", "b", "b"], "after": ["<C-6>"] },
+    { "before": ["<leader>", "b", "u"], "commands": ["workbench.action.unpinEditor"], "when": "activeEditorIsPinned" },
+    { "before": ["<leader>", "b", "p"], "commands": ["workbench.action.pinEditor"], "when": "!activeEditorIsPinned" },
+    { "before": ["<leader>", "b", "P"], "commands": ["workbench.action.closeOtherEditors"] },
+
+    // ── WINDOWS / SPLITS ───────────────────────────────────────────────────────
+    { "before": ["<leader>", "w", "f"], "commands": ["workbench.action.toggleFullScreen"] },
+    { "before": ["<leader>", "w", "v"], "commands": [":vsplit"] }, // vsplit (dup window)
+    { "before": ["<leader>", "w", "s"], "commands": [":split"] },  // split (dup window)
+    // Add LazyVim-style split aliases for muscle memory: <leader>| and <leader>-
+    { "before": ["<leader>", "|"], "commands": [":vsplit"] },
+    { "before": ["<leader>", "-"], "commands": [":split"] },
+    // Move/focus windows
+    { "before": ["<leader>", "w", "L"], "commands": ["workbench.action.moveEditorToRightGroup"] },
+    { "before": ["<leader>", "w", "H"], "commands": ["workbench.action.moveEditorToLeftGroup"] },
+    { "before": ["<leader>", "w", "K"], "commands": ["workbench.action.moveEditorToAboveGroup"] },
+    { "before": ["<leader>", "w", "J"], "commands": ["workbench.action.moveEditorToBelowGroup"] },
+    { "before": ["<leader>", "w", "h"], "commands": ["workbench.action.focusLeftGroup"] },
+    { "before": ["<leader>", "w", "j"], "commands": ["workbench.action.focusBelowGroup"] },
+    { "before": ["<leader>", "w", "k"], "commands": ["workbench.action.focusAboveGroup"] },
+    { "before": ["<leader>", "w", "l"], "commands": ["workbench.action.focusRightGroup"] },
+    { "before": ["<leader>", "w", "d"], "commands": ["workbench.action.closeActiveEditor"] },
+
+    // ── DIAGNOSTICS (LazyVim: ]d / [d and <leader>xx list) ─────────────────────
+    { "before": ["<leader>", "x", "x"], "commands": ["workbench.actions.view.problems"] }, // Trouble-equivalent
+    { "before": ["]", "d"], "commands": ["editor.action.marker.next"] }, // next diagnostic
+    { "before": ["[", "d"], "commands": ["editor.action.marker.prev"] }, // prev diagnostic
+    // Keep your e* flow too
     {
-      "before": ["<leader>", "1"],
-      "commands": ["workbench.action.openEditorAtIndex1"]
-    },
-    {
-      "before": ["<leader>", "2"],
-      "commands": ["workbench.action.openEditorAtIndex2"]
-    },
-    {
-      "before": ["<leader>", "3"],
-      "commands": ["workbench.action.openEditorAtIndex3"]
-    },
-    {
-      "before": ["<leader>", "4"],
-      "commands": ["workbench.action.openEditorAtIndex4"]
-    },
-    {
-      "before": ["<leader>", "5"],
-      "commands": ["workbench.action.openEditorAtIndex5"]
-    },
-    {
-      "before": ["<leader>", "6"],
-      "commands": ["workbench.action.openEditorAtIndex6"]
-    },
-    {
-      "before": ["<leader>", "7"],
-      "commands": ["workbench.action.openEditorAtIndex7"]
-    },
-    {
-      "before": ["<leader>", "8"],
-      "commands": ["workbench.action.openEditorAtIndex8"]
-    },
-    {
-      "before": ["<leader>", "9"],
-      "commands": ["workbench.action.openEditorAtIndex9"]
-    },
-    {
-      "before": ["<leader>", "0"],
-      "commands": ["workbench.action.lastEditorInGroup"]
-    },
-    // Goto
-    {
-      "before": ["g", "d"],
-      "commands": ["editor.action.revealDefinition"]
-    },
-    {
-      "before": ["g", "y"],
-      "commands": ["editor.action.goToTypeDefinition"]
-    },
-    {
-      "before": ["g", "Y"],
-      "commands": ["editor.action.peekTypeDefinition"]
-    },
-    {
-      "before": ["g", "p"],
-      "commands": ["editor.action.peekDefinition"]
-    },
-    {
-      "before": ["g", "i"],
-      "commands": ["editor.action.goToImplementation"]
-    },
-    {
-      "before": ["g", "r"],
-      "commands": ["editor.action.goToReferences"]
-    },
-    {
-      "before": ["g", "h"],
-      "commands": ["clangd.switchheadersource"]
-    },
-    {
-      "before": ["g", "u"],
-      "commands": ["editor.action.referenceSearch.trigger"]
-    },
-    {
-      "before": ["g", "n"],
-      "commands": ["editor.action.showDefinitionPreviewHover"]
-    },
-    {
-      "before": ["v", "i", "g"],
-      "after": ["g", "g", "V", "G"]
-    },
-    {
-      "before": ["y", "i", "g"],
-      "after": [":", "%", "y", "<CR>"]
-    },
-    {
-      "before": ["d", "i", "g"],
-      "after": ["g", "g", "V", "G", "d"]
-    },
-    // Code
-    {
-      // Rename a variable, method, etc..
-      "before": ["<leader>", "c", "r"],
-      "commands": ["editor.action.rename"]
-    },
-    {
-      // Pops up parameter hints when you are calling another method
-      "before": ["<leader>", "c", "i"],
-      "commands": ["editor.action.triggerParameterHints"]
-    },
-    {
-      "before": ["<leader>", "c", "e"],
-      "commands": ["editor.action.codeAction"]
-    },
-    // Errors
-    {
-      // Global view if problems / errors
       "before": ["<leader>", "e", "e"],
       "commands": [
-        // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
-        // Set the fzf context to active
         { "command": "setContext", "args": ["closePanelOnEnter", true] },
-
         "workbench.actions.view.problems",
-        // Workaround: Toggling panel twice will make fullscren
-        // "workbench.action.togglePanel",
-        // "workbench.action.togglePanel",
-        // Once fullscreen toggle to not fullscreen
         "workbench.action.toggleMaximizedPanel"
       ]
     },
+    { "before": ["<leader>", "e", "n"], "commands": ["editor.action.marker.next"] },
+    { "before": ["<leader>", "e", "p"], "commands": ["editor.action.marker.prev"] },
+
+    // ── LSP (goto / hover / code) ──────────────────────────────────────────────
+    { "before": ["g", "d"], "commands": ["editor.action.revealDefinition"] },       // gd
+    { "before": ["g", "y"], "commands": ["editor.action.goToTypeDefinition"] },     // gy
+    { "before": ["g", "Y"], "commands": ["editor.action.peekTypeDefinition"] },     // gY (peek)
+    { "before": ["g", "p"], "commands": ["editor.action.peekDefinition"] },         // gp (peek)
+    { "before": ["g", "i"], "commands": ["editor.action.goToImplementation"] },     // gI
+    { "before": ["g", "r"], "commands": ["editor.action.goToReferences"] },         // gr
+    { "before": ["g", "h"], "commands": ["clangd.switchheadersource"] },            // gh (you like this; kept)
+    { "before": ["g", "u"], "commands": ["editor.action.referenceSearch.trigger"] },// gu (custom)
+    { "before": ["g", "n"], "commands": ["editor.action.showDefinitionPreviewHover"] }, // gn (custom)
+    // Hover: standardize on K
+    { "before": ["K"], "commands": ["editor.action.showHover"] },
+    // Clangd: parity with LazyVim extra → <leader>ch
+    { "before": ["<leader>", "c", "h"], "commands": ["clangd.switchheadersource"] },
+    // Code actions / rename / signature: use <leader>ca, <leader>cr, <leader>ci
+    { "before": ["<leader>", "c", "a"], "commands": ["editor.action.codeAction"] },
+    { "before": ["<leader>", "c", "r"], "commands": ["editor.action.rename"] },
+    { "before": ["<leader>", "c", "i"], "commands": ["editor.action.triggerParameterHints"] },
+    // Legacy alias (remove later if you want strict parity)
+    { "before": ["<leader>", "c", "e"], "commands": ["editor.action.codeAction"] },
+
+    // Select/Yank/Delete entire buffer (your helpers; convenient)
+    { "before": ["v", "i", "g"], "after": ["g", "g", "V", "G"] },
+    { "before": ["y", "i", "g"], "after": [":", "%", "y", "<CR>"] },
+    { "before": ["d", "i", "g"], "after": ["g", "g", "V", "G", "d"] },
+
+    // ── TERMINAL (keep your <leader>x; add LazyVim-ish <leader>fT) ─────────────
+    // (A) Canonical/consensus place for terminal
     {
-      // Goto next error
-      "before": ["<leader>", "e", "n"],
-      "commands": ["editor.action.marker.next"]
-    },
-    {
-      // Goto previous error
-      "before": ["<leader>", "e", "p"],
-      "commands": ["editor.action.marker.prev"]
-    },
-    // Debug Breakpoints
-    {
-      // Toggle breakpoint
-      "before": ["<leader>", "d", "b"],
-      "commands": ["editor.debug.action.toggleBreakpoint"]
-    },
-    {
-      // Disable all breakpoints
-      "before": ["<leader>", "d", "B", "d"],
-      "commands": ["workbench.debug.viewlet.action.disableAllBreakpoints"]
-    },
-    {
-      // Enable all breakpoints
-      "before": ["<leader>", "d", "B", "e"],
-      "commands": ["workbench.debug.viewlet.action.enableAllBreakpoints"]
-    },
-    {
-      // Remove all breakpoints
-      "before": ["<leader>", "d", "B", "r"],
-      "commands": ["workbench.debug.viewlet.action.removeAllBreakpoints"]
-    },
-    {
-      // Conditional Breakpoint
-      "before": ["<leader>", "d", "B", "c"],
-      "commands": ["editor.debug.action.conditionalBreakpoint"]
-    },
-    // Debug
-    {
-      // Continue
-      "before": ["<leader>", "d", "c"],
-      "commands": ["workbench.action.debug.continue"]
-    },
-    {
-      // Pause
-      "before": ["<leader>", "d", "p"],
-      "commands": ["workbench.action.debug.pause"]
-    },
-    {
-      // Stop
-      "before": ["<leader>", "d", "S"],
-      "commands": ["workbench.action.debug.stop"]
-    },
-    {
-      // Restart
-      "before": ["<leader>", "d", "R"],
-      "commands": ["workbench.action.debug.restart"]
-    },
-    {
-      // Goto
-      "before": ["<leader>", "d", "g"],
-      "commands": ["workbench.action.debug.setNextStatement"]
-    },
-    {
-      // Toggle log point
-      "before": ["<leader>", "d", "L"],
-      "commands": ["editor.debug.action.toggleLogPoint"]
-    },
-    // Hover
-    {
-      // Show the hover - or the debug hover
-      // TODO: Make sure the debug hover is working here
-      "before": ["<leader>", "Backspace"],
+      "before": ["<leader>", "f", "T"],
       "commands": [
-        "editor.action.showHover",
-        "editor.debug.action.showDebugHover"
+        "task.custom.openTerminal",
+        { "command": "workbench.action.tasks.runTask", "args": "StandardTerminal" },
+        "extension.vim_escape"
       ]
     },
+    // (B) Legacy alias: <leader>x -> StandardTerminal (kept)
     {
-      // Show parameter hints for a method
-      "before": ["Backspace", "<leader>"],
-      "commands": ["editor.action.triggerParameterHints"]
+      "before": ["<leader>", "x"],
+      "commands": [
+        "task.custom.openTerminal",
+        { "command": "workbench.action.tasks.runTask", "args": "StandardTerminal" },
+        "extension.vim_escape"
+      ]
     },
+
+    // ── DEBUG (DAP) ────────────────────────────────────────────────────────────
+    // Breakpoints
+    { "before": ["<leader>", "d", "b"], "commands": ["editor.debug.action.toggleBreakpoint"] },
+    { "before": ["<leader>", "d", "B", "d"], "commands": ["workbench.debug.viewlet.action.disableAllBreakpoints"] },
+    { "before": ["<leader>", "d", "B", "e"], "commands": ["workbench.debug.viewlet.action.enableAllBreakpoints"] },
+    { "before": ["<leader>", "d", "B", "r"], "commands": ["workbench.debug.viewlet.action.removeAllBreakpoints"] },
+    { "before": ["<leader>", "d", "B", "c"], "commands": ["editor.debug.action.conditionalBreakpoint"] },
+    // Controls
+    { "before": ["<leader>", "d", "c"], "commands": ["workbench.action.debug.continue"] },
+    { "before": ["<leader>", "d", "p"], "commands": ["workbench.action.debug.pause"] },
+    { "before": ["<leader>", "d", "S"], "commands": ["workbench.action.debug.stop"] },
+    { "before": ["<leader>", "d", "R"], "commands": ["workbench.action.debug.restart"] },
+    { "before": ["<leader>", "d", "g"], "commands": ["workbench.action.debug.setNextStatement"] },
+    { "before": ["<leader>", "d", "L"], "commands": ["editor.debug.action.toggleLogPoint"] },
+    // Watches & eval
+    { "before": ["<leader>", "d", "w"], "commands": ["editor.debug.action.selectionToWatch"] },
+    { "before": ["<leader>", "d", "x"], "commands": ["editor.debug.action.selectionToRepl"] },
+    // Traversal (moved from <leader>t… to <leader>d… for parity)
+    { "before": ["<leader>", "d", "n"], "commands": ["workbench.action.debug.stepOver"] },
+    { "before": ["<leader>", "d", "i"], "commands": ["workbench.action.debug.stepInto"] },
+    { "before": ["<leader>", "d", "I"], "commands": ["workbench.action.debug.stepIntoTarget"] },
+    { "before": ["<leader>", "d", "o"], "commands": ["workbench.action.debug.stepOut"] },
+    // Optional: focus debug views (namespaced under df… to avoid collisions)
+    { "before": ["<leader>", "d", "f", "v"], "commands": ["workbench.debug.action.focusVariablesView"] },
+    { "before": ["<leader>", "d", "f", "w"], "commands": ["workbench.debug.action.focusWatchView"] },
+    { "before": ["<leader>", "d", "f", "r"], "commands": ["workbench.debug.action.focusRepl"] },
+    { "before": ["<leader>", "d", "f", "b"], "commands": ["workbench.debug.action.focusBreakpointsView"] },
+    { "before": ["<leader>", "d", "f", "c"], "commands": ["workbench.debug.action.focusCallStackView"] },
+    { "before": ["<leader>", "d", "u"], "commands": ["workbench.action.debug.callStackUp"] },
+    { "before": ["<leader>", "d", "d"], "commands": ["workbench.action.debug.callStackDown"] },
+    { "before": ["<leader>", "d", "U"], "commands": ["workbench.action.debug.callStackTop"] },
+    { "before": ["<leader>", "d", "D"], "commands": ["workbench.action.debug.callStackBottom"] },
+    // Hover helpers (you had these on Backspace; kept)
+    { "before": ["<leader>", "Backspace"], "commands": ["editor.action.showHover", "editor.debug.action.showDebugHover"] },
+    { "before": ["Backspace", "<leader>"], "commands": ["editor.action.triggerParameterHints"] },
+    { "before": ["Backspace", "Backspace"], "commands": ["editor.action.showHover"] },
+
+    // ── GIT ────────────────────────────────────────────────────────────────────
     {
-      // Show standard hover, can be useful when in debug & want the normal one
-      "before": ["Backspace", "Backspace"],
-      "commands": ["editor.action.showHover"]
-    },
-    // ── Watches & evaluation ─────────────────────────────────────────────────────
-    {
-      // Add selection → Watch
-      "before": ["<leader>", "d", "w"],
-      "commands": ["editor.debug.action.selectionToWatch"]
-    },
-    {
-      // Evaluate selection in REPL
-      "before": ["<leader>", "d", "x"],
-      "commands": ["editor.debug.action.selectionToRepl"]
-    },
-    // Traversal - movement of windows or debug
-    // Does not cause large state changes so mis-typing is not a big issue
-    {
-      // Step Over (next)
-      "before": ["<leader>", "t", "n"],
-      "commands": ["workbench.action.debug.stepOver"]
-    },
-    {
-      // Step Into
-      "before": ["<leader>", "t", "i"],
-      "commands": ["workbench.action.debug.stepInto"]
-    },
-    {
-      // Step Into Target (choose what to step into)
-      "before": ["<leader>", "t", "I"],
-      "commands": ["workbench.action.debug.stepIntoTarget"]
-    },
-    {
-      // Step Out
-      "before": ["<leader>", "t", "o"],
-      "commands": ["workbench.action.debug.stepOut"]
-    },
-    {
-      "before": ["<leader>", "t", "l"], // Variables view (locals)
-      "commands": ["workbench.debug.action.focusVariablesView"]
-    },
-    {
-      "before": ["<leader>", "t", "w"],
-      "commands": ["workbench.debug.action.focusWatchView"]
-    },
-    {
-      // Focus Debug Console (h = “hover/host”)
-      "before": ["<leader>", "t", "h"],
-      "commands": ["workbench.debug.action.focusRepl"]
-    },
-    {
-      "before": ["<leader>", "t", "b"],
-      "commands": ["workbench.debug.action.focusBreakpointsView"]
-    },
-    {
-      "before": ["<leader>", "t", "c"], // Call‑Stack view (k = “stack” mnemonic)
-      "commands": ["workbench.debug.action.focusCallStackView"]
-    },
-    {
-      "before": ["<leader>", "t", "u"], // Up the call stack
-      "commands": ["workbench.action.debug.callStackUp"]
-    },
-    {
-      "before": ["<leader>", "t", "d"], // Down the call stack
-      "commands": ["workbench.action.debug.callStackDown"]
-    },
-    {
-      "before": ["<leader>", "t", "U"], // Top of the call stack
-      "commands": ["workbench.action.debug.callStackTop"]
-    },
-    {
-      "before": ["<leader>", "t", "D"], // Bottom of the call stack
-      "commands": ["workbench.action.debug.callStackBottom"]
-    },
-    // Git
-    {
-      // Open LazyGit
       "before": ["<leader>", "g", "g"],
       "commands": [
-        // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
-        {
-          "command": "workbench.action.tasks.runTask",
-          "args": "LazyGit"
-        },
+        { "command": "workbench.action.tasks.runTask", "args": "LazyGit" },
         "extension.vim_escape"
       ]
     },
     {
-      // Git log - shows the Git log of the current file
+      // Git log for current file (in an editor terminal)
       "before": ["<leader>", "g", "l"],
       "commands": [
-        // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
-        // Make a new terminal
         "workbench.action.terminal.new",
         {
           "command": "workbench.action.terminal.sendSequence",
@@ -1021,290 +455,122 @@
           }
         },
         "workbench.action.terminal.moveToEditor",
-        // Need to call this twice for some reason to have it hide
         "workbench.action.terminal.toggleTerminal",
         "workbench.action.terminal.toggleTerminal"
       ]
     },
-    {
-      // Open VSCode version of Git viewer
-      "before": ["<leader>", "g", "G"],
-      "commands": [
-        "workbench.view.scm",
-        "scm.focusInput",
-        "vim.enterInsertMode"
-      ]
-    },
-    {
-      // Open a diff for the changes to the current file
-      "before": ["<leader>", "g", "d"],
-      "commands": ["git.openChange"]
-    },
-    // {
-    //   // Stage the current file you have open
-    //   "before": ["<leader>", "g", "s"],
-    //   "commands": ["git.stage"]
-    // },
-    // {
-    //   // Unstage the current file you have open
-    //   "before": ["<leader>", "g", "u"],
-    //   "commands": ["git.unstage"]
-    // },
-    {
-      // Worktree - when you are in a diff go back to the actual file
-      "before": ["<leader>", "g", "w"],
-      "commands": ["git.openFile"]
-    },
-    {
-      // Git lens history of the of the last commit touching the current line / file
-      "before": ["<leader>", "g", "h"],
-      "commands": ["gitlens.showQuickCommitFileDetails"]
-    },
-    {
-      // Git lens version of log of current file
-      "before": ["<leader>", "g", "L"],
-      "commands": ["files.openTimeline"]
-    },
-    // Conflict (Merge)
-    {
-      // Accept Ours
-      "before": ["<leader>", "c", "o"],
-      "commands": ["merge.toggleActiveConflictInput1"]
-    },
-    {
-      // Accept All of Ours
-      "before": ["<leader>", "c", "O"],
-      "commands": ["merge.acceptAllInput1"]
-    },
-    {
-      // Accept Theirs
-      "before": ["<leader>", "c", "t"],
-      "commands": ["merge.toggleActiveConflictInput2"]
-    },
-    {
-      // Accept All of Theirs
-      "before": ["<leader>", "c", "T"],
-      "commands": ["merge.acceptAllInput2"]
-    },
-    {
-      // Accept Both
-      "before": ["<leader>", "c", "b"],
-      "commands": ["merge-conflict.accept.both"]
-    },
-    {
-      // Toggle cursor between two sides
-      "before": ["<leader>", "c", "c"],
-      "commands": ["mergeEditor.toggleBetweenInputs"]
-    },
-    {
-      // Quit & accept the merge
-      "before": ["<leader>", "c", "q"],
-      "commands": ["mergeEditor.acceptMerge"]
-    },
-    {
-      // Goto next conflict or change
-      "before": ["<leader>", "c", "n"],
-      "commands": [
-        "workbench.action.compareEditor.nextChange",
-        "merge.goToNextUnhandledConflict"
-      ]
-    },
-    {
-      // Goto previous conflict or change
-      "before": ["<leader>", "c", "p"],
-      "commands": [
-        "workbench.action.compareEditor.previousChange",
-        "merge.goToPreviousUnhandledConflict"
-      ]
-    },
-    {
-      // Goto next conflict
-      "before": ["]", "x"],
-      "commands": ["merge.goToNextUnhandledConflict"]
-    },
-    {
-      // Goto previous conflict
-      "before": ["[", "x"],
-      "commands": ["merge.goToPreviousUnhandledConflict"]
-    },
-    {
-      // Goto next conflict
-      "before": ["]", "c"],
-      "commands": ["workbench.action.compareEditor.nextChange"]
-    },
-    {
-      // Goto previous conflict
-      "before": ["[", "c"],
-      "commands": ["workbench.action.compareEditor.previousChange"]
-    },
-    {
-      // Change the current side of the diff
-      "before": ["<leader>", "c", "s"],
-      "commands": ["diffEditor.switchSide"]
-    },
-    {
-      // Revert the current change within the diff view (which uses Git)
-      "before": ["<leader>", "c", "v"],
-      "commands": ["git.revertSelectedRanges"]
-    },
-    // Testing
-    {
-      "before": ["<leader>", "T", "r"],
-      "commands": ["testing.runCurrentTest"]
-    },
-    {
-      "before": ["<leader>", "T", "d"],
-      "commands": ["testing.debugCurrentTest"]
-    },
-    {
-      "before": ["<leader>", "T", "a"],
-      "commands": ["testing.runAll"]
-    },
-    {
-      "before": ["<leader>", "T", "R"],
-      "commands": ["testing.reRunLastRun"]
-    },
-    {
-      "before": ["<leader>", "T", "o"],
-      "commands": ["testing.showMostRecentOutput"]
-    },
-    {
-      "before": ["<leader>", "T", "f"],
-      "commands": ["testing.runCurrentFile"]
-    },
-    {
-      "before": ["<leader>", "T", "e"],
-      "commands": ["testing.openTestView"] // focuses the Test Explorer
-    },
-    // Make (Build)
-    {
-      "before": ["<leader>", "m", "T"],
-      "commands": ["workbench.action.tasks.runTask"]
-    },
-    {
-      "before": ["<leader>", "m", "t"],
-      "commands": ["workbench.action.tasks.reRunTask"]
-    },
-    {
-      "before": ["<leader>", "m", "b"],
-      "commands": ["workbench.action.tasks.build"]
-    },
-    {
-      "before": ["<leader>", "m", "B"],
-      "commands": ["workbench.action.tasks.configureDefaultBuildTask"]
-    },
-    {
-      "before": ["<leader>", "m", "c"],
-      "commands": ["workbench.action.tasks.terminate"]
-    },
-    {
-      "before": ["<leader>", "m", "r"],
-      "commands": ["workbench.action.debug.start"]
-    },
-    {
-      "before": ["<leader>", "m", "R"],
-      "commands": ["workbench.action.debug.selectandstart"]
-    },
-    {
-      "before": ["<leader>", "m", "s"],
-      "commands": ["workbench.action.debug.stop"]
-    },
-    {
-      "before": ["Z", "Z"],
-      "commands": [
-        "workbench.action.unpinEditor",
-        "workbench.action.files.save",
-        "workbench.action.closeActiveEditor"
-      ]
-    },
-    {
-      "before": ["Z", "Q"],
-      "commands": [
-        "workbench.action.unpinEditor",
-        "workbench.action.revertAndCloseActiveEditor"
-      ]
-    }
+    { "before": ["<leader>", "g", "G"], "commands": ["workbench.view.scm", "scm.focusInput", "vim.enterInsertMode"] },
+    { "before": ["<leader>", "g", "d"], "commands": ["git.openChange"] },
+    { "before": ["<leader>", "g", "w"], "commands": ["git.openFile"] },
+    { "before": ["<leader>", "g", "h"], "commands": ["gitlens.showQuickCommitFileDetails"] },
+    { "before": ["<leader>", "g", "L"], "commands": ["files.openTimeline"] },
+
+    // ── MERGE CONFLICTS — moved under <leader>m… (free <leader>c… for LSP) ────
+    { "before": ["<leader>", "m", "o"], "commands": ["merge.toggleActiveConflictInput1"] }, // accept ours
+    { "before": ["<leader>", "m", "O"], "commands": ["merge.acceptAllInput1"] },           // accept all ours
+    { "before": ["<leader>", "m", "t"], "commands": ["merge.toggleActiveConflictInput2"] }, // accept theirs
+    { "before": ["<leader>", "m", "T"], "commands": ["merge.acceptAllInput2"] },           // accept all theirs
+    { "before": ["<leader>", "m", "b"], "commands": ["merge-conflict.accept.both"] },      // accept both
+    { "before": ["<leader>", "m", "c"], "commands": ["mergeEditor.toggleBetweenInputs"] }, // toggle sides
+    { "before": ["<leader>", "m", "q"], "commands": ["mergeEditor.acceptMerge"] },         // finish merge
+    { "before": ["<leader>", "m", "n"], "commands": ["workbench.action.compareEditor.nextChange", "merge.goToNextUnhandledConflict"] },
+    { "before": ["<leader>", "m", "p"], "commands": ["workbench.action.compareEditor.previousChange", "merge.goToPreviousUnhandledConflict"] },
+    { "before": ["]", "x"], "commands": ["merge.goToNextUnhandledConflict"] },
+    { "before": ["[", "x"], "commands": ["merge.goToPreviousUnhandledConflict"] },
+    { "before": ["]", "c"], "commands": ["workbench.action.compareEditor.nextChange"] },
+    { "before": ["[", "c"], "commands": ["workbench.action.compareEditor.previousChange"] },
+    { "before": ["<leader>", "m", "s"], "commands": ["diffEditor.switchSide"] },
+    { "before": ["<leader>", "m", "v"], "commands": ["git.revertSelectedRanges"] },
+
+    // ── TESTING — moved to <leader>t… (neotest-style) ─────────────────────────
+    { "before": ["<leader>", "t", "r"], "commands": ["testing.runCurrentTest"] },    // nearest test
+    { "before": ["<leader>", "t", "d"], "commands": ["testing.debugCurrentTest"] },  // debug nearest
+    { "before": ["<leader>", "t", "a"], "commands": ["testing.runAll"] },            // all tests
+    { "before": ["<leader>", "t", "R"], "commands": ["testing.reRunLastRun"] },      // re-run
+    { "before": ["<leader>", "t", "o"], "commands": ["testing.showMostRecentOutput"] }, // output
+    { "before": ["<leader>", "t", "f"], "commands": ["testing.runCurrentFile"] },    // file
+    { "before": ["<leader>", "t", "e"], "commands": ["testing.openTestView"] },      // test explorer
+
+    // (Optional legacy aliases: keep your uppercase T for muscle memory)
+    { "before": ["<leader>", "T", "r"], "commands": ["testing.runCurrentTest"] },
+    { "before": ["<leader>", "T", "d"], "commands": ["testing.debugCurrentTest"] },
+    { "before": ["<leader>", "T", "a"], "commands": ["testing.runAll"] },
+    { "before": ["<leader>", "T", "R"], "commands": ["testing.reRunLastRun"] },
+    { "before": ["<leader>", "T", "o"], "commands": ["testing.showMostRecentOutput"] },
+    { "before": ["<leader>", "T", "f"], "commands": ["testing.runCurrentFile"] },
+    { "before": ["<leader>", "T", "e"], "commands": ["testing.openTestView"] },
+
+    // ── JUMP TO TAB (1..9 / last) ──────────────────────────────────────────────
+    { "before": ["<leader>", "1"], "commands": ["workbench.action.openEditorAtIndex1"] },
+    { "before": ["<leader>", "2"], "commands": ["workbench.action.openEditorAtIndex2"] },
+    { "before": ["<leader>", "3"], "commands": ["workbench.action.openEditorAtIndex3"] },
+    { "before": ["<leader>", "4"], "commands": ["workbench.action.openEditorAtIndex4"] },
+    { "before": ["<leader>", "5"], "commands": ["workbench.action.openEditorAtIndex5"] },
+    { "before": ["<leader>", "6"], "commands": ["workbench.action.openEditorAtIndex6"] },
+    { "before": ["<leader>", "7"], "commands": ["workbench.action.openEditorAtIndex7"] },
+    { "before": ["<leader>", "8"], "commands": ["workbench.action.openEditorAtIndex8"] },
+    { "before": ["<leader>", "9"], "commands": ["workbench.action.openEditorAtIndex9"] },
+    { "before": ["<leader>", "0"], "commands": ["workbench.action.lastEditorInGroup"] },
+
+    // ── QUIT (parity with ZZ / ZQ semantics) ───────────────────────────────────
+    { "before": ["Z", "Z"], "commands": ["workbench.action.unpinEditor", "workbench.action.files.save", "workbench.action.closeActiveEditor"] },
+    { "before": ["Z", "Q"], "commands": ["workbench.action.unpinEditor", "workbench.action.revertAndCloseActiveEditor"] }
   ],
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Insert-mode keymaps
+  // ─────────────────────────────────────────────────────────────────────────────
   "vim.insertModeKeyBindings": [
-    // Manually create undo stack
+    // Manually create undo stack on escape (popular Vim tweak)
     { "before": ["<Esc>"], "after": ["<Esc>", "<C-g>u"] }
   ],
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Visual-mode keymaps
+  // ─────────────────────────────────────────────────────────────────────────────
   "vim.visualModeKeyBindings": [
     {
-      // Easy way to exit, useful for some VS Code issues like going to definition though
-      // a peek auto selects the text (just press enter twice)
+      // Easy way to exit; useful when peek auto-selects text
       "before": ["<Enter>"],
       "after": ["<Escape>"]
     },
-    {
-      "before": ["<tab>"],
-      "commands": ["editor.action.indentLines"]
-    },
-    {
-      "before": ["<S-tab>"],
-      "commands": ["editor.action.outdentLines"]
-    },
-    {
-      "before": ["<"],
-      "commands": ["editor.action.outdentLines"]
-    },
-    {
-      "before": [">"],
-      "commands": ["editor.action.indentLines"]
-    },
-    {
-      "before": ["J"],
-      "commands": ["editor.action.moveLinesDownAction"]
-    },
-    {
-      "before": ["K"],
-      "commands": ["editor.action.moveLinesUpAction"]
-    }
+    { "before": ["<tab>"], "commands": ["editor.action.indentLines"] },
+    { "before": ["<S-tab>"], "commands": ["editor.action.outdentLines"] },
+    { "before": ["<"], "commands": ["editor.action.outdentLines"] },
+    { "before": [">"], "commands": ["editor.action.indentLines"] },
+    { "before": ["J"], "commands": ["editor.action.moveLinesDownAction"] },
+    { "before": ["K"], "commands": ["editor.action.moveLinesUpAction"] }
   ],
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Multi-command helpers
+  // ─────────────────────────────────────────────────────────────────────────────
   "multiCommand.commands": [
     {
       // When opening a terminal clear any specific context we have set
       // Can be extended with additional functionality in the future
       "command": "task.custom.openTerminal",
       "sequence": [
-        {
-          "command": "setContext",
-          "args": "closePanelOnEnter"
-        }
+        { "command": "setContext", "args": "closePanelOnEnter" }
       ]
     }
     // {
-    //   // When opening a terminal clear any specific context we have set
-    //   // Can be extended with additional functionality in the future
     //   "command": "task.custom.openTerminalMaximized",
     //   "sequence": [
     //     "task.custom.openTerminal",
     //     "workbench.action.toggleMaximizedPanel"
-    //     // {
-    //     //   "command": "setContext",
-    //     //   "args": "closePanelOnEnter"
-    //     // }
-    //   ]
-    // }
-    // {
-    //   // When closing a terminal clear any specific context we have set
-    //   // Can be extended with additional functionality in the future
-    //   "command": "task.custom.onCloseTerminal",
-    //   "sequence": [
-    //     {
-    //       "command": "setContext",
-    //       "args": "closePanelOnEnter"
-    //     }
     //   ]
     // }
   ],
-  // To improve performance
-  "extensions.experimental.affinity": {
-    "vscodevim.vim": 1
-  },
-  // Disable links as there is an underline effect that is not great
-  // Goto definition works regardless so not needed
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Performance & ergonomics
+  // ─────────────────────────────────────────────────────────────────────────────
+  "extensions.experimental.affinity": { "vscodevim.vim": 1 },
+
+  // Disable link underline (goto definition works regardless)
   "editor.links": false,
+
   // Theme
   "workbench.colorTheme": "Visual Studio Dark - C++",
   "window.titleBarStyle": "custom",
@@ -1312,19 +578,16 @@
   "editor.fontSize": 16,
   "terminal.integrated.fontSize": 16,
   "terminal.integrated.enableVisualBell": false,
-  "accessibility.signals.terminalBell": {
-    "sound": "off"
-  },
+  "accessibility.signals.terminalBell": { "sound": "off" },
   "terminal.integrated.confirmOnKill": "never",
-  "[json]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.formatOnSave": true
-  },
-  "[jsonc]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.formatOnSave": true
-  },
-  // Fuzzy Finder
+
+  // Formatters
+  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode", "editor.formatOnSave": true },
+  "[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode", "editor.formatOnSave": true },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Fuzzy Finder / search ignore (kept; your comments preserved)
+  // ─────────────────────────────────────────────────────────────────────────────
   "search.exclude": {
     // -------------------
     // Version Control
@@ -1446,15 +709,21 @@
   "search.useGlobalIgnoreFiles": true,
   "search.useParentIgnoreFiles": true,
   "fzf-picker.general.useGitIgnoreExcludes": true,
-  // Minimalism
-  "editor.guides.indentation": false,
-  "editor.hideCursorInOverviewRuler": true, // Hide cursor in scrollbar for a cleaner look
-  "editor.overviewRulerBorder": false, // No border on scrollbar
-  "editor.folding": false, // Disable code folding (Neovim has it, but it's optional; disable for minimalism)
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Minimalism / UI (LazyVim-parity tweaks noted)
+  // ─────────────────────────────────────────────────────────────────────────────
+  "editor.guides.indentation": true,  // was false; LazyVim shows indentation guides
+  "editor.hideCursorInOverviewRuler": true,
+  "editor.overviewRulerBorder": false,
+  "editor.folding": true,             // was false; enable folding for parity
   "zenMode.restore": false,
+
   // Minimal Terminal
   "terminal.integrated.tabs.enabled": false, // Hide terminal tabs for minimalism
+
   "vim.autoindent": true, // Auto-indent like Neovim
+
   // Zen Mode
   "zenMode.centerLayout": true,
   "zenMode.showTabs": "none",
@@ -1462,15 +731,22 @@
   "zenMode.fullScreen": true,
   "zenMode.hideStatusBar": true,
   "zenMode.hideActivityBar": true,
+
   "window.commandCenter": false,
   "workbench.layoutControl.enabled": false,
+
+  // C/C++
   "C_Cpp.intelliSenseEngine": "disabled",
+
+  // Copilot scoping (unchanged)
   "github.copilot.enable": {
     "*": false,
     "plaintext": false,
     "markdown": false,
     "scminput": false
   },
+
+  // Breadcrumbs / GitLens trimming
   "breadcrumbs.enabled": false,
   "gitlens.ai.model": "vscode",
   "gitlens.graph.minimap.enabled": false,
@@ -1479,6 +755,8 @@
   "workbench.editor.empty.hint": "hidden",
   "git.blame.editorDecoration.enabled": false,
   "debug.inlineValues": "on",
+
+  // Default extension set for SSH (kept)
   "remote.SSH.defaultExtensions": [
     "vscodevim.vim",
     "jeff-hykin.better-cpp-syntax",
@@ -1489,8 +767,10 @@
     "ryuta46.multi-command",
     "dautroc.yazi-vscode"
   ],
+
   "gitlens.currentLine.enabled": false,
   "gitlens.codeLens.enabled": false,
+
   "editor.inlayHints.enabled": "off",
   "debug.onTaskErrors": "showErrors",
   "task.saveBeforeRun": "always",
@@ -1506,11 +786,18 @@
   "gitlens.currentLine.uncommittedChangesFormat": "",
   "gitlens.currentLine.format": "",
   "extensions.ignoreRecommendations": true,
+
   "search.searchOnTypeDebouncePeriod": 30,
   "search.searchView.keywordSuggestions": true,
   "search.seedWithNearestWord": true,
   "search.smartCase": true,
+
   "panel.opensMaximized": true,
   "workbench.panel.opensMaximized": "always",
-  "chromiumide.metrics.showMessage": false
+  "chromiumide.metrics.showMessage": false,
+
+  // Look parity extras (like LazyVim's colored pairs)
+  // "editor.bracketPairColorization.enabled": true, // rainbow brackets like LazyVim's treesitter/rainbow
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active"
 }
