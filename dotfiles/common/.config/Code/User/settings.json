@@ -331,7 +331,7 @@
     },
     {
       // (O)pen terminal
-      "before": ["<leader>", "x"],
+      "before": ["<leader>", "f", "t"],
       "commands": [
         // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
@@ -425,7 +425,7 @@
     },
     // File
     {
-      "before": ["<leader>", "f", "e"],
+      "before": ["<leader>", "e"],
       "commands": ["task.custom.openTerminal", "yazi-vscode.toggle"]
 
       // Run LF in an editor tab
@@ -475,12 +475,12 @@
     },
     {
       // Open in OS
-      "before": ["<leader>", "f", "E"],
+      "before": ["<leader>", "E"],
       "commands": ["revealFileInOS"]
     },
     {
       // Tree Explorer
-      "before": ["<leader>", "f", "t"],
+      "before": ["<leader>", "f", "e"],
       "commands": [
         // ️Ensure the Explorer is visible / takes focus
         "workbench.view.explorer",
@@ -650,7 +650,7 @@
     },
     {
       // Search within files
-      "before": ["<leader>", "s", "t"],
+      "before": ["<leader>", "s", "g"],
       "commands": [
         // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
@@ -814,13 +814,13 @@
       "commands": ["editor.action.triggerParameterHints"]
     },
     {
-      "before": ["<leader>", "c", "e"],
+      "before": ["<leader>", "c", "a"],
       "commands": ["editor.action.codeAction"]
     },
     // Errors
     {
       // Global view if problems / errors
-      "before": ["<leader>", "e", "e"],
+      "before": ["<leader>", "x", "x"],
       "commands": [
         // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
@@ -837,12 +837,12 @@
     },
     {
       // Goto next error
-      "before": ["<leader>", "e", "n"],
+      "before": ["]", "d"],
       "commands": ["editor.action.marker.next"]
     },
     {
       // Goto previous error
-      "before": ["<leader>", "e", "p"],
+      "before": ["[", "d"],
       "commands": ["editor.action.marker.prev"]
     },
     // Debug Breakpoints
