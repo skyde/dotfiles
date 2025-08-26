@@ -1,40 +1,40 @@
 import * as vscode from 'vscode';
 
-type EditorContext = {
-  uri: vscode.Uri;
-  selection: vscode.Selection;
-  viewColumn?: vscode.ViewColumn;
-  visibleTop?: number;
+const OVERLAY_PREFIX = '[overlay] '; // tag to identify our overlay terminal
+
+type PendingOpen = {
+  createdAt: number;
+  deadline: number;
+  expectedProfileName: string; // profile we asked to open
+  overlayName: string;         // final name we will set before moving
 };
 
 export function activate(context: vscode.ExtensionContext) {
-  const manager = new SessionManager();
+  const mgr = new OverlayManager();
 
+  // Handle our commands
   context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'overlayTerminals.openProfile',
-      async (args?: { profileName?: string }) => {
-        const name = args?.profileName ?? (await pickConfiguredProfileName());
-        if (!name) return;
+    vscode.commands.registerCommand('overlayTerminals.openProfile', async (args?: {
+      profileName?: string;
+    }) => {
+      const profileName = args?.profileName ?? (await pickConfiguredProfileName());
+      if (!profileName) return;
 
-        // Capture current editor context
-        const ed = vscode.window.activeTextEditor;
-        const ctx: EditorContext | undefined = ed
-          ? {
-              uri: ed.document.uri,
-              selection: ed.selection,
-              viewColumn: ed.viewColumn,
-              visibleTop: ed.visibleRanges[0]?.start.line
-            }
-          : undefined;
+      // One overlay at a time (per the requirement)
+      mgr.resetPending();
 
-        manager.startSession(ctx, name);
+      // Prepare pending open with a unique overlay name
+      const overlayName = OVERLAY_PREFIX + profileName + ' #' + randomId();
+      mgr.queuePending({ expectedProfileName: profileName, overlayName });
 
-        await vscode.commands.executeCommand('workbench.action.terminal.newWithProfile', {
-          profileName: name
-        });
-      }
-    ),
+      // Ask VS Code to open the profile (in this window), then we'll rename+move it
+      await vscode.commands.executeCommand('workbench.action.terminal.newWithProfile', {
+        profileName,
+        location: 'editor' // editor or panel doesn't matter; we'll move into new window next
+      });
+
+      // The actual rename+move happens in onDidOpenTerminal for the matching terminal
+    }),
 
     vscode.commands.registerCommand('overlayTerminals.pickProfile', async () => {
       const name = await pickConfiguredProfileName();
@@ -43,34 +43,22 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  manager.attach(context);
+  // Listen in every window (original and the new one) to open/close events
+  mgr.attach(context);
+
+  // If we were activated *after* a move happened, capture any overlay terminals already present
+  mgr.captureExistingOverlayIfAny();
 }
 
 export function deactivate() {}
 
-async function pickConfiguredProfileName(): Promise<string | undefined> {
-  const platform =
-    process.platform === 'darwin' ? 'osx' : process.platform === 'win32' ? 'windows' : 'linux';
+/* ------------------ Manager ------------------ */
 
-  const cfg = vscode.workspace.getConfiguration('terminal.integrated');
-  const profilesObj = cfg.get<Record<string, unknown>>(`profiles.${platform}`) ?? {};
-  const items = Object.keys(profilesObj).sort().map(label => ({ label }));
-
-  if (!items.length) {
-    await vscode.commands.executeCommand('workbench.action.terminal.newWithProfile');
-    return undefined;
-  }
-
-  const pick = await vscode.window.showQuickPick(items, { placeHolder: 'Select a terminal profile' });
-  return pick?.label;
-}
-
-class SessionManager {
-  private activeSession: {
-    context?: EditorContext;
-    terminal?: vscode.Terminal;
-    profileName: string;
-  } | null = null;
+class OverlayManager {
+  // Only one overlay expected at a time
+  private pending: PendingOpen | undefined;
+  private ignoreClose = new WeakSet<vscode.Terminal>(); // terminals being moved out of this window
+  private overlayInThisWindow: vscode.Terminal | undefined; // the overlay terminal owned by THIS window
 
   public attach(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -79,67 +67,95 @@ class SessionManager {
     );
   }
 
-  public startSession(context: EditorContext | undefined, profileName: string): void {
-    if (this.activeSession) {
-      // If a session is already active, don't start a new one.
-      // This handles the "one overlay at a time" requirement.
-      return;
+  public resetPending(): void {
+    this.pending = undefined;
+  }
+
+  public queuePending(data: { expectedProfileName: string; overlayName: string }): void {
+    const now = Date.now();
+    this.pending = {
+      expectedProfileName: data.expectedProfileName,
+      overlayName: data.overlayName,
+      createdAt: now,
+      deadline: now + 8000 // generous window to match newly opened terminal
+    };
+  }
+
+  public captureExistingOverlayIfAny(): void {
+    for (const t of vscode.window.terminals) {
+      if (isOverlayName(t.name)) {
+        this.overlayInThisWindow = t; // this window owns an overlay terminal; close this window when it ends
+        break;
+      }
     }
-    this.activeSession = { context, profileName };
   }
 
   private async onOpen(t: vscode.Terminal): Promise<void> {
-    if (
-      !this.activeSession ||
-      this.activeSession.terminal ||
-      t.name !== this.activeSession.profileName
-    ) {
-      // Ignore terminals opened if we aren't in a session, if a terminal is already tracked,
-      // or if the terminal name doesn't match the profile we are looking for.
+    // Case A: This is the terminal we just opened in the launcher window
+    if (this.pending && Date.now() < this.pending.deadline && t.name === this.pending.expectedProfileName) {
+      // Make it active, rename with our overlay marker, then move into a new window
+      t.show(true);
+      await cmd('workbench.action.terminal.renameWithArg', { name: this.pending.overlayName });
+
+      // Ignore the subsequent "close" event in this window because the terminal is moving, not exiting
+      this.ignoreClose.add(t);
+      await cmd('workbench.action.terminal.moveIntoNewWindow');
+
+      // We are done with pending in the launcher window
+      this.pending = undefined;
       return;
     }
 
-    this.activeSession.terminal = t;
-
-    // Move the terminal into a new window.
-    await vscode.commands.executeCommand('workbench.action.terminal.moveIntoNewWindow');
+    // Case B: An overlay terminal appeared in THIS window (either we opened it here, or it was moved here)
+    if (isOverlayName(t.name)) {
+      this.overlayInThisWindow = t;
+    }
   }
 
   private async onClose(t: vscode.Terminal): Promise<void> {
-    if (!this.activeSession || this.activeSession.terminal !== t) {
+    // If this is the launcher window's "close due to move", ignore it
+    if (this.ignoreClose.has(t)) {
+      this.ignoreClose.delete(t);
       return;
     }
 
-    const { context } = this.activeSession;
-    this.activeSession = null;
-
-    // Restore the editor state.
-    if (context) {
-      try {
-        const editor = await vscode.window.showTextDocument(context.uri, {
-          viewColumn: context.viewColumn ?? vscode.ViewColumn.Active,
-          preview: false,
-          preserveFocus: false
-        });
-
-        if (typeof context.visibleTop === 'number') {
-          const pos = new vscode.Position(context.visibleTop, 0);
-          editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.AtTop);
-        }
-
-        if (context.selection) {
-          editor.selection = context.selection;
-          editor.revealRange(
-            context.selection,
-            vscode.TextEditorRevealType.InCenterIfOutsideViewport
-          );
-        }
-      } catch {
-        await vscode.commands.executeCommand('workbench.action.openPreviousRecentlyUsedEditorInGroup');
-      }
-    } else {
-      await vscode.commands.executeCommand('workbench.action.openPreviousRecentlyUsedEditorInGroup');
+    // If THIS window owns the overlay terminal and it just closed, close THIS window only
+    if (this.overlayInThisWindow && t === this.overlayInThisWindow) {
+      this.overlayInThisWindow = undefined;
+      await cmd('workbench.action.closeWindow'); // runs in THIS window's extension host
     }
+  }
+}
+
+/* ------------------ Helpers ------------------ */
+
+async function pickConfiguredProfileName(): Promise<string | undefined> {
+  const platform = process.platform === 'darwin' ? 'osx' : process.platform === 'win32' ? 'windows' : 'linux';
+  const cfg = vscode.workspace.getConfiguration('terminal.integrated');
+  const profiles = cfg.get<Record<string, unknown>>(`profiles.${platform}`) ?? {};
+  const items = Object.keys(profiles).sort().map(label => ({ label }));
+  if (!items.length) {
+    await vscode.commands.executeCommand('workbench.action.terminal.newWithProfile');
+    return undefined;
+  }
+  const pick = await vscode.window.showQuickPick(items, { placeHolder: 'Select a terminal profile' });
+  return pick?.label;
+}
+
+function isOverlayName(name: string): boolean {
+  return name.startsWith(OVERLAY_PREFIX);
+}
+
+function randomId(): string {
+  return Math.random().toString(36).slice(2, 6);
+}
+
+async function cmd(id: string, args?: unknown): Promise<boolean> {
+  try {
+    await vscode.commands.executeCommand(id, args as never);
+    return true;
+  } catch {
+    return false;
   }
 }
 
