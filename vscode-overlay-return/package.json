@@ -5,6 +5,7 @@
   "publisher": "local",
   "engines": { "vscode": "^1.82.0" },
   "main": "dist/extension.js",
+  "repository": "https://github.com/F286/dotfiles",
   "activationEvents": [
     "onStartupFinished",
     "onCommand:overlayTerminals.openProfile",

@@ -1,18 +1,20 @@
 import * as vscode from 'vscode';
 
-const OVERLAY_PREFIX = '[overlay] '; // tag to identify our overlay terminal
+const OVERLAY_PREFIX = '[overlay] ';
 
 type PendingOpen = {
   createdAt: number;
   deadline: number;
-  expectedProfileName: string; // profile we asked to open
-  overlayName: string;         // final name we will set before moving
+  expectedProfileName: string;
+  overlayName: string;
 };
 
 export function activate(context: vscode.ExtensionContext) {
-  const mgr = new OverlayManager();
+  // const focusReturner = new FocusReturner(context.globalState);
+  // focusReturner.attach(context); // listen in every window
 
-  // Handle our commands
+  // const mgr = new OverlayManager(focusReturner);
+
   context.subscriptions.push(
     vscode.commands.registerCommand('overlayTerminals.openProfile', async (args?: {
       profileName?: string;
@@ -20,20 +22,37 @@ export function activate(context: vscode.ExtensionContext) {
       const profileName = args?.profileName ?? (await pickConfiguredProfileName());
       if (!profileName) return;
 
-      // One overlay at a time (per the requirement)
-      mgr.resetPending();
-
-      // Prepare pending open with a unique overlay name
       const overlayName = OVERLAY_PREFIX + profileName + ' #' + randomId();
-      mgr.queuePending({ expectedProfileName: profileName, overlayName });
 
-      // Ask VS Code to open the profile (in this window), then we'll rename+move it
-      await vscode.commands.executeCommand('workbench.action.terminal.newWithProfile', {
-        profileName,
-        location: 'editor' // editor or panel doesn't matter; we'll move into new window next
-      });
+      // Get the configuration for the selected profile
+      const platform = process.platform === 'darwin' ? 'osx' : process.platform === 'win32' ? 'windows' : 'linux';
+      const cfg = vscode.workspace.getConfiguration('terminal.integrated');
+      const profiles = cfg.get<Record<string, { path: string, args?: string[] } | string>>(`profiles.${platform}`) ?? {};
+      const profileConfig = profiles[profileName];
 
-      // The actual rename+move happens in onDidOpenTerminal for the matching terminal
+      if (!profileConfig) {
+        vscode.window.showErrorMessage(`Terminal profile "${profileName}" not found.`);
+        return;
+      }
+
+      // Create terminal options from the profile config
+      const location: vscode.TerminalEditorLocationOptions = {
+        viewColumn: vscode.ViewColumn.Active
+      };
+
+      const options: vscode.TerminalOptions = { name: overlayName, location };
+      if (typeof profileConfig === 'string') {
+        options.shellPath = profileConfig;
+      } else {
+        options.shellPath = profileConfig.path;
+        options.shellArgs = profileConfig.args;
+      }
+
+      const terminal = vscode.window.createTerminal(options);
+      // mgr.prepareForMove(terminal);
+      terminal.show(true);
+
+      await vscode.commands.executeCommand('workbench.action.terminal.moveIntoNewWindow');
     }),
 
     vscode.commands.registerCommand('overlayTerminals.pickProfile', async () => {
@@ -43,11 +62,26 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Listen in every window (original and the new one) to open/close events
-  mgr.attach(context);
+context.subscriptions.push(
+  vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+    // Only act if focus moved to a real text editor
+    if (editor) {
+      vscode.window.showInformationMessage(`Editor focused: ${editor.document.fileName}. Sending Escape.`);
 
-  // If we were activated *after* a move happened, capture any overlay terminals already present
-  mgr.captureExistingOverlayIfAny();
+      // 1. Give focus a moment to settle on the text editor
+      await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+      await delay(50); // A small delay is often crucial
+
+      // 2. Now send the escape command
+      await cmd('extension.vim_escape');
+      
+      // For maximum reliability, you can even send it twice
+      await delay(50);
+      await cmd('extension.vim_escape');
+    }
+  })
+);
+  // mgr.attach(context);
 }
 
 export function deactivate() {}
@@ -55,10 +89,10 @@ export function deactivate() {}
 /* ------------------ Manager ------------------ */
 
 class OverlayManager {
-  // Only one overlay expected at a time
   private pending: PendingOpen | undefined;
-  private ignoreClose = new WeakSet<vscode.Terminal>(); // terminals being moved out of this window
-  private overlayInThisWindow: vscode.Terminal | undefined; // the overlay terminal owned by THIS window
+  private ignoreClose = new WeakSet<vscode.Terminal>();
+
+  constructor(private focusReturner: FocusReturner) {}
 
   public attach(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -77,55 +111,93 @@ class OverlayManager {
       expectedProfileName: data.expectedProfileName,
       overlayName: data.overlayName,
       createdAt: now,
-      deadline: now + 8000 // generous window to match newly opened terminal
+      deadline: now + 8000
     };
   }
 
-  public captureExistingOverlayIfAny(): void {
-    for (const t of vscode.window.terminals) {
-      if (isOverlayName(t.name)) {
-        this.overlayInThisWindow = t; // this window owns an overlay terminal; close this window when it ends
-        break;
-      }
-    }
+  public prepareForMove(terminal: vscode.Terminal): void {
+    this.ignoreClose.add(terminal);
   }
 
   private async onOpen(t: vscode.Terminal): Promise<void> {
-    // Case A: This is the terminal we just opened in the launcher window
-    if (this.pending && Date.now() < this.pending.deadline && t.name === this.pending.expectedProfileName) {
-      // Make it active, rename with our overlay marker, then move into a new window
-      t.show(true);
-      await cmd('workbench.action.terminal.renameWithArg', { name: this.pending.overlayName });
-
-      // Ignore the subsequent "close" event in this window because the terminal is moving, not exiting
-      this.ignoreClose.add(t);
-      await cmd('workbench.action.terminal.moveIntoNewWindow');
-
-      // We are done with pending in the launcher window
-      this.pending = undefined;
-      return;
-    }
-
-    // Case B: An overlay terminal appeared in THIS window (either we opened it here, or it was moved here)
-    if (isOverlayName(t.name)) {
-      this.overlayInThisWindow = t;
-    }
+    // No longer needed, as we create the terminal with the correct name.
   }
 
   private async onClose(t: vscode.Terminal): Promise<void> {
-    // If this is the launcher window's "close due to move", ignore it
+    // Ignore the synthetic close caused by move out of the launcher window
     if (this.ignoreClose.has(t)) {
       this.ignoreClose.delete(t);
       return;
     }
 
-    // If THIS window owns the overlay terminal and it just closed, close THIS window only
-    if (this.overlayInThisWindow && t === this.overlayInThisWindow) {
-      this.overlayInThisWindow = undefined;
-      await cmd('workbench.action.closeWindow'); // runs in THIS window's extension host
+    // If any overlay terminal closed in this window, request Esc on next focus and close this window
+    if (isOverlayName(t.name)) {
+      // await this.focusReturner.requestEscapeOnNextFocus();
+      // await cmd('workbench.action.closeWindow');
     }
   }
 }
+
+/* ------------------ Focus->Esc handoff ------------------ */
+
+class FocusReturner {
+  private key = 'overlay.doubleEscapeOnNextFocus';
+  private handling = false;
+
+  constructor(private gs: vscode.Memento) {}
+
+  public attach(context: vscode.ExtensionContext): void {
+    // Run when the window becomes focused...
+    context.subscriptions.push(
+      vscode.window.onDidChangeWindowState(e => {
+        if (e.focused) void this.maybeHandle();
+      })
+    );
+    // ...or when an editor becomes active (some builds focus without firing the window event in time)
+    context.subscriptions.push(
+      vscode.window.onDidChangeActiveTextEditor(() => {
+        void this.maybeHandle();
+      })
+    );
+  }
+
+  public async requestEscapeOnNextFocus(): Promise<void> {
+    await this.gs.update(this.key, true);
+  }
+
+  private async maybeHandle(): Promise<void> {
+    if (this.handling) return;
+    const pending = this.gs.get<boolean>(this.key, false);
+    if (!pending) return;
+
+    this.handling = true;
+    try {
+      await this.gs.update(this.key, false);
+
+      // Give focus a moment to settle on the text editor
+      await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+      await delay(40);
+
+      // Ensure Vim is activated (cheap, safe)
+      try {
+        const ext = vscode.extensions.getExtension('vscodevim.vim');
+        if (ext && !ext.isActive) { await ext.activate(); }
+      } catch { /* ignore */ }
+
+      // Send Esc twice with a 100 ms gap
+      await cmd('extension.vim_escape');
+      await delay(100);
+      await cmd('extension.vim_escape');
+
+      // Optional tiny nudge (rare older versions): if first command id is missing, try remap once.
+      // (No harm if Vim is present—remap will just be ignored if unsupported.)
+      // await cmd('vim.remap', { after: ['<Esc>'] });
+    } finally {
+      this.handling = false;
+    }
+  }
+}
+
 
 /* ------------------ Helpers ------------------ */
 
@@ -157,5 +229,35 @@ async function cmd(id: string, args?: unknown): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function getContext<T = unknown>(key: string): Promise<T | undefined> {
+  try {
+    return (await vscode.commands.executeCommand('getContextKeyValue', key)) as T | undefined;
+  } catch {
+    try {
+      return (await vscode.commands.executeCommand('vscode.getContextKeyValue', key)) as T | undefined;
+    } catch {
+      return undefined;
+    }
+  }
+}
+
+async function ensureVimNormal(timeoutMs = 1000): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const mode = await getContext<string>('vim.mode');
+    if (mode === 'Normal') return true;
+    await vscode.commands.executeCommand('extension.vim_escape');
+    await delay(50);
+  }
+  // Final fallback for older VSCodeVim builds
+  await vscode.commands.executeCommand('vim.remap', { after: ['<Esc>'] } as never);
+  const mode2 = await getContext<string>('vim.mode');
+  return mode2 === 'Normal';
+}
+
+function delay(ms: number) {
+  return new Promise<void>(r => setTimeout(r, ms));
 }
 
