@@ -1,356 +1,150 @@
-# Dotfiles with GNU Stow
+# Sky’s Dotfiles — macOS · Linux · Windows
 
-This repository contains my personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/), a symlink farm manager that makes it easy to manage your configuration files across different machines and operating systems.
+Developer‑friendly, cross‑platform dotfiles. One command to bootstrap a new machine, then manage configs with safe, repeatable symlinks.
 
-## Repository Structure
+- **Batteries included:** shell, dev tools, Neovim, VS Code, Kitty, lf; macOS extras (Hammerspoon); Windows extras (VS/VsVim, Kinesis Advantage2, Savant Elite2).  
+- **Cross‑platform scripts:** `init.*`, `apply.*`, `update.*` (shell + PowerShell).  
+- **Safe by default:** dry‑runs, adopt existing files, delete/restow when needed.
 
-```text
-dotfiles/
-├── common/   # Shared configs across all platforms
-├── mac/      # macOS-specific configs
-└── windows/  # Windows-specific configs
-```
+> These dotfiles use GNU **stow** for symlink management on macOS/Linux, and a PowerShell workflow on Windows.
 
-## How Stow Works
+---
 
-GNU Stow creates symlinks from your home directory to the configuration files in this repository:
+## TL;DR Quick Start
 
-- **Package**: Top-level directories in `dotfiles/` (`common`, `mac`, `windows`)
-- **Target**: Your home directory (`~` or `$HOME`)
-- **Symlinks**: Stow mirrors the directory structure inside each package to your home directory
-
-### Example
-
-When you run `stow common` from `dotfiles/`, symlinks are created:
-
-```text
-~/.bashrc → ~/dotfiles/dotfiles/common/.bashrc
-~/.zshrc → ~/dotfiles/dotfiles/common/.zshrc
-~/.tmux.conf → ~/dotfiles/dotfiles/common/.tmux.conf
-```
-
-## Quick Setup
-
-### Mac
-
-```sh
-# Install Homebrew from https://brew.sh if not already present
-# stow will be installed automatically by the init script
+### macOS
+```bash
+# 1) Get the repo
 git clone https://github.com/skyde/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-./init.sh
+
+# 2) Bootstrap (installs git/stow if needed, sets sensible defaults)
+./init-macos.sh
+
+# 3) Link configs (default package set in packages.txt)
+./apply.sh
 ```
 
-### Linux notes
-
-```sh
-sudo apt update
-sudo apt install -y git   # stow installed automatically
-git clone https://github.com/skyde/dotfiles.git ~/dotfiles
-cd ~/dotfiles
-./init.sh
-```
-
-### Windows (platform)
-
-```ps
-# stow will be installed automatically via winget if missing
-# Install Git if needed: winget install Git.Git
-git clone https://github.com/skyde/dotfiles.git "$env:USERPROFILE\dotfiles"
-cd "$env:USERPROFILE\dotfiles"
-.\init.ps1
-```
-
-## What the Init Scripts Do
-
-The init scripts provide complete automation:
-
-1. **📁 Stow Configuration Files**: Symlink all dotfiles to correct locations
-2. **🔧 Install VS Code Extensions**: Auto-install essential extensions from `vscode_extensions.txt`
-3. **📦 Install Development Tools**: Optionally install common CLI tools:
-   - **macOS**: ripgrep, fd, fzf, bat, delta, eza, neovim, tmux, git, lazygit
-   - **Linux**: ripgrep, fd-find, fzf, bat, git, neovim, tmux
-   - **Windows**: Git, ripgrep, fd, bat, delta, Neovim, PowerShell, Starship
-
-### Non-Interactive Mode
-
-For automated setups (CI/CD, scripts):
+### Linux (Debian/Ubuntu shown; use your package manager as needed)
 
 ```bash
-# Skip app installation prompts
-AUTO_INSTALL=0 ./init.sh
+git clone https://github.com/skyde/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+./init-linux.sh
+./apply.sh
+```
 
-# Auto-install apps without prompting
-AUTO_INSTALL=1 ./init.sh
+### Windows (PowerShell)
+
+```powershell
+git clone https://github.com/skyde/dotfiles.git $HOME\dotfiles
+cd $HOME\dotfiles
+
+# Recommended: enable Developer Mode (no admin needed) or run PowerShell as Administrator
+# Allow local scripts
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+
+# Bootstrap & link
+.\init-windows.ps1
+.\apply.ps1
+```
+
+---
+
+## What gets installed?
+
+Default packages are listed in `packages.txt`. As of today, the set includes:
+
+* **Common:** `shell`, `devtools`, `nvim`, `Code`, `kitty`, `lf`
+* **macOS:** `hammerspoon`
+* **Windows:** `Documents`, `vsvim`, `visual_studio`, `kinesis-advantage2`, `savant-elite2`
+
+You can add/remove packages in `packages.txt` or pass packages explicitly to `apply` (see **Usage**).
+See **[docs/packages.md](docs/packages.md)** for what each package contains and where it links to.
+
+---
+
+## How it works (first principles)
+
+* **Source of truth:** files live in `dotfiles/<package>/…` mirroring their final paths (e.g., `dotfiles/nvim/.config/nvim/init.lua`).
+* **Linking:** on macOS/Linux we use **stow** to place **symlinks** into `$HOME` (or other targets). On Windows, `apply.ps1` uses PowerShell to create symlinks/shortcuts where needed.
+* **Idempotent:** re‑running `apply` makes the working machine converge on the repo state (use `--restow` when you change files).
+* **Safe adoption:** prefer adopting pre‑existing files rather than overwriting (see **Usage** for the `--adopt` flow with stow).
+
+---
+
+## Everyday commands
+
+```bash
+# macOS/Linux
+./apply.sh                 # link default packages from packages.txt
+./apply.sh shell nvim      # link specific packages
+./apply.sh --restow        # restow (after changing files)
+./apply.sh --delete        # unlink previously stowed files (careful!)
+./apply.sh --no            # dry run (show what would happen)
+
+./update.sh                # pull latest + re-apply
 ```
 
 ```powershell
-# Windows equivalent
-$env:AUTO_INSTALL = "0"  # or "1" to auto-install
-.\init.ps1
+# Windows
+.\apply.ps1                # link default packages
+.\apply.ps1 -Packages nvim,Code
+.\update.ps1
 ```
 
-## Manual Package Management
+More switches and examples are in **[README-usage.md](README-usage.md)**.
 
-You can also manage packages manually:
+---
 
-### Installing Packages
+## Directory layout
 
-```sh
-cd ~/dotfiles/dotfiles
-
-# Install shared configs
-stow common
-
-# Install macOS-specific configs (on Mac)
-stow mac
-
-# Install Windows-specific configs (on Windows)
-stow windows
+```
+dotfiles/
+  shell/           # shells, gitconfig, aliases…
+  devtools/        # tool config (ripgrep/fd/fzf/etc.)
+  nvim/            # Neovim config
+  Code/            # VS Code settings/keybindings/snippets
+  kitty/           # kitty terminal
+  lf/              # lf file manager
+  hammerspoon/     # macOS automation
+  visual_studio/   # Windows VS settings
+  vsvim/           # VsVim settings
+  kinesis-advantage2/  # keyboard firmware/layout files
+  savant-elite2/       # foot pedal config
 ```
 
-### Uninstalling Packages
+Other useful files:
 
-```sh
-cd ~/dotfiles/dotfiles
+* `vscode_extensions.txt` – extensions auto‑installed by the scripts
+* `install-yazi.sh` – helper to install the `yazi` TUI file manager
+* `init-*.sh` / `apply.*` / `update.*` – cross platform entry points (shell + PowerShell)
 
-# Remove symlinks for a package
-stow -D common
-```
+---
 
-### Restowing (Update Existing)
+## Platform notes
 
-After editing files, restow to update the symlinks:
+* **macOS:** Homebrew is used where appropriate; Hammerspoon config is optional.
+* **Linux:** Package installation uses your system’s package manager; everything else is stow‑driven.
+* **Windows:** Enable Developer Mode or run an elevated PowerShell to allow symlinks; Visual Studio/VsVim settings and device configs (Kinesis, Savant) live under `dotfiles/…`.
 
-```sh
-cd ~/dotfiles
-./apply.sh --restow        # Reapply all installed packages
-./apply.sh --no --restow   # Preview restow without making changes
-```
+Details in **[docs/platform-notes.md](docs/platform-notes.md)**.
 
-To restow a single package manually, run `stow -R <package>` from the `dotfiles` directory.
-
-## Platform-Specific Instructions
-
-### macOS
-
-The init script will:
-
-- Install configs from `dotfiles/common/`
-- Install macOS-specific configs from `dotfiles/mac/`
-- Optionally install CLI tools (ripgrep, fd, bat, eza, etc.)
-
-### Linux
-
-The init script will:
-
-- Install configs from `dotfiles/common/`
-- Set up Linux-specific configurations
-- Optionally install CLI tools via package manager
-
-### Windows
-
-The PowerShell script will:
-
-- Install configs from `dotfiles/common/`
-- Install Windows-specific configs from `dotfiles/windows/`
-- Use PowerShell-compatible stow commands
-- Optionally install CLI tools via winget
-
-## Customization
-
-### Adding New Configurations
-
-1. Add files under `dotfiles/common/` (or the platform-specific directory) following the same structure as your home directory.
-2. Restow the package to apply the changes:
-
-```sh
-# Example: Adding a new tool called 'mytool'
-mkdir -p dotfiles/common/.config/mytool
-echo "config=value" > dotfiles/common/.config/mytool/config.toml
-cd dotfiles
-stow -R common
-```
-
-### Handling Conflicts
-
-If stow encounters existing files that aren't symlinks, it will warn you:
-
-```sh
-# Move existing files to backup
-mv ~/.bashrc ~/.bashrc.backup
-mv ~/.zshrc ~/.zshrc.backup
-
-# Then install the package
-stow common
-```
+---
 
 ## Troubleshooting
 
-### Common Issues
+Most issues boil down to “file already exists” or symlink permissions. See **[docs/troubleshooting.md](docs/troubleshooting.md)** for quick fixes and `stow --adopt` guidelines.
 
-1. **Stow conflicts**: Remove or backup existing files first
-2. **Permission errors**: Ensure you have write access to your home directory
-3. **Broken symlinks**: Run `stow -R <package>` to restow
-4. **Package not found**: Check you're in the correct directory (`dotfiles/` etc.)
+---
 
-## Starship Prompt
+## CI
 
-Starship is offered as an optional tool.
-You'll be prompted to install it unless `AUTO_INSTALL=1` is set, in which case it installs and updates without prompting (winget: `Starship.Starship`).
+The repo includes GitHub Actions to test fresh installs, script validation, edge cases, and performance across macOS, Linux, and Windows. See **[docs/ci.md](docs/ci.md)** for the matrix and quality gates.
 
-## Fast CLI Tools
+---
 
-These tools are offered during setup:
+## License
 
-- `ripgrep` for searching directories quickly
-- `fd` as a faster `find`
-- `bat` as a colorful `cat`
-- `eza` as an improved `ls`
-- `lf` as a modern terminal file manager
-- `delta` for modern git diffs (also used in Lazygit)
-  - diffs are side-by-side by default, while LazyGit shows inline changes
-- `lazygit` for a simple git TUI
+MIT.
 
-On macOS/Linux, `starship` is also installed; Windows installs it via winget.
-
-## Mac notes
-
-## Custom Alt Tab
-
-I use the 'Alt Tab' program for easy window switching.
-
-Activate with footpedal + r. Navigate with arrow keys and space to select.
-
-Settings are stored in `dotfiles/mac/Library/Preferences/com.lwouis.alt-tab-macos.plist` and include:
-
-- Custom appearance size and alignment
-- Arrow keys enabled for navigation
-- UI elements hidden (badges, colored circles, status icons, menubar icon)
-- Control key as hold shortcut
-
-## Hammerspoon
-
-Spotlight opens when the Cmd key is quickly tapped by itself. A short delay prevents accidental triggers.
-
-## Fluor
-
-Automatically switches mode of fn keys per program. Important as keyboard macros use F... keys.
-
-Settings are stored in `dotfiles/mac/Library/Preferences/com.pyrolyse.Fluor.plist` and include:
-
-- App-specific rules for VS Code and kitty (behavior mode 2)
-- Notification preferences
-
-## Better Display
-
-Allows increased brightness when viewing SDR content on an HDR monitor.
-
-## Windows notes
-
-## Config
-
-```text
-- To get the Alt Tab switcher to work better
-    - Go to Accessibility -> Visual Effects -> Animation effects & turn them off
-    - Without this, moving to another tab requires waiting a split second.
-- Set cursor blink rate to 0
-- Set cursor thickness to 6
-```
-
-lf expects its configuration under `%AppData%\lf` on Windows. These dotfiles create a symlink to `~/.config/lf` so settings apply across OSes.
-
-## PowerShell 7
-
-Use this since it's nicer than the default PowerShell 5.
-
-## Visual Studio
-
-```text
-- For Visual Studio use VSVim with the provided vsvimrc
-- Using the plugin 'Peasy Motion' with the following settings:
-- Allowed jump label characters: tsraneiodhgmplfuc,bjvk
-    - (note this is optimized for Colemak Mod DH)
-- Use a plugin called MinimalVS for nice fullscreen mode
-    - https://marketplace.visualstudio.com/items?itemName=pavonism.minimalVS
-- There is a plugin called 'Smooth Caret' which messes with the VSVim caret - make sure it's disabled
-```
-
-## Perforce
-
-Ensure you set the correct environment variable to allow the diff to work:
-
-```cmd
-P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe" /Diff %1 %2
-```
-
-## Visual Studio Code
-
-I'm using a few plugins:
-
-- Vim
-- Fzf Picker (hooks into fzf, rg & bat)
-- clangd for C++ language features
-  Extensions listed in `vscode_extensions.txt` will be installed automatically
-  when these dotfiles are applied. Custom keybindings are documented in
-  [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
-  On macOS, the init script falls back to
-  `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` if the
-  `code` command isn't in your `PATH`.
-
-For remote development, install the **Remote - SSH** extension. Add your server
-details to `~/.ssh/config`, e.g.
-
-```ssh
-Host devbox
-  HostName server.example.com
-  User you
-```
-
-Use the “Remote-SSH: Connect to Host…” command in VS Code to start a session.
-
-## Keyboard
-
-Run `kinesis-advantage2/sync-kinesis-layouts.ps1` with the Kinesis Advantage2 V-Drive connected & key bindings will auto sync.
-
-I've had issues where the keyboard drive gets totally corrupted when syncing from Mac - so just stick to Windows.
-
-For more detail see the 'Interaction' repo.
-
-## Macro Bindings
-
-```text
-
-build and run - Shift F2
-find class - Shift F3
-scroll up - Shift F4
-scroll down - Shift F6
-stop build - Shift F7
-goto definition - Shift F8
-open spotlight - tap Cmd
-toggle eye mouse - Shift F10
-toggle comment - Shift F11
-
-```
-
-## Platforms
-
-Press Pgrm 1 to activate on Mac
-Press Pgrm qwerty to activate on Windows
-
-Note you should always leave the keyboard in 'Windows' mode as the bindings have been manually translated.
-
-## Footpedal
-
-The config for the footpedal is located under the savant-elite2 folder.
-
-The pedal config:
-
-- Left is Escape
-- Middle is Left Click
-- Right is Right Click
-
-The method to open V-Drive is either:
-
-- Flip the switch on the bottom of the pedal
-- Hold the pedal down briefly while connecting to the computer (waterproof version)
