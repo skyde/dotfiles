@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Rebuild bat cache when themes change
+
+set -euo pipefail
+
+{{- if lookPath "bat" }}
+echo "Rebuilding bat cache..."
+bat cache --build
+echo "Bat cache rebuilt successfully!"
+{{- end }}
