@@ -573,7 +573,7 @@
   // === ABSOLUTE one-keystroke toggles with focus ===
   // Left Side Bar (Explorer/SCM/Extensions...)
   { "key": "cmd+b", "command": "workbench.action.focusSideBar", "when": "!sideBarFocus" },
-  { "key": "cmd+b", "command": "workbench.action.closeSidebar",  "when": "sideBarFocus" },
+  { "key": "cmd+b", "command": "workbench.action.focusActiveEditorGroup",  "when": "sideBarFocus" },
 
   // Bottom Panel (Terminal/Problems/Output/Debug Console)
   { "key": "cmd+j", "command": "workbench.action.focusPanel", "when": "!panelFocus" },
@@ -753,9 +753,9 @@
 
   // Left Side Bar (Explorer/SCM/Extensions...)
   { "key": "cmd+b",  "command": "workbench.action.focusSideBar", "when": "!sideBarFocus" },
-  { "key": "cmd+b",  "command": "workbench.action.closeSidebar", "when": "sideBarFocus" },
+  { "key": "cmd+b",  "command": "workbench.action.focusActiveEditorGroup", "when": "sideBarFocus" },
   { "key": "ctrl+b", "command": "workbench.action.focusSideBar", "when": "!sideBarFocus" },
-  { "key": "ctrl+b", "command": "workbench.action.closeSidebar", "when": "sideBarFocus" },
+  { "key": "ctrl+b", "command": "workbench.action.focusActiveEditorGroup", "when": "sideBarFocus" },
 
   // Toggle Explorer with Space e
   { "key": "space e", "command": "workbench.action.closeSidebar", "when": "explorerViewletVisible && filesExplorerFocus && !editorTextFocus" },
@@ -774,10 +774,10 @@
   { "key": "ctrl+shift+;", "command": "workbench.action.closeAuxiliaryBar" },
 
   // Right (Secondary) Side Bar — single-stroke toggle (Cmd AND Ctrl)
-  { "key": "cmd;",  "command": "workbench.action.focusAuxiliaryBar",  "when": "!auxiliaryBarFocus" },
-  { "key": "cmd;",  "command": "workbench.action.toggleAuxiliaryBar", "when": "auxiliaryBarFocus" },
-  { "key": "ctrl;", "command": "workbench.action.focusAuxiliaryBar",  "when": "!auxiliaryBarFocus" },
-  { "key": "ctrl;", "command": "workbench.action.toggleAuxiliaryBar", "when": "auxiliaryBarFocus" },
+  { "key": "cmd+;",  "command": "workbench.action.focusAuxiliaryBar",  "when": "!auxiliaryBarFocus" },
+  { "key": "cmd+;",  "command": "workbench.action.focusActiveEditorGroup", "when": "auxiliaryBarFocus" },
+  { "key": "ctrl+;", "command": "workbench.action.focusAuxiliaryBar",  "when": "!auxiliaryBarFocus" },
+  { "key": "ctrl+;", "command": "workbench.action.focusActiveEditorGroup", "when": "auxiliaryBarFocus" },
 
   // Esc always drops you back to the editor from bars/panel (but not LazyGit)
   { "key": "escape", "command": "workbench.action.focusActiveEditorGroup", "when": "(sideBarFocus || panelFocus || auxiliaryBarFocus) && !lazygitFocus" },
