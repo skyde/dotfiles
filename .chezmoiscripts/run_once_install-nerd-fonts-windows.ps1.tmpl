@@ -1,6 +1,6 @@
 {{- if eq .chezmoi.os "windows" -}}
 $ErrorActionPreference = "Stop"
-# This package installs system-wide via MSI (UAC prompt is normal).
-winget install --id=DEVCOM.JetBrainsMonoNerdFont -e `
-  --accept-package-agreements --accept-source-agreements --silent
+# JetBrains Mono Nerd Font is now included directly in the repo
+# Fonts are installed via chezmoi to the user's local font directory
+Write-Host "JetBrains Mono Nerd Font fonts are managed directly by chezmoi"
 {{- end -}}
