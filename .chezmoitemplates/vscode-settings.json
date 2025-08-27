@@ -60,6 +60,7 @@
   "terminal.integrated.persistentSessionReviveProcess": "onExit",
   "terminal.integrated.persistentSessionScrollback": 10000,
   "terminal.integrated.sendKeybindingsToShell": true,
+  "terminal.integrated.allowChords": true,
   "terminal.integrated.confirmOnExit": "never",
   "terminal.integrated.defaultLocation": "view",
   "terminal.integrated.focusAfterRun": "accessible-buffer",
@@ -67,7 +68,11 @@
   "terminal.integrated.hideOnStartup": true,
   "terminal.integrated.showExitAlert": false,
   "terminal.integrated.commandsToSkipShell": [
-    "workbench.action.focusActiveEditorGroup"
+    "workbench.action.focusActiveEditorGroup",
+    "workbench.action.terminal.focusPreviousPane",
+    "workbench.action.terminal.focusNextPane",
+    "workbench.action.togglePanel",
+    "workbench.action.terminal.sendSequence"
   ],
   "editor.lineNumbers": "relative",
   "editor.renderLineHighlight": "all",
