@@ -224,9 +224,16 @@
     "command": "runCommands",
     "args": {
       "commands": [
-        // Automatically search for the word under the cursor
-        "editor.action.addSelectionToNextFindMatch",
-        "fzf-picker.findWithinFiles",
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.openTerminal",
+        // Set the fzf context to active
+        { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        {
+          // Run the fzf task
+          "command": "workbench.action.tasks.runTask",
+          "args": "FZF Ripgrep"
+        },
+        // Click escape so we don't come back to a strange mode
         "extension.vim_escape"
       ]
     }
