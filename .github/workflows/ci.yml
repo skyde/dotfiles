@@ -30,10 +30,44 @@ jobs:
           # Preview stow into a temp HOME
           TARGET="$RUNNER_TEMP/home"
           mkdir -p "$TARGET"
-          stow -d stow -t "$TARGET" -n -v zsh ripgrep shell fzf local-bin kitty wezterm lazygit helix bat hammerspoon nvim
+          PKGS="zsh ripgrep shell fzf local-bin kitty wezterm lazygit helix bat hammerspoon nvim"
+          if [ "$RUNNER_OS" = "macOS" ]; then PKGS="$PKGS macos vscode-macos"; fi
+          if [ "$RUNNER_OS" = "Linux" ]; then PKGS="$PKGS vscode-linux"; fi
+          stow -d stow -t "$TARGET" -n -v $PKGS
+
+      - name: Ensure VS Code user files (Unix via stow)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          TARGET="$RUNNER_TEMP/home"
+          mkdir -p "$TARGET"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            stow -d stow -t "$TARGET" -v -S vscode-macos
+            USER_DIR="$TARGET/Library/Application Support/Code/User"
+            USER_DIR_I="$TARGET/Library/Application Support/Code - Insiders/User"
+          else
+            stow -d stow -t "$TARGET" -v -S vscode-linux
+            USER_DIR="$TARGET/.config/Code/User"
+            USER_DIR_I="$TARGET/.config/Code - Insiders/User"
+          fi
+          test -L "$USER_DIR/settings.json"
+          test -L "$USER_DIR/extensions.json"
+          test -L "$USER_DIR/keybindings.json"
+          test -L "$USER_DIR_I/settings.json"
+          test -L "$USER_DIR_I/extensions.json"
+          test -L "$USER_DIR_I/keybindings.json"
 
       - name: Windows bootstrap what-if
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          ./scripts/bootstrap.ps1 -WhatIf
+          ./scripts/bootstrap.ps1 -OnlyVSCode
+          $u = Join-Path $env:APPDATA "Code\User"
+          if (-not (Test-Path (Join-Path $u 'settings.json'))) { throw "settings.json missing" }
+          if (-not (Test-Path (Join-Path $u 'extensions.json'))) { throw "extensions.json missing" }
+          if (-not (Test-Path (Join-Path $u 'keybindings.json'))) { throw "keybindings.json missing" }
+          $ui = Join-Path $env:APPDATA "Code - Insiders\User"
+          if (-not (Test-Path (Join-Path $ui 'settings.json'))) { throw "settings.json missing (Insiders)" }
+          if (-not (Test-Path (Join-Path $ui 'extensions.json'))) { throw "extensions.json missing (Insiders)" }
+          if (-not (Test-Path (Join-Path $ui 'keybindings.json'))) { throw "keybindings.json missing (Insiders)" }

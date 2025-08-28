@@ -1,5 +1,6 @@
 param(
-  [switch]$WhatIf
+  [switch]$WhatIf,
+  [switch]$OnlyVSCode
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,33 +40,30 @@ function Install-Fonts {
 }
 
 function Ensure-VSCodeFiles {
-  $UserDir = Join-Path $env:APPDATA "Code\User"
-  New-Item -ItemType Directory -Force -Path $UserDir | Out-Null
+  $roots = @(
+    (Join-Path $env:APPDATA "Code\User"),
+    (Join-Path $env:APPDATA "Code - Insiders\User")
+  )
+  foreach ($UserDir in $roots) {
+    New-Item -ItemType Directory -Force -Path $UserDir | Out-Null
 
-  # settings.json
-  $settingsSrc = Join-Path $PSScriptRoot "..\.chezmoitemplates\vscode-settings.json"
-  if (Test-Path $settingsSrc) {
-    Copy-Item $settingsSrc (Join-Path $UserDir 'settings.json') -Force
-  }
-
-  # extensions.json
-  $extSrc = Join-Path $PSScriptRoot "..\.chezmoitemplates\vscode-extensions.json"
-  if (Test-Path $extSrc) {
-    Copy-Item $extSrc (Join-Path $UserDir 'extensions.json') -Force
-  }
-
-  # keybindings.json (strip mac-only section)
-  $kbSrc = Join-Path $PSScriptRoot "..\.chezmoitemplates\vscode-keybindings.json"
-  if (Test-Path $kbSrc) {
-    $lines = Get-Content $kbSrc
-    $out = New-Object System.Collections.Generic.List[string]
-    $skip = $false
-    foreach ($line in $lines) {
-      if ($line -match "\{\{.*eq .*darwin.*\}\}") { $skip = $true; continue }
-      if ($line -match "\{\{.*end.*\}\}") { $skip = $false; continue }
-      if (-not $skip) { $out.Add($line) }
+    # settings.json
+    $settingsSrc = Join-Path $PSScriptRoot "..\vscode\settings.json"
+    if (Test-Path $settingsSrc) {
+      Copy-Item $settingsSrc (Join-Path $UserDir 'settings.json') -Force
     }
-    $out | Set-Content (Join-Path $UserDir 'keybindings.json') -Encoding UTF8
+
+    # extensions.json
+    $extSrc = Join-Path $PSScriptRoot "..\vscode\extensions.json"
+    if (Test-Path $extSrc) {
+      Copy-Item $extSrc (Join-Path $UserDir 'extensions.json') -Force
+    }
+
+    # keybindings.json
+    $kbSrc = Join-Path $PSScriptRoot "..\vscode\keybindings.json"
+    if (Test-Path $kbSrc) {
+      Copy-Item $kbSrc (Join-Path $UserDir 'keybindings.json') -Force
+    }
   }
 }
 
@@ -88,6 +86,12 @@ function Install-Tools {
 
 if ($WhatIf) {
   Write-Host "Would install tools, fonts, and VS Code files" -ForegroundColor Yellow
+  exit 0
+}
+
+if ($OnlyVSCode) {
+  Ensure-VSCodeFiles
+  Write-Host "✅ Ensured VS Code user files only." -ForegroundColor Green
   exit 0
 }
 

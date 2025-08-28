@@ -14,3 +14,4 @@
     /* Cmd+Forward Delete (or Cmd+Fn+Delete on laptops) → delete word forward */
     "@\UF728" = "deleteWordForward:";
 }
+

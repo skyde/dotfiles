@@ -181,26 +181,10 @@ install_vscode_user_files() {
     return 0
   fi
   mkdir -p "$user_dir"
-  # settings and extensions: copy as-is from templates
-  [ -f "$here/.chezmoitemplates/vscode-settings.json" ] && cp -f "$here/.chezmoitemplates/vscode-settings.json" "$user_dir/settings.json"
-  [ -f "$here/.chezmoitemplates/vscode-extensions.json" ] && cp -f "$here/.chezmoitemplates/vscode-extensions.json" "$user_dir/extensions.json"
-  # keybindings: filter the darwin-guarded block
-  if [ -f "$here/.chezmoitemplates/vscode-keybindings.json" ]; then
-    if [ "$os" = darwin ]; then
-      # remove only the template guard lines
-      awk '{
-        if ($0 ~ /\{\{.*eq .*darwin.*\}\}/) next;
-        if ($0 ~ /\{\{.*end.*\}\}/) next;
-        print $0
-      }' "$here/.chezmoitemplates/vscode-keybindings.json" > "$user_dir/keybindings.json"
-    else
-      # strip the darwin section entirely
-      awk 'BEGIN{skip=0}
-        /\{\{.*eq .*darwin.*\}\}/{skip=1; next}
-        /\{\{.*end.*\}\}/{skip=0; next}
-        skip==0 {print $0}' "$here/.chezmoitemplates/vscode-keybindings.json" > "$user_dir/keybindings.json"
-    fi
-  fi
+  # Copy VS Code user files directly from repo
+  [ -f "$here/vscode/settings.json" ] && cp -f "$here/vscode/settings.json" "$user_dir/settings.json"
+  [ -f "$here/vscode/extensions.json" ] && cp -f "$here/vscode/extensions.json" "$user_dir/extensions.json"
+  [ -f "$here/vscode/keybindings.json" ] && cp -f "$here/vscode/keybindings.json" "$user_dir/keybindings.json"
 }
 
 ensure_git_editor() {
@@ -232,7 +216,6 @@ main() {
   install_kitty
   install_wezterm
   install_fonts
-  install_vscode_user_files
   rebuild_bat_cache
   ensure_shell_rc
   ensure_git_editor
@@ -241,7 +224,7 @@ main() {
   # Ensure local bin scripts are executable before stow
   chmod +x "$here/stow/local-bin/.local/bin"/* 2>/dev/null || true
 
-  # Stow core packages (include nvim to overlay LazyVim with custom files)
+  # Stow core packages (nvim overlays LazyVim with custom files)
   stow_pkg zsh
   stow_pkg ripgrep
   stow_pkg shell
@@ -252,8 +235,14 @@ main() {
   stow_pkg lazygit
   stow_pkg helix
   stow_pkg bat
-  stow_pkg hammerspoon
   stow_pkg nvim
+  if [ "$os" = darwin ]; then
+    stow_pkg hammerspoon
+    stow_pkg macos
+    stow_pkg vscode-macos
+  elif [ "$os" = linux ]; then
+    stow_pkg vscode-linux
+  fi
 
   echo "✅ Bootstrap complete."
 }

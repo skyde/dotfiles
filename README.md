@@ -14,7 +14,7 @@ cd dotfiles
 scripts/bootstrap.sh
 ```
 
-This will install stow (if needed), stow the packages under `stow/` to `$HOME`, install tools (neovim + LazyVim starter, ripgrep, bat, lazygit, kitty on macOS, wezterm), install Nerd Fonts, rebuild bat cache, and ensure your shell picks up `~/.config/shell/00-editor.sh`.
+This installs stow (if needed), stows the packages under `stow/` to `$HOME`, installs tools (Neovim + LazyVim starter, ripgrep, bat, lazygit, kitty on macOS, wezterm), installs Nerd Fonts, rebuilds bat cache, and ensures your shell picks up `~/.config/shell/00-editor.sh`.
 
 ### Windows
 
@@ -30,7 +30,9 @@ This installs ripgrep/bat/wezterm/neovim via winget, installs Nerd Fonts, sets V
 ## Notes
 
 - Stow packages live under `stow/`. On macOS/Linux, the bootstrap uses `stow -d stow -t $HOME` to link:
-  - `zsh`, `ripgrep`, `shell`, `fzf`, `local-bin`, `kitty` (macOS), `wezterm`, `lazygit`, `helix`, `bat`, `hammerspoon` (macOS)
-- Neovim is installed fresh from the LazyVim starter (same behavior as before). If you’d prefer to stow the bundled `stow/nvim` instead, comment out the LazyVim section in `scripts/bootstrap.sh` and add `nvim` to the stowed packages.
+  - `zsh`, `ripgrep`, `shell`, `fzf`, `local-bin`, `kitty`, `wezterm`, `lazygit`, `helix`, `bat`, `nvim`, plus `hammerspoon` and `macos` on macOS.
+- Neovim is installed fresh from the LazyVim starter, then the `stow/nvim` package overlays custom keymaps/plugins on top of it.
 - Fonts are installed from `fonts/` into the appropriate user directory.
-- VS Code user files are created by the Windows bootstrap; on macOS/Linux you can copy from `.chezmoitemplates/` or adapt the bootstrap if you want them auto-managed.
+- VS Code user files:
+  - macOS/Linux: symlinked via Stow from `vscode/` using packages `vscode-macos` and `vscode-linux` (includes both Code and Code - Insiders), so edits in the repo reflect immediately.
+  - Windows: copied from `vscode/` for both `Code\User` and `Code - Insiders\User` by `scripts/bootstrap.ps1`.
