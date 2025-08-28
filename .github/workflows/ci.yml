@@ -30,8 +30,8 @@ jobs:
           # Preview stow into a temp HOME
           TARGET="$RUNNER_TEMP/home"
           mkdir -p "$TARGET"
-          PKGS="zsh ripgrep shell fzf local-bin kitty wezterm lazygit helix bat hammerspoon nvim"
-          if [ "$RUNNER_OS" = "macOS" ]; then PKGS="$PKGS macos vscode-macos"; fi
+          PKGS="zsh ripgrep shell fzf local-bin kitty wezterm lazygit helix bat nvim vsvim"
+          if [ "$RUNNER_OS" = "macOS" ]; then PKGS="$PKGS hammerspoon macos vscode-macos"; fi
           if [ "$RUNNER_OS" = "Linux" ]; then PKGS="$PKGS vscode-linux"; fi
           stow -d stow -t "$TARGET" -n -v $PKGS
 

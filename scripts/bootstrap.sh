@@ -49,6 +49,12 @@ install_neovim_and_lazyvim() {
   if [ -d "$nvim_dir" ]; then rm -rf "$nvim_dir"; fi
   git clone https://github.com/LazyVim/starter "$nvim_dir"
   rm -rf "$nvim_dir/.git"
+  # Remove files that we overlay via stow to avoid conflicts
+  rm -f \
+    "$nvim_dir/lazy-lock.json" \
+    "$nvim_dir/lua/config/keymaps.lua" \
+    "$nvim_dir/lua/plugins/colorscheme.lua" \
+    "$nvim_dir/ftplugin/markdown.lua" 2>/dev/null || true
 }
 
 install_helix() {
@@ -215,6 +221,7 @@ main() {
   install_bat
   install_kitty
   install_wezterm
+  install_ohmyzsh
   install_fonts
   rebuild_bat_cache
   ensure_shell_rc
@@ -236,6 +243,7 @@ main() {
   stow_pkg helix
   stow_pkg bat
   stow_pkg nvim
+  stow_pkg vsvim
   if [ "$os" = darwin ]; then
     stow_pkg hammerspoon
     stow_pkg macos

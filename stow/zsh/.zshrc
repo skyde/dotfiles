@@ -13,7 +13,6 @@ export PATH="$HOME/.local/bin:$PATH:/Users/freedebreuil/tools/depot_tools"
 # Load FZF theme if available
 [ -f "$HOME/.config/fzf/tokyonight.zsh" ] && source "$HOME/.config/fzf/tokyonight.zsh"
 
-# Tokyo Night Moon colors for FindItFaster
-export BAT_THEME="tokyonight_moon"
+# Tokyo Night theme for bat
+export BAT_THEME="tokyonight_night"
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
-
