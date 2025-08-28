@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+QUERY="${*:-}"
+
+# toggles
+SHOW_HIDDEN=0       # Alt-. toggles
+NO_IGNORE=0         # Alt-i toggles (respect .gitignore by default)
+
+# 0) Jump to repo root (like LazyVim/Telescope rooter)
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  cd "$(git rev-parse --show-toplevel)"
+else
+  # Fallback: walk up to find common project markers
+  find_project_root() {
+    local d="$PWD"
+    local markers=(
+      package.json pnpm-workspace.yaml yarn.lock package-lock.json
+      go.mod Cargo.toml pyproject.toml requirements.txt
+      composer.json Makefile CMakeLists.txt
+    )
+    while [ "$d" != "/" ]; do
+      for m in "${markers[@]}"; do
+        if [ -e "$d/$m" ]; then
+          printf '%s' "$d"
+          return 0
+        fi
+      done
+      d="$(dirname "$d")"
+    done
+    return 1
+  }
+  if root="$(find_project_root)"; then
+    cd "$root"
+  fi
+fi
+
+# 1) Build source list (NUL-separated for safety) based on toggles
+build_emit() {
+  if command -v fd >/dev/null 2>&1; then
+    local args=(fd -0 --type f --follow --exclude .git)
+    [ "$SHOW_HIDDEN" -eq 1 ] && args+=(--hidden)
+    [ "$NO_IGNORE" -eq 1 ] && args+=(--no-ignore)
+    printf '%s\n' "${args[@]}"
+  elif command -v rg >/dev/null 2>&1; then
+    local args=(rg -0 --files -g '!.git')
+    [ "$SHOW_HIDDEN" -eq 1 ] && args+=(--hidden)
+    [ "$NO_IGNORE" -eq 1 ] && args+=(-uu)
+    printf '%s\n' "${args[@]}"
+  elif git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    # Limited toggles with git source. Hidden/ignored toggles are not applied here.
+    printf '%s\n' git -c core.quotepath=false ls-files -co --exclude-standard -z
+  else
+    printf '%s\n' find . -type f -print0
+  fi
+}
+
+# 2) Minimal icon mapper (Nerd Font). Keep Bash 3.2-friendly (no associative arrays).
+icon_for() {
+  local base="${1##*/}"
+  local ext="${base##*.}"
+  case "$base" in
+    .gitignore|.gitattributes|.gitmodules) printf ""; return;;
+  esac
+  case "$ext" in
+    js)   printf "";;   jsx)  printf "";;
+    ts)   printf "";;   tsx)  printf "";;
+    json) printf "";;   html|htm) printf "";;
+    css|scss|sass|less) printf "";;
+    md|markdown) printf "";;
+    go)   printf "";;   rs)   printf "";;
+    py)   printf "";;   rb)   printf "";;
+    php)  printf "";;   java) printf "";;
+    kt)   printf "";;   c|h|hpp|hh|hxx|cpp|cc|cxx) printf "";;
+    m|mm) printf "";;   sh|bash|zsh) printf "";;
+    yaml|yml|toml|ini|conf) printf "";;
+    png|jpg|jpeg|gif|webp|svg|ico) printf "";;
+    pdf)  printf "";;   log|txt) printf "";;
+    *)    printf "";;
+  esac
+}
+
+# 3) Build decorated NUL-stream: "<icon>\t<basename>\t<path>\0"
+decorate() {
+  local file base icon
+  while IFS= read -r -d '' file; do
+    case "$file" in ./*) file="${file#./}";; esac
+    base="${file##*/}"
+    icon="$(icon_for "$file")"
+    printf '%s\t%s\t%s\0' "$icon" "$base" "$file"
+  done
+}
+
+ROOT_LABEL="$(basename "$PWD")"
+HIST_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fzf-history"
+mkdir -p "$HIST_DIR"
+HIST_FILE="$HIST_DIR/ff"
+MANUAL_PATH=0
+
+# 4) Run fzf with toggles for path search, hidden, ignore
+nth="2"
+prompt='Files   '
+while true; do
+  # Auto path-mode if user hasn't manually toggled and query contains '/'
+  if [ "$MANUAL_PATH" -eq 0 ]; then
+    if printf '%s' "$QUERY" | grep -q '/'; then
+      nth='2,3'; prompt='Path   '
+    else
+      nth='2'; prompt='Files   '
+    fi
+  fi
+  # rebuild emitter and header each pass
+  IFS=$'\n' read -r -d '' -a EMIT < <(build_emit && printf '\0') || true
+  out=$("${EMIT[@]}" \
+    | decorate \
+    | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" \
+      fzf --read0 --ansi \
+          --height=100% \
+          --margin=1,2 \
+          --border --layout=reverse \
+          --color='border:#5e81ac' \
+          --color='spinner:#88c0d0,header:#88c0d0,pointer:#88c0d0,marker:#a3be8c' \
+          --prompt="$prompt" \
+          --delimiter='\t' \
+          --with-nth="$nth" \
+          --bind 'ctrl-a:select-all,ctrl-d:half-page-down,ctrl-u:half-page-up' \
+          --bind 'alt-.:toggle+change-prompt(Show Hidden   )+reload(echo hidden)' \
+          --bind 'alt-i:toggle+change-prompt(No Ignore   )+reload(echo ignore)' \
+          --bind 'alt-p:toggle-preview' \
+          --preview 'bat --style=numbers --color=always --line-range :200 -- {3..}' \
+          --preview-window 'right,60%,border,nowrap' \
+          --header "$(printf 'Project: %s' "$ROOT_LABEL")" \
+          --header-first \
+          --history="$HIST_FILE" \
+          --print-query)
+
+  # break on empty (user cancelled)
+  [ -n "$out" ] || exit 0
+  # Split output: last line is selection, prior line is query
+  sel=$(printf '%s\n' "$out" | tail -n1 | awk -F '\t' '{print $3}')
+  QUERY=$(printf '%s\n' "$out" | sed -n '$!p' | tail -n1)
+  [ -n "$sel" ] && ${EDITOR:-vim} "$sel" && exit 0
+done
+
+exit 0
+
