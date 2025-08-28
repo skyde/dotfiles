@@ -8,6 +8,13 @@ HIGHLIGHT_QUERY="${HIGHLIGHT_QUERY:-1}"
 # shellcheck disable=SC2034
 QUERY="${*:-}"
 
+# Toggle states (Alt-keys modify these)
+FIXED=0        # Alt-r: regex(0) <-> fixed strings(1)
+WORD=0         # Alt-w: word boundary match
+SHOW_HIDDEN=1  # Alt-.: include hidden files
+NO_IGNORE=0    # Alt-i: include ignored files (no-ignore)
+CASE_MODE=smart  # Alt-c: cycle smart -> sensitive -> ignore
+
 # Hard requirements
 for cmd in rg fzf; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -16,32 +23,48 @@ for cmd in rg fzf; do
   fi
 done
 
-# Determine search root - prefer git root, else CWD
-ROOT="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$PWD")"
+# Determine search root - prefer git root, else project markers, else CWD
+if ROOT="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)"; then
+  :
+else
+  find_project_root() {
+    local d="$PWD"
+    local markers=(
+      package.json pnpm-workspace.yaml yarn.lock package-lock.json
+      go.mod Cargo.toml pyproject.toml requirements.txt
+      composer.json Makefile CMakeLists.txt
+    )
+    while [ "$d" != "/" ]; do
+      for m in "${markers[@]}"; do
+        [ -e "$d/$m" ] && printf '%s' "$d" && return 0
+      done
+      d="$(dirname "$d")"
+    done
+    return 1
+  }
+  ROOT="${PWD}"
+  if r="$(find_project_root)"; then ROOT="$r"; fi
+fi
 cd "$ROOT"
 
-# Build the ripgrep command used on every reload
-# - hidden files included, .git excluded
-# - color always so fzf can show ANSI
-RG=(
-  rg
-  --hidden --glob '!.git'
-  --line-number --column --no-heading
-  --smart-case --follow
-  --max-columns=4096
-  --color=always
-)
-
-# fzf reload snippet - only search when query is non-empty
-# IMPORTANT: leave {q} unquoted; fzf provides safe quoting.
-# shellcheck disable=SC2034
-RELOAD_CMD='
-  if [ -n {q} ]; then
-    '"${RG[*]}"' -- {q}
-  else
-    printf ""
-  fi
-'
+# Build the ripgrep command from current toggles
+build_rg() {
+  RG=(rg --line-number --column --no-heading --follow --max-columns=4096 --color=always)
+  # hidden + ignore toggles
+  [ "$SHOW_HIDDEN" -eq 1 ] && RG+=(--hidden)
+  RG+=(--glob '!.git')
+  [ "$NO_IGNORE" -eq 1 ] && RG+=(-uu)
+  # regex vs fixed
+  [ "$FIXED" -eq 1 ] && RG+=(-F)
+  # word match
+  [ "$WORD" -eq 1 ] && RG+=(-w)
+  # case mode
+  case "$CASE_MODE" in
+    smart) RG+=(--smart-case);;
+    sensitive) RG+=(--case-sensitive);;
+    ignore) RG+=(--ignore-case);;
+  esac
+}
 
 # Preview command
 # - centers around the hit with context
@@ -88,37 +111,74 @@ PREVIEW_CMD='
   fi
 '
 
-# Nice defaults close to LazyVim fzf-lua look
-# shellcheck disable=SC2054
-FZF_ARGS=(
-  --ansi
-  --multi
-  --phony # do not filter locally, we reload from rg
-  --bind "start:reload:${RELOAD_CMD}"
-  --bind "change:reload:${RELOAD_CMD}"
-  --prompt='> '
-  --height=100%
-  --margin=1,2           # float-like feel
-  --header='' # keep top clean just like LazyVim Grep
-  --border --layout=reverse
-  --info=inline # shows 1/65 on the right
-  --delimiter=':'
-  --preview="${PREVIEW_CMD}"
-  --preview-window='right,60%,border,wrap'
-  --bind 'alt-p:toggle-preview'
-  --bind 'ctrl-d:preview-half-page-down,ctrl-u:preview-half-page-up'
-  --bind 'alt-a:toggle-all'
-  # IMPORTANT: leave placeholders unquoted here as well
-  --bind 'enter:execute-silent(code -r --goto {1}:{2}:{3})+abort'
-  --bind 'ctrl-q:execute-silent(code -r --goto {+1}:{+2}:{+3})+abort'
-  --color='border:#5e81ac'
-  --color='spinner:#88c0d0,header:#88c0d0,pointer:#88c0d0,marker:#a3be8c'
-  --border-label "Grep - $(basename "$ROOT")"
-)
+HIST_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fzf-history"
+mkdir -p "$HIST_DIR"
+HIST_FILE="$HIST_DIR/sg"
 
-# Run fzf. If user cancels, do not fail the task.
-FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" fzf \
-  "${FZF_ARGS[@]}" \
-  --query "$QUERY" || true
+# Run fzf in a loop to handle toggle keys, preserving query
+while true; do
+  build_rg
+  # fzf reload snippet - only search when query is non-empty
+  # IMPORTANT: leave {q} unquoted; fzf provides safe quoting.
+  # shellcheck disable=SC2034
+  RELOAD_CMD='
+    if [ -n {q} ]; then
+      '"${RG[*]}"' -- {q}
+    else
+      printf ""
+    fi
+  '
+
+  # shellcheck disable=SC2054
+  FZF_ARGS=(
+    --ansi
+    --multi
+    --phony # do not filter locally, we reload from rg
+    --bind "start:reload:${RELOAD_CMD}"
+    --bind "change:reload:${RELOAD_CMD}"
+    --prompt='> '
+    --height=100%
+    --margin=1,2           # float-like feel
+    --header=''            # no text at top
+    --border --layout=reverse
+    --info=inline # shows 1/65 on the right
+    --delimiter=':'
+    --preview="${PREVIEW_CMD}"
+    --preview-window='right,60%,border,wrap'
+    --bind 'alt-p:toggle-preview'
+    --bind 'ctrl-d:preview-half-page-down,ctrl-u:preview-half-page-up'
+    --bind 'alt-a:toggle-all'
+    # IMPORTANT: leave placeholders unquoted here as well
+    --bind 'enter:execute-silent(code -r --goto {1}:{2}:{3})+abort'
+    --bind 'ctrl-q:execute-silent(code -r --goto {+1}:{+2}:{+3})+abort'
+    --color='border:#5e81ac'
+    --color='spinner:#88c0d0,header:#88c0d0,pointer:#88c0d0,marker:#a3be8c'
+    --border-label "Grep - $(basename "$ROOT")"
+    --history="$HIST_FILE"
+    --print-query
+  )
+
+  out=$(FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" fzf \
+    --expect=alt-r,alt-w,alt-.,alt-i,alt-c \
+    "${FZF_ARGS[@]}" \
+    --query "$QUERY" || true)
+
+  key=$(printf '%s\n' "$out" | head -n1)
+  QUERY=$(printf '%s\n' "$out" | sed -n '2p')
+  case "$key" in
+    alt-r) FIXED=$((1-FIXED));;  # regex<->fixed strings
+    alt-w) WORD=$((1-WORD));;
+    alt-.) SHOW_HIDDEN=$((1-SHOW_HIDDEN));;
+    alt-i) NO_IGNORE=$((1-NO_IGNORE));;
+    alt-c)
+      case "$CASE_MODE" in
+        smart) CASE_MODE=sensitive;;
+        sensitive) CASE_MODE=ignore;;
+        *) CASE_MODE=smart;;
+      esac
+      ;;
+    *) break;;
+  esac
+done
 
 exit 0
