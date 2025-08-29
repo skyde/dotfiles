@@ -29,56 +29,6 @@ ensure_stow() {
   fi
 }
 
-stow_pkg() { # stow a package from repo 'stow/' into $HOME
-  local pkg="$1"
-  echo "Stowing package: $pkg"
-  # Try stow with optional flags
-  if ! stow -d "$here/stow" -t "$HOME" ${STOW_FLAGS:-} -S "$pkg"; then
-    echo "Stow failed for $pkg, attempting to backup conflicting targets and retry..."
-    local tmp
-    tmp="$(mktemp)"
-    # Dry-run with verbosity to capture conflicts
-    stow -n -v -d "$here/stow" -t "$HOME" ${STOW_FLAGS:-} -S "$pkg" >"$tmp" 2>&1 || true
-    # Backup any conflicting files noted by stow
-    while IFS= read -r line; do
-      case "$line" in
-        *'existing target is not owned by stow:'*)
-          # Extract the path after the last colon+space
-          tgt="${line##*: }"
-          # Build absolute path relative to HOME when tgt isn't absolute
-          case "$tgt" in
-            /*) abs="$tgt" ;;
-            *) abs="$HOME/$tgt" ;;
-          esac
-          if [ -e "$abs" ] || [ -L "$abs" ]; then
-            ts="$(date +%Y%m%d%H%M%S)"
-            mkdir -p "$(dirname "$abs")"
-            mv "$abs" "$abs.pre-stow.$ts"
-            echo "Backed up conflict: $abs -> $abs.pre-stow.$ts"
-          fi
-          ;;
-        *'cannot stow '*' over existing target '*' since'*)
-          # Extract the target path between 'over existing target ' and ' since'
-          tgt="${line#*over existing target }"
-          tgt="${tgt%% since*}"
-          case "$tgt" in
-            /*) abs="$tgt" ;;
-            *) abs="$HOME/$tgt" ;;
-          esac
-          if [ -e "$abs" ] || [ -L "$abs" ]; then
-            ts="$(date +%Y%m%d%H%M%S)"
-            mkdir -p "$(dirname "$abs")"
-            mv "$abs" "$abs.pre-stow.$ts"
-            echo "Backed up conflict: $abs -> $abs.pre-stow.$ts"
-          fi
-          ;;
-      esac
-    done <"$tmp"
-    rm -f "$tmp"
-    # Retry stowing now that conflicts are moved aside
-    stow -d "$here/stow" -t "$HOME" ${STOW_FLAGS:-} -S "$pkg"
-  fi
-}
 
 install_neovim_and_lazyvim() {
   if has nvim; then :; else
@@ -227,21 +177,6 @@ ensure_shell_rc() {
   done
 }
 
-install_vscode_user_files() {
-  if [ "$os" = darwin ]; then
-    local user_dir="$HOME/Library/Application Support/Code/User"
-  elif [ "$os" = linux ]; then
-    local user_dir="$HOME/.config/Code/User"
-  else
-    return 0
-  fi
-  mkdir -p "$user_dir"
-  # Copy VS Code user files directly from repo
-  [ -f "$here/vscode/settings.json" ] && cp -f "$here/vscode/settings.json" "$user_dir/settings.json"
-  [ -f "$here/vscode/extensions.json" ] && cp -f "$here/vscode/extensions.json" "$user_dir/extensions.json"
-  [ -f "$here/vscode/keybindings.json" ] && cp -f "$here/vscode/keybindings.json" "$user_dir/keybindings.json"
-}
-
 ensure_git_editor() {
   if has git; then
     git config --global core.editor "nvim" || true
@@ -280,24 +215,20 @@ main() {
   # Ensure local bin scripts are executable before stow
   chmod +x "$here/stow/local-bin/.local/bin"/* 2>/dev/null || true
 
-  # Stow core packages (nvim overlays LazyVim with custom files)
-  stow_pkg zsh
-  stow_pkg ripgrep
-  stow_pkg shell
-  stow_pkg fzf
-  stow_pkg local-bin
-  stow_pkg kitty
-  stow_pkg wezterm
-  stow_pkg lazygit
-  stow_pkg helix
-  stow_pkg bat
-  stow_pkg nvim
-  if [ "$os" = darwin ]; then
-    stow_pkg hammerspoon
-    stow_pkg macos
-    stow_pkg vscode-macos
-  elif [ "$os" = linux ]; then
-    stow_pkg vscode-linux
+  # Stow all discovered packages using the repo's dot wrapper
+  if [ -x "$here/dot" ]; then
+    "$here/dot" apply
+  else
+    # Fallback: stow everything under stow/ for this OS
+    pkgs=()
+    for p in $(find "$here/stow" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sed 's#.*/##' | sort); do
+      case "$os" in
+        darwin) case "$p" in vsvim|vscode-linux) continue;; esac ;;
+        linux)  case "$p" in vsvim|macos|hammerspoon|vscode-macos) continue;; esac ;;
+      esac
+      pkgs+=("$p")
+    done
+    stow -d "$here/stow" -t "$HOME" ${STOW_FLAGS:-"--no-folding"} -S "${pkgs[@]}"
   fi
 
   echo "✅ Bootstrap complete."

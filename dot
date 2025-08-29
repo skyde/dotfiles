@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# dot — simple chezmoi-like CLI for GNU Stow in this repo
+#
+# Usage:
+#   ./dot apply [--dry-run] [--target DIR] [pkg ...]
+#   ./dot update [--dry-run] [--target DIR] [pkg ...]    # git pull + restow
+#   ./dot restow [--dry-run] [--target DIR] [pkg ...]
+#   ./dot delete [--dry-run] [--target DIR] [pkg ...]
+#   ./dot diff [--target DIR] [pkg ...]                  # preview changes
+#
+# Notes:
+# - If no packages are given, uses OS-aware default set from ./stow/
+# - Honors STOW_FLAGS (default: --no-folding)
+# - apply/update/restow will back up conflicting targets as *.pre-stow.<ts>
+
+repo="$(cd "$(dirname "$0")" && pwd)"
+cd "$repo"
+
+os_raw="$(uname -s | tr '[:upper:]' '[:lower:]')"
+case "$os_raw" in
+  darwin) os=darwin;;
+  linux) os=linux;;
+  msys*|mingw*|cygwin*) os=windows;;
+  *) os="$os_raw";;
+esac
+
+cmd=apply
+dry=no
+target="${HOME}"
+stow_dir="$repo/stow"
+flags=( ${STOW_FLAGS:-"--no-folding"} )
+
+usage(){
+  sed -n '1,30p' "$0" | sed -n '1,20p' | awk '/^# dot/{flag=1;next} /^$/{if(flag)exit} flag{print substr($0,3)}'
+}
+
+if [ $# -gt 0 ]; then
+  case "$1" in
+    apply|update|restow|delete|diff) cmd="$1"; shift;;
+    -h|--help) usage; exit 0;;
+  esac
+fi
+
+pkgs=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run|-n) dry=yes; shift;;
+    --target|-t) target="$2"; shift 2;;
+    -h|--help) usage; exit 0;;
+    -*) echo "Unknown option: $1" >&2; usage; exit 2;;
+    *) pkgs+=("$1"); shift;;
+  esac
+done
+
+ensure_stow_dir(){ [ -d "$stow_dir" ] || { echo "stow dir not found: $stow_dir" >&2; exit 1; }; }
+
+default_pkgs(){
+  # List every subdir under stow/, filter by OS conventions
+  local all
+  # portable find for macOS
+  all=$(find "$stow_dir" -mindepth 1 -maxdepth 1 -type d -print | sed 's#.*/##' | sort)
+  for p in $all; do
+    case "$os" in
+      darwin)
+        case "$p" in vsvim|vscode-linux) continue;; esac
+        ;;
+      linux)
+        case "$p" in vsvim|macos|hammerspoon|vscode-macos) continue;; esac
+        ;;
+      *) # windows/others: no stow; keep empty
+        continue
+        ;;
+    esac
+    echo "$p"
+  done
+}
+
+run_stow(){
+  local action="$1"; shift
+  local list=("$@")
+  local args=( -d "$stow_dir" -t "$target" "${flags[@]}" )
+  if [ "$dry" = yes ]; then args=( -n -v "${args[@]}" ); fi
+  stow "${args[@]}" "$action" "${list[@]}"
+}
+
+backup_conflicts(){
+  # Parse stow dry-run to backup conflicting targets
+  [ "$dry" = yes ] && return 0
+  [ $# -gt 0 ] || return 0
+  local tmp tgt abs ts
+  for pkg in "$@"; do
+    tmp="$(mktemp)" || exit 1
+    stow -n -v -d "$stow_dir" -t "$target" "${flags[@]}" -S "$pkg" >"$tmp" 2>&1 || true
+    while IFS= read -r line; do
+      case "$line" in
+        *'existing target is not owned by stow:'*) tgt="${line##*: }" ;;
+        *'cannot stow '*' over existing target '*' since'*) tgt="${line#*over existing target }"; tgt="${tgt%% since*}" ;;
+        *) tgt="" ;;
+      esac
+      [ -z "$tgt" ] && continue
+      case "$tgt" in /*) abs="$tgt" ;; *) abs="$target/$tgt" ;; esac
+      if [ -e "$abs" ] || [ -L "$abs" ]; then
+        ts="$(date +%Y%m%d%H%M%S)"
+        mv "$abs" "$abs.pre-stow.$ts" 2>/dev/null || true
+        echo "Backed up conflict: $abs -> $abs.pre-stow.$ts"
+      fi
+    done <"$tmp"
+    rm -f "$tmp"
+  done
+}
+
+ensure_stow_dir
+if [ ${#pkgs[@]} -eq 0 ]; then pkgs=( $(default_pkgs) ); fi
+
+case "$cmd" in
+  apply)
+    backup_conflicts "${pkgs[@]}"
+    run_stow -S "${pkgs[@]}"
+    ;;
+  restow)
+    backup_conflicts "${pkgs[@]}"
+    run_stow -R "${pkgs[@]}"
+    ;;
+  delete)
+    run_stow -D "${pkgs[@]}"
+    ;;
+  update)
+    if [ -d "$repo/.git" ]; then echo "Updating repo (git pull --ff-only)..."; git -C "$repo" pull --ff-only || true; fi
+    backup_conflicts "${pkgs[@]}"
+    run_stow -R "${pkgs[@]}"
+    ;;
+  diff)
+    dry=yes
+    run_stow -S "${pkgs[@]}"
+    ;;
+  *) usage; exit 2;;
+esac
+
