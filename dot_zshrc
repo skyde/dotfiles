@@ -1,3 +1,1 @@
-export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
-
 [ -f "$HOME/.config/shell/00-editor.sh" ] && . "$HOME/.config/shell/00-editor.sh"

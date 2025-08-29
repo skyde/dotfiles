@@ -32,7 +32,52 @@ ensure_stow() {
 stow_pkg() { # stow a package from repo 'stow/' into $HOME
   local pkg="$1"
   echo "Stowing package: $pkg"
-  stow -d "$here/stow" -t "$HOME" -S "$pkg"
+  # Try stow with optional flags
+  if ! stow -d "$here/stow" -t "$HOME" ${STOW_FLAGS:-} -S "$pkg"; then
+    echo "Stow failed for $pkg, attempting to backup conflicting targets and retry..."
+    local tmp
+    tmp="$(mktemp)"
+    # Dry-run with verbosity to capture conflicts
+    stow -n -v -d "$here/stow" -t "$HOME" ${STOW_FLAGS:-} -S "$pkg" >"$tmp" 2>&1 || true
+    # Backup any conflicting files noted by stow
+    while IFS= read -r line; do
+      case "$line" in
+        *'existing target is not owned by stow:'*)
+          # Extract the path after the last colon+space
+          tgt="${line##*: }"
+          # Build absolute path relative to HOME when tgt isn't absolute
+          case "$tgt" in
+            /*) abs="$tgt" ;;
+            *) abs="$HOME/$tgt" ;;
+          esac
+          if [ -e "$abs" ] || [ -L "$abs" ]; then
+            ts="$(date +%Y%m%d%H%M%S)"
+            mkdir -p "$(dirname "$abs")"
+            mv "$abs" "$abs.pre-stow.$ts"
+            echo "Backed up conflict: $abs -> $abs.pre-stow.$ts"
+          fi
+          ;;
+        *'cannot stow '*' over existing target '*' since'*)
+          # Extract the target path between 'over existing target ' and ' since'
+          tgt="${line#*over existing target }"
+          tgt="${tgt%% since*}"
+          case "$tgt" in
+            /*) abs="$tgt" ;;
+            *) abs="$HOME/$tgt" ;;
+          esac
+          if [ -e "$abs" ] || [ -L "$abs" ]; then
+            ts="$(date +%Y%m%d%H%M%S)"
+            mkdir -p "$(dirname "$abs")"
+            mv "$abs" "$abs.pre-stow.$ts"
+            echo "Backed up conflict: $abs -> $abs.pre-stow.$ts"
+          fi
+          ;;
+      esac
+    done <"$tmp"
+    rm -f "$tmp"
+    # Retry stowing now that conflicts are moved aside
+    stow -d "$here/stow" -t "$HOME" ${STOW_FLAGS:-} -S "$pkg"
+  fi
 }
 
 install_neovim_and_lazyvim() {
@@ -124,12 +169,16 @@ install_bat() {
 
 install_kitty() {
   [ "$os" = darwin ] || return 0
-  if has kitty; then return; fi
-  if has brew; then brew install --cask kitty; fi
+  # Skip if binary exists or app bundle is present
+  if has kitty || [ -d "/Applications/kitty.app" ] || [ -d "$HOME/Applications/kitty.app" ]; then return; fi
+  if has brew; then
+    if brew list --cask kitty >/dev/null 2>&1; then return; fi
+    brew install --cask kitty
+  fi
 }
 
 install_wezterm() {
-  if has wezterm; then return; fi
+  if has wezterm || [ -d "/Applications/WezTerm.app" ] || [ -d "$HOME/Applications/WezTerm.app" ]; then return; fi
   if [ "$os" = darwin ] && has brew; then brew install --cask wezterm && return; fi
   if [ "$os" = linux ]; then
     if has apt-get; then
