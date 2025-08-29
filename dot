@@ -4,11 +4,12 @@ set -euo pipefail
 # dot — simple chezmoi-like CLI for GNU Stow in this repo
 #
 # Usage:
-#   ./dot apply [--dry-run] [--target DIR] [pkg ...]
+#   ./dot apply  [--dry-run] [--target DIR] [pkg ...]
 #   ./dot update [--dry-run] [--target DIR] [pkg ...]    # git pull + restow
 #   ./dot restow [--dry-run] [--target DIR] [pkg ...]
 #   ./dot delete [--dry-run] [--target DIR] [pkg ...]
-#   ./dot diff [--target DIR] [pkg ...]                  # preview changes
+#   ./dot diff   [--target DIR] [pkg ...]                # preview changes
+#   ./dot test                                            # run unit tests in ./tests
 #
 # Notes:
 # - If no packages are given, uses OS-aware default set from ./stow/
@@ -38,7 +39,7 @@ usage(){
 
 if [ $# -gt 0 ]; then
   case "$1" in
-    apply|update|restow|delete|diff) cmd="$1"; shift;;
+    apply|update|restow|delete|diff|test) cmd="$1"; shift;;
     -h|--help) usage; exit 0;;
   esac
 fi
@@ -115,26 +116,36 @@ ensure_stow_dir
 if [ ${#pkgs[@]} -eq 0 ]; then pkgs=( $(default_pkgs) ); fi
 
 case "$cmd" in
+  test)
+    echo "dot test: running tests in ./tests"
+    if [ ! -d "$repo/tests" ]; then echo "No tests/ directory found." >&2; exit 1; fi
+    if command -v npm >/dev/null 2>&1; then :; else echo "npm not found; please install Node.js" >&2; exit 1; fi
+    ( cd "$repo/tests" && npm install && npm test )
+    ;;
   apply)
+    echo "dot apply: os=$os target=$target packages: ${pkgs[*]}"
     backup_conflicts "${pkgs[@]}"
     run_stow -S "${pkgs[@]}"
     ;;
   restow)
+    echo "dot restow: os=$os target=$target packages: ${pkgs[*]}"
     backup_conflicts "${pkgs[@]}"
     run_stow -R "${pkgs[@]}"
     ;;
   delete)
+    echo "dot delete: os=$os target=$target packages: ${pkgs[*]}"
     run_stow -D "${pkgs[@]}"
     ;;
   update)
-    if [ -d "$repo/.git" ]; then echo "Updating repo (git pull --ff-only)..."; git -C "$repo" pull --ff-only || true; fi
+    if [ -d "$repo/.git" ]; then echo "dot update: git pull --ff-only"; git -C "$repo" pull --ff-only || true; fi
+    echo "dot update: os=$os target=$target packages: ${pkgs[*]}"
     backup_conflicts "${pkgs[@]}"
     run_stow -R "${pkgs[@]}"
     ;;
   diff)
+    echo "dot diff: os=$os target=$target packages: ${pkgs[*]}"
     dry=yes
     run_stow -S "${pkgs[@]}"
     ;;
   *) usage; exit 2;;
 esac
-

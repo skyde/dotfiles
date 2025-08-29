@@ -195,6 +195,27 @@ main() {
     echo "Run scripts/bootstrap.ps1 in PowerShell on Windows."; exit 0
   fi
 
+  # Dry-run mode: skip installations and only preview stow operations
+  if [ -n "${DRYRUN:-}" ]; then
+    echo "DRYRUN=1: skipping installations; previewing stow changes..."
+    if [ -x "$here/dot" ]; then
+      "$here/dot" diff
+    else
+      # Fallback dry-run directly via stow
+      pkgs=()
+      for p in $(find "$here/stow" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sed 's#.*/##' | sort); do
+        case "$os" in
+          darwin) case "$p" in vsvim|vscode-linux) continue;; esac ;;
+          linux)  case "$p" in vsvim|macos|hammerspoon|vscode-macos) continue;; esac ;;
+        esac
+        pkgs+=("$p")
+      done
+      stow -n -v -d "$here/stow" -t "$HOME" ${STOW_FLAGS:-"--no-folding"} -S "${pkgs[@]}"
+    fi
+    echo "✅ Bootstrap complete."
+    return 0
+  fi
+
   ensure_stow
 
   # Install editors/tools first

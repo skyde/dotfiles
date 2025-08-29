@@ -22,39 +22,11 @@ describe('bootstrap.sh smoke', () => {
     expect(fs.existsSync(BOOTSTRAP)).toBe(true);
 
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dotfiles-home-'));
-    // Common dirs
     for (const d of [home, path.join(home, '.config'), path.join(home, '.local', 'share')]) {
       fs.mkdirSync(d, { recursive: true });
     }
 
-    const original = fs.readFileSync(BOOTSTRAP, 'utf8');
-    // Insert stubs for heavy operations and dry-run stow before `main "$@"`
-    const marker = '\nmain "$@"';
-    const stub = `
-ensure_stow() { return 0; }
-install_neovim_and_lazyvim() { return 0; }
-install_helix() { return 0; }
-install_ohmyzsh() { return 0; }
-install_lazygit() { return 0; }
-install_ripgrep() { return 0; }
-install_bat() { return 0; }
-install_kitty() { return 0; }
-install_wezterm() { return 0; }
-install_fonts() { return 0; }
-rebuild_bat_cache() { return 0; }
-ensure_shell_rc() { return 0; }
-ensure_git_editor() { return 0; }
-disable_charge_chime_macos() { return 0; }
-stow_pkg() { local pkg="$1"; stow -n -v --no-folding -d "$here/stow" -t "$HOME" -S "$pkg"; }
-`;
-    const idx = original.lastIndexOf(marker);
-    expect(idx).toBeGreaterThan(0);
-    const modified = original.slice(0, idx) + '\n' + stub + original.slice(idx);
-
-    const tmpScript = path.join(REPO_ROOT, 'tests', 'bootstrap-smoke.sh');
-    fs.writeFileSync(tmpScript, modified, { mode: 0o755 });
-
-    const res = run('bash', [tmpScript], { env: { HOME: home } });
+    const res = run('bash', [BOOTSTRAP], { env: { HOME: home, DRYRUN: '1' } });
     if (res.status !== 0) {
       throw new Error(`bootstrap.sh smoke failed\ncode: ${res.status}\nstdout:\n${res.stdout}\nstderr:\n${res.stderr}`);
     }
