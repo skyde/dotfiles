@@ -1,0 +1,4 @@
+{
+  "linux": ["macos", "hammerspoon", "vscode-macos", "vsvim"],
+  "darwin": ["vscode-linux", "vsvim"]
+}

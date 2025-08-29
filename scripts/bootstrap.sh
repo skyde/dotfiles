@@ -292,7 +292,6 @@ main() {
   stow_pkg helix
   stow_pkg bat
   stow_pkg nvim
-  stow_pkg vsvim
   if [ "$os" = darwin ]; then
     stow_pkg hammerspoon
     stow_pkg macos

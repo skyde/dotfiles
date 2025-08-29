@@ -84,6 +84,16 @@ function Install-Tools {
   } catch {}
 }
 
+function Ensure-VsVimRc {
+  try {
+    $src = Join-Path $PSScriptRoot "..\stow\vsvim\.vsvimrc"
+    if (Test-Path $src) {
+      $dest = Join-Path $env:USERPROFILE ".vsvimrc"
+      Copy-Item $src $dest -Force
+    }
+  } catch {}
+}
+
 if ($WhatIf) {
   Write-Host "Would install tools, fonts, and VS Code files" -ForegroundColor Yellow
   exit 0
@@ -98,5 +108,6 @@ if ($OnlyVSCode) {
 Install-Tools
 Install-Fonts
 Ensure-VSCodeFiles
+Ensure-VsVimRc
 
 Write-Host "✅ Windows bootstrap complete." -ForegroundColor Green

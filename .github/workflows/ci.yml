@@ -30,7 +30,7 @@ jobs:
           # Preview stow into a temp HOME
           TARGET="$RUNNER_TEMP/home"
           mkdir -p "$TARGET"
-          PKGS="zsh ripgrep shell fzf local-bin kitty wezterm lazygit helix bat nvim vsvim"
+          PKGS="zsh ripgrep shell fzf local-bin kitty wezterm lazygit helix bat nvim"
           if [ "$RUNNER_OS" = "macOS" ]; then PKGS="$PKGS hammerspoon macos vscode-macos"; fi
           if [ "$RUNNER_OS" = "Linux" ]; then PKGS="$PKGS vscode-linux"; fi
           stow -d stow -t "$TARGET" -n -v $PKGS
@@ -57,6 +57,26 @@ jobs:
           test -L "$USER_DIR_I/settings.json"
           test -L "$USER_DIR_I/extensions.json"
           test -L "$USER_DIR_I/keybindings.json"
+
+      - name: Setup Node (Unix)
+        if: runner.os != 'Windows'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Install test deps (Unix)
+        if: runner.os != 'Windows'
+        working-directory: tests
+        run: npm install
+
+      - name: Run TS Stow tests (Unix)
+        if: runner.os != 'Windows'
+        env:
+          STOW_FLAGS: "--no-folding"
+        working-directory: tests
+        run: npm test
 
       - name: Windows bootstrap what-if
         if: runner.os == 'Windows'
