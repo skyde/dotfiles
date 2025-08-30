@@ -1,6 +1,6 @@
 # Dotfiles (GNU Stow)
 
-Personal dotfiles for my development environment, now managed with GNU [stow](https://www.gnu.org/software/stow/). A bootstrap script installs core tools (LazyVim, ripgrep, bat, kitty/wezterm, lazygit), fonts (JetBrainsMono Nerd Font), and symlinks configs using stow. The setup supports macOS, Linux, and Windows (PowerShell).
+Personal dotfiles for my development environment, now managed with GNU [stow](https://www.gnu.org/software/stow/). A bootstrap script installs core tools (LazyVim, ripgrep, bat, kitty/wezterm, lazygit), fonts (JetBrainsMono Nerd Font), and symlinks configs using stow. The setup supports macOS, Linux and Windows (PowerShell).
 
 ## Quick Start
 
@@ -27,12 +27,47 @@ scripts\bootstrap.ps1
 
 This installs ripgrep/bat/wezterm/neovim via winget, installs Nerd Fonts, sets VS Code settings/keybindings/extensions, and bootstraps LazyVim.
 
+## Using the `dot` CLI
+
+The repository includes a `dot` script at the top level which wraps GNU Stow and makes it easier to manage the dotfiles. It works similarly to [chezmoi](https://www.chezmoi.io/): instead of running `stow` directly, you call `./dot` with a subcommand. The script automatically chooses sensible default packages for your OS (by inspecting subdirectories under `stow/`) when none are given and honours the `STOW_FLAGS` environment variable (default: `--no-folding`). You can pass `--dry-run` to preview what would be done without making changes and `--target DIR` to change the target directory from `$HOME`.
+
+### Subcommands
+
+* `apply` – symlink the selected packages into the target directory.
+* `update` – run `git pull` on the repo and then restow the packages.
+* `restow` – remove and re-apply the symlinks for the selected packages.
+* `delete` – remove the symlinks created by stow for the selected packages.
+* `diff` – show what would change when applying packages (dry-run mode).
+* `test` – run the unit tests located in the `./tests` directory.
+
+When you omit package names, `dot` determines an appropriate set based on your operating system. For example, on macOS it skips Linux-specific packages and vice versa.
+
+### Examples
+
+```bash
+# Apply all appropriate packages for your OS
+./dot apply
+
+# Apply only a subset of packages (e.g. zsh and nvim)
+./dot apply zsh nvim
+
+# Pull the latest changes and restow everything
+./dot update
+
+# Remove a package’s symlinks
+./dot delete kitty
+
+# Preview changes without touching the filesystem
+./dot diff zsh
+```
+
 ## Notes
 
-- Stow packages live under `stow/`. On macOS/Linux, the bootstrap uses `stow -d stow -t $HOME` to link:
-  - `zsh`, `ripgrep`, `shell`, `fzf`, `local-bin`, `kitty`, `wezterm`, `lazygit`, `helix`, `bat`, `nvim`, plus `hammerspoon` and `macos` on macOS.
-- Neovim is installed fresh from the LazyVim starter, then the `stow/nvim` package overlays custom keymaps/plugins on top of it.
-- Fonts are installed from `fonts/` into the appropriate user directory.
-- VS Code user files:
-  - macOS/Linux: symlinked via Stow from `vscode/` using packages `vscode-macos` and `vscode-linux` (includes both Code and Code - Insiders), so edits in the repo reflect immediately.
-  - Windows: copied from `vscode/` for both `Code\User` and `Code - Insiders\User` by `scripts/bootstrap.ps1`.
+* Stow packages live under `stow/`. On macOS/Linux, the bootstrap uses `stow -d stow -t $HOME` to link:
+  * `zsh`, `ripgrep`, `shell`, `fzf`, `local-bin`, `kitty`, `wezterm`, `lazygit`, `helix`, `bat`, `nvim`, plus `hammerspoon` and `macos` on macOS.
+* Neovim is installed fresh from the LazyVim starter, then the `stow/nvim` package overlays custom keymaps/plugins on top of it.
+* Fonts are installed from `fonts/` into the appropriate user directory.
+* VS Code user files:
+  * macOS/Linux: symlinked via Stow from `vscode/` using packages `vscode-macos` and `vscode-linux` (includes both Code and Code - Insiders), so edits in the repo reflect immediately.
+  * Windows: copied from `vscode/` for both `Code\User` and `Code - Insiders\User` by `scripts/bootstrap.ps1`.
+
