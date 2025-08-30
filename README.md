@@ -59,6 +59,9 @@ When you omit package names, `dot` determines an appropriate set based on your o
 
 # Preview changes without touching the filesystem
 ./dot diff zsh
+ 
+# Run the TypeScript unit tests
+./dot test
 ```
 
 ## Notes
@@ -68,6 +71,20 @@ When you omit package names, `dot` determines an appropriate set based on your o
 * Neovim is installed fresh from the LazyVim starter, then the `stow/nvim` package overlays custom keymaps/plugins on top of it.
 * Fonts are installed from `fonts/` into the appropriate user directory.
 * VS Code user files:
-  * macOS/Linux: symlinked via Stow from `vscode/` using packages `vscode-macos` and `vscode-linux` (includes both Code and Code - Insiders), so edits in the repo reflect immediately.
+  * macOS/Linux: symlinked via Stow from `stow/vscode-macos` and `stow/vscode-linux` (includes both Code and Code - Insiders), so edits in the repo reflect immediately.
   * Windows: copied from `vscode/` for both `Code\User` and `Code - Insiders\User` by `scripts/bootstrap.ps1`.
 
+### Windows usage
+
+On Windows, use the PowerShell wrapper for a similar experience:
+
+```powershell
+# Apply (installs tools and VS Code files via bootstrap)
+./dot.ps1 apply
+
+# Update repo and apply
+./dot.ps1 update
+
+# Run the Windows smoke checks (Unix Stow tests must run under WSL)
+./dot.ps1 test
+```
