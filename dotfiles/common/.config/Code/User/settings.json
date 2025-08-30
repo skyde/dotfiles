@@ -814,7 +814,7 @@
       "commands": ["editor.action.triggerParameterHints"]
     },
     {
-      "before": ["<leader>", "c", "a"],
+      "before": ["<leader>", "c", "e"],
       "commands": ["editor.action.codeAction"]
     },
     // Errors
@@ -1512,5 +1512,6 @@
   "search.smartCase": true,
   "panel.opensMaximized": true,
   "workbench.panel.opensMaximized": "always",
-  "chromiumide.metrics.showMessage": false
+  "chromiumide.metrics.showMessage": false,
+  "chromiumide.disclaimerOnMac.enabled": false
 }
