@@ -3,6 +3,5 @@ vscode-overlay-return/package-lock.json
 vscode-overlay-return/dist
 dot_local/.DS_Store
 tests/node_modules
-tests/package-lock.json
 tests/bootstrap-smoke.sh
 bootstrap-run.log

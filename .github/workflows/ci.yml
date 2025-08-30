@@ -64,9 +64,8 @@ jobs:
         with:
           # Use stable LTS for best tooling compatibility
           node-version: '20'
-          # Keep caching enabled, but don't force a specific lockfile path.
-          # setup-node v4 fails the job if the provided path doesn't exist.
           cache: npm
+          cache-dependency-path: tests/package-lock.json
 
       - name: Install test deps (Unix)
         if: runner.os != 'Windows'
