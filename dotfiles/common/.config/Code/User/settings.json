@@ -92,6 +92,14 @@
     "panel.border": "#292e42",
     "editorHoverWidget.background": "#1a1b26",
 
+    // Find/Replace box
+    "input.background": "#1a1b26",
+    "input.foreground": "#c0caf5",
+
+    // Input when focused
+    "inputOption.activeBackground": "#292e42",
+    "inputOption.activeForeground": "#c0caf5",
+
     "scrollbar.shadow": "#00000000",
     "widget.shadow": "#00000000",
 
