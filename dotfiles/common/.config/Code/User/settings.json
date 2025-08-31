@@ -90,6 +90,10 @@
     "dropdown.border": "#292e42",
     "panel.background": "#1a1b26",
     "panel.border": "#292e42",
+    "editorHoverWidget.background": "#1a1b26",
+
+    "scrollbar.shadow": "#00000000",
+    "widget.shadow": "#00000000",
 
     // Line numbers
     "editorLineNumber.foreground": "#585858",
