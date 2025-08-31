@@ -1,208 +1,146 @@
-# Dotfiles Usage Guide
+# Usage & Operations
 
-## Scripts
+This page covers the day‑to‑day commands, flags, and patterns.
 
-### `init.sh` / `init.ps1` - First-time setup
+---
 
-**Unix/Linux/macOS:**
+## Prerequisites
+
+- **macOS/Linux:** `git`, `stow` (installed by `init-macos.sh`/`init-linux.sh` if missing)
+- **Windows:** PowerShell 5+ (built‑in), Developer Mode recommended (or run as Administrator)
+
+---
+
+## 1) Bootstrap a machine
+
+### macOS
+```bash
+./init-macos.sh
+```
+
+* Installs `git`, `stow`, and base tools as needed.
+* Performs basic macOS configuration (e.g., defaults) when applicable.
+
+### Linux
 
 ```bash
-./init.sh
+./init-linux.sh
 ```
 
-**Windows:**
+* Installs `git`, `stow` via your package manager.
+* Ensures the environment is ready for linking.
+
+### Windows
 
 ```powershell
-.\init.ps1
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+.\init-windows.ps1
 ```
 
-- Installs dotfiles with `--adopt` (takes over existing files)
-- Prompts to install VS Code extensions
-- Prompts to install common development tools
+* Prepares the environment (developer mode checks, etc.).
+* Ensures linking will work for your user.
 
-### `apply.sh` / `apply.ps1` - Stow wrapper
+---
 
-**Unix/Linux/macOS:**
+## 2) Apply dotfiles
+
+### Default packages
 
 ```bash
-./apply.sh [STOW_OPTIONS]
+# macOS/Linux
+./apply.sh
 ```
-
-**Windows:**
 
 ```powershell
-.\apply.ps1 [STOW_OPTIONS]
+# Windows
+.\apply.ps1
 ```
 
-Direct wrapper around stow with sensible defaults. Passes all arguments to stow.
+Reads `packages.txt` and links those packages.
 
-### `update.sh` / `update.ps1` - Update from remote
+### Select packages explicitly
 
-**Unix/Linux/macOS:**
+```bash
+./apply.sh shell nvim Code
+```
+
+```powershell
+.\apply.ps1 -Packages shell,nvim,Code
+```
+
+### Safe‑run & reconcile
+
+```bash
+./apply.sh --no       # dry run: show actions only
+./apply.sh --restow   # re-link after changes
+./apply.sh --delete   # unlink previously stowed files
+```
+
+> Tip: When files already exist, prefer **adopting** them into the repo, not clobbering. On macOS/Linux:
+
+```bash
+# Example: adopt existing ~/.zshrc into dotfiles/shell
+stow --adopt -t "$HOME" shell
+git add -A && git commit -m "Adopt shell configs"
+```
+
+---
+
+## 3) Update
 
 ```bash
 ./update.sh
 ```
 
-**Windows:**
+* Pulls latest changes and re‑applies.
+* Use on all platforms after you modify the repo elsewhere.
+
+Windows:
 
 ```powershell
 .\update.ps1
 ```
 
-Pulls latest changes from the repository and applies them using `--restow`.
+---
 
-## Common Operations
+## 4) VS Code extensions
 
-### 📦 **First install**
+List your desired extensions in `vscode_extensions.txt`. The scripts will install them on apply/update when supported.
 
-**Unix/Linux/macOS:**
+---
 
-```bash
-./init.sh
-```
+## 5) Adding a new package
 
-**Windows:**
+1. Create a folder: `dotfiles/<packageName>/`
+2. Inside it, mirror real paths (e.g., `dotfiles/foo/.config/foo/config.toml`)
+3. Test on one machine:
 
-```powershell
-.\init.ps1
-```
+   ```bash
+   ./apply.sh foo
+   ```
+4. Commit and push.
 
-### 🔍 **Preview changes**
+---
 
-**Unix/Linux/macOS:**
-
-```bash
-./apply.sh --no              # Dry-run, see what would happen
-./apply.sh --no --verbose    # Dry-run with detailed output
-```
-
-**Windows:**
-
-```powershell
-.\apply.ps1 --no             # Dry-run, see what would happen
-.\apply.ps1 --no --verbose   # Dry-run with detailed output
-```
-
-### 🔄 **Update existing**
-
-**Unix/Linux/macOS:**
+## 6) Uninstall / unlink
 
 ```bash
-./update.sh                  # Pull latest from repo and apply
-./apply.sh --restow          # Re-install everything
-./apply.sh                   # Normal stow (only new packages)
+./apply.sh --delete shell nvim
 ```
 
-**Windows:**
+---
 
-```powershell
-.\update.ps1                 # Pull latest from repo and apply
-.\apply.ps1 --restow         # Re-install everything
-.\apply.ps1                  # Normal stow (only new packages)
-```
+## 7) Windows symlink notes
 
-### ⚠️ **Handle conflicts**
+* With **Developer Mode** enabled, unprivileged symlinks work. Otherwise, run PowerShell as Administrator.
+* If a path is locked by another application, close it and retry.
+* Some Windows apps prefer config under `%APPDATA%` or `%LOCALAPPDATA%`; the package mirrors the destination.
 
-**Unix/Linux/macOS:**
+---
 
-```bash
-./apply.sh --adopt           # Take over existing files
-./apply.sh --no --adopt      # Preview what would be adopted
-```
+## 8) Conventions
 
-**Windows:**
+* Keep “secrets” in secure stores (e.g., 1Password, macOS Keychain, Windows Credential Manager). Don’t commit secrets.
+* Favor small, focused packages.
+* Re‑run `./apply.sh --restow` after renaming/moving files.
 
-```powershell
-.\apply.ps1 --adopt          # Take over existing files
-.\apply.ps1 --no --adopt     # Preview what would be adopted
-```
-
-### 🗑️ **Remove dotfiles**
-
-**Unix/Linux/macOS:**
-
-```bash
-./apply.sh --delete          # Remove all symlinks
-```
-
-**Windows:**
-
-```powershell
-.\apply.ps1 --delete         # Remove all symlinks
-```
-
-### 🎯 **Advanced operations**
-
-**Unix/Linux/macOS:**
-
-```bash
-./apply.sh --restow --verbose=2    # Verbose restow
-./apply.sh --ignore="*.log"        # Ignore log files
-./apply.sh --no --adopt --verbose  # Preview adoption with details
-```
-
-**Windows:**
-
-```powershell
-.\apply.ps1 --restow --verbose=2   # Verbose restow
-.\apply.ps1 --ignore="*.log"       # Ignore log files
-.\apply.ps1 --no --adopt --verbose # Preview adoption with details
-```
-
-## Stow Arguments Reference
-
-| Flag             | Description                 |
-| ---------------- | --------------------------- |
-| `--no`           | Dry-run (simulate only)     |
-| `--verbose`      | Show what's happening       |
-| `--adopt`        | Take over existing files    |
-| `--restow`       | Re-install (unlink + link)  |
-| `--delete`       | Remove symlinks             |
-| `--ignore=REGEX` | Skip files matching pattern |
-
-## Examples
-
-**Unix/Linux/macOS:**
-
-```bash
-# First time setup
-./init.sh
-
-# Update from remote repository
-./update.sh
-
-# See what would happen before adopting conflicts
-./apply.sh --no --adopt
-
-# Actually adopt conflicts
-./apply.sh --adopt
-
-# Update after local changes to dotfiles
-./apply.sh --restow
-
-# Remove everything
-./apply.sh --delete
-```
-
-**Windows:**
-
-```powershell
-# First time setup
-.\init.ps1
-
-# Update from remote repository
-.\update.ps1
-
-# See what would happen before adopting conflicts
-.\apply.ps1 --no --adopt
-
-# Actually adopt conflicts
-.\apply.ps1 --adopt
-
-# Update after local changes to dotfiles
-.\apply.ps1 --restow
-
-# Remove everything
-.\apply.ps1 --delete
-```
