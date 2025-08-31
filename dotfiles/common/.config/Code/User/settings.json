@@ -62,12 +62,22 @@
     // "statusBar.background": "#1E1E1E"
 
     // Simple Black Background
-    "statusBar.background": "#000000",
-    "editor.background": "#000000",
+    // "statusBar.background": "#000000",
+    // "editor.background": "#000000",
+    // "tab.activeBackground": "#301000",
+    // "tab.inactiveBackground": "#000000",
+    // "tab.activeBorderTop": "#AA4000",
+    // "editorGroupHeader.tabsBackground": "#000000",
+
+    // Tokyo Night
+    "statusBar.background": "#1a1b26",
+    "editor.background": "#1a1b26",
     "tab.activeBackground": "#301000",
-    "tab.inactiveBackground": "#000000",
+    "tab.inactiveBackground": "#1a1b26",
     "tab.activeBorderTop": "#AA4000",
-    "editorGroupHeader.tabsBackground": "#000000",
+    "editorGroupHeader.tabsBackground": "#1a1b26",
+
+    // Line numbers
     "editorLineNumber.foreground": "#585858",
 
     // Scroll Bar
@@ -83,9 +93,8 @@
     "editor.inlineValuesForeground": "#AA3333", // text color of inline values
     "editor.inlineValuesBackground": "#AA333320", // background color (supports transparency)
 
-    // Terminal colors (Tokyo Night Storm)
-    "terminal.background": "#000000",
-    // "terminal.background": "#24283b",
+    "terminal.background": "#1a1b26",
+
     "terminal.foreground": "#c0caf5",
     "terminalCursor.background": "#000000",
     "terminalCursor.foreground": "#FF5000",
