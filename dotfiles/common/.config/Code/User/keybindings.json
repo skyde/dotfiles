@@ -347,11 +347,16 @@
   },
   {
     "command": "renameFile",
-    "key": "c",
+    "key": "i",
     "when": "filesExplorerFocus && !inputFocus"
   },
   {
-    "key": "shift+o",
+    "key": "r",
+    "command": "renameFile",
+    "when": "filesExplorerFocus && !inputFocus"
+  },
+  {
+    "key": "shift+i",
     "command": "explorer.newFolder",
     "when": "explorerViewletFocus"
   },
@@ -359,6 +364,113 @@
     "command": "deleteFile",
     "key": "d",
     "when": "filesExplorerFocus && !inputFocus"
+  },
+  // Yazi-style navigation in Explorer
+  {
+    "key": "j",
+    "command": "list.focusDown",
+    "when": "filesExplorerFocus && !inputFocus"
+  },
+  {
+    "key": "k",
+    "command": "list.focusUp",
+    "when": "filesExplorerFocus && !inputFocus"
+  },
+  // {
+  //   "key": "g g",
+  //   "command": "list.focusFirst",
+  //   "when": "filesExplorerFocus && !inputFocus"
+  // },
+  // {
+  //   "key": "shift+g",
+  //   "command": "list.focusLast",
+  //   "when": "filesExplorerFocus && !inputFocus"
+  // },
+  // {
+  //   "key": "ctrl+d",
+  //   "command": "list.focusPageDown",
+  //   "when": "filesExplorerFocus && !inputFocus"
+  // },
+  // {
+  //   "key": "ctrl+u",
+  //   "command": "list.focusPageUp",
+  //   "when": "filesExplorerFocus && !inputFocus"
+  // },
+  {
+    // l = open file (leaf nodes)
+    "key": "l",
+    "command": "list.select",
+    "when": "filesExplorerFocus && !inputFocus && !treeElementCanExpand && !treeElementCanCollapse"
+  },
+  {
+    // l = toggle expand/collapse for folders
+    "key": "l",
+    "command": "list.toggleExpand",
+    "when": "filesExplorerFocus && !inputFocus && (treeElementCanExpand || treeElementCanCollapse)"
+  },
+  {
+    // h = collapse folder if possible
+    "key": "h",
+  "command": "list.collapse",
+  "when": "filesExplorerFocus && !inputFocus"
+  },
+  // {
+  //   // Backspace behaves like h
+  //   "key": "backspace",
+  // "command": "list.collapse",
+  // "when": "filesExplorerFocus && !inputFocus"
+  // },
+  // {
+  //   // Space toggles expand/collapse quickly (handy for folders)
+  //   "key": "space",
+  //   "command": "list.toggleExpand",
+  //   "when": "filesExplorerFocus && !inputFocus && (treeElementCanExpand || treeElementCanCollapse)"
+  // },
+  {
+    // v = toggle selection (Yazi-style multi-select)
+    "key": "v",
+    "command": "list.toggleSelection",
+    "when": "filesExplorerFocus && !inputFocus"
+  },
+  // {
+  //   // a = select all (Yazi-style)
+  //   "key": "a",
+  //   "command": "list.selectAll",
+  //   "when": "filesExplorerFocus && !inputFocus"
+  // },
+  {
+    // s = open to side (leaf nodes)
+    "key": "s",
+    "command": "explorer.openToSide",
+    "when": "filesExplorerFocus && !inputFocus && !treeElementCanExpand && !treeElementCanCollapse"
+  },
+  {
+    // Copy/Cut/Paste like yazi (y, x, p)
+    "key": "y",
+  "command": "filesExplorer.copy",
+    "when": "filesExplorerFocus && !inputFocus"
+  },
+  {
+    "key": "x",
+  "command": "filesExplorer.cut",
+    "when": "filesExplorerFocus && !inputFocus"
+  },
+  {
+    "key": "p",
+  "command": "filesExplorer.paste",
+    "when": "filesExplorerFocus && !inputFocus"
+  },
+  {
+    // Open the highlighted file in the Explorer with Enter (only for files, not folders)
+    "key": "enter",
+    "command": "list.select",
+    "when": "filesExplorerFocus && !inputFocus && !treeElementCanExpand && !treeElementCanCollapse"
+  },
+  {
+    // Enter on a folder toggles expand/collapse (Yazi-style)
+    "key": "enter",
+    "command": "list.toggleExpand",
+    "when": "filesExplorerFocus && !inputFocus && (treeElementCanExpand || treeElementCanCollapse)"
   },
   // Diff
   {
