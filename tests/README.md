@@ -13,5 +13,4 @@ Or simply run from the repo root:
 Notes
 
 - The suite stows into a temporary HOME, asserts mappings, checks idempotency, then unstows.
-- On Windows, Stow is not used. dot.ps1 test runs a VS Code smoke check via scripts/bootstrap.ps1 -OnlyVSCode.
-
+- On Windows, Stow is not used. `dot.ps1 test` runs a VS Code smoke check via a hook under `scripts/windows/test/`.

@@ -4,7 +4,7 @@ set -euo pipefail
 # dot — generic, repo-agnostic CLI inspired by chezmoi
 #
 # This file contains only reusable orchestration logic. It discovers and runs
-# repo-provided scripts under scripts/dot.d/<platform>/<subcommand>/*.sh.
+# repo-provided scripts under scripts/<platform>/<subcommand>/*.sh.
 # No repo-specific content lives here; you can copy this file to other repos.
 #
 # Subcommands:
@@ -16,13 +16,14 @@ set -euo pipefail
 #   ./dot test
 #
 # Each subcommand runs hook scripts (sorted) from these locations, in order:
-#   scripts/dot.d/common/<subcommand>/*.sh
-#   scripts/dot.d/unix/<subcommand>/*.sh        # on macOS or Linux
-#   scripts/dot.d/darwin/<subcommand>/*.sh      # on macOS
-#   scripts/dot.d/linux/<subcommand>/*.sh       # on Linux
+#   scripts/common/<subcommand>/*.sh
+#   scripts/unix/<subcommand>/*.sh        # on macOS or Linux
+#   scripts/darwin/<subcommand>/*.sh      # on macOS
+#   scripts/linux/<subcommand>/*.sh       # on Linux
 #
 # Environment passed to hooks:
 #   DOT_CMD, DOT_OS, DOT_REPO, DOT_TARGET, DOT_DRYRUN ("1" if --dry-run)
+#   DOT_PACKAGES (space-separated; optional explicit packages)
 #
 # Hooks should be idempotent and print human-friendly logs; never write files
 # outside the repo unless that's their purpose.
@@ -41,6 +42,7 @@ esac
 DOT_CMD=apply
 DOT_DRYRUN=
 DOT_TARGET="${HOME}"
+DOT_PACKAGES=
 
 usage(){ cat <<USAGE
 dot – generic CLI
@@ -62,13 +64,13 @@ while [ $# -gt 0 ]; do
     --target|-t) DOT_TARGET="$2"; shift 2;;
     -h|--help) usage; exit 0;;
     -*) echo "Unknown option: $1" >&2; usage; exit 2;;
-    *) echo "Ignoring positional arg: $1"; shift;;
+    *) DOT_PACKAGES+=" $1"; shift;;
   esac
 done
 
 run_hooks() {
   local stage="$1"
-  local root="$repo/scripts/dot.d"
+  local root="${DOT_HOOKS:-$repo/scripts}"
   local -a plat
   plat=("common")
   case "$DOT_OS" in
@@ -83,7 +85,7 @@ run_hooks() {
       # Run in lexical order to allow numeric prefixes for ordering
       while IFS= read -r -d '' f; do
         echo "dot: running $p/$stage/$(basename "$f")"
-        DOT_CMD="$DOT_CMD" DOT_OS="$DOT_OS" DOT_REPO="$repo" DOT_TARGET="$DOT_TARGET" DOT_DRYRUN="$DOT_DRYRUN" bash "$f"
+        DOT_CMD="$DOT_CMD" DOT_OS="$DOT_OS" DOT_REPO="$repo" DOT_TARGET="$DOT_TARGET" DOT_DRYRUN="$DOT_DRYRUN" DOT_PACKAGES="$DOT_PACKAGES" bash "$f"
         ran=1
       done < <(find "$dir" -type f -maxdepth 1 -perm -u+x -print0 | sort -z)
     fi

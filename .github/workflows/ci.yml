@@ -80,11 +80,11 @@ jobs:
         working-directory: tests
         run: npm test
 
-      - name: Windows bootstrap what-if
+      - name: Windows apply and verify VS Code
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          ./scripts/bootstrap.ps1 -OnlyVSCode
+          ./dot.ps1 apply
           $u = Join-Path $env:APPDATA "Code\User"
           if (-not (Test-Path (Join-Path $u 'settings.json'))) { throw "settings.json missing" }
           if (-not (Test-Path (Join-Path $u 'extensions.json'))) { throw "extensions.json missing" }

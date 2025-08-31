@@ -1,7 +1,7 @@
 Dot Hooks Layout
 
 This repo uses a generic `./dot` CLI that discovers and runs hook scripts.
-Hooks are organized under `scripts/dot.d/<platform>/<subcommand>/` and run in
+Hooks are organized under `scripts/<platform>/<subcommand>/` and run in
 sorted order (prefix with numbers to control sequencing, e.g., `10-*.sh`).
 
 Platforms
@@ -29,4 +29,3 @@ Authoring Hooks
 - Shell hooks must be executable and should log succinct status.
 - Respect `DOT_DRYRUN` to avoid making changes during previews.
 - Keep hooks idempotent and repo-agnostic orchestration in `./dot` only.
-

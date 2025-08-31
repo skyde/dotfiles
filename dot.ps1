@@ -7,7 +7,7 @@ Param(
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $MyInvocation.MyCommand.Path
-$hooksRoot = Join-Path $repo 'scripts\dot.d'
+$hooksRoot = if ($env:DOT_HOOKS) { $env:DOT_HOOKS } else { Join-Path $repo 'scripts' }
 $env:DOT_OS = 'windows'
 $env:DOT_REPO = $repo
 $env:DOT_TARGET = $Target

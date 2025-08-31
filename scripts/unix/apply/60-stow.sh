@@ -37,7 +37,12 @@ backup_conflicts() {
   done
 }
 
-pkgs=( $(discover_pkgs) )
+if [ -n "${DOT_PACKAGES:-}" ]; then
+  # shellcheck disable=SC2206
+  pkgs=( ${DOT_PACKAGES} )
+else
+  pkgs=( $(discover_pkgs) )
+fi
 log "os=$DOT_OS target=$DOT_TARGET packages: ${pkgs[*]} (mode=${DOT_DRYRUN:+dry})"
 
 # Ensure local bin exec perms before linking
@@ -49,4 +54,3 @@ else
   backup_conflicts "${pkgs[@]}"
   stow -d "$DOT_REPO/stow" -t "$DOT_TARGET" -S "${pkgs[@]}"
 fi
-
