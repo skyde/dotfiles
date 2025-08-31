@@ -1,63 +1,44 @@
 Param(
   [Parameter(Position=0)][ValidateSet('apply','update','restow','delete','diff','test')]
   [string]$Command = 'apply',
-  [Parameter(ValueFromRemainingArguments=$true)]
-  [string[]]$Args
+  [string]$Target = $env:USERPROFILE,
+  [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
-$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Repo = Resolve-Path $PSScriptRoot
+$repo = Split-Path -Parent $MyInvocation.MyCommand.Path
+$hooksRoot = Join-Path $repo 'scripts\dot.d'
+$env:DOT_OS = 'windows'
+$env:DOT_REPO = $repo
+$env:DOT_TARGET = $Target
+if ($DryRun) { $env:DOT_DRYRUN = '1' } else { $env:DOT_DRYRUN = $null }
 
-function Write-Info([string]$Msg) { Write-Host $Msg -ForegroundColor Cyan }
-function Write-Warn([string]$Msg) { Write-Host $Msg -ForegroundColor Yellow }
-function Write-Err([string]$Msg)  { Write-Host $Msg -ForegroundColor Red }
+function Invoke-Hooks([string]$Stage) {
+  $platforms = @('common','windows')
+  $ran = $false
+  foreach ($p in $platforms) {
+    $dir = Join-Path $hooksRoot "$p\$Stage"
+    if (Test-Path $dir) {
+      Get-ChildItem -Path $dir -File | Sort-Object Name | ForEach-Object {
+        $env:DOT_CMD = $Command
+        Write-Host ("dot.ps1: running {0}/{1}/{2}" -f $p,$Stage,$_.Name) -ForegroundColor Cyan
+        & $_.FullName
+        $ran = $true
+      }
+    }
+  }
+  if (-not $ran) { Write-Host ("dot.ps1: no hooks for {0}" -f $Stage) }
+}
 
 switch ($Command) {
   'test' {
-    Write-Info 'dot.ps1 test: running tests in ./tests (Unix-only Stow tests)'
-    $tests = Join-Path $Repo 'tests'
-    if (-not (Test-Path $tests)) { Write-Err 'tests/ not found'; exit 1 }
-    if ($IsWindows) {
-      Write-Warn 'Stow-based tests are Unix-only. Run them under WSL or a Unix shell.'
-      Write-Info 'Running Windows smoke: Ensure-VSCodeFiles via bootstrap.ps1 -OnlyVSCode'
-      & (Join-Path $Repo 'scripts' 'bootstrap.ps1') -OnlyVSCode
-      Write-Host '✅ Windows VS Code smoke OK.' -ForegroundColor Green
-      break
-    }
-    Push-Location $tests
-    try {
-      npm install
-      npm test
-    } finally {
-      Pop-Location
-    }
+    Write-Host 'dot.ps1 test: Windows smoke (Unix tests require WSL)' -ForegroundColor Cyan
+    Invoke-Hooks 'test'
     break
   }
-  'apply' {
-    Write-Info 'dot.ps1 apply: delegating to scripts/bootstrap.ps1 for Windows'
-    & (Join-Path $Repo 'scripts' 'bootstrap.ps1')
-    break
-  }
-  'update' {
-    Write-Info 'dot.ps1 update: pulling repo then applying'
-    try { git -C $Repo pull --ff-only } catch {}
-    & (Join-Path $Repo 'scripts' 'bootstrap.ps1')
-    break
-  }
-  'restow' {
-    Write-Info 'dot.ps1 restow: re-running apply to ensure files are up-to-date'
-    & (Join-Path $Repo 'scripts' 'bootstrap.ps1')
-    break
-  }
-  'delete' {
-    Write-Warn 'dot.ps1 delete: no Stow on Windows. Remove files manually if needed.'
-    break
-  }
-  'diff' {
-    Write-Warn 'dot.ps1 diff: Stow dry-run not applicable on Windows.'
-    Write-Info 'Use -WhatIf in scripts/bootstrap.ps1 for a lightweight preview.'
-    break
-  }
+  'apply'   { Invoke-Hooks 'apply';  break }
+  'restow'  { Invoke-Hooks 'restow'; break }
+  'delete'  { Invoke-Hooks 'delete'; break }
+  'update'  { try { git -C $repo pull --ff-only } catch {} ; Invoke-Hooks 'restow'; break }
+  'diff'    { Write-Host 'dot.ps1 diff: not supported on Windows' -ForegroundColor Yellow; break }
 }
-

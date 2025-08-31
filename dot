@@ -1,151 +1,127 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# dot — simple chezmoi-like CLI for GNU Stow in this repo
+# dot — generic, repo-agnostic CLI inspired by chezmoi
 #
-# Usage:
-#   ./dot apply  [--dry-run] [--target DIR] [pkg ...]
-#   ./dot update [--dry-run] [--target DIR] [pkg ...]    # git pull + restow
-#   ./dot restow [--dry-run] [--target DIR] [pkg ...]
-#   ./dot delete [--dry-run] [--target DIR] [pkg ...]
-#   ./dot diff   [--target DIR] [pkg ...]                # preview changes
-#   ./dot test                                            # run unit tests in ./tests
+# This file contains only reusable orchestration logic. It discovers and runs
+# repo-provided scripts under scripts/dot.d/<platform>/<subcommand>/*.sh.
+# No repo-specific content lives here; you can copy this file to other repos.
 #
-# Notes:
-# - If no packages are given, uses OS-aware default set from ./stow/
-# - Honors STOW_FLAGS (default: --no-folding)
-# - apply/update/restow will back up conflicting targets as *.pre-stow.<ts>
+# Subcommands:
+#   ./dot apply  [--dry-run] [--target DIR]
+#   ./dot restow [--dry-run] [--target DIR]
+#   ./dot delete [--dry-run] [--target DIR]
+#   ./dot update [--dry-run] [--target DIR]
+#   ./dot diff   [--target DIR]
+#   ./dot test
+#
+# Each subcommand runs hook scripts (sorted) from these locations, in order:
+#   scripts/dot.d/common/<subcommand>/*.sh
+#   scripts/dot.d/unix/<subcommand>/*.sh        # on macOS or Linux
+#   scripts/dot.d/darwin/<subcommand>/*.sh      # on macOS
+#   scripts/dot.d/linux/<subcommand>/*.sh       # on Linux
+#
+# Environment passed to hooks:
+#   DOT_CMD, DOT_OS, DOT_REPO, DOT_TARGET, DOT_DRYRUN ("1" if --dry-run)
+#
+# Hooks should be idempotent and print human-friendly logs; never write files
+# outside the repo unless that's their purpose.
 
 repo="$(cd "$(dirname "$0")" && pwd)"
 cd "$repo"
 
 os_raw="$(uname -s | tr '[:upper:]' '[:lower:]')"
 case "$os_raw" in
-  darwin) os=darwin;;
-  linux) os=linux;;
-  msys*|mingw*|cygwin*) os=windows;;
-  *) os="$os_raw";;
+  darwin) DOT_OS=darwin;;
+  linux) DOT_OS=linux;;
+  msys*|mingw*|cygwin*) DOT_OS=windows;;
+  *) DOT_OS="$os_raw";;
 esac
 
-cmd=apply
-dry=no
-target="${HOME}"
-stow_dir="$repo/stow"
-flags=( ${STOW_FLAGS:-"--no-folding"} )
+DOT_CMD=apply
+DOT_DRYRUN=
+DOT_TARGET="${HOME}"
 
-usage(){
-  sed -n '1,30p' "$0" | sed -n '1,20p' | awk '/^# dot/{flag=1;next} /^$/{if(flag)exit} flag{print substr($0,3)}'
+usage(){ cat <<USAGE
+dot – generic CLI
+Usage:
+  ./dot <apply|restow|delete|update|diff|test> [--dry-run] [--target DIR]
+USAGE
 }
 
 if [ $# -gt 0 ]; then
   case "$1" in
-    apply|update|restow|delete|diff|test) cmd="$1"; shift;;
+    apply|restow|delete|update|diff|test) DOT_CMD="$1"; shift;;
     -h|--help) usage; exit 0;;
   esac
 fi
 
-pkgs=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    --dry-run|-n) dry=yes; shift;;
-    --target|-t) target="$2"; shift 2;;
+    --dry-run|-n) DOT_DRYRUN=1; shift;;
+    --target|-t) DOT_TARGET="$2"; shift 2;;
     -h|--help) usage; exit 0;;
     -*) echo "Unknown option: $1" >&2; usage; exit 2;;
-    *) pkgs+=("$1"); shift;;
+    *) echo "Ignoring positional arg: $1"; shift;;
   esac
 done
 
-ensure_stow_dir(){ [ -d "$stow_dir" ] || { echo "stow dir not found: $stow_dir" >&2; exit 1; }; }
+run_hooks() {
+  local stage="$1"
+  local root="$repo/scripts/dot.d"
+  local -a plat
+  plat=("common")
+  case "$DOT_OS" in
+    darwin|linux) plat+=("unix") ;;
+  esac
+  plat+=("$DOT_OS")
 
-default_pkgs(){
-  # List every subdir under stow/, filter by OS conventions
-  local all
-  # portable find for macOS
-  all=$(find "$stow_dir" -mindepth 1 -maxdepth 1 -type d -print | sed 's#.*/##' | sort)
-  for p in $all; do
-    case "$os" in
-      darwin)
-        case "$p" in vsvim|vscode-linux) continue;; esac
-        ;;
-      linux)
-        case "$p" in vsvim|macos|hammerspoon|vscode-macos) continue;; esac
-        ;;
-      *) # windows/others: no stow; keep empty
-        continue
-        ;;
-    esac
-    echo "$p"
+  local ran=0
+  for p in "${plat[@]}"; do
+    local dir="$root/$p/$stage"
+    if [ -d "$dir" ]; then
+      # Run in lexical order to allow numeric prefixes for ordering
+      while IFS= read -r -d '' f; do
+        echo "dot: running $p/$stage/$(basename "$f")"
+        DOT_CMD="$DOT_CMD" DOT_OS="$DOT_OS" DOT_REPO="$repo" DOT_TARGET="$DOT_TARGET" DOT_DRYRUN="$DOT_DRYRUN" bash "$f"
+        ran=1
+      done < <(find "$dir" -type f -maxdepth 1 -perm -u+x -print0 | sort -z)
+    fi
   done
+  if [ "$ran" = 0 ]; then
+    echo "dot: no hooks for $stage (platforms: ${plat[*]})"
+  fi
 }
 
-run_stow(){
-  local action="$1"; shift
-  local list=("$@")
-  local args=( -d "$stow_dir" -t "$target" "${flags[@]}" )
-  if [ "$dry" = yes ]; then args=( -n -v "${args[@]}" ); fi
-  stow "${args[@]}" "$action" "${list[@]}"
-}
-
-backup_conflicts(){
-  # Parse stow dry-run to backup conflicting targets
-  [ "$dry" = yes ] && return 0
-  [ $# -gt 0 ] || return 0
-  local tmp tgt abs ts
-  for pkg in "$@"; do
-    tmp="$(mktemp)" || exit 1
-    stow -n -v -d "$stow_dir" -t "$target" "${flags[@]}" -S "$pkg" >"$tmp" 2>&1 || true
-    while IFS= read -r line; do
-      case "$line" in
-        *'existing target is not owned by stow:'*) tgt="${line##*: }" ;;
-        *'cannot stow '*' over existing target '*' since'*) tgt="${line#*over existing target }"; tgt="${tgt%% since*}" ;;
-        *) tgt="" ;;
-      esac
-      [ -z "$tgt" ] && continue
-      case "$tgt" in /*) abs="$tgt" ;; *) abs="$target/$tgt" ;; esac
-      if [ -e "$abs" ] || [ -L "$abs" ]; then
-        ts="$(date +%Y%m%d%H%M%S)"
-        mv "$abs" "$abs.pre-stow.$ts" 2>/dev/null || true
-        echo "Backed up conflict: $abs -> $abs.pre-stow.$ts"
-      fi
-    done <"$tmp"
-    rm -f "$tmp"
-  done
-}
-
-ensure_stow_dir
-if [ ${#pkgs[@]} -eq 0 ]; then pkgs=( $(default_pkgs) ); fi
-
-case "$cmd" in
+case "$DOT_CMD" in
   test)
-    echo "dot test: running tests in ./tests"
-    if [ ! -d "$repo/tests" ]; then echo "No tests/ directory found." >&2; exit 1; fi
-    if command -v npm >/dev/null 2>&1; then :; else echo "npm not found; please install Node.js" >&2; exit 1; fi
-    ( cd "$repo/tests" && npm install && npm test )
+    echo "dot test: running tests in ./tests if present"
+    if [ -d "$repo/tests" ]; then
+      if command -v npm >/dev/null 2>&1; then
+        ( cd "$repo/tests" && npm install && npm test )
+      else
+        echo "npm not found; skipping tests" >&2
+      fi
+    else
+      echo "no tests directory; nothing to do"
+    fi
     ;;
   apply)
-    echo "dot apply: os=$os target=$target packages: ${pkgs[*]}"
-    backup_conflicts "${pkgs[@]}"
-    run_stow -S "${pkgs[@]}"
+    run_hooks apply
     ;;
   restow)
-    echo "dot restow: os=$os target=$target packages: ${pkgs[*]}"
-    backup_conflicts "${pkgs[@]}"
-    run_stow -R "${pkgs[@]}"
+    run_hooks restow
     ;;
   delete)
-    echo "dot delete: os=$os target=$target packages: ${pkgs[*]}"
-    run_stow -D "${pkgs[@]}"
+    run_hooks delete
     ;;
   update)
-    if [ -d "$repo/.git" ]; then echo "dot update: git pull --ff-only"; git -C "$repo" pull --ff-only || true; fi
-    echo "dot update: os=$os target=$target packages: ${pkgs[*]}"
-    backup_conflicts "${pkgs[@]}"
-    run_stow -R "${pkgs[@]}"
+    if [ -d "$repo/.git" ]; then echo "dot: git pull --ff-only"; git -C "$repo" pull --ff-only || true; fi
+    run_hooks restow
     ;;
   diff)
-    echo "dot diff: os=$os target=$target packages: ${pkgs[*]}"
-    dry=yes
-    run_stow -S "${pkgs[@]}"
+    DOT_DRYRUN=1
+    run_hooks apply
     ;;
   *) usage; exit 2;;
 esac
