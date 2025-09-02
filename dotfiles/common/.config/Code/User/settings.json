@@ -701,6 +701,46 @@
       ]
     },
     {
+      // Search within files - find the current word
+      "before": ["<leader>", "s", "s"],
+      "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.openTerminal",
+        // Set the fzf context to active
+        { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        {
+          "command": "editor.action.addSelectionToNextFindMatch"
+        },
+        {
+          // Copy the selected word to the clipboard
+          "command": "editor.action.clipboardCopyAction"
+        },
+        {
+          // Run the fzf task
+          "command": "workbench.action.tasks.runTask",
+          "args": "FZF Ripgrep"
+        },
+        {
+          // Wait a moment for FZF to start up, then paste
+          "command": "extension.multiCommand.execute",
+          "args": { "command": "task.custom.delayedPaste" }
+        },
+        // Click escape so we don't come back to a strange mode
+        "extension.vim_escape"
+      ]
+    },
+    // {
+    //   "before": ["<leader>", "s", "T"],
+    //   "commands": [
+    //     // Automatically search for the word under the cursor
+    //     "editor.action.addSelectionToNextFindMatch",
+    //     // By default we filter & only search relavant files
+    //    "fzf-picker.findWithinFilesWithType",
+    //     // Escape to Vim normal mode
+    //     "extension.vim_escape"
+    //   ]
+    // },
+    {
       // Search within files
       "before": ["<leader>", "/"],
       "commands": [
@@ -1307,6 +1347,18 @@
           "args": "closePanelOnEnter"
         }
       ]
+    },
+    {
+      // Delayed paste command for FZF
+      "command": "task.custom.delayedPaste",
+      "interval": 200,
+      "sequence": [
+        {
+          "command": "workbench.action.terminal.sendSequence",
+          "args": { "text": "\u001B" }
+        },
+        { "command": "workbench.action.terminal.paste" }
+      ]
     }
     // {
     //   // When opening a terminal clear any specific context we have set
@@ -1548,5 +1600,7 @@
   "panel.opensMaximized": true,
   "workbench.panel.opensMaximized": "always",
   "chromiumide.metrics.showMessage": false,
-  "chromiumide.disclaimerOnMac.enabled": false
+  "chromiumide.disclaimerOnMac.enabled": false,
+  "diffEditor.renderSideBySide": false,
+  "geminicodeassist.inlineSuggestions.enableAuto": false
 }
