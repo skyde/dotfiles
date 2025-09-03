@@ -36,9 +36,17 @@ stow windows             # Windows-specific (on Windows)
 # Remove packages
 stow -D common           # Uninstall
 
-# Update after changes
-stow -R common           # Restow
+# Update after changes (restow)
+stow -R common           # Refresh symlinks after editing dotfiles
+                         # Use when: files added/removed, broken links, or conflicts
 ```
+
+**When to restow:**
+
+- Added/removed files in your dotfiles
+- Symlinks appear broken or missing
+- After resolving stow conflicts
+- When switching between git branches
 
 ## Linux .bashrc Note
 
