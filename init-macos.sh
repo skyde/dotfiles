@@ -9,7 +9,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source helper functions
 source "${SCRIPT_DIR}/lib/run_ensure.sh"
-source "${SCRIPT_DIR}/lib/cask_app_map.sh"
 
 echo "Installing macOS-specific packages and apps..."
 
