@@ -1,4 +1,4 @@
-# Dotfiles with GNU Stow
+# Dotfiles
 
 Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/) for easy configuration management across machines.
 
