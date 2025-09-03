@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build demo with clang++",
+			"type": "shell",
+			"command": "clang++ -std=c++17 -g /Users/skydebreuil/dotfiles/scratch/cpp-dap-demo/main.cpp -o /Users/skydebreuil/dotfiles/scratch/cpp-dap-demo/bin/demo",
+			"group": "build"
+		}
+	]
+}

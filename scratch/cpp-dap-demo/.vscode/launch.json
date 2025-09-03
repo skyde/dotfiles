@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch demo (lldb)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/demo",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "build",
+  "args": [],
+  "console": "integratedTerminal"
+    },
+    {
+      "name": "Attach to process (lldb)",
+      "type": "lldb",
+      "request": "attach",
+  "pid": "${command:pickProcess}"
+    },
+    {
+      "name": "Launch + runInTerminal (lldb)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/demo",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "build",
+  "console": "integratedTerminal"
+    }
+  ]
+}
