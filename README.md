@@ -1,257 +1,53 @@
 # Dotfiles with GNU Stow
 
-This repository contains my personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/), a symlink farm manager that makes it easy to manage your configuration files across different machines and operating systems.
+Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/) for easy configuration management across machines.
 
 ## ⚠️ Before You Install - Preview First
 
-Always preview what will be installed before making changes:
-
 ```sh
 # Preview what will be symlinked (do this first!)
-stow -n -v common    # -n = dry-run, -v = verbose
+stow -n -v common    # Add mac/windows on those platforms
 ```
 
-This shows which files will be symlinked and any conflicts. **Only proceed after reviewing the preview!**
-
-## Repository Structure
-
-```text
-├── common/   # Shared configs across all platforms
-├── mac/      # macOS-specific configs
-└── windows/  # Windows-specific configs
-```
-
-## How Stow Works
-
-GNU Stow creates symlinks from your home directory to the configuration files in this repository:
-
-- **Package**: Top-level directories (`common`, `mac`, `windows`)
-- **Target**: Your home directory (`~` or `$HOME`)
-- **Symlinks**: Stow mirrors the directory structure inside each package to your home directory
-
-### Example
-
-When you run `stow common`, symlinks are created:
-
-```text
-~/.bashrc → ~/dotfiles/common/.bashrc
-~/.zshrc → ~/dotfiles/common/.zshrc
-~/.tmux.conf → ~/dotfiles/common/.tmux.conf
-```
+Shows which files will be symlinked and any conflicts. **Only proceed after reviewing!**
 
 ## Quick Setup
 
-### Mac
-
 ```sh
-# Install Homebrew from https://brew.sh if not already present
-# stow will be installed automatically by the init script
+# Clone and navigate
 git clone https://github.com/skyde/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
-# STEP 1: Preview what will be installed (IMPORTANT!)
-stow -n -v common
-
-# STEP 2: If the preview looks good, proceed with installation
-./init.sh
+# Preview first, then install
+stow -n -v common        # Preview
+./init.sh                # Install if preview looks good
 ```
 
-### Linux
+**Prerequisites**: Install `git` and `stow` first (`brew install stow` on Mac, `sudo apt install git stow` on Linux, `winget install stefansundin.gnu-stow` on Windows).
+
+## Manual Commands
 
 ```sh
-sudo apt update
-sudo apt install -y git stow
-git clone https://github.com/skyde/dotfiles.git ~/dotfiles
-cd ~/dotfiles
+# Install packages
+stow common              # Shared configs
+stow mac                 # macOS-specific (on Mac)  
+stow windows             # Windows-specific (on Windows)
 
-# STEP 1: Preview what will be installed (IMPORTANT!)
-stow -n -v common
+# Remove packages
+stow -D common           # Uninstall
 
-# STEP 2: If the preview looks good, proceed with installation
-./init.sh
+# Update after changes
+stow -R common           # Restow
 ```
 
-### Windows (PowerShell)
+## Linux .bashrc Note
 
-```ps1
-# Install Git if needed: winget install Git.Git
-# Install stow: winget install stefansundin.gnu-stow
-git clone https://github.com/skyde/dotfiles.git "$env:USERPROFILE\dotfiles"
-cd "$env:USERPROFILE\dotfiles"
-
-# STEP 1: Preview what will be installed (IMPORTANT!)
-stow -n -v common
-
-# STEP 2: If the preview looks good, proceed with installation
-.\init.ps1
-```
-
-## What the Init Scripts Do
-
-The init scripts provide complete automation:
-
-1. **📁 Stow Configuration Files**: Symlink all dotfiles to correct locations
-2. **🔧 Install VS Code Extensions**: Auto-install essential extensions from `vscode_extensions.txt`
-3. **📦 Install Development Tools**: Optionally install common CLI tools:
-   - **macOS**: ripgrep, fd, fzf, bat, delta, eza, neovim, tmux, git, lazygit
-   - **Linux**: ripgrep, fd-find, fzf, bat, git, neovim, tmux
-   - **Windows**: Git, ripgrep, fd, bat, delta, Neovim, PowerShell, Starship
-
-### Non-Interactive Mode
-
-For automated setups (CI/CD, scripts):
-
-```bash
-# Skip app installation prompts
-AUTO_INSTALL=0 ./init.sh
-
-# Auto-install apps without prompting
-AUTO_INSTALL=1 ./init.sh
-```
-
-```powershell
-# Windows equivalent
-$env:AUTO_INSTALL = "0"  # or "1" to auto-install
-.\init.ps1
-```
-
-## Manual Package Management
-
-You can also manage packages manually:
-
-### Installing Packages
+Linux systems have a default `.bashrc`. Our dotfiles include `.bashrc-custom` to avoid conflicts:
 
 ```sh
-cd ~/dotfiles
-
-# Install shared configs
-stow common
-
-# Install macOS-specific configs (on Mac)
-stow mac
-
-# Install Windows-specific configs (on Windows)
-stow windows
+stow common                           # Install dotfiles
+echo 'source ~/.bashrc-custom' >> ~/.bashrc  # Add to existing .bashrc
 ```
-
-### Uninstalling Packages
-
-```sh
-cd ~/dotfiles
-
-# Remove symlinks for a package
-stow -D common
-```
-
-### Restowing (Update Existing)
-
-After editing files, restow to update the symlinks:
-
-```sh
-cd ~/dotfiles
-./apply.sh --restow        # Reapply all installed packages
-./apply.sh --no --restow   # Preview restow without making changes
-```
-
-To restow a single package manually, run `stow -R <package>` from the `dotfiles` directory.
-
-## Platform-Specific Instructions
-
-### macOS
-
-The init script will:
-
-- Install configs from `common/`
-- Install macOS-specific configs from `mac/`
-- Optionally install CLI tools (ripgrep, fd, bat, eza, etc.)
-
-### Linux Init Features
-
-The init script will:
-
-- Install configs from `common/`
-- Set up Linux-specific configurations
-- Optionally install CLI tools via package manager
-
-### Windows
-
-The PowerShell script will:
-
-- Install configs from `common/`
-- Install Windows-specific configs from `windows/`
-- Use PowerShell-compatible stow commands
-- Optionally install CLI tools via winget
-
-## Customization
-
-### Adding New Configurations
-
-1. Add files under `common/` (or the platform-specific directory) following the same structure as your home directory.
-2. Restow the package to apply the changes:
-
-```sh
-# Example: Adding a new tool called 'mytool'
-mkdir -p common/.config/mytool
-echo "config=value" > common/.config/mytool/config.toml
-cd dotfiles
-stow -R common
-```
-
-### Handling Conflicts
-
-#### Linux .bashrc Conflict
-
-On Linux systems, a default `.bashrc` file already exists in your home directory. Our dotfiles include `.bashrc-custom` with enhanced bash configuration (modern CLI tools, better completion, aliases, etc.) but **do not include a `.bashrc`** to avoid conflicts.
-
-**Recommended approach** (manual integration):
-
-```sh
-# Install dotfiles (no .bashrc conflict since we don't ship one)
-stow common
-
-# Add our custom configuration to your existing .bashrc
-echo 'source ~/.bashrc-custom' >> ~/.bashrc
-```
-
-**Alternative approach** (replace system .bashrc):
-
-```sh
-# Backup existing .bashrc
-mv ~/.bashrc ~/.bashrc.backup
-
-# Create a new .bashrc that sources both system defaults and our config
-cat > ~/.bashrc << 'EOF'
-# Source system defaults if available
-[[ -f /etc/skel/.bashrc ]] && source /etc/skel/.bashrc
-
-# Source our custom configuration
-[[ -f ~/.bashrc-custom ]] && source ~/.bashrc-custom
-EOF
-
-# Install dotfiles
-stow common
-```
-
-#### General Conflicts
-
-If stow encounters other existing files that aren't symlinks:
-
-```sh
-# Move existing files to backup
-mv ~/.zshrc ~/.zshrc.backup
-
-# Then install the package
-stow common
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Stow conflicts**: Remove or backup existing files first
-2. **Permission errors**: Ensure you have write access to your home directory
-3. **Broken symlinks**: Run `stow -R <package>` to restow
-4. **Package not found**: Check you're in the correct directory (root directory, etc.)
 
 ## Starship Prompt
 
