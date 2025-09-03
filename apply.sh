@@ -4,16 +4,12 @@ set -e
 
 # Parse arguments to detect dry-run mode
 DRY_RUN=false
-ARGS=()
+ARGS=("$@")  # Pass through all arguments
 
 for arg in "$@"; do
     case $arg in
         --no-act|--no|--simulate|-n)
             DRY_RUN=true
-            ARGS+=(--no)
-            ;;
-        *)
-            ARGS+=("$arg")
             ;;
     esac
 done
@@ -41,7 +37,7 @@ stow_package() {
     echo "📦 Installing $pkg package"
     
     # Use restow to handle any conflicts or missing symlinks
-    stow --target="$HOME" --restow --verbose=1 "${ARGS[@]}" "$pkg"
+    stow --target="$HOME" --verbose=1 "${ARGS[@]}" "$pkg"
 
     # Skip verification in dry-run mode
     if $DRY_RUN; then

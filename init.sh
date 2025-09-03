@@ -26,8 +26,9 @@ echo "Installing dotfiles..."
 # Change to script directory to ensure relative paths work
 cd "$SCRIPT_DIR"
 
-# Use apply.sh with --adopt to handle conflicts
-./apply.sh --adopt
+# Manually use apply.sh with --adopt to handle conflicts if required
+# Pass through all command line arguments to apply.sh
+./apply.sh "$@"
 
 # Install packages
 if [ -f "packages.txt" ]; then
@@ -42,21 +43,21 @@ if [ -f "packages.txt" ]; then
   if [[ "$install_apps" =~ ^[Yy] ]]; then
     echo "Installing packages..."
     case "$(uname)" in
-      Darwin)
-        command -v brew >/dev/null && brew install $packages || echo "Homebrew not found. Install it first: https://brew.sh"
-        ;;
-      Linux)
-        command -v apt >/dev/null && sudo apt update && sudo apt install -y $packages
-        ;;
-      MINGW* | MSYS* | CYGWIN*)
-        if command -v winget >/dev/null; then
-          for pkg in $packages; do winget install "$pkg" --silent --accept-source-agreements --accept-package-agreements; done
-        elif command -v choco >/dev/null; then
-          choco install $packages -y
-        else
-          echo "Neither winget nor chocolatey found. Please install packages manually: $packages"
-        fi
-        ;;
+    Darwin)
+      command -v brew >/dev/null && brew install $packages || echo "Homebrew not found. Install it first: https://brew.sh"
+      ;;
+    Linux)
+      command -v apt >/dev/null && sudo apt update && sudo apt install -y $packages
+      ;;
+    MINGW* | MSYS* | CYGWIN*)
+      if command -v winget >/dev/null; then
+        for pkg in $packages; do winget install "$pkg" --silent --accept-source-agreements --accept-package-agreements; done
+      elif command -v choco >/dev/null; then
+        choco install $packages -y
+      else
+        echo "Neither winget nor chocolatey found. Please install packages manually: $packages"
+      fi
+      ;;
     esac
   fi
 fi
@@ -98,30 +99,30 @@ platform_init=$(get_user_confirmation "Run platform-specific setup? (y/N): ")
 if [[ "$platform_init" =~ ^[Yy] ]]; then
   echo "Running platform-specific initialization..."
   case "$(uname)" in
-    Darwin)
-      if [ -f "init-macos.sh" ]; then
-        echo "Running macOS-specific setup..."
-        ./init-macos.sh
-      else
-        echo "init-macos.sh not found, skipping macOS setup"
-      fi
-      ;;
-    Linux)
-      if [ -f "init-linux.sh" ]; then
-        echo "Running Linux-specific setup..."
-        ./init-linux.sh
-      else
-        echo "init-linux.sh not found, skipping Linux setup"
-      fi
-      ;;
-    MINGW* | MSYS* | CYGWIN*)
-      if [ -f "init-windows.ps1" ]; then
-        echo "Running Windows-specific setup..."
-        powershell.exe -ExecutionPolicy Bypass -File "./init-windows.ps1"
-      else
-        echo "init-windows.ps1 not found, skipping Windows setup"
-      fi
-      ;;
+  Darwin)
+    if [ -f "init-macos.sh" ]; then
+      echo "Running macOS-specific setup..."
+      ./init-macos.sh
+    else
+      echo "init-macos.sh not found, skipping macOS setup"
+    fi
+    ;;
+  Linux)
+    if [ -f "init-linux.sh" ]; then
+      echo "Running Linux-specific setup..."
+      ./init-linux.sh
+    else
+      echo "init-linux.sh not found, skipping Linux setup"
+    fi
+    ;;
+  MINGW* | MSYS* | CYGWIN*)
+    if [ -f "init-windows.ps1" ]; then
+      echo "Running Windows-specific setup..."
+      powershell.exe -ExecutionPolicy Bypass -File "./init-windows.ps1"
+    else
+      echo "init-windows.ps1 not found, skipping Windows setup"
+    fi
+    ;;
   esac
 else
   echo "Skipping platform-specific setup"

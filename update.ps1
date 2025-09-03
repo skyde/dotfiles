@@ -16,7 +16,8 @@ try {
 
     # Apply the updated dotfiles
     Write-Host "Applying updated dotfiles..." -ForegroundColor Yellow
-    & "$PSScriptRoot\apply.ps1" --restow
+    # Pass through any additional arguments along with --restow
+    & "$PSScriptRoot\apply.ps1" --restow @args
 
     Write-Host "✅ Dotfiles updated successfully!" -ForegroundColor Green
 } catch {

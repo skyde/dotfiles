@@ -17,7 +17,8 @@ git pull
 
 # Apply the updated dotfiles
 echo "Applying updated dotfiles..."
-./apply.sh --restow
+# Pass through any additional arguments along with --restow
+./apply.sh --restow "$@"
 
 echo "✅ Dotfiles updated successfully!"
 

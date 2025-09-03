@@ -3,8 +3,8 @@ $ErrorActionPreference = 'Stop'
 
 Write-Host "Installing dotfiles..." -ForegroundColor Green
 
-# Use apply.ps1 with --adopt to handle conflicts
-& "$PSScriptRoot\apply.ps1" --adopt
+# Use apply.ps1 and pass through all command line arguments
+& "$PSScriptRoot\apply.ps1" @args
 
 # Install VS Code extensions
 $codeCommand = Get-Command code -ErrorAction SilentlyContinue
