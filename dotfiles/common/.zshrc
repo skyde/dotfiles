@@ -150,6 +150,10 @@ lfcd() {
 }
 alias lf='lfcd'
 
+gg() {
+  command lazygit
+}
+
 # --- plugins (load AFTER compinit & prompt; keep syntax-highlighting last)
 for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
   for dir in "/opt/homebrew/share/$plugin" "/usr/local/share/$plugin" "/usr/share/$plugin"; do
