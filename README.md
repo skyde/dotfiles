@@ -2,27 +2,16 @@
 
 This repository contains my personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/), a symlink farm manager that makes it easy to manage your configuration files across different machines and operating systems.
 
-## ⚠️ Before You Install - Preview What Will Happen
+## ⚠️ Before You Install - Preview First
 
-**IMPORTANT**: Before running any installation commands, always preview what changes will be made to your system using the dry-run flags:
+Always preview what will be installed before making changes:
 
 ```sh
-# Preview what the installation script will do (RECOMMENDED FIRST STEP)
-./apply.sh -n -v                 # -n = dry-run, -v = verbose
-./apply.sh --simulate --verbose  # Alternative syntax
-
-# Preview the full initialization process
-AUTO_INSTALL=0 ./init.sh -n -v   # Won't install packages, shows what would happen
+# Preview what will be symlinked (do this first!)
+stow -n -v common    # -n = dry-run, -v = verbose
 ```
 
-This will show you:
-
-- ✅ Which files will be symlinked
-- ⚠️ Any potential conflicts with existing files
-- 📁 What directories will be created
-- 🔗 The exact symlink paths that will be created
-
-**Only proceed with actual installation after reviewing the preview!**
+This shows which files will be symlinked and any conflicts. **Only proceed after reviewing the preview!**
 
 ## Repository Structure
 
@@ -61,7 +50,7 @@ git clone https://github.com/skyde/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
 # STEP 1: Preview what will be installed (IMPORTANT!)
-./apply.sh -n -v
+stow -n -v common
 
 # STEP 2: If the preview looks good, proceed with installation
 ./init.sh
@@ -71,12 +60,12 @@ cd ~/dotfiles
 
 ```sh
 sudo apt update
-sudo apt install -y git   # stow installed automatically
+sudo apt install -y git stow
 git clone https://github.com/skyde/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
 # STEP 1: Preview what will be installed (IMPORTANT!)
-./apply.sh -n -v
+stow -n -v common
 
 # STEP 2: If the preview looks good, proceed with installation
 ./init.sh
@@ -85,29 +74,17 @@ cd ~/dotfiles
 ### Windows (PowerShell)
 
 ```ps1
-# stow will be installed automatically via winget if missing
 # Install Git if needed: winget install Git.Git
+# Install stow: winget install stefansundin.gnu-stow
 git clone https://github.com/skyde/dotfiles.git "$env:USERPROFILE\dotfiles"
 cd "$env:USERPROFILE\dotfiles"
 
 # STEP 1: Preview what will be installed (IMPORTANT!)
-.\apply.ps1 -n -v
+stow -n -v common
 
 # STEP 2: If the preview looks good, proceed with installation
 .\init.ps1
 ```
-
-## Dry-Run Options Reference
-
-Always use these flags to preview changes before actual installation:
-
-| Flag | Description | Example |
-|------|-------------|---------|
-| `-n` or `--no` | Dry-run mode - show what would happen | `./apply.sh -n` |
-| `-v` or `--verbose` | Verbose output - detailed information | `./apply.sh -v` |
-| `--simulate` | Alternative dry-run syntax | `./apply.sh --simulate` |
-
-**Recommended combination**: `./apply.sh -n -v` (dry-run + verbose)
 
 ## What the Init Scripts Do
 
