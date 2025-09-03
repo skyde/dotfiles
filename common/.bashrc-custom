@@ -1,4 +1,23 @@
 # shellcheck shell=bash
+#
+# Custom bash configuration for enhanced developer experience
+# 
+# This file contains enhanced shell configurations including modern CLI tools,
+# improved completion, and developer-friendly aliases and functions.
+#
+# USAGE:
+# To use this configuration alongside your system's default .bashrc,
+# add this line to your ~/.bashrc:
+#
+#   source ~/.bashrc-custom
+#
+# Or if you used stow to symlink this file:
+#
+#   source ~/.bashrc-custom
+#
+# This allows you to keep your system's default bash configuration while
+# adding enhanced features for development work.
+#
 
 # Disable flow control in interactive shells
 if [[ $- == *i* ]]; then

@@ -173,11 +173,45 @@ stow -R common
 
 ### Handling Conflicts
 
-If stow encounters existing files that aren't symlinks, it will warn you:
+#### Linux .bashrc Conflict
+
+On Linux systems, a default `.bashrc` file already exists in your home directory. Our dotfiles include `.bashrc-custom` with enhanced bash configuration (modern CLI tools, better completion, aliases, etc.) but **do not include a `.bashrc`** to avoid conflicts.
+
+**Recommended approach** (manual integration):
+
+```sh
+# Install dotfiles (no .bashrc conflict since we don't ship one)
+stow common
+
+# Add our custom configuration to your existing .bashrc
+echo 'source ~/.bashrc-custom' >> ~/.bashrc
+```
+
+**Alternative approach** (replace system .bashrc):
+
+```sh
+# Backup existing .bashrc
+mv ~/.bashrc ~/.bashrc.backup
+
+# Create a new .bashrc that sources both system defaults and our config
+cat > ~/.bashrc << 'EOF'
+# Source system defaults if available
+[[ -f /etc/skel/.bashrc ]] && source /etc/skel/.bashrc
+
+# Source our custom configuration
+[[ -f ~/.bashrc-custom ]] && source ~/.bashrc-custom
+EOF
+
+# Install dotfiles
+stow common
+```
+
+#### General Conflicts
+
+If stow encounters other existing files that aren't symlinks:
 
 ```sh
 # Move existing files to backup
-mv ~/.bashrc ~/.bashrc.backup
 mv ~/.zshrc ~/.zshrc.backup
 
 # Then install the package

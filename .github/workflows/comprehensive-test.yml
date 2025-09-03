@@ -46,9 +46,9 @@ jobs:
 
           # Validate package structure
           echo "📦 Package validation:"
-          test -f "common/.bashrc" || { echo "❌ common/.bashrc missing"; exit 1; }
-          test -d "dotfiles/mac/Library" || { echo "❌ dotfiles/mac/Library missing"; exit 1; }
-          test -f "dotfiles/windows/.vsvimrc" || { echo "❌ dotfiles/windows/.vsvimrc missing"; exit 1; }
+          test -f "common/.bashrc-custom" || { echo "❌ common/.bashrc-custom missing"; exit 1; }
+          test -d "mac/Library" || { echo "❌ mac/Library missing"; exit 1; }
+          test -f "windows/.vsvimrc" || { echo "❌ windows/.vsvimrc missing"; exit 1; }
           echo "✅ Package structure validation passed"
 
       - name: Validate configuration files
@@ -157,7 +157,7 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Available files:"
           ls -la
-          
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell scripts..."
             echo "Script path: ${{ matrix.apply_script }}"
@@ -188,7 +188,7 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Available files:"
           ls -la
-          
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Running Windows installation..."
             echo "Script path: ${{ matrix.init_script }}"
