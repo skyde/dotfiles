@@ -2,30 +2,32 @@
 
 Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/) for easy configuration management across machines.
 
-## ⚠️ Before You Install - Preview First
+## Install
 
-```sh
-# Preview what will be symlinked (do this first!)
-stow -n -v common    # Add mac/windows on those platforms
-```
-
-Shows which files will be symlinked and any conflicts. **Only proceed after reviewing!**
-
-## Quick Setup
+### Clone
 
 ```sh
 # Clone and navigate
 git clone https://github.com/skyde/dotfiles.git ~/dotfiles
 cd ~/dotfiles
+```
 
-# Preview first, then install
-stow -n -v common        # Preview
+### Preview
+
+Shows which files will be symlinked and any conflicts. **Only proceed after reviewing!**
+
+```sh
+stow -n -v common        # Preview - add mac/windows on those platforms
+./apply.sh -n            # Similar to previous command, but with additional checks
+```
+
+### Mutate
+
+```sh
 ./init.sh                # Install if preview looks good
 ```
 
-**Prerequisites**: Install `git` and `stow` first (`brew install stow` on Mac, `sudo apt install git stow` on Linux, `winget install stefansundin.gnu-stow` on Windows).
-
-## Manual Commands
+## Stow Commands
 
 ```sh
 # Install packages
@@ -50,17 +52,11 @@ stow -R common           # Refresh symlinks after editing dotfiles
 
 ## Linux .bashrc Note
 
-Linux systems have a default `.bashrc`. Our dotfiles include `.bashrc-custom` to avoid conflicts:
+Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` to avoid conflicts:
 
 ```sh
-stow common                           # Install dotfiles
-echo 'source ~/.bashrc-custom' >> ~/.bashrc  # Add to existing .bashrc
+~/.bashrc-custom  # Add to existing .bashrc to source the custom one
 ```
-
-## Starship Prompt
-
-Starship is offered as an optional tool.
-You'll be prompted to install it unless `AUTO_INSTALL=1` is set, in which case it installs and updates without prompting (winget: `Starship.Starship`).
 
 ## Fast CLI Tools
 
@@ -74,12 +70,11 @@ These tools are offered during setup:
 - `delta` for modern git diffs (also used in Lazygit)
   - diffs are side-by-side by default, while LazyGit shows inline changes
 - `lazygit` for a simple git TUI
+- `starship` for a customizable cross-shell prompt
 
-On macOS/Linux, `starship` is also installed; Windows installs it via winget.
+## Mac
 
-## Mac notes
-
-## Custom Alt Tab
+### Custom Alt Tab
 
 I use the 'Alt Tab' program for easy window switching.
 
@@ -92,11 +87,11 @@ Settings are stored in `mac/Library/Preferences/com.lwouis.alt-tab-macos.plist` 
 - UI elements hidden (badges, colored circles, status icons, menubar icon)
 - Control key as hold shortcut
 
-## Hammerspoon
+### Hammerspoon
 
 Spotlight opens when the Cmd key is quickly tapped by itself. A short delay prevents accidental triggers.
 
-## Fluor
+### Fluor
 
 Automatically switches mode of fn keys per program. Important as keyboard macros use F... keys.
 
@@ -105,13 +100,13 @@ Settings are stored in `mac/Library/Preferences/com.pyrolyse.Fluor.plist` and in
 - App-specific rules for VS Code and kitty (behavior mode 2)
 - Notification preferences
 
-## Better Display
+### Better Display
 
 Allows increased brightness when viewing SDR content on an HDR monitor.
 
-## Windows notes
+## Windows
 
-## Config
+### Config
 
 ```text
 - To get the Alt Tab switcher to work better
@@ -123,11 +118,11 @@ Allows increased brightness when viewing SDR content on an HDR monitor.
 
 lf expects its configuration under `%AppData%\lf` on Windows. These dotfiles create a symlink to `~/.config/lf` so settings apply across OSes.
 
-## PowerShell 7
+### PowerShell 7
 
 Use this since it's nicer than the default PowerShell 5.
 
-## Visual Studio
+### Visual Studio
 
 ```text
 - For Visual Studio use VSVim with the provided vsvimrc
@@ -139,7 +134,7 @@ Use this since it's nicer than the default PowerShell 5.
 - There is a plugin called 'Smooth Caret' which messes with the VSVim caret - make sure it's disabled
 ```
 
-## Perforce
+### Perforce
 
 Ensure you set the correct environment variable to allow the diff to work:
 
@@ -147,7 +142,7 @@ Ensure you set the correct environment variable to allow the diff to work:
 P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe" /Diff %1 %2
 ```
 
-## Visual Studio Code
+### Visual Studio Code
 
 I'm using a few plugins:
 
@@ -172,7 +167,7 @@ Host devbox
 
 Use the “Remote-SSH: Connect to Host…” command in VS Code to start a session.
 
-## Keyboard
+### Keyboard
 
 Run `kinesis-advantage2/sync-kinesis-layouts.ps1` with the Kinesis Advantage2 V-Drive connected & key bindings will auto sync.
 
