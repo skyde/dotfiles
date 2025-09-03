@@ -58,9 +58,7 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 ~/.bashrc-custom  # Add to existing .bashrc to source the custom one
 ```
 
-## Fast CLI Tools
-
-These tools are offered during setup:
+## CLI Tools
 
 - `ripgrep` for searching directories quickly
 - `fd` as a faster `find`
@@ -147,14 +145,15 @@ P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\d
 I'm using a few plugins:
 
 - Vim
-- Fzf Picker (hooks into fzf, rg & bat)
+- Yazi
 - clangd for C++ language features
-  Extensions listed in `vscode_extensions.txt` will be installed automatically
-  when these dotfiles are applied. Custom keybindings are documented in
-  [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
-  On macOS, the init script falls back to
-  `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` if the
-  `code` command isn't in your `PATH`.
+
+Extensions listed in `vscode_extensions.txt` will be installed automatically
+when these dotfiles are applied. Custom keybindings are documented in
+[`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
+On macOS, the init script falls back to
+`/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` if the
+`code` command isn't in your `PATH`.
 
 For remote development, install the **Remote - SSH** extension. Add your server
 details to `~/.ssh/config`, e.g.
@@ -186,23 +185,21 @@ scroll down - Shift F6
 stop build - Shift F7
 goto definition - Shift F8
 open spotlight - tap Cmd
-toggle eye mouse - Shift F10
+tmux prefix / toggle eye mouse - Shift F10
 toggle comment - Shift F11
 
 ```
 
-## Platforms
+## Kinesis
 
-Press Pgrm 1 to activate on Mac
-Press Pgrm qwerty to activate on Windows
+Press Pgrm 1 to activate Mac layout
+Press Pgrm qwerty to activate the Windows layout
 
-Note you should always leave the keyboard in 'Windows' mode as the bindings have been manually translated.
+Note you should always leave the keyboard in 'Windows' mode as the bindings have been manually translated for Mac.
 
 ## Footpedal
 
-The config for the footpedal is located under the savant-elite2 folder.
-
-The pedal config:
+The config for the footpedal is located under the windows/savant-elite2 folder.
 
 - Left is Escape
 - Middle is Left Click
