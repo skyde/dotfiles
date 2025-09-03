@@ -5,7 +5,6 @@ This repository contains my personal dotfiles managed with [GNU Stow](https://ww
 ## Repository Structure
 
 ```text
-dotfiles/
 ├── common/   # Shared configs across all platforms
 ├── mac/      # macOS-specific configs
 └── windows/  # Windows-specific configs
@@ -15,18 +14,18 @@ dotfiles/
 
 GNU Stow creates symlinks from your home directory to the configuration files in this repository:
 
-- **Package**: Top-level directories in `dotfiles/` (`common`, `mac`, `windows`)
+- **Package**: Top-level directories (`common`, `mac`, `windows`)
 - **Target**: Your home directory (`~` or `$HOME`)
 - **Symlinks**: Stow mirrors the directory structure inside each package to your home directory
 
 ### Example
 
-When you run `stow common` from `dotfiles/`, symlinks are created:
+When you run `stow common`, symlinks are created:
 
 ```text
-~/.bashrc → ~/dotfiles/dotfiles/common/.bashrc
-~/.zshrc → ~/dotfiles/dotfiles/common/.zshrc
-~/.tmux.conf → ~/dotfiles/dotfiles/common/.tmux.conf
+~/.bashrc → ~/dotfiles/common/.bashrc
+~/.zshrc → ~/dotfiles/common/.zshrc
+~/.tmux.conf → ~/dotfiles/common/.tmux.conf
 ```
 
 ## Quick Setup
@@ -97,7 +96,7 @@ You can also manage packages manually:
 ### Installing Packages
 
 ```sh
-cd ~/dotfiles/dotfiles
+cd ~/dotfiles
 
 # Install shared configs
 stow common
@@ -112,7 +111,7 @@ stow windows
 ### Uninstalling Packages
 
 ```sh
-cd ~/dotfiles/dotfiles
+cd ~/dotfiles
 
 # Remove symlinks for a package
 stow -D common
@@ -136,15 +135,15 @@ To restow a single package manually, run `stow -R <package>` from the `dotfiles`
 
 The init script will:
 
-- Install configs from `dotfiles/common/`
-- Install macOS-specific configs from `dotfiles/mac/`
+- Install configs from `common/`
+- Install macOS-specific configs from `mac/`
 - Optionally install CLI tools (ripgrep, fd, bat, eza, etc.)
 
 ### Linux
 
 The init script will:
 
-- Install configs from `dotfiles/common/`
+- Install configs from `common/`
 - Set up Linux-specific configurations
 - Optionally install CLI tools via package manager
 
@@ -152,8 +151,8 @@ The init script will:
 
 The PowerShell script will:
 
-- Install configs from `dotfiles/common/`
-- Install Windows-specific configs from `dotfiles/windows/`
+- Install configs from `common/`
+- Install Windows-specific configs from `windows/`
 - Use PowerShell-compatible stow commands
 - Optionally install CLI tools via winget
 
@@ -161,13 +160,13 @@ The PowerShell script will:
 
 ### Adding New Configurations
 
-1. Add files under `dotfiles/common/` (or the platform-specific directory) following the same structure as your home directory.
+1. Add files under `common/` (or the platform-specific directory) following the same structure as your home directory.
 2. Restow the package to apply the changes:
 
 ```sh
 # Example: Adding a new tool called 'mytool'
-mkdir -p dotfiles/common/.config/mytool
-echo "config=value" > dotfiles/common/.config/mytool/config.toml
+mkdir -p common/.config/mytool
+echo "config=value" > common/.config/mytool/config.toml
 cd dotfiles
 stow -R common
 ```
@@ -192,7 +191,7 @@ stow common
 1. **Stow conflicts**: Remove or backup existing files first
 2. **Permission errors**: Ensure you have write access to your home directory
 3. **Broken symlinks**: Run `stow -R <package>` to restow
-4. **Package not found**: Check you're in the correct directory (`dotfiles/` etc.)
+4. **Package not found**: Check you're in the correct directory (root directory, etc.)
 
 ## Starship Prompt
 
@@ -222,7 +221,7 @@ I use the 'Alt Tab' program for easy window switching.
 
 Activate with footpedal + r. Navigate with arrow keys and space to select.
 
-Settings are stored in `dotfiles/mac/Library/Preferences/com.lwouis.alt-tab-macos.plist` and include:
+Settings are stored in `mac/Library/Preferences/com.lwouis.alt-tab-macos.plist` and include:
 
 - Custom appearance size and alignment
 - Arrow keys enabled for navigation
@@ -237,7 +236,7 @@ Spotlight opens when the Cmd key is quickly tapped by itself. A short delay prev
 
 Automatically switches mode of fn keys per program. Important as keyboard macros use F... keys.
 
-Settings are stored in `dotfiles/mac/Library/Preferences/com.pyrolyse.Fluor.plist` and include:
+Settings are stored in `mac/Library/Preferences/com.pyrolyse.Fluor.plist` and include:
 
 - App-specific rules for VS Code and kitty (behavior mode 2)
 - Notification preferences

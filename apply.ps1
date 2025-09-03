@@ -12,9 +12,8 @@ if (-not (Get-Command stow -ErrorAction SilentlyContinue)) {
     }
 }
 
-# Go to dotfiles directory
-$dotfilesPath = Join-Path $PSScriptRoot "dotfiles"
-Set-Location $dotfilesPath
+# Go to script directory
+Set-Location $PSScriptRoot
 
 function Invoke-StowPackage {
     param(

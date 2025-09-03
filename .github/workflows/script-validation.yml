@@ -137,7 +137,7 @@ jobs:
           echo "📚 Checking documentation accuracy..."
 
           # Verify expected package directories exist
-          for dir in dotfiles/common dotfiles/mac dotfiles/windows; do
+          for dir in common mac windows; do
             if [ -d "$dir" ]; then
               echo "  Found $dir"
             else

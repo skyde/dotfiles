@@ -24,10 +24,9 @@ jobs:
           echo "🔍 Validating repository structure..."
 
           # Check essential directories exist
-          test -d "dotfiles" || { echo "❌ dotfiles directory missing"; exit 1; }
-          test -d "dotfiles/common" || { echo "❌ dotfiles/common directory missing"; exit 1; }
-          test -d "dotfiles/mac" || { echo "❌ dotfiles/mac directory missing"; exit 1; }
-          test -d "dotfiles/windows" || { echo "❌ dotfiles/windows directory missing"; exit 1; }
+          test -d "common" || { echo "❌ common directory missing"; exit 1; }
+          test -d "mac" || { echo "❌ mac directory missing"; exit 1; }
+          test -d "windows" || { echo "❌ windows directory missing"; exit 1; }
           echo "✅ Directory structure valid"
 
           # Check essential scripts exist
@@ -47,7 +46,7 @@ jobs:
 
           # Validate package structure
           echo "📦 Package validation:"
-          test -f "dotfiles/common/.bashrc" || { echo "❌ dotfiles/common/.bashrc missing"; exit 1; }
+          test -f "common/.bashrc" || { echo "❌ common/.bashrc missing"; exit 1; }
           test -d "dotfiles/mac/Library" || { echo "❌ dotfiles/mac/Library missing"; exit 1; }
           test -f "dotfiles/windows/.vsvimrc" || { echo "❌ dotfiles/windows/.vsvimrc missing"; exit 1; }
           echo "✅ Package structure validation passed"

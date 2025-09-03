@@ -132,8 +132,8 @@ jobs:
           
           # Create additional test packages
           for i in {1..20}; do
-            mkdir -p "dotfiles/common/test_package_$i/.config/test_$i"
-            echo "test_config=value_$i" > "dotfiles/common/test_package_$i/.config/test_$i/config.conf"
+            mkdir -p "common/test_package_$i/.config/test_$i"
+            echo "test_config=value_$i" > "common/test_package_$i/.config/test_$i/config.conf"
           done
           
           # Measure installation time with many packages
@@ -151,7 +151,7 @@ jobs:
           # Cleanup test packages
           ./apply.sh --delete
           for i in {1..20}; do
-            rm -rf "dotfiles/common/test_package_$i"
+            rm -rf "common/test_package_$i"
           done
           
           echo "✅ Scalability test completed"
@@ -161,12 +161,12 @@ jobs:
           echo "📁 Testing with large configuration files..."
           
           # Create a package with large config files
-          mkdir -p "dotfiles/common/large_config/.config/large"
+          mkdir -p "common/large_config/.config/large"
           
-          # Create files of various sizes
-          dd if=/dev/zero of="dotfiles/common/large_config/.config/large/small.conf" bs=1K count=10 2>/dev/null
-          dd if=/dev/zero of="dotfiles/common/large_config/.config/large/medium.conf" bs=1M count=1 2>/dev/null
-          dd if=/dev/zero of="dotfiles/common/large_config/.config/large/large.conf" bs=1M count=5 2>/dev/null
+          # Generate test files with known sizes
+          dd if=/dev/zero of="common/large_config/.config/large/small.conf" bs=1K count=10 2>/dev/null
+          dd if=/dev/zero of="common/large_config/.config/large/medium.conf" bs=1M count=1 2>/dev/null
+          dd if=/dev/zero of="common/large_config/.config/large/large.conf" bs=1M count=5 2>/dev/null
           
           # Measure installation time
           start_time=$(date +%s)
@@ -183,7 +183,7 @@ jobs:
           
           # Cleanup
           ./apply.sh --delete
-          rm -rf "dotfiles/common/large_config"
+          rm -rf "common/large_config"
           
           echo "✅ Large file test completed"
 

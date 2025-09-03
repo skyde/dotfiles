@@ -14,7 +14,7 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 ## Optional checks
 
 - Run ShellCheck on modified shell scripts if available: `shellcheck <changed .sh files>`
-- Run Stylua on modified Neovim Lua files if available: `stylua dotfiles/common/nvim/.config/nvim`
+- Run Stylua on modified Neovim Lua files if available: `stylua common/nvim/.config/nvim`
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines
@@ -25,9 +25,9 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 ## Repository layout tips
 
-- Cross-platform packages live under `dotfiles/common/` (e.g., `shell`, `devtools`, `nvim`, `Code`, `kitty`, `lf`).
-- OS-specific configs live under `dotfiles/mac/` and `dotfiles/windows/` (e.g., `mac/hammerspoon`, `windows/Documents`).
-- Neovim configuration is under `dotfiles/common/nvim/.config/nvim`.
+- Cross-platform packages live under `common/` (e.g., `shell`, `devtools`, `nvim`, `Code`, `kitty`, `lf`).
+- OS-specific configs live under `mac/` and `windows/` (e.g., `mac/hammerspoon`, `windows/Documents`).
+- Neovim configuration is under `common/nvim/.config/nvim`.
 - VS Code extensions are listed in `vscode_extensions.txt` and installed by scripts.
 
 Optional helpers present but not wired into the local scripts:

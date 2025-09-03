@@ -132,8 +132,8 @@ jobs:
           echo "📁 Testing large file handling..."
 
           # Create a large dummy config file
-          mkdir -p dotfiles/common/test_large
-          dd if=/dev/zero of=dotfiles/common/test_large/.large_config bs=1M count=10 2>/dev/null
+          mkdir -p common/test_large
+          dd if=/dev/zero of=common/test_large/.large_config bs=1M count=10 2>/dev/null
 
           # Test installation with large file
           time AUTO_INSTALL=0 ./init.sh
@@ -143,7 +143,7 @@ jobs:
 
           # Cleanup
           ./apply.sh --delete
-          rm -rf dotfiles/common/test_large
+          rm -rf common/test_large
 
           echo "✅ Large file handling test completed"
 
@@ -268,13 +268,13 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Break some symlinks manually
-          rm -rf dotfiles/common/.bashrc
+          rm -rf common/.bashrc
 
           # Test recovery via restow
           ./apply.sh --restow || echo "Expected failure with missing file"
 
           # Restore the file
-          echo "# Restored bashrc" > dotfiles/common/.bashrc
+          echo "# Restored bashrc" > common/.bashrc
 
           # Test successful recovery
           ./apply.sh --restow

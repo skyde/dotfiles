@@ -27,8 +27,8 @@ if ! command -v stow >/dev/null; then
     fi
 fi
 
-# Go to dotfiles directory
-cd "$(dirname "$0")/dotfiles"
+# Go to script directory
+cd "$(dirname "$0")"
 
 stow_package() {
     local pkg="$1"
