@@ -16,12 +16,6 @@ echo "Installing macOS-specific packages and apps..."
 ensure_brew zsh-autosuggestions
 ensure_brew zsh-syntax-highlighting
 
-# Ensure the Homebrew fonts tap is available (needed for Nerd Fonts)
-if have brew && ! brew tap | grep -q "^homebrew/cask-fonts$"; then
-    echo "Tapping homebrew/cask-fonts..."
-    brew tap homebrew/cask-fonts || echo "[warn] Failed to tap homebrew/cask-fonts; font casks may not be available" >&2
-fi
-
 # Install macOS-specific apps via Homebrew casks
 for cask in fluor hammerspoon alt-tab betterdisplay kitty font-jetbrains-mono-nerd-font; do
     read -r app_path home_app_path < <(cask_app_paths "$cask")
