@@ -61,4 +61,5 @@ prepend_keymap = [
 
   # Tabs
   { on = [ "b", "d" ], run = "close", desc = "Close current tab" },
+  { on = [ "b", "n" ], run = "tab_create --current", desc = "New tab" },
 ]
