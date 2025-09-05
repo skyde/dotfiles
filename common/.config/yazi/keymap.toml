@@ -17,11 +17,14 @@ prepend_keymap = [
   { on = "o",         run = "create",                      desc = "Create a file (ends with / for directories)" },
   { on = "i",         run = "rename --cursor=before_ext",  desc = "Rename selected file(s)" },
   { on = "c",         run = "rename --cursor=start --empty=stem", desc = "Change name keeping extension" },
-  { on = ["<Space>", "<Space>"], run = "search --via=fd",             desc = "Search files by name via fd" },
-  { on = ["f"], run = "search --via=fd",             desc = "Search files by name via fd" },
-	{ on = ["<Space>", "s", "f"], run = "search --via=fd",             desc = "Search files by name via fd" },
-	{ on = ["<Space>", "s", "t"],         run = "search --via=rg",             desc = "Search files by content via ripgrep" },
-	{ on = ["t"],         run = "search --via=rg",             desc = "Search files by content via ripgrep" },
+  { on = ["<Space>"], run = "search --via=fd",             desc = "Search files by name via fd" },
+
+  # Copy (f-prefixed)
+  { on = [ "f", "l" ], run = "copy path",             desc = "Copy the file path" },
+  { on = [ "f", "d" ], run = "copy dirname",          desc = "Copy the directory path" },
+  { on = [ "f", "f" ], run = "copy filename",         desc = "Copy the filename" },
+  { on = [ "f", "n" ], run = "copy name_without_ext", desc = "Copy the filename without extension" },
+	{ on = [ "s"],         run = "search --via=rg",             desc = "Search files by content via ripgrep" },
 	{ on = "<Backspace>", run = [ "toggle", "arrow next" ], desc = "Toggle the current selection state" },#
 
 	# Visual mode
