@@ -79,7 +79,7 @@ return {
       -- mason-nvim-dap registers the adapter if installed, but we add robust fallback
       local ok_mason, mason_registry = pcall(require, "mason-registry")
       if ok_mason and not dap.adapters.codelldb then
-        local ok_pkg, codelldb = pcall(mason_registry.get_package, "codelldb")
+        local ok_pkg, codelldb = pcall(mason_registry.get_package, mason_registry, "codelldb")
         if ok_pkg and codelldb:is_installed() then
           local ext = codelldb:get_install_path()
           local codelldb_path = ext .. "/extension/adapter/codelldb"
