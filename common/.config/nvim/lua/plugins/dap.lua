@@ -1,4 +1,4 @@
-  return {
+return {
   -- Core DAP
   {
     "mfussenegger/nvim-dap",
@@ -6,8 +6,8 @@
       "rcarriga/nvim-dap-ui",
       "theHamsta/nvim-dap-virtual-text",
       "jay-babu/mason-nvim-dap.nvim",
-  -- Required by nvim-dap-ui
-  "nvim-neotest/nvim-nio",
+      -- Required by nvim-dap-ui
+      "nvim-neotest/nvim-nio",
     },
     keys = function()
       local dap = require("dap")
@@ -26,14 +26,14 @@
           desc = "DAP Conditional Breakpoint",
         },
         { "<leader>dc", dap.continue, desc = "DAP Continue" },
-        { "<leader>dn", dap.step_over, desc = "DAP Step Over" },
-        { "<leader>di", dap.step_into, desc = "DAP Step Into" },
-        { "<leader>do", dap.step_out, desc = "DAP Step Out" },
+        { "<leader>tn", dap.step_over, desc = "DAP Step Over" },
+        { "<leader>ti", dap.step_into, desc = "DAP Step Into" },
+        { "<leader>to", dap.step_out, desc = "DAP Step Out" },
         { "<leader>dr", dap.repl.open, desc = "DAP REPL" },
         { "<leader>dl", dap.run_last, desc = "DAP Run Last" },
         { "<leader>du", dapui.toggle, desc = "DAP UI Toggle" },
         {
-          "<leader>de",
+          "<leader><backspace>",
           function()
             require("dap.ui.widgets").hover()
           end,
