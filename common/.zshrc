@@ -61,6 +61,16 @@ if command -v fzf >/dev/null; then
     "$HOME/.fzf/shell/completion.zsh" "$HOME/.fzf/completion.zsh"
   if command -v fd >/dev/null; then
     export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+    export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS \
+      --reverse \
+      --ansi \
+      --tiebreak=pathname \
+      --info=inline \
+      --no-cycle \
+      --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f \
+      --delimiter=: \
+      --preview='bat --style=numbers --color=always --line-range :500 {}' \
+      --preview-window=right,55%"
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
   fi
 fi
