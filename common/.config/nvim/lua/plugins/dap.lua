@@ -83,7 +83,15 @@ return {
         if ok_pkg and codelldb:is_installed() then
           local ext = codelldb:get_install_path()
           local codelldb_path = ext .. "/extension/adapter/codelldb"
-          local liblldb_path = ext .. "/extension/lldb/lib/liblldb.dylib"
+          local sysname = vim.loop.os_uname().sysname
+          local liblldb_ext = "so"
+          if sysname:find("Windows") then
+            codelldb_path = codelldb_path .. ".exe"
+            liblldb_ext = "dll"
+          elseif sysname == "Darwin" then
+            liblldb_ext = "dylib"
+          end
+          local liblldb_path = ext .. "/extension/lldb/lib/liblldb." .. liblldb_ext
           dap.adapters.codelldb = function(cb, _)
             local stdout = vim.loop.new_pipe(false)
             local stderr = vim.loop.new_pipe(false)
