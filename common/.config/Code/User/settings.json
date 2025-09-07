@@ -703,18 +703,20 @@
     {
       // Search within files - find the current word
       "before": ["<leader>", "s", "s"],
+      "after": ["y", "i", "w"],
       "commands": [
         // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
         // Set the fzf context to active
         { "command": "setContext", "args": ["closePanelOnEnter", true] },
-        {
-          "command": "editor.action.addSelectionToNextFindMatch"
-        },
-        {
-          // Copy the selected word to the clipboard
-          "command": "editor.action.clipboardCopyAction"
-        },
+        // {
+        //   "command": "editor.action.addSelectionToNextFindMatch"
+        // },
+        // {
+        //   // Copy the selected word to the clipboard
+        //   "command": "editor.action.clipboardCopyAction"
+        // },
+        // "extension.vim_escape",
         {
           // Run the fzf task
           "command": "workbench.action.tasks.runTask",
@@ -724,9 +726,15 @@
           // Wait a moment for FZF to start up, then paste
           "command": "extension.multiCommand.execute",
           "args": { "command": "task.custom.delayedPaste" }
-        },
+        }
+        // { "command": "workbench.action.terminal.focus" },
+        // {
+        //   "command": "workbench.action.terminal.sendSequence",
+        //   "args": { "text": "\u001B" }
+        // },
+        // { "command": "workbench.action.terminal.paste" },
         // Click escape so we don't come back to a strange mode
-        "extension.vim_escape"
+        // "extension.vim_escape"
       ]
     },
     // {
@@ -1351,13 +1359,23 @@
     {
       // Delayed paste command for FZF
       "command": "task.custom.delayedPaste",
-      "interval": 200,
+      "interval": 300,
       "sequence": [
+        // {
+        //   // Copy the selected word to the clipboard
+        //   "command": "editor.action.clipboardCopyAction"
+        // },
         {
           "command": "workbench.action.terminal.sendSequence",
           "args": { "text": "\u001B" }
         },
         { "command": "workbench.action.terminal.paste" }
+        // { "command": "workbench.action.terminal.focus" },
+        // {
+        //   "command": "workbench.action.terminal.sendSequence",
+        //   "args": { "text": "\u001B" }
+        // },
+        // { "command": "workbench.action.terminal.paste" }
       ]
     }
     // {
