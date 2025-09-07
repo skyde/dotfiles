@@ -1604,9 +1604,5 @@
   "diffEditor.renderSideBySide": false,
   "geminicodeassist.inlineSuggestions.enableAuto": false,
   // Disable auto detect as this can cause opening of tasks to be very slow on large repos
-  "npm.autoDetect": "off",
-  "gulp.autoDetect": "off",
-  "grunt.autoDetect": "off",
-  "jake.autoDetect": "off",
-  "typescript.tsc.autoDetect": "off"
+  "task.autoDetect": "off"
 }
