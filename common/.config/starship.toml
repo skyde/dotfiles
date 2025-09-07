@@ -17,3 +17,18 @@ disabled = true
 [cmd_duration]
 min_time = 1000
 show_milliseconds = true
+
+[git_branch]
+disabled = true
+
+[git_commit]
+disabled = true
+
+[git_state]
+disabled = true
+
+[git_status]
+disabled = true
+
+[git_metrics]
+disabled = true
