@@ -19,8 +19,8 @@ setopt hist_ignore_all_dups hist_ignore_space
 setopt share_history inc_append_history append_history
 
 # --- history
-HISTSIZE=1000000
-SAVEHIST=1000000
+HISTSIZE=100000
+SAVEHIST=100000
 HISTFILE="$HOME/.zsh_history"
 
 # --- key bindings

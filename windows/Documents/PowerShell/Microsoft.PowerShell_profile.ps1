@@ -1,7 +1,7 @@
 # PSReadLine options
 Set-PSReadLineOption -EditMode Emacs
 Set-PSReadLineOption -HistoryNoDuplicates:$true
-Set-PSReadLineOption -MaximumHistoryCount 1000000
+Set-PSReadLineOption -MaximumHistoryCount 100000
 
 # Replace -SaveHistoryInBackground with incremental history saving
 Set-PSReadLineOption -HistorySaveStyle SaveIncrementally
