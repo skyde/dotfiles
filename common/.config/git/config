@@ -1,5 +1,9 @@
 [core]
     pager = delta
+    fsmonitor = true
+    untrackedCache = true
+    preloadIndex = true
+    commitGraph = true
 
 [interactive]
     diffFilter = delta --color-only
@@ -55,3 +59,21 @@
   diff = delta
   show = delta
   log = delta
+
+[index]
+    threads = 10
+
+[pack]
+    threads = 0
+
+[gc]
+    writeCommitGraph = true
+
+[fetch]
+    writeCommitGraph = true
+
+[feature]
+    manyFiles = true
+
+[maintenance]
+    strategy = incremental
