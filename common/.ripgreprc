@@ -1,95 +1,102 @@
-# Global ripgrep config to mirror VS Code search.exclude
-# Directory/file globs are excluded via -g '!pattern'
 
-# Version Control
--g '!**/.git'
--g '!**/.svn'
--g '!**/.hg'
+# Global ripgrep config mirroring common search excludes.
+# IMPORTANT: In .ripgreprc every line is a single argv; there's no shell quoting.
+# Use --flag=value or put the value on the next line. No quotes. No spaces around '='.
 
-# IDE / Editor / OS junk
--g '!**/.vscode'
--g '!**/.idea'
--g '!**/.DS_Store'
--g '!**/.vs'
--g '!**/*.swp'
--g '!**/*.swo'
--g '!**/*.bak'
+# Exclude compile_commands.json
+--glob=!/compile_commands.json
 
-# General build / cache / temp
--g '!**/out'
--g '!**/obj'
--g '!**/dist'
--g '!**/build'
--g '!**/tmp'
--g '!**/temp'
--g '!**/cache'
--g '!**/.cache'
--g '!**/logs'
--g '!**/*.log'
--g '!**/*.tmp'
--g '!**/*.dSYM'
+# --- VCS ---
+--glob=!.git/
+--glob=!.svn/
+--glob=!.hg/
 
-# Node / Frontend
--g '!**/node_modules'
--g '!**/bower_components'
--g '!**/jspm_packages'
--g '!**/coverage'
--g '!**/.next'
--g '!**/.nuxt'
--g '!**/.svelte-kit'
--g '!**/.turbo'
--g '!**/.vercel'
--g '!**/.cache-loader'
+# --- IDE / Editor / OS junk ---
+--glob=!.idea/
+--glob=!.DS_Store
+--glob=!.vs/
+--glob=!*.swp
+--glob=!*.swo
+--glob=!*.bak
 
-# Python
--g '!**/__pycache__'
--g '!**/.mypy_cache'
--g '!**/.pytest_cache'
--g '!**/.tox'
--g '!**/.eggs'
--g '!**/*.egg-info'
--g '!**/.ipynb_checkpoints'
--g '!**/.venv'
--g '!**/env'
+# --- General build / cache / temp ---
+--glob=!out/
+--glob=!obj/
+--glob=!dist/
+--glob=!build/
+--glob=!tmp/
+--glob=!temp/
+--glob=!cache/
+--glob=!.cache/
+--glob=!logs/
+--glob=!*.log
+--glob=!*.tmp
+--glob=!*.dSYM/    # macOS debug bundles are directories
 
-# Java / JVM
--g '!**/.gradle'
--g '!**/.mvn'
--g '!**/target'
--g '!**/build/classes'
--g '!**/build/generated'
--g '!**/*.class'
+# --- Node / Frontend ---
+--glob=!node_modules/
+--glob=!bower_components/
+--glob=!jspm_packages/
+--glob=!coverage/
+--glob=!.next/
+--glob=!.nuxt/
+--glob=!.svelte-kit/
+--glob=!.turbo/
+--glob=!.vercel/
+--glob=!.cache-loader/
 
-# PHP / Composer
--g '!**/vendor'
+# --- Python ---
+--glob=!__pycache__/
+--glob=!.mypy_cache/
+--glob=!.pytest_cache/
+--glob=!.tox/
+--glob=!.eggs/
+--glob=!*.egg-info
+--glob=!*.egg-info/
+--glob=!.ipynb_checkpoints/
+--glob=!.venv/
+--glob=!env/
 
-# C / C++
--g '!**/CMakeFiles'
--g '!**/CMakeCache.txt'
--g '!**/Debug'
--g '!**/Release'
--g '!**/*.o'
--g '!**/*.obj'
--g '!**/*.exe'
--g '!**/*.pdb'
--g '!**/*.ilk'
+# --- Java / JVM ---
+--glob=!.gradle/
+--glob=!.mvn/
+--glob=!target/
+--glob=!build/classes/
+--glob=!build/generated/
+--glob=!*.class
 
-# Go
--g '!**/pkg'
--g '!**/bin'
+# --- PHP / Composer ---
+--glob=!vendor/
 
-# Infra / DevOps
--g '!**/.terraform'
--g '!**/.ansible'
--g '!**/.chef'
--g '!**/.serverless'
+# --- C / C++ ---
+--glob=!CMakeFiles/
+--glob=!CMakeCache.txt
+--glob=!Default/
+--glob=!Debug/
+--glob=!Release/
+--glob=!*.o
+--glob=!*.obj
+--glob=!*.exe
+--glob=!*.pdb
+--glob=!*.ilk
 
-# Static Site Generators
--g '!**/.jekyll-cache'
--g '!**/_site'
--g '!**/.docusaurus'
+# --- Go ---
+--glob=!pkg/
+--glob=!bin/
 
-# Generated / build system artifacts
--g '!**/gen'
--g '!**/*.ninja'
--g '!**/*.stamp'
+# --- Infra / DevOps ---
+--glob=!.terraform/
+--glob=!.ansible/
+--glob=!.chef/
+--glob=!.serverless/
+
+# --- Static Site Generators ---
+--glob=!.jekyll-cache/
+--glob=!_site/
+--glob=!.docusaurus/
+
+# --- Generated / build system artifacts ---
+--glob=!gen/
+--glob=!*.ninja
+--glob=!*.stamp
+

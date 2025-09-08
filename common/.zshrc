@@ -140,6 +140,7 @@ alias stow_update='$HOME/dotfiles/update.sh && $HOME/dotfiles/apply.sh'
 alias stow_update_init_auto='$HOME/dotfiles/update.sh && AUTO_INSTALL=1 $HOME/dotfiles/init.sh'
 
 # ripgrep: hidden files, smart case, ignore common junk
+export RIPGREP_CONFIG_PATH=~/.ripgreprc
 alias rg='rg --hidden --smart-case --colors match:fg:yellow --glob "!.git" --glob "!node_modules"'
 
 # bat / batcat
