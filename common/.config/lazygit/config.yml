@@ -1,11 +1,15 @@
+
 git:
   paging:
-    colorArg: always
-    pager: delta --dark --paging=never --line-numbers --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
+    # Delta wants colored input; LazyGit handles paging itself
+    colorArg: always                 # recommended for delta as a pager
+    pager: delta --dark --paging=never --line-numbers \
+      --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
   parseEmoji: false
 
 promptToReturnFromSubprocess: false
 promptToOpenMergeTool: false
+scrollOffBehavior: margin
 
 os:
   editPreset: nvim
@@ -16,8 +20,18 @@ gui:
   scrollHeight: 32
   scrollPastBottom: false
   scrollOffMargin: 8
-  scrollOffBehavior: margin
+  nerdFontsVersion: "3"
+  showFileIcons: true
+  theme:
+    lightTheme: false
+    # Tokyo Night Moon-ish accents
+    activeBorderColor: ["#82aaff"]
+    inactiveBorderColor: ["#444a73"]
+    selectedLineBgColor: ["#2d3f76"]
+    optionsTextColor: ["#ffc777"]
+    defaultFgColor: ["#c8d3f5"]
 
 keybinding:
   universal:
     undo: u
+
