@@ -1596,5 +1596,6 @@
   "diffEditor.renderSideBySide": false,
   "geminicodeassist.inlineSuggestions.enableAuto": false,
   // Disable auto detect as this can cause opening of tasks to be very slow on large repos
-  "task.autoDetect": "off"
+  "task.autoDetect": "off",
+  "window.confirmBeforeClose": "keyboardOnly"
 }
