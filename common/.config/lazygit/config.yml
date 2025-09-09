@@ -1,9 +1,8 @@
-
 git:
   paging:
     # Delta wants colored input; LazyGit handles paging itself
-    colorArg: always                 # recommended for delta as a pager
-    pager: delta --dark --paging=never --line-numbers \
+    colorArg: always # recommended for delta as a pager
+    pager: delta --dark --paging=never \
       --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
   parseEmoji: false
 
@@ -34,4 +33,3 @@ gui:
 keybinding:
   universal:
     undo: u
-
