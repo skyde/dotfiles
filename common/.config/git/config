@@ -111,11 +111,11 @@
     line-numbers-right-format = "{np:<4}"
 
     plus-style = "syntax #0d1a11"                                 # darker green bg for better readability
-    plus-emph-style = "syntax #0f2115"                            # slightly lighter green for emphasis
+    plus-emph-style = "syntax #0d1a11"                            # disabled emphasis - same as plus-style
     plus-non-emph-style = "syntax #0d1a11"
 
     minus-style = "syntax #2c1616"
-    minus-emph-style = "syntax #5a2323"                           # slightly brighter bg for intra-line deletions
+    minus-emph-style = "syntax #2c1616"                           # disabled emphasis - same as minus-style
     minus-non-emph-style = "syntax #2c1616"
 
 [pager]    # keep these for safety even with core.pager
