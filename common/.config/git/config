@@ -43,38 +43,29 @@
 
 # --- Delta styling ---
 [delta]
+    file-added-label   = "  "
+    file-modified-label= "  "
+    file-removed-label = "  "
+    file-renamed-label = "  "
+    file-copied-label  = "  "
+
+    commit-style = yellow bold
+    commit-decoration-style = bold yellow ol
+    file-style = purple bold
+    file-decoration-style = purple bold ul
+    right-arrow = "  "
+
+    # hunk-header-style = file
+    hunk-header-style = line-number
+    hunk-header-decoration-style = blue ul
+
     # Be explicit for TUIs like LazyGit
     dark = true                                                   # better than 'light=false' under TUIs
     true-color = always                                             # safer than 'always' unless your whole stack is 24‑bit
     navigate = true                                               # n / N to jump
-    hyperlinks = true
     side-by-side = false
     line-numbers = true
 
-    # Make line numbers match Tokyo Night gutter color in Kitty (and avoid "dim")
-    # Tokyo Night-ish gray: matches inactive_tab_foreground from kitty theme
-    line-numbers-left-style = "#545c7e"
-    line-numbers-right-style = "#545c7e"
-    line-numbers-zero-style = "#545c7e"
-    # Subtle color hint per change type
-    line-numbers-plus-style = "#9ece6a dim"   # additions → Tokyo Night green, dimmed
-    line-numbers-minus-style = "#f7768e dim"  # deletions → Tokyo Night red, dimmed
-    # Subtle separator like VS Code/Tokyo Night
-    line-numbers-left-format = "{nm:>4} "
-    line-numbers-right-format = "{np:<4}"
-
-    # Keep your tinted backgrounds, add better contrast for emphasis
-    # Style strings are: <foreground> <background> <attributes...>
-    # 'syntax' = syntax‑highlighted foreground; hex after that = background
-    plus-style = "syntax #0d1a11"                                 # darker green bg for better readability
-    plus-emph-style = "syntax #0f2115"                            # slightly lighter green for emphasis
-    plus-non-emph-style = "syntax #0d1a11"
-
-    minus-style = "syntax #2c1616"
-    minus-emph-style = "syntax #5a2323"                           # slightly brighter bg for intra-line deletions
-    minus-non-emph-style = "syntax #2c1616"
-
-    # Theme that plays nicely with green/red tints; keep yours or try Monokai Extended
     syntax-theme = base16-256
     # syntax-theme = "Monokai Extended"                           # optional alternative with strong contrast
 
@@ -110,6 +101,22 @@
     # Misc
     zero-style = syntax
     whitespace-error-style = "#db4b4b reverse"
+
+    line-numbers-left-style = "#545c7e"
+    line-numbers-right-style = "#545c7e"
+    line-numbers-zero-style = "#545c7e"
+    line-numbers-plus-style = "#9ece6a dim"   # additions → Tokyo Night green, dimmed
+    line-numbers-minus-style = "#f7768e dim"  # deletions → Tokyo Night red, dimmed
+    line-numbers-left-format = "{nm:>4} "
+    line-numbers-right-format = "{np:<4}"
+
+    plus-style = "syntax #0d1a11"                                 # darker green bg for better readability
+    plus-emph-style = "syntax #0f2115"                            # slightly lighter green for emphasis
+    plus-non-emph-style = "syntax #0d1a11"
+
+    minus-style = "syntax #2c1616"
+    minus-emph-style = "syntax #5a2323"                           # slightly brighter bg for intra-line deletions
+    minus-non-emph-style = "syntax #2c1616"
 
 [pager]    # keep these for safety even with core.pager
     diff = delta
