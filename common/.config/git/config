@@ -64,7 +64,7 @@
     true-color = always                                             # safer than 'always' unless your whole stack is 24‑bit
     navigate = true                                               # n / N to jump
     side-by-side = false
-    line-numbers = true
+    line-numbers = false
 
     syntax-theme = base16-256
     # syntax-theme = "Monokai Extended"                           # optional alternative with strong contrast
@@ -76,7 +76,7 @@
 # Optional named feature you can toggle via: DELTA_FEATURES=+side-by-side git diff
 [delta "side-by-side"]
     side-by-side = true
-    line-numbers = true
+    line-numbers = false
 
 # Tokyo Night-aligned delta styling
 [delta "tokyonight"]
