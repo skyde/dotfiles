@@ -371,7 +371,6 @@
         // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
         {
-          // Run the fzf task
           "command": "workbench.action.tasks.runTask",
           "args": "StandardTerminal"
         },
