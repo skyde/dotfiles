@@ -100,3 +100,6 @@
 --glob=!*.ninja
 --glob=!*.stamp
 
+# --- File types excluded from search ---
+--glob=!*.svg
+--glob=!*.key
