@@ -682,28 +682,45 @@
         "extension.vim_escape"
       ]
     },
-    {
-      // Search within files
-      "before": ["<leader>", "s", "t"],
-      "commands": [
-        // Custom command when terminal is opened to clear any other context
-        "task.custom.openTerminal",
-        // Set the fzf context to active
-        { "command": "setContext", "args": ["closePanelOnEnter", true] },
-        {
-          // Run the fzf task
-          "command": "workbench.action.tasks.runTask",
-          "args": "FZF Ripgrep"
-        },
-        // Click escape so we don't come back to a strange mode
-        "extension.vim_escape"
-      ]
-    },
-    {
-      // Search within files - find the current word
-      "before": ["<leader>", "s", "s"],
-      "after": ["y", "i", "w"],
-      "commands": [
+      {
+        // Search within files
+        "before": ["<leader>", "s", "t"],
+        "commands": [
+          // Custom command when terminal is opened to clear any other context
+          "task.custom.openTerminal",
+          // Set the fzf context to active
+          { "command": "setContext", "args": ["closePanelOnEnter", true] },
+          {
+            // Run the fzf task
+            "command": "workbench.action.tasks.runTask",
+            "args": "FZF Ripgrep"
+          },
+          // Click escape so we don't come back to a strange mode
+          "extension.vim_escape"
+        ]
+      },
+      {
+        // Search within files using Zoekt
+        "before": ["<leader>", "s", "z"],
+        "commands": [
+          // Custom command when terminal is opened to clear any other context
+          "task.custom.openTerminal",
+          // Set the fzf context to active
+          { "command": "setContext", "args": ["closePanelOnEnter", true] },
+          {
+            // Run the fzf task
+            "command": "workbench.action.tasks.runTask",
+            "args": "FZF Zoekt"
+          },
+          // Click escape so we don't come back to a strange mode
+          "extension.vim_escape"
+        ]
+      },
+      {
+        // Search within files - find the current word
+        "before": ["<leader>", "s", "s"],
+        "after": ["y", "i", "w"],
+        "commands": [
         // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
         // Set the fzf context to active

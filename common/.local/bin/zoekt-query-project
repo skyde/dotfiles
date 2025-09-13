@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Run a Zoekt query in the current project, applying -file: filters from ~/.ripgreprc
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+index_dir="$root/.zoekt"
+
+if [ ! -d "$index_dir" ]; then
+  echo "[zoekt] no index at $index_dir; run: zoekt-index-project" >&2
+  exit 1
+fi
+
+if [ "$#" -lt 1 ]; then
+  echo "usage: $(basename "$0") <query...>" >&2
+  exit 2
+fi
+
+query="$*"
+filters=""
+rgcfg="${RG_CONFIG_PATH:-$HOME/.ripgreprc}"
+
+if [ -f "$rgcfg" ]; then
+  while IFS= read -r line; do
+    case "$line" in
+      \#*|"") continue ;;
+      *"--glob !"*|*"-g !"*)
+        pat="${line#*![[:space:]]}"; pat="${pat%% *}"
+        regex="$(printf '%s' "$pat" |
+          sed -e 's/[].[^$\\+{}|()]/\\&/g' \
+              -e 's|\*\*|.*|g' \
+              -e 's|\*|[^/]*|g' \
+              -e 's|?|.|g')"
+        filters="$filters -file:$regex"
+        ;;
+    esac
+  done < "$rgcfg"
+fi
+
+exec zoekt -index "$index_dir" "$query$filters"
