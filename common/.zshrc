@@ -6,6 +6,12 @@
 typeset -U path PATH
 path=("$HOME/.local/bin" "$HOME/bin" "/opt/homebrew/bin" "/usr/local/bin" $path)
 
+# Custom scripts
+export PATH="$HOME/.local/bin:$PATH"
+
+# Go programs
+export PATH="$HOME/go/bin:$PATH"
+
 # -------- editor
 export EDITOR="nvim"
 export VISUAL="$EDITOR"
@@ -65,39 +71,18 @@ if (( $+commands[zoxide] )); then
   eval "$(zoxide init zsh)"
 fi
 
-# -------- FZF integration (load only if present)
-# helper: source the first readable file from args
-_source_first() { local f; for f in "$@"; do [[ -r $f ]] && { source "$f"; return 0; }; done; return 1; }
-
 if (( $+commands[fzf] )); then
-  _source_first \
-    "/usr/share/fzf/key-bindings.zsh" \
-    "/usr/local/opt/fzf/shell/key-bindings.zsh" \
-    "/opt/homebrew/opt/fzf/shell/key-bindings.zsh" \
-    "/usr/share/doc/fzf/examples/key-bindings.zsh" \
-    "$HOME/.fzf/shell/key-bindings.zsh" "$HOME/.fzf/key-bindings.zsh"
-
-  _source_first \
-    "/usr/share/fzf/completion.zsh" \
-    "/usr/local/opt/fzf/shell/completion.zsh" \
-    "/opt/homebrew/opt/fzf/shell/completion.zsh" \
-    "/usr/share/doc/fzf/examples/completion.zsh" \
-    "$HOME/.fzf/shell/completion.zsh" "$HOME/.fzf/completion.zsh"
-
   if (( $+commands[fd] )); then
     export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
-    export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS \
-      --reverse \
-      --ansi \
-      --tiebreak=pathname \
-      --info=inline \
-      --no-cycle \
-      --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f \
-      --delimiter=: \
-      --preview='bat --style=numbers --color=always --line-range :500 {}' \
-      --preview-window=right,55%"
-    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
   fi
+  export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS \
+    --reverse \
+    --ansi \
+    --info=inline \
+    --style=minimal \
+    --no-cycle \
+    --style=minimal \
+    --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f"
 fi
 
 # -------- fzf-powered history search (Ctrl-R), deduped & reverse-chronological
