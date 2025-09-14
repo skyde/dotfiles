@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Index the current project (or given path) with Zoekt into <root>/.zoekt
+# Requires: zoekt binaries installed via `go install`
+
+set -euo pipefail
+
+root="${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+index_dir="${2:-"$root/.zoekt"}"
+
+mkdir -p "$index_dir"
+
+if [ -d "$root/.git" ]; then
+  echo "[zoekt] indexing git repo: $root -> $index_dir"
+  exec zoekt-git-index -index "$index_dir" "$root"
+else
+  echo "[zoekt] indexing directory: $root -> $index_dir"
+  exec zoekt-index -index "$index_dir" "$root"
+fi
