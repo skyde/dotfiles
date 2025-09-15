@@ -1,290 +1,51 @@
 #!/usr/bin/env bash
-# sz — Hybrid code search with Zoekt (indexed) + ripgrep overlay for changed/untracked files.
-# - Memoizes changed/untracked/deleted lists per repo (TTL) to keep long-running fzf sessions snappy.
-# - Chromium-aware nested repo discovery (Skia, V8, ANGLE, Dawn, SwiftShader, PDFium, etc.).
-# UX: fzf (live reload), bat preview, open in nvim (default) or VS Code (--code).
-
+# sz_simple — Minimal interactive search over a local Zoekt index. No git, no ripgrep.
+# Usage: sz_simple [--code] [PATH]
+#   --code   open matches in VS Code; default opens in nvim.
+#   PATH     directory or file within the tree; defaults to $PWD.
+# Requires: zoekt, fzf, bat, nvim (or VS Code if --code).
 set -euo pipefail
 
-usage() {
-  cat <<'USAGE'
-Usage: sz [--code] [--all] [--refresh] [PATH]
-  --code      Open in VS Code instead of nvim
-  --all       When NO Zoekt index exists, search entire tree with ripgrep (not just changed files)
-  --refresh   Ignore memoized changed/deleted lists and recompute them now
-  PATH        Optional: directory or a file within a repo to set the search root.
-              Defaults to git root if inside a repo, otherwise $PWD.
-
-Environment:
-  SZ_CHANGED_TTL        TTL seconds for changed/deleted memoization (default: 30)
-  SZ_NESTED_SCAN        nested repo scan mode: off | smart | deep   (default: smart)
-  SZ_NESTED_MAX_DEPTH   max depth for 'deep' scan (default: 4)
-  SZ_NESTED_REPOS       extra nested repo absolute paths, colon-separated (e.g., /path/to/src/third_party/skia:/path/to/src/v8)
-
-Notes:
-- If <root>/.zoekt exists and 'zoekt' is installed, sz uses Zoekt for indexed files and ripgrep for changed/untracked files.
-  Deleted files are filtered out of Zoekt results to avoid stale hits.
-- If no index is present, sz defaults to ripgrep on changed/untracked files only (fast). Use --all for full-tree scan.
-- Output format is 'path:line:matched_text' for compatibility with your existing tools.
-USAGE
-}
-
-# --- utilities
-abs_path() { (cd "$1" >/dev/null 2>&1 && pwd -P) || return 1; }
-
-sha1_of() {
-  if command -v sha1sum >/dev/null 2>&1; then
-    printf '%s' "$1" | sha1sum | awk '{print $1}'
-  else
-    printf '%s' "$1" | shasum | awk '{print $1}'
-  fi
-}
-
-mtime_of() {
-  local f="$1"
-  if [[ ! -f "$f" ]]; then echo 0; return; fi
-  if stat -f %m "$f" >/dev/null 2>&1; then
-    stat -f %m "$f"      # macOS
-  else
-    stat -c %Y "$f"      # Linux
-  fi
-}
-
-join_by() { local IFS="$1"; shift; echo "$*"; }
-
-# --- internal backend used by fzf reload
-if [[ "${1:-}" == "--_backend" ]]; then
-  root="$2"; index_dir="$3"; mode="${4:-DEFAULT}"; refresh="${5:-NO}"; shift 5
-  if [[ "${1:-}" == "--" ]]; then shift; fi
-  query="${*:-}"
-
-  cd "$root"
-
-  # config
-  use_zoekt=false
-  [[ -d "$index_dir" ]] && command -v zoekt >/dev/null 2>&1 && use_zoekt=true
-
-  cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/sz"
-  mkdir -p "$cache_dir"
-  root_abs="$(abs_path "$root")"
-  key="$(sha1_of "$root_abs")"
-  changed_cache="$cache_dir/${key}.changed"
-  deleted_cache="$cache_dir/${key}.deleted"
-  nested_cache="$cache_dir/${key}.nested"   # optional info-only
-  ttl="${SZ_CHANGED_TTL:-30}"
-
-  fresh() {
-    local f="$1"
-    [[ -f "$f" ]] || return 1
-    local now mt
-    now=$(date +%s)
-    mt=$(mtime_of "$f")
-    (( now - mt < ttl ))
-  }
-
-  # discover nested repos (Chromium-friendly)
-  discover_nested() {
-    local mode="${SZ_NESTED_SCAN:-smart}"
-    local depth="${SZ_NESTED_MAX_DEPTH:-4}"
-    local -a repos=()
-    # curated Chromium set first (cheap checks)
-    if [[ "$mode" != "off" ]]; then
-      for cand in \
-        "third_party/skia" "third_party/v8" "v8" "third_party/angle" \
-        "third_party/pdfium" "third_party/swiftshader" "third_party/dawn" \
-        "third_party/blink" "third_party/perfetto" "third_party/catapult" \
-        "third_party/spirv-tools" "third_party/spirv-headers" "third_party/icu"; do
-        [[ -d "$root/$cand/.git" ]] && repos+=("$root/$cand")
-      done
-      # option: deep find for any other nested repos, capped by depth
-      if [[ "$mode" == "deep" ]]; then
-        # skip common heavy dirs
-        while IFS= read -r g; do
-          [[ "$g" == "$root/.git" ]] && continue
-          local rr="${g%/.git}"
-          repos+=("$rr")
-        done < <(find "$root" -mindepth 2 -maxdepth "$depth" -type d -name .git \
-                 -not -path "$root/.git" \
-                 -not -path "$root/out/*" 2>/dev/null)
-      fi
-    fi
-    # user-provided extras
-    if [[ -n "${SZ_NESTED_REPOS:-}" ]]; then
-      IFS=':' read -r -a extras <<< "$SZ_NESTED_REPOS"
-      for e in "${extras[@]}"; do
-        [[ -d "$e/.git" ]] && repos+=("$e")
-      done
-    fi
-    # unique
-    if ((${#repos[@]})); then
-      printf '%s\n' "${repos[@]}" | awk '!seen[$0]++'
-    fi
-  }
-
-  recompute_lists() {
-    local -a repos
-    repos=("$root")
-    while IFS= read -r nr; do
-      repos+=("$nr")
-    done < <(discover_nested)
-
-    local tmp_changed tmp_deleted
-    tmp_changed="$(mktemp)"; tmp_deleted="$(mktemp)"
-    trap 'rm -f "$tmp_changed" "$tmp_deleted"' EXIT
-
-    local r_abs relprefix
-    for repo in "${repos[@]}"; do
-      r_abs="$(abs_path "$repo")" || continue
-      # relprefix = repo path relative to root ('' for root)
-      relprefix="${r_abs#${root_abs}/}"
-      [[ "$relprefix" == "$r_abs" ]] && relprefix=""  # not under root (rare), will print absolute later
-
-      # changed & untracked
-      { git -C "$repo" ls-files -m -z 2>/dev/null || true; \
-        git -C "$repo" ls-files -o --exclude-standard -z 2>/dev/null || true; } \
-        | xargs -0 -I{} bash -c '
-            rpfx="$0"; f="{}"
-            if [[ -n "$rpfx" ]]; then
-              printf "%s/%s\n" "$rpfx" "$f"
-            else
-              printf "%s\n" "$f"
-            fi
-          ' "$relprefix" >> "$tmp_changed"
-
-      # deleted
-      git -C "$repo" ls-files --deleted -z 2>/dev/null \
-        | xargs -0 -I{} bash -c '
-            rpfx="$0"; f="{}"
-            if [[ -n "$rpfx" ]]; then
-              printf "%s/%s\n" "$rpfx" "$f"
-            else
-              printf "%s\n" "$f"
-            fi
-          ' "$relprefix" >> "$tmp_deleted" || true
-    done
-
-    # normalize + dedupe
-    sort -u -o "$tmp_changed" "$tmp_changed" 2>/dev/null || true
-    sort -u -o "$tmp_deleted" "$tmp_deleted" 2>/dev/null || true
-    # write caches atomically
-    cp "$tmp_changed" "$changed_cache"
-    cp "$tmp_deleted" "$deleted_cache"
-    # keep discovered nested list (optional)
-    discover_nested > "$nested_cache" 2>/dev/null || true
-  }
-
-  # load caches or recompute
-  declare -a changed_files deleted_files
-  if [[ "$refresh" == "YES" ]] || ! (fresh "$changed_cache" && fresh "$deleted_cache"); then
-    recompute_lists
-  fi
-  mapfile -t changed_files < <(cat "$changed_cache" 2>/dev/null || true)
-  mapfile -t deleted_files < <(cat "$deleted_cache" 2>/dev/null || true)
-
-  # Build filter set for Zoekt (exclude changed+deleted). Include both relative and absolute forms.
-  filter_file="$(mktemp)"
-  trap 'rm -f "$filter_file"' EXIT
-  {
-    printf '%s\n' "${changed_files[@]}"
-    printf '%s\n' "${deleted_files[@]}"
-  } | awk -v r="$root_abs" 'NF { print $0; print r "/" $0 }' \
-    | sort -u > "$filter_file"
-
-  if $use_zoekt; then
-    # 1) Zoekt for indexed files, filtering out changed/deleted paths
-    if [[ -s "$filter_file" ]]; then
-      zoekt -index_dir "$index_dir" -- "$query" 2>/dev/null \
-        | awk -F':' -v OFS=':' -v f="$filter_file" '
-            BEGIN { while ((getline line < f) > 0) { skip[line]=1 } }
-            { if (!($1 in skip)) print $0 }
-          '
-    else
-      zoekt -index_dir "$index_dir" -- "$query" 2>/dev/null
-    fi
-
-    # 2) ripgrep across changed/untracked files for fresh content
-    if ((${#changed_files[@]})) && command -v rg >/dev/null 2>&1; then
-      rg -H -n --color=never -- "$query" "${changed_files[@]}" 2>/dev/null \
-        | sed -E 's/^([^:]+:[0-9]+):[0-9]+:/\1:/'
-    fi
-    exit 0
-  fi
-
-  # No Zoekt index present
-  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    if [[ "$mode" != "ALL" ]] && ((${#changed_files[@]})); then
-      # Fast path: only changed/untracked files
-      if command -v rg >/dev/null 2>&1; then
-        rg -H -n --color=never -- "$query" "${changed_files[@]}" 2>/dev/null \
-          | sed -E 's/^([^:]+:[0-9]+):[0-9]+:/\1:/'
-        exit 0
-      fi
-      # Grep fallback
-      grep -nH -R -- "$query" "${changed_files[@]}" 2>/dev/null
-      exit 0
-    fi
-  fi
-
-  # Full-tree ripgrep (either --all, no changed files, or not a git repo)
-  if command -v rg >/dev/null 2>&1; then
-    rg -H -n --color=never -- "$query" "$root" 2>/dev/null \
-      | sed -E 's/^([^:]+:[0-9]+):[0-9]+:/\1:/'
-    exit 0
-  fi
-  # Grep fallback
-  grep -RIn -- "$query" "$root" 2>/dev/null \
-    | sed -E 's/^([^:]+:[0-9]+):/\1:/'
-  exit 0
-fi
-# --- end backend
-
-# Parse user flags
 open_cmd="nvim +{2} {1}"
-target=""
-mode="DEFAULT"   # DEFAULT | ALL
-refresh="NO"
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --code) open_cmd="code -r -g {1}:{2}"; shift ;;
-    --all)  mode="ALL"; shift ;;
-    --refresh) refresh="YES"; shift ;;
-    -h|--help) usage; exit 0 ;;
-    *) target="$1"; shift ;;
-  esac
-done
-
-# Resolve search root
-if [[ -n "${target}" ]]; then
-  if [[ -f "${target}" ]]; then
-    root="$(cd "$(dirname -- "${target}")" && pwd)"
-  else
-    root="$(cd "${target}" && pwd)"
-  fi
-elif git_root=$(git rev-parse --show-toplevel 2>/dev/null); then
-  root="${git_root}"
-else
-  root="${PWD}"
+if [[ "${1:-}" == "--code" ]]; then
+  open_cmd="code -r -g {1}:{2}"
+  shift
 fi
 
-index_dir="${root}/.zoekt"
+root="${1:-$PWD}"
+if [[ -f "$root" ]]; then root="$(dirname "$root")"; fi
+root="$(cd "$root" >/dev/null 2>&1 && pwd -P)"
+index_dir="$root/.zoekt"
 
-# Require fzf + bat
-command -v fzf >/dev/null 2>&1 || { echo "fzf not found."; exit 1; }
-command -v bat >/dev/null 2>&1 || { echo "bat not found."; exit 1; }
+command -v zoekt >/dev/null 2>&1 || {
+  echo "error: zoekt not found in PATH" >&2
+  exit 1
+}
+command -v fzf >/dev/null 2>&1 || {
+  echo "error: fzf not found in PATH" >&2
+  exit 1
+}
+command -v bat >/dev/null 2>&1 || {
+  echo "error: bat not found in PATH" >&2
+  exit 1
+}
 
-# Build reload command using this script path (no PATH reliance)
-script_self="$0"
-reload_cmd="'$script_self' --_backend '$root' '$index_dir' '$mode' '$refresh' -- {q}"
+if [[ ! -d "$index_dir" ]]; then
+  echo "error: no Zoekt index found at: $index_dir" >&2
+  echo "hint: run 'si \"${root}\"' first to build the index." >&2
+  exit 1
+fi
 
-# FZF UI
+# Let fzf stream results from Zoekt as you type. Output format expected: file:line:...
+reload_cmd="zoekt -index_dir '$index_dir' -- {q}"
+
 exec fzf \
   --ansi \
   --disabled \
-  --tiebreak=index \
   --delimiter ':' \
+  --tiebreak=index \
   --bind "start:reload:${reload_cmd} || true" \
   --bind "change:reload:${reload_cmd} || true" \
   --preview "cd '${root}' && bat --style=numbers --color=always --highlight-line {2} {1}" \
   --preview-window 'bottom,30%,+{2}/2' \
   --bind "enter:become(cd '${root}' && ${open_cmd})"
-
