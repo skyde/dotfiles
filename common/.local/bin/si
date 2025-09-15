@@ -12,7 +12,52 @@ else
   cpu_count=4
 fi
 
-current_branch=$(git rev-parse --abbrev-ref HEAD)
+# current_branch=$(git rev-parse --abbrev-ref HEAD)
 
-# zoekt-git-index -branches "$current_branch" -index .zoekt -incremental=true -parallelism "$cpu_count" .
-zoekt-index -index .zoekt -parallelism "$cpu_count" .
+# Build ignore args (similar to .ripgreprc)
+# ignore_args=(
+#   -not -path '*/.git/*'
+#   -not -path '*/.svn/*'
+#   -not -path '*/.hg/*'
+#   -not -path '*/.idea/*'
+#   -not -path '*/.vs/*'
+#   -not -path '*/node_modules/*'
+#   -not -path '*/out/*'
+#   -not -path '*/build/*'
+#   -not -path '*/dist/*'
+#   -not -path '*/tmp/*'
+#   -not -path '*/temp/*'
+#   -not -path '*/cache/*'
+#   -not -path '*/.cache/*'
+#   -not -path '*/__pycache__/*'
+#   -not -path '*/.mypy_cache/*'
+#   -not -path '*/.pytest_cache/*'
+#   -not -path '*/.tox/*'
+#   -not -path '*/vendor/*'
+#   -not -path '*/CMakeFiles/*'
+#   -not -path '*/.gradle/*'
+#   -not -path '*/.mvn/*'
+#   -not -path '*/pkg/*'
+#   -not -path '*/bin/*'
+#   -not -path '*/.terraform/*'
+#   -not -path '*/.jekyll-cache/*'
+#   -not -path '*/_site/*'
+#   -not -name '*.o' -not -name '*.obj' -not -name '*.exe'
+#   -not -name '*.pdb' -not -name '*.ilk' -not -name '*.log'
+#   -not -name '*.tmp' -not -name '*.svg' -not -name '*.key'
+# )
+# IGNORES=".git,.hg,.svn,out,obj,gen,Default,node_modules,llvm-build"
+
+IGNORES=".git,.svn,.hg,.idea,.vs,node_modules,out,build,dist,tmp,temp,cache,.cache,__pycache__,.mypy_cache,.pytest_cache,.tox,vendor,CMakeFiles,.gradle,.mvn,pkg,bin,.terraform,.jekyll-cache,_site"
+
+# Collect files respecting ignore list
+files=$(find . -type f "${ignore_args[@]}")
+
+# Feed into zoekt-index
+# echo "$files" | zoekt-index -index .zoekt -parallelism "$cpu_count"
+# zoekt-index -index .zoekt -parallelism "$cpu_count"
+zoekt-index \
+  -index .zoekt \
+  -parallelism "$cpu_count" \
+  -ignore_dirs="$IGNORES" \
+  .
