@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# sz_simple — Minimal interactive search over a local Zoekt index. No git, no ripgrep.
+# Usage: sz_simple [--code] [PATH]
+#   --code   open matches in VS Code; default opens in nvim.
+#   PATH     directory or file within the tree; defaults to $PWD.
+# Requires: zoekt, fzf, bat, nvim (or VS Code if --code).
+set -euo pipefail
+
+open_cmd="nvim +{2} {1}"
+if [[ "${1:-}" == "--code" ]]; then
+  open_cmd="code -r -g {1}:{2}"
+  shift
+fi
+
+root="${1:-$PWD}"
+if [[ -f "$root" ]]; then root="$(dirname "$root")"; fi
+root="$(cd "$root" >/dev/null 2>&1 && pwd -P)"
+index_dir="$root/.zoekt"
+
+command -v zoekt >/dev/null 2>&1 || {
+  echo "error: zoekt not found in PATH" >&2
+  exit 1
+}
+command -v fzf >/dev/null 2>&1 || {
+  echo "error: fzf not found in PATH" >&2
+  exit 1
+}
+command -v bat >/dev/null 2>&1 || {
+  echo "error: bat not found in PATH" >&2
+  exit 1
+}
+
+if [[ ! -d "$index_dir" ]]; then
+  echo "error: no Zoekt index found at: $index_dir" >&2
+  echo "hint: run 'si \"${root}\"' first to build the index." >&2
+  exit 1
+fi
+
+# Let fzf stream results from Zoekt as you type. Output format expected: file:line:...
+reload_cmd="zoekt -index_dir '$index_dir' -- {q}"
+
+exec fzf \
+  --ansi \
+  --disabled \
+  --delimiter ':' \
+  --tiebreak=index \
+  --bind "start:reload:${reload_cmd} || true" \
+  --bind "change:reload:${reload_cmd} || true" \
+  --preview "cd '${root}' && bat --style=numbers --color=always --highlight-line {2} {1}" \
+  --preview-window 'bottom,30%,+{2}/2' \
+  --bind "enter:become(cd '${root}' && ${open_cmd})"

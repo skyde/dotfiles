@@ -2,3 +2,7 @@
 
 # Backup directories created by install scripts
 .dotfiles_backup_*
+
+# Zoekt index directory
+.zoekt/
+
