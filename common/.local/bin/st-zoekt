@@ -23,10 +23,22 @@ if [[ -f "$root" ]]; then root="$(dirname "$root")"; fi
 root="$(cd "$root" >/dev/null 2>&1 && pwd -P)"
 index_dir="$root/.zoekt"
 
-command -v zoekt >/dev/null 2>&1 || { echo "error: zoekt not found in PATH" >&2; exit 1; }
-command -v fzf   >/dev/null 2>&1 || { echo "error: fzf not found in PATH" >&2; exit 1; }
-command -v rg    >/dev/null 2>&1 || { echo "error: ripgrep (rg) not found in PATH" >&2; exit 1; }
-command -v bat   >/dev/null 2>&1 || { echo "error: bat not found in PATH" >&2; exit 1; }
+command -v zoekt >/dev/null 2>&1 || {
+  echo "error: zoekt not found in PATH" >&2
+  exit 1
+}
+command -v fzf >/dev/null 2>&1 || {
+  echo "error: fzf not found in PATH" >&2
+  exit 1
+}
+command -v rg >/dev/null 2>&1 || {
+  echo "error: ripgrep (rg) not found in PATH" >&2
+  exit 1
+}
+command -v bat >/dev/null 2>&1 || {
+  echo "error: bat not found in PATH" >&2
+  exit 1
+}
 
 if [[ ! -d "$index_dir" ]]; then
   echo "error: no Zoekt index found at: $index_dir" >&2
@@ -34,11 +46,7 @@ if [[ ! -d "$index_dir" ]]; then
   exit 1
 fi
 
-# Let fzf stream results from Zoekt as you type. We color matches using ripgrep's
-# passthrough mode so we keep the original `file:line:text` layout but with ANSI colors.
-# Note: We purposefully do NOT colorize the file/line fields to keep fzf placeholders
-# like {1} and {2} clean for opening files.
-reload_cmd="zoekt -index_dir '$index_dir' -- {q} | rg --passthru --color=always --smart-case -- {q}"
+reload_cmd="zoekt -index_dir '$index_dir' -- {q}"
 
 # Fill the template root into ADDITIONAL_ARGS now that we know it
 for i in "${!ADDITIONAL_ARGS[@]}"; do
@@ -55,4 +63,3 @@ exec fzf \
   --preview "cd '${root}' && bat --style=numbers --color=always --highlight-line {2} {1}" \
   --preview-window 'bottom,30%,+{2}/2' \
   "${ADDITIONAL_ARGS[@]}"
-
