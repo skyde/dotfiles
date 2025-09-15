@@ -749,6 +749,34 @@
       ]
     },
     {
+      // Search with Zoekt index
+      "before": ["<leader>", "s", "z"],
+      "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.openTerminal",
+        // Set the fzf context to active
+        { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        {
+          // Run the zoekt search task
+          "command": "workbench.action.tasks.runTask",
+          "args": "Zoekt Search"
+        },
+        // Click escape so we don't come back to a strange mode
+        "extension.vim_escape"
+      ]
+    },
+    {
+      // Index current workspace with Zoekt
+      "before": ["<leader>", "s", "i"],
+      "commands": [
+        {
+          // Run the zoekt index task
+          "command": "workbench.action.tasks.runTask",
+          "args": "Zoekt Index"
+        }
+      ]
+    },
+    {
       // Start a new search within files using VS Code search
       "before": ["<leader>", "s", "T"],
       "commands": ["workbench.action.findInFiles"]

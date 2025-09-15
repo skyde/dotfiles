@@ -115,6 +115,41 @@
         "instanceLimit": 1
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Zoekt Search",
+      "type": "shell",
+      "command": "sz",
+      "args": [
+        "--code"
+      ],
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Zoekt Index",
+      "type": "shell",
+      "command": "si",
+      "args": [
+        "${workspaceFolder}"
+      ],
+      "presentation": {
+        "echo": true,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
     }
   ]
 }
