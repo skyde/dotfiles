@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# si — Simple Zoekt indexer for current git repo
+
+set -euo pipefail
+
+# Get CPU count for parallelism
+if command -v sysctl >/dev/null 2>&1; then
+  cpu_count=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
+elif command -v nproc >/dev/null 2>&1; then
+  cpu_count=$(nproc 2>/dev/null || echo 4)
+else
+  cpu_count=4
+fi
+
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+zoekt-git-index -branches "$current_branch" -index .zoekt -incremental=true -parallelism "$cpu_count" .

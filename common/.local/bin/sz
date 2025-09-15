@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# sz — Interactive search over a local Zoekt index with nice ripgrep-style coloring.
+# Usage: sz [--code] [PATH]
+#   --code   open matches in VS Code; default opens in nvim.
+#   PATH     directory or file within the tree; defaults to $PWD.
+# Requires: zoekt, fzf, ripgrep (for coloring), bat, nvim (or VS Code if --code).
+set -euo pipefail
+
+# Build args as an array so quoting stays correct.
+ADDITIONAL_ARGS=(--bind "enter:become(cd '{root}' && nvim +{2} {1})")
+
+if [[ "${1:-}" == "--code" ]]; then
+  # Open at line without becoming; keep fzf running. Work relative to repo root.
+  ADDITIONAL_ARGS=(
+    --bind "enter:execute-silent(cd '{root}' && code -r -g {1}:{2})"
+    --bind "esc:clear-query"
+  )
+  shift
+fi
+
+root="${1:-$PWD}"
+if [[ -f "$root" ]]; then root="$(dirname "$root")"; fi
+root="$(cd "$root" >/dev/null 2>&1 && pwd -P)"
+index_dir="$root/.zoekt"
+
+command -v zoekt >/dev/null 2>&1 || { echo "error: zoekt not found in PATH" >&2; exit 1; }
+command -v fzf   >/dev/null 2>&1 || { echo "error: fzf not found in PATH" >&2; exit 1; }
+command -v rg    >/dev/null 2>&1 || { echo "error: ripgrep (rg) not found in PATH" >&2; exit 1; }
+command -v bat   >/dev/null 2>&1 || { echo "error: bat not found in PATH" >&2; exit 1; }
+
+if [[ ! -d "$index_dir" ]]; then
+  echo "error: no Zoekt index found at: $index_dir" >&2
+  echo "hint: run 'si \"${root}\"' first to build the index." >&2
+  exit 1
+fi
+
+# Let fzf stream results from Zoekt as you type. We color matches using ripgrep's
+# passthrough mode so we keep the original `file:line:text` layout but with ANSI colors.
+# Note: We purposefully do NOT colorize the file/line fields to keep fzf placeholders
+# like {1} and {2} clean for opening files.
+reload_cmd="zoekt -index_dir '$index_dir' -- {q} | rg --passthru --color=always --smart-case -- {q}"
+
+# Fill the template root into ADDITIONAL_ARGS now that we know it
+for i in "${!ADDITIONAL_ARGS[@]}"; do
+  ADDITIONAL_ARGS[$i]="${ADDITIONAL_ARGS[$i]//\{root\}/$root}"
+done
+
+exec fzf \
+  --ansi \
+  --disabled \
+  --tiebreak=index \
+  --delimiter : \
+  --bind "start:reload:${reload_cmd} || true" \
+  --bind "change:reload:${reload_cmd} || true" \
+  --preview "cd '${root}' && bat --style=numbers --color=always --highlight-line {2} {1}" \
+  --preview-window 'bottom,30%,+{2}/2' \
+  "${ADDITIONAL_ARGS[@]}"
+
