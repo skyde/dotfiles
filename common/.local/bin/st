@@ -1,26 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build args as an array so quoting stays correct.
-ADDITIONAL_ARGS=(--bind "enter:become(nvim +{2} {1})")
-
-if [[ "${1:-}" == "--code" ]]; then
-  # Open at line (and optionally column) without becoming; keep fzf running.
-  # If you want column too, use the commented line.
-  ADDITIONAL_ARGS=(
-    --bind "enter:execute-silent(code -r -g {1}:{2})"
-    --bind "esc:clear-query"
-    # --bind "enter:execute-silent(nvim '+call cursor({2},{3})' {1})"
-  )
+if [[ -d .zoekt ]]; then
+  exec st-zoekt "$@"
+else
+  exec st-rg "$@"
 fi
-
-exec fzf \
-  --ansi \
-  --disabled \
-  --tiebreak=index \
-  --bind "start:reload:rg --line-number --column --no-heading --color=always --smart-case {q} || true" \
-  --bind "change:reload:rg --line-number --column --no-heading --color=always --smart-case {q} || true" \
-  --delimiter : \
-  --preview 'bat --style=numbers --color=always --highlight-line {2} {1}' \
-  --preview-window 'bottom,30%,+{2}/2' \
-  "${ADDITIONAL_ARGS[@]}"

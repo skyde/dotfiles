@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# sz — Interactive search over a local Zoekt index with nice ripgrep-style coloring.
-# Usage: sz [--code] [PATH]
+# st-zoekt — Interactive search over a local Zoekt index with nice ripgrep-style coloring.
+# Usage: st-zoekt [--code] [PATH]
 #   --code   open matches in VS Code; default opens in nvim.
 #   PATH     directory or file within the tree; defaults to $PWD.
 # Requires: zoekt, fzf, ripgrep (for coloring), bat, nvim (or VS Code if --code).
@@ -42,7 +42,7 @@ reload_cmd="zoekt -index_dir '$index_dir' -- {q} | rg --passthru --color=always 
 
 # Fill the template root into ADDITIONAL_ARGS now that we know it
 for i in "${!ADDITIONAL_ARGS[@]}"; do
-  ADDITIONAL_ARGS[$i]="${ADDITIONAL_ARGS[$i]//\{root\}/$root}"
+  ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//\{root\}/$root}"
 done
 
 exec fzf \
