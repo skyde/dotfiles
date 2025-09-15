@@ -13,4 +13,6 @@ else
 fi
 
 current_branch=$(git rev-parse --abbrev-ref HEAD)
-zoekt-git-index -branches "$current_branch" -index .zoekt -incremental=true -parallelism "$cpu_count" .
+
+# zoekt-git-index -branches "$current_branch" -index .zoekt -incremental=true -parallelism "$cpu_count" .
+zoekt-index -index .zoekt -parallelism "$cpu_count" .

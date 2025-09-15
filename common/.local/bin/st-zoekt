@@ -46,7 +46,11 @@ if [[ ! -d "$index_dir" ]]; then
   exit 1
 fi
 
-reload_cmd="zoekt -index_dir '$index_dir' -- {q}"
+# Let fzf stream results from Zoekt as you type. We color matches using ripgrep's
+# passthrough mode so we keep the original `file:line:text` layout but with ANSI colors.
+# Note: We purposefully do NOT colorize the file/line fields to keep fzf placeholders
+# like {1} and {2} clean for opening files.
+reload_cmd="zoekt -index_dir '$index_dir' -- {q} | rg --passthru --color=always --smart-case -- {q}"
 
 # Fill the template root into ADDITIONAL_ARGS now that we know it
 for i in "${!ADDITIONAL_ARGS[@]}"; do
