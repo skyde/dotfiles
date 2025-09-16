@@ -46,13 +46,39 @@ if [[ ! -d "$index_dir" ]]; then
   exit 1
 fi
 
-# Let fzf stream results from Zoekt as you type. We color matches using ripgrep's
-# passthrough mode so we keep the original `file:line:text` layout but with ANSI colors.
-# Note: We purposefully do NOT colorize the file/line fields to keep fzf placeholders
-# like {1} and {2} clean for opening files.
-reload_cmd="zoekt -index_dir '$index_dir' -- {q} | rg --passthru --color=always --smart-case -- {q}"
+# We output three colon-delimited fields for fzf:
+#   1: raw path
+#   2: raw line number
+#   3: pretty display (colored "path:line[:col]: text" with rg match highlights)
+#
+# Notes:
+# - We keep ripgrep in the pipeline for match highlighting.
+# - Then awk rebuilds a pretty, colored prefix for path/line/(col), while preserving rg's highlights in the text.
+# - fzf shows only field 3 (with-nth=3..), but uses {1} and {2} (raw) in bindings and preview.
+reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
+  | rg --passthru --color=always --smart-case -- {q} \
+  | awk 'BEGIN{
+      FS=\":\"; OFS=\":\";
+      mag=\"\\033[1;35m\";   # filename color (bold magenta, like rg defaults on many themes)
+      cya=\"\\033[32m\";     # line/col color (cyan)
+      dim=\"\\033[2m\";      # faint separators
+      rst=\"\\033[0m\";
+    }
+    {
+      p=\$1; l=\$2; rest=\$0;
+      # Decide if field 3 is a column number; Zoekt often outputs path:line:col: text
+      if (\$3 ~ /^[0-9]+$/) {
+        c=\$3;
+        sub(/^[^:]*:[^:]*:[^:]*:/, \"\", rest);  # drop path:line:col:
+        pretty = mag p rst dim \":\" rst cya l rst dim \":\" rst cya c rst dim \":\" rst rest;
+      } else {
+        sub(/^[^:]*:[^:]*:/, \"\", rest);        # drop path:line:
+        pretty = mag p rst dim \":\" rst cya l rst dim \":\" rst rest;
+      }
+      print p, l, pretty;
+    }'"
 
-# Fill the template root into ADDITIONAL_ARGS now that we know it
+# Replace {root} placeholders in additional args
 for i in "${!ADDITIONAL_ARGS[@]}"; do
   ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//\{root\}/$root}"
 done
@@ -62,6 +88,7 @@ exec fzf \
   --disabled \
   --tiebreak=index \
   --delimiter : \
+  --with-nth=3.. \
   --bind "start:reload:${reload_cmd} || true" \
   --bind "change:reload:${reload_cmd} || true" \
   --preview "cd '${root}' && bat --style=numbers --color=always --highlight-line {2} {1}" \
