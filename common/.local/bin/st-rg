@@ -56,23 +56,21 @@ reload_cmd="cd '$root' && rg --line-number --column --with-filename --no-heading
       gsub(/\\033\\[[0-9;]*[A-Za-z]/, \"\", s);
       return s;
     }
-    function drop_leading_ansi(s) {
-      while (sub(/^\\033\\[[0-9;]*[A-Za-z]/, \"\", s)) {}
-      return s;
-    }
     {
       raw=\$0;
       p=strip_ansi(\$1);
       l=strip_ansi(\$2);
       rest=raw;
-      if (\$3 ~ /^[0-9]+$/) {
-        c=strip_ansi(\$3);
-        sub(/^[^:]*:[^:]*:[^:]*:/, \"\", rest);
-        rest=drop_leading_ansi(rest);
-        pretty = mag p rst \" \" gre l rst \" \" gre c rst \" \" rest;
+      c=strip_ansi(\$3);
+      if (c ~ /^[0-9]+$/) {
+        if (match(rest, /^[^:]*:[^:]*:[^:]*:/)) {
+          rest = substr(rest, RLENGTH + 1);
+        }
+        pretty = mag p rst \" \" gre rst \" \" gre rst \" \" rest;
       } else {
-        sub(/^[^:]*:[^:]*:/, \"\", rest);
-        rest=drop_leading_ansi(rest);
+        if (match(rest, /^[^:]*:[^:]*:/)) {
+          rest = substr(rest, RLENGTH + 1);
+        }
         pretty = mag p rst \"   \" rst \"   \" rest;
       }
       print p, l, pretty;
