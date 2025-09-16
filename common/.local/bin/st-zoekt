@@ -60,8 +60,7 @@ reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
   | awk 'BEGIN{
       FS=\":\"; OFS=\":\";
       mag=\"\\033[38;2;106;153;85m\";   # filename color
-      gre=\"\\033[32m\";     # line/col color (green)
-      dim=\"\\033[2m\";      # faint separators
+      gre=\"\\033[32m\";                # line/col color
       rst=\"\\033[0m\";
     }
     {
@@ -69,13 +68,14 @@ reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
       if (\$3 ~ /^[0-9]+$/) {
         c=\$3;
         sub(/^[^:]*:[^:]*:[^:]*:/, \"\", rest);
-        pretty = mag p rst dim \":\" gre l rst \":\" gre c rst \":\" rest;
+        pretty = mag p rst \" \" gre l rst \" \" gre c rst \" \" rest;
       } else {
         sub(/^[^:]*:[^:]*:/, \"\", rest);
-        pretty = mag p rst dim \"   \" rst gre rst \"   \" rest;
+        pretty = mag p rst \"   \" rst \"   \" rest;
       }
       print p, l, pretty;
     }'"
+
 
 # Replace {root} placeholders in additional args
 for i in "${!ADDITIONAL_ARGS[@]}"; do
