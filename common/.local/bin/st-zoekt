@@ -56,24 +56,23 @@ fi
 # - Then awk rebuilds a pretty, colored prefix for path/line/(col), while preserving rg's highlights in the text.
 # - fzf shows only field 3 (with-nth=3..), but uses {1} and {2} (raw) in bindings and preview.
 reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
-  | rg --passthru --color=always --smart-case -- {q} \
+  | rg --passthru --smart-case -- {q} \
   | awk 'BEGIN{
       FS=\":\"; OFS=\":\";
-      mag=\"\\033[1;35m\";   # filename color (bold magenta, like rg defaults on many themes)
-      cya=\"\\033[32m\";     # line/col color (cyan)
+      mag=\"\\033[37m\";   # filename color (magenta)
+      gre=\"\\033[32m\";     # line/col color (green)
       dim=\"\\033[2m\";      # faint separators
       rst=\"\\033[0m\";
     }
     {
       p=\$1; l=\$2; rest=\$0;
-      # Decide if field 3 is a column number; Zoekt often outputs path:line:col: text
       if (\$3 ~ /^[0-9]+$/) {
         c=\$3;
-        sub(/^[^:]*:[^:]*:[^:]*:/, \"\", rest);  # drop path:line:col:
-        pretty = mag p rst dim \":\" rst cya l rst dim \":\" rst cya c rst dim \":\" rst rest;
+        sub(/^[^:]*:[^:]*:[^:]*:/, \"\", rest);
+        pretty = mag p rst \" \" gre l rst \" \" gre c rst \" \" rest;
       } else {
-        sub(/^[^:]*:[^:]*:/, \"\", rest);        # drop path:line:
-        pretty = mag p rst dim \":\" rst cya l rst dim \":\" rst rest;
+        sub(/^[^:]*:[^:]*:/, \"\", rest);
+        pretty = mag p rst \" \" gre l rst \" \" rest;
       }
       print p, l, pretty;
     }'"
@@ -83,10 +82,11 @@ for i in "${!ADDITIONAL_ARGS[@]}"; do
   ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//\{root\}/$root}"
 done
 
+  # --disabled \
 exec fzf \
   --ansi \
-  --disabled \
   --tiebreak=index \
+  --color='list-fg:153,hl:223,hl+:223' \
   --delimiter : \
   --with-nth=3.. \
   --bind "start:reload:${reload_cmd} || true" \
