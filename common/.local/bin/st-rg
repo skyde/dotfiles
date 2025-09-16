@@ -14,13 +14,35 @@ if [[ "${1:-}" == "--code" ]]; then
   )
 fi
 
+reload_cmd="rg --line-number --column --no-heading --color=always --smart-case -- {q} \
+  | awk 'BEGIN{
+      FS=\":\"; OFS=\":\";
+      mag=\"\\033[38;2;106;153;85m\";   # filename color
+      gre=\"\\033[32m\";                # line/col color
+      rst=\"\\033[0m\";
+    }
+    {
+      p=\$1; l=\$2; rest=\$0;
+      if (\$3 ~ /^[0-9]+$/) {
+        c=\$3;
+        sub(/^[^:]*:[^:]*:[^:]*:/, \"\", rest);
+        pretty = mag p rst \" \" gre l rst \" \" gre c rst \" \" rest;
+      } else {
+        sub(/^[^:]*:[^:]*:/, \"\", rest);
+        pretty = mag p rst \"   \" rst \"   \" rest;
+      }
+      print p, l, pretty;
+    }'"
+
 exec fzf \
   --ansi \
   --disabled \
   --tiebreak=index \
-  --bind "start:reload:rg --line-number --column --no-heading --color=always --smart-case {q} || true" \
-  --bind "change:reload:rg --line-number --column --no-heading --color=always --smart-case {q} || true" \
+  --color='hl:215,hl+:215' \
   --delimiter : \
+  --with-nth=3.. \
+  --bind "start:reload:${reload_cmd} || true" \
+  --bind "change:reload:${reload_cmd} || true" \
   --preview 'bat --style=numbers --color=always --highlight-line {2} {1}' \
   --preview-window 'bottom,30%,+{2}/2' \
   "${ADDITIONAL_ARGS[@]}"
