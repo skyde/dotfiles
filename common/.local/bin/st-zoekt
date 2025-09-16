@@ -59,7 +59,7 @@ reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
   | rg --passthru --smart-case -- {q} \
   | awk 'BEGIN{
       FS=\":\"; OFS=\":\";
-      mag=\"\\033[37m\";   # filename color (magenta)
+      mag=\"\\033[38;2;106;153;85m\";   # filename color
       gre=\"\\033[32m\";     # line/col color (green)
       dim=\"\\033[2m\";      # faint separators
       rst=\"\\033[0m\";
@@ -69,10 +69,10 @@ reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
       if (\$3 ~ /^[0-9]+$/) {
         c=\$3;
         sub(/^[^:]*:[^:]*:[^:]*:/, \"\", rest);
-        pretty = mag p rst \" \" gre l rst \" \" gre c rst \" \" rest;
+        pretty = mag p rst dim \":\" gre l rst \":\" gre c rst \":\" rest;
       } else {
         sub(/^[^:]*:[^:]*:/, \"\", rest);
-        pretty = mag p rst \" \" gre l rst \" \" rest;
+        pretty = mag p rst dim \"   \" rst gre rst \"   \" rest;
       }
       print p, l, pretty;
     }'"
@@ -86,11 +86,11 @@ done
 exec fzf \
   --ansi \
   --tiebreak=index \
-  --color='list-fg:153,hl:223,hl+:223' \
+  --color='hl:215,hl+:215' \
   --delimiter : \
   --with-nth=3.. \
   --bind "start:reload:${reload_cmd} || true" \
   --bind "change:reload:${reload_cmd} || true" \
-  --preview "cd '${root}' && bat --style=numbers --color=always --highlight-line {2} {1}" \
+  --preview "cd '${root}' && bat --style=numbers --color=always {2} {1}" \
   --preview-window 'bottom,30%,+{2}/2' \
   "${ADDITIONAL_ARGS[@]}"

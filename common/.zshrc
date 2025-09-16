@@ -126,7 +126,9 @@ alias stow_update_init_auto='$HOME/dotfiles/update.sh && AUTO_INSTALL=1 $HOME/do
 
 # ripgrep: hidden files, smart case, ignore common junk
 export RIPGREP_CONFIG_PATH=~/.ripgreprc
-alias rg='rg --hidden --smart-case --colors match:fg:yellow --glob "!.git" --glob "!node_modules"'
+alias rg='rg --hidden --smart-case --glob "!.git" --glob "!node_modules"'
+
+export BAT_THEME="Visual Studio Dark+"
 
 # bat / batcat
 if (( $+commands[bat] )); then
