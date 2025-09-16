@@ -94,6 +94,17 @@ if [ -f "install-yazi.sh" ]; then
   fi
 fi
 
+# Optional: Install Zoekt (Go-based code search)
+if [ -f "install-zoekt.sh" ]; then
+  install_zoekt=$(get_user_confirmation "Install Zoekt (may prompt again for install method)? (y/N): ")
+  if [[ "$install_zoekt" =~ ^[Yy] ]]; then
+    echo "Running Zoekt installation script..."
+    ./install-zoekt.sh
+  else
+    echo "Skipping Zoekt installation"
+  fi
+fi
+
 # Run platform-specific initialization
 platform_init=$(get_user_confirmation "Run platform-specific setup? (y/N): ")
 if [[ "$platform_init" =~ ^[Yy] ]]; then
