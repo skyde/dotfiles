@@ -1,0 +1,2 @@
+# Ignore generated Zoekt search indices
+**/.zoekt/
