@@ -82,7 +82,7 @@ if (( $+commands[fzf] )); then
     --style=minimal \
     --no-cycle \
     --style=minimal \
-    --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f"
+    --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f,hl:215,hl+:215"
 fi
 
 # -------- fzf-powered history search (Ctrl-R), deduped & reverse-chronological
@@ -126,8 +126,6 @@ alias stow_update_init_auto='$HOME/dotfiles/update.sh && AUTO_INSTALL=1 $HOME/do
 
 # ripgrep: hidden files, smart case, ignore common junk
 export RIPGREP_CONFIG_PATH=~/.ripgreprc
-alias rg='rg --hidden --smart-case --glob "!.git" --glob "!node_modules"'
-
 export BAT_THEME="Visual Studio Dark+"
 
 # bat / batcat
