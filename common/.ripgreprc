@@ -3,6 +3,11 @@
 # IMPORTANT: In .ripgreprc every line is a single argv; there's no shell quoting.
 # Use --flag=value or put the value on the next line. No quotes. No spaces around '='.
 
+# General config
+--hidden
+--smart-case
+--colors=match:fg:243,178,109
+
 # Exclude compile_commands.json
 --glob=!/compile_commands.json
 

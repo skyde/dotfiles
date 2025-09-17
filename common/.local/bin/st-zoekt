@@ -57,7 +57,7 @@ fi
 # - fzf shows only field 3 (with-nth=3..), but uses {1} and {2} (raw) in bindings and preview.
 
 reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
-  | rg --passthru --smart-case --color=always --colors 'match:fg:243,178,109' -- {q} \
+  | rg --passthru --smart-case --color=always -- {q} \
   | awk 'BEGIN{
       FS=\":\"; OFS=\":\";
       mag=\"\\033[38;2;106;153;85m\";   # filename color
