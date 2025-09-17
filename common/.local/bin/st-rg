@@ -45,7 +45,7 @@ command -v bat >/dev/null 2>&1 || {
 #   1: raw path
 #   2: raw line number
 #   3: pretty display (colored "path:line[:col]: text" with rg match highlights)
-reload_cmd="cd '$root' && rg --line-number --column --with-filename --no-heading --color=always --smart-case -- {q} \
+reload_cmd="cd '$root' && rg --line-number --column --with-filename --no-heading --color=always --colors 'match:fg:243,178,109' --smart-case -- {q} \
   | awk 'BEGIN{
       FS=\":\"; OFS=\":\";
       mag=\"\\033[38;2;106;153;85m\";   # filename color
@@ -83,7 +83,7 @@ done
 exec fzf \
   --ansi \
   --tiebreak=index \
-  --color='hl:215,hl+:215' \
+  --disabled \
   --delimiter : \
   --with-nth=3.. \
   --bind "start:reload:${reload_cmd} || true" \

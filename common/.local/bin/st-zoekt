@@ -84,12 +84,10 @@ for i in "${!ADDITIONAL_ARGS[@]}"; do
   ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//\{root\}/$root}"
 done
 
-# --disabled \
 exec fzf \
   --ansi \
   --tiebreak=index \
   --disabled \
-  --color='hl:215,hl+:215' \
   --delimiter : \
   --with-nth=3.. \
   --bind "start:reload:${reload_cmd} || true" \
