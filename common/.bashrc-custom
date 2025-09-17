@@ -1,137 +1,177 @@
 # shellcheck shell=bash
 #
-# Custom bash configuration for enhanced developer experience
-# 
-# This file contains enhanced shell configurations including modern CLI tools,
-# improved completion, and developer-friendly aliases and functions.
-#
-# USAGE:
-# To use this configuration alongside your system's default .bashrc,
-# add this line to your ~/.bashrc:
-#
-#   source ~/.bashrc-custom
-#
-# Or if you used stow to symlink this file:
-#
-#   source ~/.bashrc-custom
-#
-# This allows you to keep your system's default bash configuration while
-# adding enhanced features for development work.
-#
+# Enhanced bash configuration aligned with the zsh setup in this repo.
+# Source this file from ~/.bashrc to share the same experience across shells.
 
-# Disable flow control in interactive shells
-if [[ $- == *i* ]]; then
-	stty -ixon -ixoff
+# -------- interactive TTY tweaks (skip in non-tty to avoid extra 'stty' call)
+if [[ $- == *i* ]] && [[ -t 0 ]]; then
+  stty -ixon -ixoff
 fi
 
-# Path setup (add custom bins before system paths)
-for d in "$HOME/.local/bin" "$HOME/bin" "/usr/local/bin"; do
-	if [[ -d $d ]] && [[ ":$PATH:" != *":$d:"* ]]; then
-		PATH="$d:$PATH"
-	fi
+# -------- fast PATH (prefer user bins; include Homebrew on Apple Silicon)
+for d in "$HOME/.local/bin" "$HOME/bin" "/opt/homebrew/bin" "/usr/local/bin"; do
+  case ":$PATH:" in
+    *":$d:"*) ;;
+    *) PATH="$d:$PATH" ;;
+  esac
 done
 export PATH
 
-# Default editor
+# -------- editor
 export EDITOR="nvim"
 export VISUAL="$EDITOR"
 
-# Shell options
-shopt -s nocaseglob dotglob extglob histappend
+# -------- shell options
+shopt -s autocd dotglob extglob histappend nocaseglob
 HISTSIZE=100000
-HISTFILE=~/.bash_history
+HISTFILE="$HOME/.bash_history"
 HISTFILESIZE=100000
 HISTCONTROL=ignoreboth:erasedups
-PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
+if [[ $PROMPT_COMMAND != *history -a* ]]; then
+  PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
+fi
 
 set -o emacs
 bind '"\e[1;5C": forward-word'
 bind '"\e[1;5D": backward-word'
 
-# Bootstrap Starship
+# -------- prompt (Starship)
 if command -v starship >/dev/null 2>&1; then
-	eval "$(starship init bash)"
+  eval "$(starship init bash)"
 fi
 
-# Autocomplete
+# -------- completion
 if ! shopt -oq posix; then
-	if [[ -r /usr/share/bash-completion/bash_completion ]]; then
-		source /usr/share/bash-completion/bash_completion
-	elif [[ -r /etc/bash_completion ]]; then
-		source /etc/bash_completion
-	fi
+  if [[ -r /usr/share/bash-completion/bash_completion ]]; then
+    # shellcheck disable=SC1091
+    source /usr/share/bash-completion/bash_completion
+  elif [[ -r /etc/bash_completion ]]; then
+    # shellcheck disable=SC1091
+    source /etc/bash_completion
+  fi
 fi
 bind 'set show-all-if-ambiguous on'
 bind 'set menu-complete-display-prefix on'
 bind 'set completion-ignore-case on'
 bind 'TAB:menu-complete'
 
-# zoxide
+# -------- zoxide (smart cd)
 if command -v zoxide >/dev/null 2>&1; then
-	eval "$(zoxide init bash)"
+  eval "$(zoxide init bash)"
 fi
 
-# FZF integration
+# -------- fzf setup
 if command -v fzf >/dev/null 2>&1; then
-	for dir in "/usr/share/fzf" "/usr/local/opt/fzf/shell" "/opt/homebrew/opt/fzf/shell" "/usr/share/doc/fzf/examples" "$HOME/.fzf"; do
-		if [[ -r "$dir/key-bindings.bash" ]]; then
-			source "$dir/key-bindings.bash"
-			break
-		fi
-	done
-	for dir in "/usr/share/fzf" "/usr/local/opt/fzf/shell" "/opt/homebrew/opt/fzf/shell" "/usr/share/doc/fzf/examples" "$HOME/.fzf"; do
-		if [[ -r "$dir/completion.bash" ]]; then
-			source "$dir/completion.bash"
-			break
-		fi
-	done
-	if command -v fd >/dev/null 2>&1; then
-		export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git --color=always'
-		export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-	fi
+  for dir in \
+    "/usr/share/fzf" \
+    "/usr/local/opt/fzf/shell" \
+    "/opt/homebrew/opt/fzf/shell" \
+    "/usr/share/doc/fzf/examples" \
+    "$HOME/.fzf"
+  do
+    if [[ -r "$dir/key-bindings.bash" ]]; then
+      # shellcheck disable=SC1091
+      source "$dir/key-bindings.bash"
+      break
+    fi
+  done
 
-	__fzf_history_widget() {
-		local selected
-		selected=$(history | awk '{ $1=""; sub(/^ +/,""); if(!seen[$0]++) print }' |
-			fzf --height=80% --reverse --tiebreak=index --no-sort --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
-		READLINE_LINE=$selected
-		READLINE_POINT=${#selected}
-	}
-	bind -x '"\C-r": "__fzf_history_widget"'
+  for dir in \
+    "/usr/share/fzf" \
+    "/usr/local/opt/fzf/shell" \
+    "/opt/homebrew/opt/fzf/shell" \
+    "/usr/share/doc/fzf/examples" \
+    "$HOME/.fzf"
+  do
+    if [[ -r "$dir/completion.bash" ]]; then
+      # shellcheck disable=SC1091
+      source "$dir/completion.bash"
+      break
+    fi
+  done
+
+  if command -v fd >/dev/null 2>&1; then
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+  fi
+
+  export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS \
+    --reverse \
+    --ansi \
+    --info=inline \
+    --style=minimal \
+    --no-cycle \
+    --style=minimal \
+    --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f,hl:215,hl+:215"
+
+  __fzf_history_widget() {
+    local selected
+    selected=$(fc -lnr |
+      awk '!seen[$0]++' |
+      fzf --height=80% --reverse --tiebreak=index --no-sort \
+          --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
+    READLINE_LINE=$selected
+    READLINE_POINT=${#selected}
+  }
+  bind -x '"\C-r": "__fzf_history_widget"'
 fi
 
-# Aliases
-alias z='cd'
-alias grep="grep --color=auto"
-# Favor hidden files but ignore common junk, colorized output
-alias rg='rg --hidden --smart-case --colors match:fg:yellow --glob "!.git" --glob "!node_modules"'
-# Use modern replacements if available
+# -------- safer Git defaults where tools may be missing
+if ! command -v delta >/dev/null 2>&1 || ! command -v code >/dev/null 2>&1; then
+  git() {
+    local cfg=()
+    if ! command -v delta >/dev/null 2>&1; then
+      cfg+=(-c core.pager=less -c interactive.diffFilter=cat)
+    fi
+    if ! command -v code >/dev/null 2>&1; then
+      if command -v nvim >/dev/null 2>&1; then
+        cfg+=(-c merge.tool=nvimdiff3 -c difftool.tool=nvimdiff)
+      else
+        cfg+=(-c merge.tool=vimdiff -c difftool.tool=vimdiff)
+      fi
+    fi
+    command git "${cfg[@]}" "$@"
+  }
+fi
+
+# -------- aliases
+alias grep='grep --color=auto'
+alias stow_apply="$HOME/dotfiles/apply.sh"
+alias stow_init="$HOME/dotfiles/init.sh"
+alias stow_update="$HOME/dotfiles/update.sh && $HOME/dotfiles/apply.sh"
+alias stow_update_init_auto="$HOME/dotfiles/update.sh && AUTO_INSTALL=1 $HOME/dotfiles/init.sh"
+
+export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
+export BAT_THEME="Visual Studio Dark+"
+
 if command -v bat >/dev/null 2>&1; then
-	alias cat='bat'
+  alias cat='bat'
 elif command -v batcat >/dev/null 2>&1; then
-	alias bat='batcat'
-	alias cat='batcat'
+  alias bat='batcat'
+  alias cat='batcat'
 fi
+
 if command -v eza >/dev/null 2>&1; then
-	alias ls='eza --color=auto --group-directories-first'
-	alias ll='eza -al --color=auto --group-directories-first'
-	alias la='eza -a --color=auto --group-directories-first'
-fi
-if [[ -z $(command -v fd 2>/dev/null) && -n $(command -v fdfind 2>/dev/null) ]]; then
-	alias fd='fdfind'
+  alias ls='eza --color=auto --group-directories-first'
+  alias ll='eza -al --color=auto --group-directories-first'
+  alias la='eza -a --color=auto --group-directories-first'
+  alias tree='eza --tree --icons --group-directories-first'
 fi
 
-# Open lf in the current directory and change to its exit path
-lfcd() {
-	local tmp="$(mktemp -t lfcd.XXXXXX)" dir
-	# Pass flag before positional args and use -- to avoid misparsing
-	lf -last-dir-path "$tmp" -- "$@"
-	dir=$(cat "$tmp")
-	rm -f -- "$tmp"
-	[ -n "$dir" ] && [ "$dir" != "$PWD" ] && builtin cd -- "$dir"
+if ! command -v fd >/dev/null 2>&1 && command -v fdfind >/dev/null 2>&1; then
+  alias fd='fdfind'
+fi
+
+# -------- file managers that cd to the last visited dir
+y() {
+  local tmp cwd
+  tmp="$(mktemp -t yazi-cwd.XXXXXX)"
+  command yazi "$@" --cwd-file="$tmp"
+  cwd=$(<"$tmp")
+  rm -f -- "$tmp"
+  [[ -n $cwd && $cwd != "$PWD" ]] && builtin cd -- "$cwd"
 }
-alias lf='lfcd'
 
-# Load machine-specific overrides, if present
-# shellcheck disable=SC1090
+# -------- machine-specific overrides
+# shellcheck disable=SC1091
 [[ -r "$HOME/.bashrc.local" ]] && source "$HOME/.bashrc.local"
