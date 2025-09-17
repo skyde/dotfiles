@@ -55,8 +55,9 @@ fi
 # - We keep ripgrep in the pipeline for match highlighting.
 # - Then awk rebuilds a pretty, colored prefix for path/line/(col), while preserving rg's highlights in the text.
 # - fzf shows only field 3 (with-nth=3..), but uses {1} and {2} (raw) in bindings and preview.
+
 reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
-  | rg --passthru --smart-case -- {q} \
+  | rg --passthru --smart-case --color=always --colors 'match:fg:243,178,109' -- {q} \
   | awk 'BEGIN{
       FS=\":\"; OFS=\":\";
       mag=\"\\033[38;2;106;153;85m\";   # filename color
@@ -65,6 +66,8 @@ reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
     }
     {
       p=\$1; l=\$2; rest=\$0;
+      gsub(/\033\[[0-9;]*m/, \"\", p);
+
       if (\$3 ~ /^[0-9]+$/) {
         c=\$3;
         sub(/^[^:]*:[^:]*:[^:]*:/, \"\", rest);
@@ -76,16 +79,16 @@ reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
       print p, l, pretty;
     }'"
 
-
 # Replace {root} placeholders in additional args
 for i in "${!ADDITIONAL_ARGS[@]}"; do
   ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//\{root\}/$root}"
 done
 
-  # --disabled \
+# --disabled \
 exec fzf \
   --ansi \
   --tiebreak=index \
+  --disabled \
   --color='hl:215,hl+:215' \
   --delimiter : \
   --with-nth=3.. \
