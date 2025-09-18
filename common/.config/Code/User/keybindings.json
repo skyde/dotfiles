@@ -218,23 +218,16 @@
       ]
     }
   },
-  // Global fuzzy find within files (uses rip grep)
+  // Global search: forward to VSCodeVim mapping
   {
     "key": "shift+cmd+f",
     "command": "runCommands",
+    "when": "editorTextFocus",
     "args": {
       "commands": [
-        // Custom command when terminal is opened to clear any other context
-        "task.custom.openTerminal",
-        // Set the fzf context to active
-        { "command": "setContext", "args": ["closePanelOnEnter", true] },
-        {
-          // Run the fzf task
-          "command": "workbench.action.tasks.runTask",
-          "args": "FZF Ripgrep"
-        },
-        // Click escape so we don't come back to a strange mode
-        "extension.vim_escape"
+        // Ensure Normal mode
+        "extension.vim_escape",
+        { "command": "vim.remap", "args": { "after": ["<leader>", "s", "s"] } }
       ]
     }
   },
@@ -411,8 +404,8 @@
   {
     // h = collapse folder if possible
     "key": "h",
-  "command": "list.collapse",
-  "when": "filesExplorerFocus && !inputFocus"
+    "command": "list.collapse",
+    "when": "filesExplorerFocus && !inputFocus"
   },
   // {
   //   // Backspace behaves like h
@@ -447,17 +440,17 @@
   {
     // Copy/Cut/Paste like yazi (y, x, p)
     "key": "y",
-  "command": "filesExplorer.copy",
+    "command": "filesExplorer.copy",
     "when": "filesExplorerFocus && !inputFocus"
   },
   {
     "key": "x",
-  "command": "filesExplorer.cut",
+    "command": "filesExplorer.cut",
     "when": "filesExplorerFocus && !inputFocus"
   },
   {
     "key": "p",
-  "command": "filesExplorer.paste",
+    "command": "filesExplorer.paste",
     "when": "filesExplorerFocus && !inputFocus"
   },
   {
