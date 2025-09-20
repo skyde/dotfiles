@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Chromium: LLDB (CodeLLDB)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/${config:chromium.buildDir}/${config:chromium.runtimeExecutable}",
+      "args": [
+        "--remote-debugging-port=9222",
+        "--user-data-dir=${config:chromium.userDataDir}",
+        "--no-first-run",
+        "--no-sandbox"
+      ],
+      "cwd": "${workspaceFolder}/${config:chromium.buildDir}",
+      "env": {
+        // This needs to be set manually before running, since the script can set it after the fact
+        "CHROMIUM_LLDBINIT_SOURCED": "1"
+      },
+      "preLaunchTask": "chromium: build and prep",
+      "stopOnEntry": false,
+      "initCommands": [
+        "script sys.path[:0] = ['${workspaceFolder}/tools/lldb']",
+        "script import lldbinit",
+        "script import chromium_visualizers"
+      ]
+    },
+    {
+      "name": "Chromium: Attach (CodeLLDB)",
+      "type": "lldb",
+      "request": "attach",
+      "pid": "${command:pickProcess}",
+      "stopOnEntry": false,
+      "initCommands": [
+        "script sys.path[:0] = ['${workspaceFolder}/tools/lldb']",
+        "script import lldbinit",
+        "script import chromium_visualizers"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "clangd.path": "third_party/llvm-build/Release+Asserts/bin/clangd",
+  "chromium.buildDir": "out/Default",
+  "chromium.target": "chrome",
+  "chromium.runtimeExecutable": "Chromium.app/Contents/MacOS/Chromium",
+  "chromium.userDataDir": "${workspaceFolder}/.vscode/chrome-user-data"
+}
