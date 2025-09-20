@@ -1,0 +1,4 @@
+# So that lldbinit.py takes precedence.
+script sys.path[:0] = ['/Users/skydebreuil/Projects/Chromium/src/tools/lldb']
+script import lldbinit
+script import chromium_visualizers
