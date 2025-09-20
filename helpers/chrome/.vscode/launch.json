@@ -6,6 +6,12 @@
       "type": "lldb",
       "request": "launch",
       "program": "${workspaceFolder}/${config:chromium.buildDir}/${config:chromium.runtimeExecutable}",
+      "osx": {
+        "program": "${workspaceFolder}/${config:chromium.buildDir}/${config:chromium.runtimeExecutableMac}"
+      },
+      "linux": {
+        "program": "${workspaceFolder}/${config:chromium.buildDir}/${config:chromium.runtimeExecutableLinux}"
+      },
       "args": [
         "--remote-debugging-port=9222",
         "--user-data-dir=${config:chromium.userDataDir}",
