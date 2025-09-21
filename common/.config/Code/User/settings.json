@@ -1370,7 +1370,7 @@
     {
       // Delayed paste command for FZF
       "command": "task.custom.delayedPaste",
-      "interval": 300,
+      "interval": 200,
       "sequence": [
         {
           "command": "workbench.action.terminal.sendSequence",
