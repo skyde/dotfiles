@@ -86,8 +86,14 @@ _G.__spotlightTap_noCache = tap
 --------------------------------------------------------------------------------
 -- Custom binding to map shift f9 (bound to a macro) to backslash - this is for ease of use as the macro is currently no used for anything else
 
-hs.hotkey.bind({ "shift" }, "f9", function()
-	hs.eventtap.event.newKeyEvent("\\", true):post() -- key down \
-end, function()
-	hs.eventtap.event.newKeyEvent("\\", false):post() -- key up \
-end)
+hs.hotkey.bind(
+	{ "shift" },
+	"f9",
+	function()
+		hs.eventtap.keyStrokes("\\")
+	end,
+	nil,
+	function()
+		hs.eventtap.keyStrokes("\\")
+	end
+)
