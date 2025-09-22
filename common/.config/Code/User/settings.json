@@ -684,7 +684,7 @@
     },
     {
       // Search within files
-      "before": ["<leader>", "s", "t"],
+      "before": ["<leader>", "s", "g"],
       "commands": [
         // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
@@ -701,7 +701,7 @@
     },
     {
       // Search within files - find the current word
-      "before": ["<leader>", "s", "s"],
+      "before": ["<leader>", "s", "t"],
       "after": ["y", "i", "w"],
       "commands": [
         // Custom command when terminal is opened to clear any other context
