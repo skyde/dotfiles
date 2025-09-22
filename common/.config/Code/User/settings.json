@@ -1370,40 +1370,13 @@
     {
       // Delayed paste command for FZF
       "command": "task.custom.delayedPaste",
-      // "interval": 200,
+      "interval": 20,
       "sequence": [
-        {
-          // Wait a moment for FZF to start up, then paste
-          "command": "extension.multiCommand.execute",
-          "args": { "command": "task.custom.delayedPasteApply" }
-        }
-        // {
-        //   // Wait a moment for FZF to start up, then paste
-        //   "command": "extension.multiCommand.execute",
-        //   "args": { "command": "task.custom.delayedPasteApply" }
-        // }
-      ]
-    },
-    {
-      "command": "task.custom.delayedPasteApply",
-      "interval": 100,
-      "sequence": [
-        // {
-        //   "command": "workbench.action.terminal.sendSequence",
-        //   // "args": { "text": "\u001B" }
-        //   "args": { "text": "\u0005\u0015\u0016" }
-        // }
-
-        // { "command": "editor.action.clipboardPasteAction" }
-
         { "command": "workbench.action.terminal.focus" },
         {
           "command": "workbench.action.terminal.sendSequence",
           "args": { "text": "\u0005\u0015" }
-          // "args": { "text": "\u001B" }
         },
-        // { "command": "workbench.action.terminal.clear" },
-        //   "args": { "text": "\u0005\u0015\u0016" }
         { "command": "workbench.action.terminal.paste" }
       ]
     }
