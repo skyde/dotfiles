@@ -62,6 +62,11 @@ defaults write -g com.apple.sound.uiaudio.enabled -bool false
 defaults write -g com.apple.sound.beep.feedback -bool false
 echo "Disabled global audio bell. You may need to log out and back in for changes to take effect."
 
+# Show hidden files in Finder
+defaults write com.apple.finder AppleShowAllFiles -bool true
+# Restart Finder; ignore error/no-op if Finder isn't running
+killall Finder >/dev/null 2>&1 || true
+
 # Configure Dock auto-hide behavior
 echo "Setting Dock auto-hide preferences..."
 defaults write com.apple.dock autohide -bool true
