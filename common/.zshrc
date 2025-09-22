@@ -150,7 +150,7 @@ if ((! $+commands[fd] )) && (( $+commands[fdfind] )); then
 fi
 
 # -------- file managers that cd to the last visited dir
-y() {
+e() {
   local tmp cwd
   tmp="$(mktemp -t yazi-cwd.XXXXXX)"
   command yazi "$@" --cwd-file="$tmp"
