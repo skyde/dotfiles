@@ -11,7 +11,7 @@
 	"exclusionRules": [
 		{
 			"passKeys": "",
-			"pattern": ":https://vscode.dev/"
+			"pattern": ":https://remotedesktop.corp.google.com/access/"
 		}
 	],
 	"filterLinkHints": true,

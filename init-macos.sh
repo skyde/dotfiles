@@ -35,9 +35,9 @@ fi
 
 # Fix fd linking issue on macOS if needed
 if have brew && brew list fd >/dev/null 2>&1 && ! brew list --formula | grep -q "^fd$"; then
-    if confirm_change "Link" "fd" 1; then
-        brew link --overwrite fd || echo "Failed to link fd, continuing..."
-    fi
+  if confirm_change "Link" "fd" 1; then
+    brew link --overwrite fd || echo "Failed to link fd, continuing..."
+  fi
 fi
 
 echo "Configuring macOS system preferences..."
