@@ -23,7 +23,7 @@ if [[ -f "$root" ]]; then root="$(dirname "$root")"; fi
 root="$(cd "$root" >/dev/null 2>&1 && pwd -P)"
 index_dir="$root/.zoekt"
 
-command -v zoekt >/dev/null 2>&1 || {
+command -v $HOME/go/bin/zoekt >/dev/null 2>&1 || {
   echo "error: zoekt not found in PATH" >&2
   exit 1
 }
@@ -56,7 +56,7 @@ fi
 # - Then awk rebuilds a pretty, colored prefix for path/line/(col), while preserving rg's highlights in the text.
 # - fzf shows only field 3 (with-nth=3..), but uses {1} and {2} (raw) in bindings and preview.
 
-reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
+reload_cmd="$HOME/go/bin/zoekt -index_dir '$index_dir' -- {q} \
   | rg --passthru --smart-case --color=always -- {q} \
   | awk 'BEGIN{
       FS=\":\"; OFS=\":\";
