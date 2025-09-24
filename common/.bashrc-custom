@@ -37,9 +37,9 @@ HISTSIZE=100000
 HISTFILE="$HOME/.bash_history"
 HISTFILESIZE=100000
 HISTCONTROL=ignoreboth:erasedups
-if [[ $PROMPT_COMMAND != *history -a* ]]; then
-  PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
-fi
+# if [[ $PROMPT_COMMAND != *history -a* ]]; then
+#  PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
+# fi
 
 set -o emacs
 bind '"\e[1;5C": forward-word'
