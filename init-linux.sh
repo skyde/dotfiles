@@ -26,7 +26,9 @@ ensure_apt zsh-syntax-highlighting
 ensure_apt fonts-jetbrains-mono
 
 # Install kitty term info to ensure we can ssh properly
-$SUDO curl -LO https://raw.githubusercontent.com/kovidgoyal/kitty/master/terminfo/kitty.terminfo tic -x -o ~/.terminfo
+$SUDO curl -LO https://raw.githubusercontent.com/kovidgoyal/kitty/master/terminfo/kitty.terminfo
+tic -x -o ~/.terminfo kitty.terminfo
+rm -f kitty.terminfo
 
 # Change default shell to zsh
 if have zsh; then
