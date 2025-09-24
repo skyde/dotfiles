@@ -2,6 +2,10 @@
 #
 # Enhanced bash configuration aligned with the zsh setup in this repo.
 # Source this file from ~/.bashrc to share the same experience across shells.
+# 
+# Add this line
+#
+# [[ -r "$HOME/.bashrc-custom" ]] && source "$HOME/.bashrc-custom"
 
 # Use zsh if available for interactive shells
 if [ -t 1 ] && command -v zsh >/dev/null 2>&1; then
