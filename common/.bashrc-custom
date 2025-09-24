@@ -3,6 +3,12 @@
 # Enhanced bash configuration aligned with the zsh setup in this repo.
 # Source this file from ~/.bashrc to share the same experience across shells.
 
+# Use zsh if available for interactive shells
+if [ -t 1 ] && command -v zsh >/dev/null 2>&1; then
+  export SHELL="$(command -v zsh)"
+  exec zsh -l
+fi
+
 # -------- interactive TTY tweaks (skip in non-tty to avoid extra 'stty' call)
 if [[ $- == *i* ]] && [[ -t 0 ]]; then
   stty -ixon -ixoff
