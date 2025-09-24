@@ -37,6 +37,7 @@ if [ -f "packages.txt" ]; then
   # Handle fd package name difference on Linux
   if [[ "$(uname)" == "Linux" ]]; then
     packages="${packages//fd/fd-find}"
+    packages="${packages//delta/git-delta}"
   fi
 
   install_apps=$(get_user_confirmation "Install packages ($packages)? (y/N): ")
