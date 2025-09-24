@@ -734,18 +734,22 @@
     {
       // Search within files
       "before": ["<leader>", "/"],
+      "after": ["y", "i", "w"],
       "commands": [
         // Custom command when terminal is opened to clear any other context
         "task.custom.openTerminal",
         // Set the fzf context to active
-        { "command": "setContext", "args": ["fzfActive", true] },
+        { "command": "setContext", "args": ["closePanelOnEnter", true] },
         {
           // Run the fzf task
           "command": "workbench.action.tasks.runTask",
           "args": "FZF Ripgrep"
         },
-        // Click escape so we don't come back to a strange mode
-        "extension.vim_escape"
+        {
+          // Wait a moment for FZF to start up, then paste
+          "command": "extension.multiCommand.execute",
+          "args": { "command": "task.custom.delayedPaste" }
+        }
       ]
     },
     {
