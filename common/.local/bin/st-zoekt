@@ -92,6 +92,6 @@ exec fzf \
   --with-nth=3.. \
   --bind "start:reload:${reload_cmd} || true" \
   --bind "change:reload:${reload_cmd} || true" \
-  --preview "cd '${root}' && bat --style=numbers --color=always {2} {1}" \
+  --preview "cd '${root}' && bat --style=numbers --color=always --paging=never --highlight-line {2} {1}" \
   --preview-window 'bottom,30%,+{2}/2' \
   "${ADDITIONAL_ARGS[@]}"
