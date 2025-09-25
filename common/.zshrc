@@ -1,17 +1,6 @@
 
 # shellcheck shell=zsh
 
-# -------- fast PATH (prefer user bins; include Homebrew on Apple Silicon)
-# Use array 'path' (zsh feature) with uniqueness to avoid string scans.
-typeset -U path PATH
-path=("$HOME/.local/bin" "$HOME/bin" "/opt/homebrew/bin" "/usr/local/bin" $path)
-
-# Custom scripts
-export PATH="$HOME/.local/bin:$PATH"
-
-# Go programs
-export PATH="$HOME/go/bin:$PATH"
-
 # -------- editor
 export EDITOR="nvim"
 export VISUAL="$EDITOR"
