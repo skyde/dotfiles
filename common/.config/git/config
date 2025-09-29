@@ -11,6 +11,8 @@
     pager = delta
     excludesFile = ~/.config/git/ignore
     commitGraph = true
+    autocrlf = false
+    filemode = false
 
 # --- Diff behavior ---
 [diff]
@@ -145,6 +147,9 @@
 
 [protocol "sso"]
     allow = always
+
+[branch]
+    autosetuprebase = always
 
 [include]
     path = ~/.gitconfig-local
