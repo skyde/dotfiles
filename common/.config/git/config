@@ -142,3 +142,8 @@
 [maintenance]
     strategy = incremental
 
+[protocol "sso"]
+    allow = always
+
+[include]
+    path = ~/.gitconfig-local
