@@ -8,5 +8,8 @@ cd ~/chrome/src/
 git rebase-update
 gclient sync
 
+# Build Chrome
+autoninja -C out/Default
+
 # Rebuild zoekt index
 si
