@@ -6,7 +6,7 @@ cd ~/chrome/src/
 
 # Update
 git rebase-update
-gclient sync
+gclient sync -D
 
 # Rebuild zoekt index
 si
