@@ -158,6 +158,10 @@ lfcd() {
 }
 alias lf='lfcd'
 
+# TODO: This needs to be set for some reason to get everything
+# to work in the terminal - find the root cause & remove this
+unset GIT_PAGER
+
 gg() { command lazygit; }
 
 # -------- plugins (load AFTER everything else; keep syntax-highlighting last)
