@@ -46,12 +46,12 @@ import os
 import re
 import shlex
 import sys
-from typing import list, iterator
+from typing import Iterator
 
 obj_start = '{'
 obj_end = '}'
 
-def iter_objects(stream) -> iterator[str]:
+def iter_objects(stream) -> Iterator[str]:
     """yield raw json object strings from a compile_commands.json stream.
 
     assumes top-level structure is a json array of objects optionally
@@ -59,26 +59,26 @@ def iter_objects(stream) -> iterator[str]:
     """
     buf = []
     depth = 0
-    in_string = false
-    escape = false
-    started = false
-    while true:
+    in_string = False
+    escape = False
+    started = False
+    while True:
         ch = stream.read(1)
         if not ch:
             break
         if not started:
             if ch == obj_start:
-                started = true
+                started = True
                 depth = 1
                 buf = [ch]
             continue
         else:
             buf.append(ch)
             if escape:
-                escape = false
+                escape = False
                 continue
             if ch == '\\':
-                escape = true
+                escape = True
                 continue
             if ch == '"':
                 in_string = not in_string
@@ -91,7 +91,7 @@ def iter_objects(stream) -> iterator[str]:
                 depth -= 1
                 if depth == 0:
                     yield ''.join(buf)
-                    started = false
+                    started = False
 
 def extract_file_field(obj_str: str) -> str:
     # fast regex to find "file": "..." not caring about escaped quotes inside path (paths won't have them)
@@ -105,7 +105,7 @@ def extract_file_field(obj_str: str) -> str:
 
 def should_keep(path: str, prefixes: list[str]) -> bool:
     if not prefixes:
-        return true
+        return True
     return any(path.startswith(p) for p in prefixes)
 
 def strip_missing_pch(obj: dict, build_dir: str) -> dict:
@@ -114,10 +114,10 @@ def strip_missing_pch(obj: dict, build_dir: str) -> dict:
         return obj
     try:
         tokens = shlex.split(cmd)
-    except valueerror:
+    except ValueError:
         # fallback: don't modify if shlex fails
         return obj
-    changed = false
+    changed = False
     i = 0
     new_tokens: list[str] = []
     while i < len(tokens):
@@ -128,7 +128,7 @@ def strip_missing_pch(obj: dict, build_dir: str) -> dict:
                 abs_path = os.path.normpath(os.path.join(build_dir, inc_path))
             if not os.path.exists(abs_path):
                 # skip both tokens
-                changed = true
+                changed = True
                 i += 2
                 continue
         new_tokens.append(tokens[i])
@@ -139,7 +139,7 @@ def strip_missing_pch(obj: dict, build_dir: str) -> dict:
     return obj
 
 def main() -> int:
-    ap = argparse.argumentparser()
+    ap = argparse.ArgumentParser()
     ap.add_argument('--input', default='compile_commands.json')
     ap.add_argument('--output', default='out/default/compile_commands.trimmed.json')
     ap.add_argument('--prefix', action='append', dest='prefixes', default=[],
@@ -159,14 +159,14 @@ def main() -> int:
 
     build_dir_guess = 'out/default'
     out_path = args.output
-    os.makedirs(os.path.dirname(out_path), exist_ok=true)
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
     size_mb = os.path.getsize(in_path) / (1024*1024)
     kept = 0
     total = 0
     with open(in_path, 'r', encoding='utf-8', errors='replace') as fin, open(out_path, 'w', encoding='utf-8') as fout:
         fout.write('[\n')
-        first = true
+        first = True
         for raw_obj in iter_objects(fin):
             total += 1
             path = extract_file_field(raw_obj)
@@ -179,12 +179,12 @@ def main() -> int:
                         obj = json.loads(raw_obj)
                         obj = strip_missing_pch(obj, os.path.abspath(build_dir_guess))
                         raw_obj = json.dumps(obj, separators=(',', ':'))
-                    except exception:
+                    except Exception:
                         pass
                 if not first:
                     fout.write(',\n')
                 else:
-                    first = false
+                    first = False
                 fout.write(raw_obj)
                 kept += 1
         fout.write('\n]\n')
@@ -197,17 +197,17 @@ def main() -> int:
             try:
                 os.rename(in_path, backup)
                 print(f'renamed original to {backup}')
-            except oserror as e:
+            except OSError as e:
                 print(f'warning: could not rename original ({e})')
         try:
             if os.path.islink(in_path) or os.path.exists(in_path):
                 try:
                     os.remove(in_path)
-                except oserror:
+                except OSError:
                     pass
             os.symlink(os.path.relpath(out_path, os.path.dirname(in_path)), in_path)
             print(f'symlinked {in_path} -> {out_path}')
-        except oserror as e:
+        except OSError as e:
             print(f'warning: symlink failed ({e})')
     return 0
 
