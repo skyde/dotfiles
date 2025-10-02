@@ -701,6 +701,27 @@
     },
     {
       // Search within files - find the current word
+      "before": ["<leader>", "s", "T"],
+      "after": ["y", "i", "w"],
+      "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.openTerminal",
+        // Set the fzf context to active
+        { "command": "setContext", "args": ["closePanelOnEnter", true] },
+        {
+          // Run the fzf task
+          "command": "workbench.action.tasks.runTask",
+          "args": "FZF Ripgrep (No Cache)"
+        },
+        {
+          // Wait a moment for FZF to start up, then paste
+          "command": "extension.multiCommand.execute",
+          "args": { "command": "task.custom.delayedPaste" }
+        }
+      ]
+    },
+    {
+      // Search within files - find the current word
       "before": ["<leader>", "s", "t"],
       "after": ["y", "i", "w"],
       "commands": [
@@ -780,11 +801,11 @@
         }
       ]
     },
-    {
-      // Start a new search within files using VS Code search
-      "before": ["<leader>", "s", "T"],
-      "commands": ["workbench.action.findInFiles"]
-    },
+    // {
+    //   // Start a new search within files using VS Code search
+    //   "before": ["<leader>", "s", "T"],
+    //   "commands": ["workbench.action.findInFiles"]
+    // },
     {
       // Fuzzy search open editors
       "before": ["<leader>", "s", "b"],

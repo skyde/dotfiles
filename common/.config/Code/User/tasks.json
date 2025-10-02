@@ -98,6 +98,25 @@
       "problemMatcher": []
     },
     {
+      "label": "FZF Ripgrep (No Cache)",
+      "type": "shell",
+      "command": "st-rg",
+      "args": [
+        "--code",
+      ],
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "FZF Files",
       "type": "shell",
       "command": "ff",
