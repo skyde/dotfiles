@@ -8,6 +8,8 @@ cd ~/chrome/src/
 git rebase-update
 gclient sync -D
 
+gn gen out/Default
+
 # Rebuild zoekt index
 si
 
