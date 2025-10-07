@@ -18,6 +18,11 @@ disabled = true
 min_time = 1000
 show_milliseconds = true
 
+[time]
+disabled = false
+format = '[$time]($style) '
+time_format = '%H:%M:%S'
+
 [git_branch]
 disabled = true
 
