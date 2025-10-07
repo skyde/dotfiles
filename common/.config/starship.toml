@@ -4,6 +4,7 @@
 # Inserts a blank line between shell prompts
 add_newline = true
 command_timeout = 1000
+right_format = "$time"
 
 # Replace the '❯' symbol in the prompt with '➜'
 [character] # The name of the module we are configuring is 'character'
@@ -17,6 +18,12 @@ disabled = true
 [cmd_duration]
 min_time = 1000
 show_milliseconds = true
+
+[time]
+disabled = false
+format = '[$time]($style)'
+style = 'fg:#4c566a'
+time_format = '%H:%M:%S'
 
 [git_branch]
 disabled = true
