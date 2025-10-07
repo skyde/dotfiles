@@ -236,7 +236,7 @@
     "key": "ctrl+t",
     "command": "runCommands",
     "args": {
-      "commands": ["workbench.action.togglePanel"]
+      "commands": ["workbench.action.terminal.toggleTerminal"]
     }
   },
   // {
@@ -278,7 +278,7 @@
     "key": "ctrl+/",
     "command": "runCommands",
     "args": {
-      "commands": ["workbench.action.togglePanel"]
+      "commands": ["workbench.action.terminal.toggleTerminal"]
     }
   },
   {
