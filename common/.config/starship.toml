@@ -4,6 +4,8 @@
 # Inserts a blank line between shell prompts
 add_newline = true
 command_timeout = 1000
+format = "$username$hostname$localip$shlvl$singularity$kubernetes$nats$directory$vcsh$fossil_branch$fossil_metrics$git_branch$git_commit$git_state$git_metrics$git_status$hg_branch$hg_state$pijul_channel$docker_context$package$bun$c$cmake$cobol$cpp$daml$dart$deno$dotnet$elixir$elm$erlang$fennel$gleam$golang$gradle$haskell$haxe$helm$java$julia$kotlin$lua$mojo$nim$nodejs$ocaml$odin$opa$perl$php$pulumi$purescript$python$quarto$raku$rlang$red$ruby$rust$scala$solidity$swift$terraform$typst$vlang$vagrant$xmake$zig$buf$guix_shell$nix_shell$conda$pixi$meson$spack$memory_usage$aws$gcloud$openstack$azure$direnv$env_var$mise$crystal$custom$sudo$cmd_duration$line_break$jobs$battery$status$container$netns$os$shell$character"
+right_format = "$time"
 
 # Replace the '❯' symbol in the prompt with '➜'
 [character] # The name of the module we are configuring is 'character'
@@ -20,8 +22,10 @@ show_milliseconds = true
 
 [time]
 disabled = false
-format = '[$time]($style) '
-time_format = '%H:%M:%S'
+format = '[$time]($style)'
+style = 'fg:#5c7080 dimmed'
+use_12hr = true
+time_format = '%I:%M %p'
 
 [git_branch]
 disabled = true
