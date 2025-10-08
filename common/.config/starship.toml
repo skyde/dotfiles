@@ -29,7 +29,7 @@ disabled = true
 
 [time]
 disabled = false
-format = '[$time]($style)'
+format = '[$time ]($style)'
 style = 'fg:#5c7080 dimmed'
 use_12hr = true
 time_format = '%-I:%M %p'
