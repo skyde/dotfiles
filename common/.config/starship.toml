@@ -36,10 +36,9 @@ CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 STATE_FILE="$CACHE_DIR/starship-last-command-time"
 mkdir -p "$CACHE_DIR"
 CURRENT="$(date "+%-I:%M %p")"
+PREVIOUS=""
 if [ -r "$STATE_FILE" ]; then
   read -r PREVIOUS < "$STATE_FILE"
-else
-  PREVIOUS=""
 fi
 
 if [ "$CURRENT" != "$PREVIOUS" ]; then
@@ -47,6 +46,7 @@ if [ "$CURRENT" != "$PREVIOUS" ]; then
   mv "$STATE_FILE.tmp" "$STATE_FILE"
   printf "%s" "$CURRENT"
 fi
+:
 '''
 format = '[$output ]($style)'
 style = 'fg:#5c7080 dimmed'
