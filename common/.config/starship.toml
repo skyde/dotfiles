@@ -25,7 +25,7 @@ disabled = false
 format = '[$time]($style)'
 style = 'fg:#5c7080 dimmed'
 use_12hr = true
-time_format = '%I:%M %p'
+time_format = '%-I:%M %p'
 
 [git_branch]
 disabled = true
