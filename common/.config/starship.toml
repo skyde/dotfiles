@@ -5,7 +5,7 @@
 add_newline = true
 command_timeout = 1000
 format = """
-$all$fill$custom.time_stamp
+$all$fill${custom.time_stamp}
 $character"""
 
 [fill]
