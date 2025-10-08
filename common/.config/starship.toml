@@ -5,7 +5,7 @@
 add_newline = true
 command_timeout = 1000
 format = """
-$all$fill$time
+$all$fill$custom.time_stamp
 $character"""
 
 [fill]
@@ -28,11 +28,28 @@ show_milliseconds = true
 disabled = true
 
 [time]
-disabled = false
-format = '[$time ]($style)'
+disabled = true
+
+[custom.time_stamp]
+command = """
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+STATE_FILE="$CACHE_DIR/starship-last-command-time"
+mkdir -p "$CACHE_DIR"
+CURRENT="$(date +%-I:%M\ %p)"
+if [ -r "$STATE_FILE" ]; then
+  read -r PREVIOUS < "$STATE_FILE"
+else
+  PREVIOUS=""
+fi
+
+if [ "$CURRENT" != "$PREVIOUS" ]; then
+  printf '%s' "$CURRENT" > "$STATE_FILE.tmp"
+  mv "$STATE_FILE.tmp" "$STATE_FILE"
+  printf '%s' "$CURRENT"
+fi
+"""
+format = '[$output ]($style)'
 style = 'fg:#5c7080 dimmed'
-use_12hr = true
-time_format = '%-I:%M %p'
 
 [git_branch]
 disabled = true
