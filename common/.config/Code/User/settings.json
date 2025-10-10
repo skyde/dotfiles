@@ -1488,6 +1488,9 @@
     "sound": "off"
   },
   "terminal.integrated.confirmOnKill": "never",
+  "terminal.integrated.minimumContrastRatio": 1,
+  "terminal.integrated.drawBoldTextInBrightColors": false,
+  "terminal.integrated.enableTrueColor": true,
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": false
