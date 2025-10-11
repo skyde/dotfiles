@@ -69,13 +69,39 @@ if command -v code >/dev/null 2>&1; then
     install_extensions=$(get_user_confirmation "Install VS Code extensions? (y/N): ")
     if [[ "$install_extensions" =~ ^[Yy] ]]; then
       echo "Installing VS Code extensions..."
+
+      installed_extensions_output=""
+      if installed_extensions_output=$(code --list-extensions 2>/dev/null); then
+        :
+      else
+        echo "  ⚠️ Unable to list currently installed extensions; continuing without skip logic"
+        installed_extensions_output=""
+      fi
+
+      failed_extensions=()
+
       while read -r ext; do
         if [ -n "$ext" ] && [[ ! "$ext" =~ ^[[:space:]]*# ]]; then
+          if [ "${FORCE_VSCODE_EXTENSION_UPDATE:-0}" != "1" ] && \
+            [ -n "$installed_extensions_output" ] && \
+            grep -Fxq "$ext" <<<"$installed_extensions_output"; then
+            echo "  Skipping (already installed): $ext"
+            continue
+          fi
+
           echo "  Installing: $ext"
-          code --install-extension "$ext" --force
+          if ! code --install-extension "$ext" --force; then
+            echo "  ⚠️ Failed to install or update $ext"
+            failed_extensions+=("$ext")
+          fi
         fi
       done <vscode_extensions.txt
-      echo "✅ VS Code extensions installed"
+
+      if [ ${#failed_extensions[@]} -gt 0 ]; then
+        echo "⚠️ Some VS Code extensions could not be installed: ${failed_extensions[*]}"
+      else
+        echo "✅ VS Code extensions installed"
+      fi
     else
       echo "Skipping VS Code extensions"
     fi
