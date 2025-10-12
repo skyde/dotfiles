@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Diff: since branch-point with origin/main (incl. working tree)",
+      "type": "shell",
+      "command": "git fetch --quiet origin && git difftool -y --merge-base origin/main",
+      "problemMatcher": [],
+      "presentation": { "reveal": "never", "panel": "dedicated", "clear": false }
+    },
+    {
+      "label": "Diff: since branch-point with @{upstream} (incl. working tree)",
+      "type": "shell",
+      "command": "git fetch --quiet && git difftool -y --merge-base @{upstream}",
+      "problemMatcher": [],
+      "presentation": { "reveal": "never", "panel": "dedicated", "clear": false }
+    },
+    {
+      "label": "Diff: since branch-point with origin/main (commits only)",
+      "type": "shell",
+      "command": "git fetch --quiet origin && git difftool -y --merge-base origin/main HEAD",
+      "problemMatcher": [],
+      "presentation": { "reveal": "never", "panel": "dedicated", "clear": false }
+    }
+  ]
+}
