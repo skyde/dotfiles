@@ -10,6 +10,12 @@ if [[ -o interactive && -t 0 ]]; then
   stty -ixon -ixoff
 fi
 
+# -------- tmux auto-attach (optional; disable with TMUX_AUTO_ATTACH=0)
+if [[ -o interactive ]] && [[ -z ${TMUX-} ]] && [[ ${TMUX_AUTO_ATTACH:-1} == 1 ]] \
+   && command -v tmux >/dev/null 2>&1; then
+  tmux new-session -A -s main
+fi
+
 # -------- shell options
 setopt autocd nocaseglob extended_glob globdots
 setopt hist_ignore_all_dups hist_ignore_space

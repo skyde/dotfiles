@@ -18,6 +18,12 @@ if [[ $- == *i* ]] && [[ -t 0 ]]; then
   stty -ixon -ixoff
 fi
 
+# -------- tmux auto-attach (optional; disable with TMUX_AUTO_ATTACH=0)
+if [[ $- == *i* ]] && [[ -z ${TMUX-} ]] && [[ ${TMUX_AUTO_ATTACH:-1} == 1 ]] \
+   && command -v tmux >/dev/null 2>&1; then
+  tmux new-session -A -s main
+fi
+
 # -------- fast PATH (prefer user bins; include Homebrew on Apple Silicon)
 for d in "$HOME/.local/bin" "$HOME/bin" "/opt/homebrew/bin" "/usr/local/bin" "/usr/local/bin" "$HOME/go/bin"; do
   case ":$PATH:" in
