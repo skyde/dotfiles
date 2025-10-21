@@ -1,0 +1,14 @@
+[Unit]
+Description=tmux server (persistent) with auto-restore
+After=default.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/env tmux start-server
+ExecStart=/usr/bin/env tmux set -g exit-empty off
+ExecStop=/usr/bin/env tmux run-shell '~/.tmux/plugins/tmux-resurrect/scripts/save.sh'
+ExecStopPost=/usr/bin/env tmux kill-server
+
+[Install]
+WantedBy=default.target
