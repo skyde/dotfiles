@@ -63,6 +63,16 @@ if [ -f "packages.txt" ]; then
   fi
 fi
 
+if [ -f "install-tmux-plugins.sh" ]; then
+  install_tmux_plugins=$(get_user_confirmation "Install tmux plugin manager (TPM) and plugins? (y/N): ")
+  if [[ "$install_tmux_plugins" =~ ^[Yy] ]]; then
+    echo "Setting up tmux plugin manager (TPM) and plugins..."
+    ./install-tmux-plugins.sh
+  else
+    echo "Skipping tmux plugin manager setup"
+  fi
+fi
+
 # Install VS Code extensions
 if command -v code >/dev/null 2>&1; then
   if [ -f "vscode_extensions.txt" ]; then
