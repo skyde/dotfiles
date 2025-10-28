@@ -24,8 +24,8 @@ disabled = true
 min_time = 1000
 show_milliseconds = true
 
-[line_break]
-disabled = true
+# [line_break]
+# disabled = true
 
 [time]
 disabled = false
