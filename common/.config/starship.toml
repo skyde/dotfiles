@@ -4,9 +4,8 @@
 # Inserts a blank line between shell prompts
 add_newline = true
 command_timeout = 1000
-format = """
-$all$fill$time
-$character"""
+format = "$all\n$character"
+right_format = "$time"
 
 [fill]
 symbol = ' '
@@ -24,8 +23,8 @@ disabled = true
 min_time = 1000
 show_milliseconds = true
 
-# [line_break]
-# disabled = true
+[line_break]
+disabled = true
 
 [time]
 disabled = false
