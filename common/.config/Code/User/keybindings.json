@@ -98,7 +98,7 @@
   {
     "key": "shift+f4",
     "command": "runCommands",
-    "when": "textInputFocus",
+    "when": "textInputFocus && !terminalFocus",
     "args": {
       "commands": [
         "scrollLineUp",
@@ -140,7 +140,7 @@
   {
     "key": "shift+f6",
     "command": "runCommands",
-    "when": "textInputFocus",
+    "when": "textInputFocus && !terminalFocus",
     "args": {
       "commands": [
         "scrollLineDown",
@@ -175,6 +175,56 @@
         "cursorDown",
         "scrollLineDown",
         "cursorDown"
+      ]
+    }
+  },
+  {
+    "key": "shift+f4",
+    "command": "runCommands",
+    "when": "terminalFocus",
+    "args": {
+      "commands": [
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp"
+      ]
+    }
+  },
+  {
+    "key": "shift+f6",
+    "command": "runCommands",
+    "when": "terminalFocus",
+    "args": {
+      "commands": [
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown"
       ]
     }
   },
