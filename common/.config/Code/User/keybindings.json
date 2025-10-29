@@ -19,7 +19,7 @@
   {
     "key": "pagedown",
     "command": "runCommands",
-    "when": "textInputFocus",
+    "when": "textInputFocus && !terminalFocus",
     "args": {
       "commands": [
         "scrollPageDown",
@@ -50,12 +50,17 @@
       ]
     }
   },
+  {
+    "key": "pagedown",
+    "command": "workbench.action.terminal.scrollPageDown",
+    "when": "terminalFocus"
+  },
 
   // Page Up - workround to make cursor movement match Nvim
   {
     "key": "pageup",
     "command": "runCommands",
-    "when": "textInputFocus",
+    "when": "textInputFocus && !terminalFocus",
     "args": {
       "commands": [
         "scrollPageUp",
@@ -81,6 +86,11 @@
         "cursorUp"
       ]
     }
+  },
+  {
+    "key": "pageup",
+    "command": "workbench.action.terminal.scrollPageUp",
+    "when": "terminalFocus"
   },
   // Build
   {
