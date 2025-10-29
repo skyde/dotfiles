@@ -55,6 +55,11 @@
     "command": "workbench.action.terminal.scrollPageDown",
     "when": "terminalFocus"
   },
+  {
+    "key": "pagedown",
+    "command": "workbench.action.terminal.scrollPageDown",
+    "when": "terminalEditorFocus"
+  },
 
   // Page Up - workround to make cursor movement match Nvim
   {
@@ -91,6 +96,11 @@
     "key": "pageup",
     "command": "workbench.action.terminal.scrollPageUp",
     "when": "terminalFocus"
+  },
+  {
+    "key": "pageup",
+    "command": "workbench.action.terminal.scrollPageUp",
+    "when": "terminalEditorFocus"
   },
   // Build
   {
@@ -214,9 +224,59 @@
     }
   },
   {
+    "key": "shift+f4",
+    "command": "runCommands",
+    "when": "terminalEditorFocus",
+    "args": {
+      "commands": [
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp",
+        "workbench.action.terminal.scrollUp"
+      ]
+    }
+  },
+  {
     "key": "shift+f6",
     "command": "runCommands",
     "when": "terminalFocus",
+    "args": {
+      "commands": [
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown",
+        "workbench.action.terminal.scrollDown"
+      ]
+    }
+  },
+  {
+    "key": "shift+f6",
+    "command": "runCommands",
+    "when": "terminalEditorFocus",
     "args": {
       "commands": [
         "workbench.action.terminal.scrollDown",
