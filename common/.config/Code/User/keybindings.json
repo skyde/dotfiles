@@ -563,6 +563,10 @@
         "extension.vim_escape"
       ]
     }
+  },
+  {
+    "key": "shift+f6",
+    "command": "-workbench.action.focusPreviousPart"
   }
   // {
   //   // There is an issue in the find it faster plugin where it does go back to your last focused window when closed
