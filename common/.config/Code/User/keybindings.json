@@ -19,7 +19,7 @@
   {
     "key": "pagedown",
     "command": "runCommands",
-    "when": "textInputFocus",
+    "when": "textInputFocus && !terminalFocus",
     "args": {
       "commands": [
         "scrollPageDown",
@@ -55,7 +55,7 @@
   {
     "key": "pageup",
     "command": "runCommands",
-    "when": "textInputFocus",
+    "when": "textInputFocus && !terminalFocus",
     "args": {
       "commands": [
         "scrollPageUp",
@@ -98,7 +98,7 @@
   {
     "key": "shift+f4",
     "command": "runCommands",
-    "when": "textInputFocus",
+    "when": "textInputFocus && !terminalFocus",
     "args": {
       "commands": [
         "scrollLineUp",
@@ -140,7 +140,7 @@
   {
     "key": "shift+f6",
     "command": "runCommands",
-    "when": "textInputFocus",
+    "when": "textInputFocus && !terminalFocus",
     "args": {
       "commands": [
         "scrollLineDown",
