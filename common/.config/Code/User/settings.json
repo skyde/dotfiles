@@ -1326,8 +1326,13 @@
       "commands": ["diffEditor.switchSide"]
     },
     {
-      // Revert the current change within the diff view (which uses Git)
+      // Revert the current change within the diff view
       "before": ["<leader>", "c", "v"],
+      "commands": ["diffEditor.revert"]
+    },
+    {
+      // Revert the current change within the diff view (which uses Git)
+      "before": ["<leader>", "c", "V"],
       "commands": ["git.revertSelectedRanges"]
     },
     // Testing
