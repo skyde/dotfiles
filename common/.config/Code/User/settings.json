@@ -445,12 +445,12 @@
     {
       // Increase text size (plus)
       "before": ["<leader>", "u", "p"],
-      "commands": ["editor.action.fontZoomIn"]
+      "commands": ["workbench.action.zoomIn"]
     },
     {
       // Decrease text size (minus)
       "before": ["<leader>", "u", "m"],
-      "commands": ["editor.action.fontZoomOut"]
+      "commands": ["workbench.action.zoomOut"]
     },
     {
       // Toggle inline parameter name hints
