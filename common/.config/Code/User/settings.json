@@ -1175,6 +1175,11 @@
       "commands": ["gitTreeCompare.changeBase"]
     },
     {
+      // Change repo for git tree compare
+      "before": ["<leader>", "g", "r"],
+      "commands": ["gitTreeCompare.changeRepository"]
+    },
+    {
       // Open a diff for the changes to the current file
       "before": ["<leader>", "g", "a"],
       "commands": ["git.viewChanges"]
