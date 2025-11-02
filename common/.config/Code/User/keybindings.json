@@ -365,7 +365,7 @@
     "command": "extension.multiCommand.execute",
     "when": "sideBarFocus && listFocus && !inputFocus",
     "args": {
-      "interval": 40,
+      "interval": 300,
       "sequence": [
         "list.focusDown",
         "list.select",
@@ -378,7 +378,7 @@
     "command": "extension.multiCommand.execute",
     "when": "sideBarFocus && listFocus && !inputFocus",
     "args": {
-      "interval": 40,
+      "interval": 300,
       "sequence": [
         "list.focusUp",
         "list.select",
