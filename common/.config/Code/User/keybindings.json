@@ -359,16 +359,32 @@
     "key": "d",
     "when": "filesExplorerFocus && !inputFocus"
   },
-  // Yazi-style navigation in Explorer
+  // Sidebar explorer & git tree compare focus
   {
     "key": "j",
-    "command": "list.focusDown",
-    "when": "filesExplorerFocus && !inputFocus"
+    "command": "extension.multiCommand.execute",
+    "when": "sideBarFocus && listFocus && !inputFocus",
+    "args": {
+      "interval": 40,
+      "sequence": [
+        "list.focusDown",
+        "list.select",
+        "workbench.action.focusSideBar"
+      ]
+    }
   },
   {
     "key": "k",
-    "command": "list.focusUp",
-    "when": "filesExplorerFocus && !inputFocus"
+    "command": "extension.multiCommand.execute",
+    "when": "sideBarFocus && listFocus && !inputFocus",
+    "args": {
+      "interval": 40,
+      "sequence": [
+        "list.focusUp",
+        "list.select",
+        "workbench.action.focusSideBar"
+      ]
+    }
   },
   // {
   //   "key": "g g",
