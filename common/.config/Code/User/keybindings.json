@@ -386,6 +386,19 @@
       ]
     }
   },
+  {
+    // (preview) selected item by opening diff and return focus back to the Git tree compare
+    "key": "p",
+    "command": "extension.multiCommand.execute",
+    "when": "sideBarFocus && listFocus && !inputFocus && !filesExplorerFocus",
+    "args": {
+      "interval": 400,
+      "sequence": [
+        "list.select",
+        "workbench.action.focusSideBar"
+      ]
+    }
+  },
   // {
   //   "key": "g g",
   //   "command": "list.focusFirst",
