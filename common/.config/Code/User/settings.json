@@ -40,6 +40,8 @@
   "terminal.integrated.defaultProfile.linux": "zsh",
   "terminal.integrated.defaultProfile.osx": "zsh",
   "terminal.integrated.defaultProfile.windows": "PowerShell",
+  // Ensure tmux receives Option/Alt based prefixes inside the VS Code terminal
+  "terminal.integrated.macOptionIsMeta": true,
   // Forward Cmd/Ctrl+S to the terminal by removing the save command from the skip list
   // This subtracts from VS Code's default list rather than replacing it
   "terminal.integrated.commandsToSkipShell": ["-workbench.action.files.save"],
