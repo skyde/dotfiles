@@ -169,6 +169,20 @@
         "panel": "dedicated"
       },
       "problemMatcher": []
+    },
+    {
+        "label": "Run Git CL Format",
+        "type": "shell",
+        "command": "git cl format",
+        "presentation": {
+            "echo": false,
+            "reveal": "silent",
+            "focus": false,
+            "panel": "dedicated",
+            "showReuseMessage": false,
+            "clear": true
+        },
+        "problemMatcher": []
     }
   ]
 }
