@@ -1676,7 +1676,7 @@
   "vim.autoindent": true, // Auto-indent like Neovim
   // Zen Mode
   "zenMode.centerLayout": true,
-  "zenMode.showTabs": "none",
+  "zenMode.showTabs": "multiple",
   "zenMode.hideLineNumbers": false,
   "zenMode.fullScreen": true,
   "zenMode.hideStatusBar": true,
