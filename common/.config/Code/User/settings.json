@@ -938,6 +938,16 @@
       "before": ["<leader>", "c", "e"],
       "commands": ["editor.action.codeAction"]
     },
+    {
+      "before": ["<leader>", "c", "f"],
+      "commands": [
+          "workbench.action.files.save",
+          {
+              "command": "workbench.action.tasks.runTask",
+              "args": "Run Git CL Format"
+          }
+        ]
+    },
     // Errors
     {
       // Global view if problems / errors
