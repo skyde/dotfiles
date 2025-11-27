@@ -183,6 +183,20 @@
             "clear": true
         },
         "problemMatcher": []
+    },
+    {
+      "label": "Copy Diff Branch",
+      "type": "shell",
+      "command": "diff-branch | pbcopy",
+      "presentation": {
+        "echo": false,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": []
     }
   ]
 }
