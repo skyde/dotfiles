@@ -1236,6 +1236,16 @@
         "workbench.action.terminal.toggleTerminal"
       ]
     },
+    {
+      // Copy diff of all changes compared to main (or the branch you are based off of)
+      "before": ["<leader>", "g", "y"],
+      "commands": [
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "Copy Diff Branch"
+        }
+      ]
+    },
     // {
     //   "before": ["<leader>", "g", "A"],
     //   "commands": ["gitTreeCompare.refresh", "gitTreeCompare.openAllChanges"]
