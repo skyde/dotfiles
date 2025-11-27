@@ -33,3 +33,9 @@ gui:
 keybinding:
   universal:
     undo: u
+
+customCommands:
+  - key: "Z"
+    command: "sh -c 'id=$(git stash create); if [ -n \"$id\" ]; then git stash store -m \"snapshot $(date +%Y-%m-%d\\ %H:%M:%S)\" \"$id\"; fi'"
+    context: "global"
+    description: "Stash snapshot (keep worktree)"
