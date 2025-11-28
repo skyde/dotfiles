@@ -14,6 +14,7 @@ os:
   editPreset: nvim
   open: "code --reuse-window {{filename}}"
   openDirInEditor: "code --reuse-window {{dir}}"
+  copyToClipboardCmd: "echo {{text}} | osc-copy"
 
 gui:
   scrollHeight: 32
