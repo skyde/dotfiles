@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+#!/bin/bash
+
+# Read input from stdin
+data=$(base64 | tr -d '\n')
+
+if [[ -n "${TMUX:-}" ]]; then
+    # Tmux wrapping
+    printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$data" > /dev/tty
+else
+    # Standard OSC 52
+    printf "\033]52;c;%s\a" "$data" > /dev/tty
+fi
