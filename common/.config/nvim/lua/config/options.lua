@@ -34,6 +34,37 @@ if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 or vim.fn.has("win32unix
     },
     cache_enabled = 0, -- 1 if you want selections cached for speed
   }
+elseif vim.fn.executable("osc-copy") == 1 then
+  local paste_commands
+
+  if vim.fn.executable("wl-paste") == 1 then
+    paste_commands = {
+      ["+"] = { "wl-paste", "--no-newline" },
+      ["*"] = { "wl-paste", "--no-newline" },
+    }
+  elseif vim.fn.executable("pbpaste") == 1 then
+    paste_commands = {
+      ["+"] = "pbpaste",
+      ["*"] = "pbpaste",
+    }
+  elseif vim.fn.executable("xclip") == 1 then
+    paste_commands = {
+      ["+"] = { "xclip", "-o", "-selection", "clipboard" },
+      ["*"] = { "xclip", "-o", "-selection", "primary" },
+    }
+  end
+
+  if paste_commands then
+    vim.g.clipboard = {
+      name = "osc-copy",
+      copy = {
+        ["+"] = "osc-copy",
+        ["*"] = "osc-copy",
+      },
+      paste = paste_commands,
+      cache_enabled = 0,
+    }
+  end
 end
 
 vim.opt.clipboard:append("unnamedplus")
