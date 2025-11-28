@@ -187,7 +187,7 @@
     {
       "label": "Copy Diff Branch",
       "type": "shell",
-      "command": "diff-branch | pbcopy",
+      "command": "diff-branch | osc-copy",
       "presentation": {
         "echo": false,
         "reveal": "silent",
