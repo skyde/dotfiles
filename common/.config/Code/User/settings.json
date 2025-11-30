@@ -50,14 +50,18 @@
   "editor.letterSpacing": 0.35,
   "window.zoomLevel": 0,
 
-  // Aux Elements Smaller
+  // // Legacy
+  // "editor.fontSize": 16,
+  // "terminal.integrated.fontSize": 16,
+
+  // // Aux Elements Smaller
   // "editor.lineHeight": 1.44,
   // "editor.fontSize": 17,
   // "terminal.integrated.fontSize": 17,
   // "editor.letterSpacing": 0.35,
   // "window.zoomLevel": -0.8,
 
-  // Nvim Style
+  // // Nvim Style
   // "editor.fontFamily": "'JetBrains Mono', 'JetBrainsMono Nerd Font', monospace",
   // "editor.fontLigatures": true,
   // "editor.fontWeight": "250",
