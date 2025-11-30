@@ -34,11 +34,28 @@
   "security.workspace.trust.untrustedFiles": "prompt",
   // Increase terminal scrollback similar to using a terminal split in Neovim
   "terminal.integrated.scrollback": 10000,
-  
+
   // Standard Style
   "editor.fontFamily": "JetBrainsMono Nerd Font, JetBrains Mono, monospace",
   "editor.fontLigatures": true,
   "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font, JetBrains Mono, monospace",
+  "terminal.integrated.fontLigatures.enabled": true,
+  "terminal.integrated.enableImages": true,
+
+  // Unified Size
+  "editor.lineHeight": 1.44,
+  "editor.fontSize": 14.5,
+  "terminal.integrated.fontSize": 14.5,
+  "terminal.integrated.letterSpacing": 1.4,
+  "editor.letterSpacing": 0.35,
+  "window.zoomLevel": 0,
+
+  // Aux Elements Smaller
+  // "editor.lineHeight": 1.44,
+  // "editor.fontSize": 17,
+  // "terminal.integrated.fontSize": 17,
+  // "editor.letterSpacing": 0.35,
+  // "window.zoomLevel": -0.8,
 
   // Nvim Style
   // "editor.fontFamily": "'JetBrains Mono', 'JetBrainsMono Nerd Font', monospace",
@@ -56,7 +73,7 @@
   // This subtracts from VS Code's default list rather than replacing it
   "terminal.integrated.commandsToSkipShell": ["-workbench.action.files.save"],
   "editor.formatOnSave": true,
-  "window.zoomLevel": 0.2,
+  // "window.zoomLevel": 0.2,
   // Cursor Shape & Style
   "editor.cursorStyle": "block-outline",
   // Used when VIM is disabled
@@ -1547,8 +1564,7 @@
   "workbench.colorTheme": "Visual Studio Dark - C++",
   "window.titleBarStyle": "custom",
   "editor.minimap.enabled": false,
-  "editor.fontSize": 16,
-  "terminal.integrated.fontSize": 16,
+
   "terminal.integrated.enableVisualBell": false,
   "terminal.integrated.drawBoldTextInBrightColors": false,
   "accessibility.signals.terminalBell": {
@@ -1696,7 +1712,7 @@
   "vim.autoindent": true, // Auto-indent like Neovim
   // Zen Mode
   "zenMode.centerLayout": true,
-  "zenMode.showTabs": "multiple",
+  "zenMode.showTabs": "none",
   "zenMode.hideLineNumbers": false,
   "zenMode.fullScreen": true,
   "zenMode.hideStatusBar": true,
@@ -1758,5 +1774,6 @@
   // Disable auto detect as this can cause opening of tasks to be very slow on large repos
   "task.autoDetect": "off",
   "window.confirmBeforeClose": "keyboardOnly",
-  "terminal.integrated.stickyScroll.enabled": false
+  "terminal.integrated.stickyScroll.enabled": false,
+  "diffEditor.codeLens": true
 }
