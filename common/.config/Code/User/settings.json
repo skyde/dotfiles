@@ -53,6 +53,7 @@
   // // Legacy
   // "editor.fontSize": 16,
   // "terminal.integrated.fontSize": 16,
+  // "window.zoomLevel": 0.2,
 
   // // Aux Elements Smaller
   // "editor.lineHeight": 1.44,
