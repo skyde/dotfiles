@@ -6,7 +6,10 @@
       "label": "StandardTerminal",
       "type": "shell",
       "command": "zsh",
-      "args": [],
+      "args": [
+        "-c",
+        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); tmux new-session -A -s \"$sess\""
+      ],
       "presentation": {
         "echo": false,
         "clear": true,
