@@ -23,6 +23,41 @@
       },
       "problemMatcher": []
     },
+    {
+      "label": "KillTmuxSession",
+      "type": "shell",
+      "command": "zsh",
+      "args": [
+        "-c",
+        "kill -9 $(pgrep tmux) 2>/dev/null || true"
+      ],
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "close": true,
+        "panel": "dedicated"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RestartTmuxTerminal",
+      "dependsOn": [
+        "KillTmuxSession",
+        "StandardTerminal"
+      ],
+      "dependsOrder": "sequence",
+      "type": "shell",
+      "command": "echo",
+      "args": [
+        "Restarted tmux session"
+      ],
+      "problemMatcher": []
+    },
     // {
     //   "label": "Switch Running LF to Current Directory",
     //   "type": "shell",

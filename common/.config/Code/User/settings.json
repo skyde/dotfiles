@@ -420,6 +420,18 @@
       //   "workbench.action.terminal.focusAtIndex1"
       // ]
     },
+    {
+      // (R)estart terminal
+      "before": ["<leader>", "f", "T"],
+      "commands": [
+        "task.custom.openTerminal",
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "RestartTmuxTerminal"
+        },
+        "extension.vim_escape"
+      ]
+    },
     // Copilot Chat
     {
       // Open auxiliary bar (focus Copilot chat)
