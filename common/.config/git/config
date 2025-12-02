@@ -152,3 +152,6 @@
 
 [include]
     path = ~/.gitconfig-local
+
+[alias]
+	dft = -c diff.external=difft diff
