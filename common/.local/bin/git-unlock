@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# 1. Find the .git directory
+# We use 'git rev-parse' because if you use worktrees (common in Chromium),
+# the .git directory is not just a folder in the current path.
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+
+if [ -z "$GIT_DIR" ]; then
+    echo "Error: You are not inside a git repository."
+    exit 1
+fi
+
+echo "Checking for stale lock files in: $GIT_DIR"
+
+# 2. Safety Check: Ensure no git processes are currently running
+# Deleting locks while git is running can corrupt your repo.
+# We check for 'git' processes but exclude this script and grep itself.
+RUNNING_PROCESSES=$(ps -ef | grep "git " | grep -v "grep" | grep -v "git-unlock")
+
+if [ -n "$RUNNING_PROCESSES" ]; then
+    echo ""
+    echo "⚠️  WARNING: It looks like Git processes are currently running."
+    echo "Deleting lock files while Git is active is dangerous."
+    echo ""
+    read -p "Are you sure you want to force delete lock files? (y/N) " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo "Aborting."
+        exit 0
+    fi
+fi
+
+# 3. Define the specific lock files to remove
+LOCK_FILES=(
+    "$GIT_DIR/index.lock"
+    "$GIT_DIR/HEAD.lock"
+    "$GIT_DIR/config.lock"
+    "$GIT_DIR/packed-refs.lock"
+    "$GIT_DIR/objects/info/commit-graphs/commit-graph-chain.lock"
+)
+
+FOUND=0
+
+# Remove the known main lock files
+for lockfile in "${LOCK_FILES[@]}"; do
+    if [ -f "$lockfile" ]; then
+        echo "Removing: $lockfile"
+        rm -f "$lockfile"
+        FOUND=1
+    fi
+done
+
+# Remove loose reference locks (e.g., refs/heads/main.lock)
+# We use 'find' to safely look inside the refs directory only.
+if [ -d "$GIT_DIR/refs" ]; then
+    find "$GIT_DIR/refs" -name "*.lock" -type f 2>/dev/null | while read -r file; do
+        echo "Removing ref lock: $file"
+        rm -f "$file"
+        FOUND=1
+    done
+fi
+
+if [ $FOUND -eq 0 ]; then
+    echo "No lock files found. Your repo seems clean."
+else
+    echo "Locks cleared. You should be able to run your command now."
+fi
