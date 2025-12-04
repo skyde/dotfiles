@@ -8,9 +8,10 @@
 [mgr]
 prepend_keymap = [
   # Operations
+  { on = "<Enter>",   run = "plugin smart-enter",          desc = "Enter directory (or open file)" },
   { on = "<Esc>", run = "quit", desc = "Close Yazi" },
-	# { on = "s",         run = "open",                        desc = "Open selected files" },
-	# { on = "S",         run = "open --interactive",          desc = "Open selected files interactively" },
+        # { on = "s",         run = "open",                        desc = "Open selected files" },
+        # { on = "S",         run = "open --interactive",          desc = "Open selected files interactively" },
 	{ on = "x",         run = "yank --cut",                  desc = "Yank selected files (cut)" },
 	{ on = "X",         run = "shell 'chmod +x \"$@\"'",     desc = "Make executable" },
 	{ on = "d",         run = "remove",                      desc = "Trash selected files" },
