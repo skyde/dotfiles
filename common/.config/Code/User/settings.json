@@ -1224,6 +1224,11 @@
       "commands": ["gitTreeCompare.changeRepository"]
     },
     {
+      // Refresh for git tree compare
+      "before": ["<leader>", "g", "R"],
+      "commands": ["gitTreeCompare.refresh"]
+    },
+    {
       // Open a diff for the changes to the current file
       "before": ["<leader>", "g", "a"],
       "commands": ["git.viewChanges"]
