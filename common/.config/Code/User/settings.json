@@ -35,13 +35,6 @@
   // Increase terminal scrollback similar to using a terminal split in Neovim
   "terminal.integrated.scrollback": 10000,
 
-  // Standard Style
-  "editor.fontFamily": "JetBrainsMono Nerd Font, JetBrains Mono, monospace",
-  "editor.fontLigatures": true,
-  "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font, JetBrains Mono, monospace",
-  "terminal.integrated.fontLigatures.enabled": true,
-  "terminal.integrated.enableImages": true,
-
   // Unified Size
   "editor.lineHeight": 1.44,
   "editor.fontSize": 14.5,
@@ -49,6 +42,13 @@
   "terminal.integrated.letterSpacing": 1.4,
   "editor.letterSpacing": 0.35,
   "window.zoomLevel": 0,
+
+  // Standard Style
+  // "editor.fontFamily": "JetBrainsMono Nerd Font, JetBrains Mono, monospace",
+  // "editor.fontLigatures": true,
+  // "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font, JetBrains Mono, monospace",
+  // "terminal.integrated.fontLigatures.enabled": true,
+  // "terminal.integrated.enableImages": true,
 
   // // Legacy
   // "editor.fontSize": 16,
@@ -62,12 +62,16 @@
   // "editor.letterSpacing": 0.35,
   // "window.zoomLevel": -0.8,
 
-  // // Nvim Style
-  // "editor.fontFamily": "'JetBrains Mono', 'JetBrainsMono Nerd Font', monospace",
-  // "editor.fontLigatures": true,
-  // "editor.fontWeight": "250",
-  // "editor.fontVariations": "'wght' 250",
-  // "editor.letterSpacing": 0.35,
+  // Nvim Style 2
+  "editor.fontFamily": "'JetBrains Mono', 'JetBrainsMono Nerd Font', monospace",
+  "terminal.integrated.fontWeight": "320",
+  "terminal.integrated.fontLigatures.enabled": true,
+  "terminal.integrated.enableImages": true,
+  "terminal.integrated.fontFamily": "'JetBrains Mono', 'JetBrainsMono Nerd Font', monospace",
+  "terminal.integrated.fontWeightBold":"500",
+  "editor.fontWeight": "250",
+  "editor.fontVariations": "'wght' 250",
+  "editor.fontLigatures": true,
 
   "terminal.integrated.defaultProfile.linux": "zsh",
   "terminal.integrated.defaultProfile.osx": "zsh",
