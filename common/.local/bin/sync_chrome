@@ -48,7 +48,7 @@ git multi-pack-index write
 
 if $aggressive_gc; then
   SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  "${SCRIPT_DIR}/chrome_gc_aggressive"
+  "${SCRIPT_DIR}/chrome-gc-aggressive"
 else
   echo "Running git garbage collection..."
   git gc --prune=now
