@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Copy the diff between the current branch and its nearest base to the clipboard.
+# Uses diff-branch to find the base and osc-copy to send to the terminal clipboard handler.
+
+diff-branch "$@" | osc-copy
