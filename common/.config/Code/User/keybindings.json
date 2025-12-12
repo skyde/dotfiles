@@ -7,13 +7,13 @@
     // Ctrl left to jump words
     "key": "ctrl+left",
     "command": "cursorWordStartLeft",
-    "when": "editorTextFocus"
+    "when": "editorTextFocus && (!vim.active || vim.mode == 'Insert')"
   },
   {
     // Ctrl right to jump words
     "key": "ctrl+right",
     "command": "cursorWordEndRight",
-    "when": "editorTextFocus"
+    "when": "editorTextFocus && (!vim.active || vim.mode == 'Insert')"
   },
   // Page Down - workround to make cursor movement match Nvim
   {
