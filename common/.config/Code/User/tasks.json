@@ -188,9 +188,9 @@
         "problemMatcher": []
     },
     {
-      "label": "Copy Diff Branch",
+      "label": "Copy Git Diff",
       "type": "shell",
-      "command": "diff-branch | osc-copy",
+      "command": "git-copy",
       "presentation": {
         "echo": false,
         "reveal": "silent",
