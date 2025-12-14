@@ -410,7 +410,11 @@
         "task.custom.openTerminal",
         {
           "command": "workbench.action.tasks.runTask",
-          "args": "StandardTerminal"
+          "args": "Tmux: Ensure Session"
+        },
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "Tmux: Switch to Terminal"
         },
         // Click escape so we don't come back to a strange mode
         "extension.vim_escape"
@@ -424,7 +428,11 @@
         "task.custom.openTerminal",
         {
           "command": "workbench.action.tasks.runTask",
-          "args": "StandardTerminal"
+          "args": "Tmux: Ensure Session"
+        },
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "Tmux: Switch to Terminal"
         },
         // Click escape so we don't come back to a strange mode
         "extension.vim_escape"
@@ -439,44 +447,62 @@
       // ]
     },
     // Copilot Chat
-    {
-      // Open auxiliary bar (focus Copilot chat)
-      "before": ["<leader>", "a"],
-      "commands": ["workbench.action.chat.open"]
-    },
+    // {
+    //   // Open auxiliary bar (focus Copilot chat)
+    //   "before": ["<leader>", "a"],
+    //   "commands": ["workbench.action.chat.open"]
+    // },
     {
       // Close auxiliary bar
       "before": ["<leader>", "A"],
       "commands": ["workbench.action.toggleAuxiliaryBar"]
     },
     // Artificial (Intelligence)
+    // {
+    //   // Accept Ours (don't take the AI edit)
+    //   "before": ["<leader>", "i", "o"],
+    //   "commands": ["chatEditor.action.undoHunk"]
+    // },
+    // {
+    //   // Accept All of Ours (don't take the AI edit)
+    //   "before": ["<leader>", "i", "O"],
+    //   "commands": ["chatEditor.action.reject"]
+    // },
+    // {
+    //   // Accept Theirs (take the AI edit)
+    //   "before": ["<leader>", "i", "t"],
+    //   "commands": ["chatEditor.action.acceptHunk"]
+    // },
+    // {
+    //   // Accept All of Theirs (take the AI edit)
+    //   "before": ["<leader>", "i", "T"],
+    //   "commands": ["chatEditor.action.acceptAllEdits"]
+    // },
+    // {
+    //   "before": ["<leader>", "i", "n"],
+    //   "commands": ["chatEditor.action.navigateNext"]
+    // },
+    // {
+    //   "before": ["<leader>", "i", "N"],
+    //   "commands": ["chatEditor.action.navigatePrevious"]
+    // },
     {
-      // Accept Ours (don't take the AI edit)
-      "before": ["<leader>", "i", "o"],
-      "commands": ["chatEditor.action.undoHunk"]
+      // Attach to tmux AI window (index 1)
+      "before": ["<leader>", "a"],
+      "commands": [
+        // Ensure the session exists
+        { "command": "workbench.action.tasks.runTask", "args": "Tmux: Ensure Session" },
+        { "command": "workbench.action.tasks.runTask", "args": "Tmux: Switch to AI" }
+      ]
     },
     {
-      // Accept All of Ours (don't take the AI edit)
-      "before": ["<leader>", "i", "O"],
-      "commands": ["chatEditor.action.reject"]
-    },
-    {
-      // Accept Theirs (take the AI edit)
-      "before": ["<leader>", "i", "t"],
-      "commands": ["chatEditor.action.acceptHunk"]
-    },
-    {
-      // Accept All of Theirs (take the AI edit)
-      "before": ["<leader>", "i", "T"],
-      "commands": ["chatEditor.action.acceptAllEdits"]
-    },
-    {
-      "before": ["<leader>", "i", "n"],
-      "commands": ["chatEditor.action.navigateNext"]
-    },
-    {
-      "before": ["<leader>", "i", "N"],
-      "commands": ["chatEditor.action.navigatePrevious"]
+      // Attach to tmux terminal window (index 3)
+      "before": ["<leader>", "i"],
+      "commands": [
+        // Ensure the session exists
+        { "command": "workbench.action.tasks.runTask", "args": "Tmux: Ensure Session" },
+        { "command": "workbench.action.tasks.runTask", "args": "Tmux: Switch to Terminal" }
+      ]
     },
     // UI
     {
