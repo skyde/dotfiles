@@ -844,7 +844,7 @@
     },
     {
       // Index current workspace with Zoekt
-      "before": ["<leader>", "s", "i"],
+      "before": ["<leader>", "s", "I"],
       "commands": [
         {
           // Run the zoekt index task
