@@ -3,19 +3,61 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "StandardTerminal",
+      "label": "Tmux: Ensure Session",
       "type": "shell",
       "command": "zsh",
       "args": [
         "-c",
-        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); tmux new-session -A -s \"$sess\""
+        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); if ! tmux has-session -t \"$sess\" 2>/dev/null; then tmux new-session -d -s \"$sess\" -n AI -c \"${workspaceFolder}\" 'gemini --yolo'; tmux new-window -t \"$sess\":2 -n AI -c \"${workspaceFolder}\" 'gemini --yolo'; tmux new-window -t \"$sess\":3 -n terminal -c \"${workspaceFolder}\"; fi"
+      ],
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "silent",
+        "focus": false,
+        "close": true,
+        "panel": "dedicated"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Tmux: Switch to AI",
+      "type": "shell",
+      "command": "zsh",
+      "args": [
+        "-c",
+        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); tmux select-window -t \"$sess:1\" 2>/dev/null || exit $?; exec tmux attach-session -t \"$sess\""
       ],
       "presentation": {
         "echo": false,
         "clear": true,
         "reveal": "always",
         "focus": true,
-        "close": true,
+        "close": false,
+        "panel": "dedicated"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Tmux: Switch to Terminal",
+      "type": "shell",
+      "command": "zsh",
+      "args": [
+        "-c",
+        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); tmux select-window -t \"$sess:3\" 2>/dev/null || exit $?; exec tmux attach-session -t \"$sess\""
+      ],
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "close": false,
         "panel": "dedicated"
       },
       "runOptions": {
