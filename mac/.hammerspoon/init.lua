@@ -63,9 +63,9 @@ local tap = hs.eventtap
 
 			if not otherKeyDuringCmd and elapsed < CMD_TAP_THRESHOLD and externalKeyboardPresent() then -- <-- live query #1
 				hs.timer.doAfter(CMD_RELEASE_DELAY, function()
-					if not cmdDown and not otherKeyDuringCmd and externalKeyboardPresent() then -- <-- live query #2
-						hs.eventtap.keyStroke({ "cmd" }, "space", 0)
-					end
+						if not cmdDown and not otherKeyDuringCmd and externalKeyboardPresent() then -- <-- live query #2
+							hs.eventtap.keyStroke({ "cmd" }, "space", 0)
+						end
 				end)
 			end
 		elseif cmdDown and (flags.alt or flags.shift or flags.ctrl or flags.fn) then
@@ -97,3 +97,43 @@ hs.hotkey.bind(
 		hs.eventtap.keyStrokes("\\")
 	end
 )
+
+--------------------------------------------------------------------------------
+-- App & Window Switching Shortcuts
+--------------------------------------------------------------------------------
+
+local function focusVSCodeInstance(keyword)
+    local app = hs.application.find("Code") or hs.application.find("com.microsoft.VSCode")
+    
+    if app then
+        local found = false
+        -- Iterate through all windows of VS Code
+        for _, win in ipairs(app:allWindows()) do
+            local title = win:title()
+            -- Case-insensitive match for the keyword in the window title
+            if title and string.find(string.lower(title), string.lower(keyword), 1, true) then
+                win:focus()
+                found = true
+                break
+            end
+        end
+        
+        if not found then
+            hs.alert.show("VS Code: No window found with '" .. keyword .. "'")
+        end
+    else
+        hs.alert.show("VS Code is not running")
+    end
+end
+
+-- VS Code Instances
+-- Requires adding "window.title": "${activeEditorShort} - [Tag]" to .vscode/settings.json or workspace settings
+hs.hotkey.bind({"cmd"}, "1", function() focusVSCodeInstance("[Local] Visual Studio Code") end)
+hs.hotkey.bind({"cmd"}, "2", function() focusVSCodeInstance("[Top] Visual Studio Code") end)
+hs.hotkey.bind({"cmd"}, "3", function() focusVSCodeInstance("[Virtual] Visual Studio Code") end)
+
+-- Other Apps
+hs.hotkey.bind({"cmd"}, "4", function() hs.application.launchOrFocus("Google Chat") end)
+hs.hotkey.bind({"cmd"}, "5", function() hs.application.launchOrFocus("Google Chrome") end)
+hs.hotkey.bind({"cmd"}, "6", function() hs.application.launchOrFocus("Google Chrome Beta") end)
+hs.hotkey.bind({"cmd"}, "7", function() hs.application.launchOrFocus("kitty") end)
