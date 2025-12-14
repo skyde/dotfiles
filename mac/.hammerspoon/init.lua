@@ -133,7 +133,7 @@ hs.hotkey.bind({"cmd"}, "2", function() focusVSCodeInstance("[Top] Visual Studio
 hs.hotkey.bind({"cmd"}, "3", function() focusVSCodeInstance("[Virtual] Visual Studio Code") end)
 
 -- Other Apps
-hs.hotkey.bind({"cmd"}, "4", function() hs.application.launchOrFocus("Google Chat") end)
-hs.hotkey.bind({"cmd"}, "5", function() hs.application.launchOrFocus("Google Chrome") end)
+hs.hotkey.bind({"cmd"}, "4", function() hs.application.launchOrFocus("Google Chrome") end)
+hs.hotkey.bind({"cmd"}, "5", function() hs.application.launchOrFocus("Google Chat") end)
 hs.hotkey.bind({"cmd"}, "6", function() hs.application.launchOrFocus("Google Chrome Beta") end)
 hs.hotkey.bind({"cmd"}, "7", function() hs.application.launchOrFocus("kitty") end)
