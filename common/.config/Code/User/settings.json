@@ -439,44 +439,78 @@
       // ]
     },
     // Copilot Chat
-    {
-      // Open auxiliary bar (focus Copilot chat)
-      "before": ["<leader>", "a"],
-      "commands": ["workbench.action.chat.open"]
-    },
-    {
-      // Close auxiliary bar
-      "before": ["<leader>", "A"],
-      "commands": ["workbench.action.toggleAuxiliaryBar"]
-    },
+    // {
+    //   // Open auxiliary bar (focus Copilot chat)
+    //   "before": ["<leader>", "a"],
+    //   "commands": ["workbench.action.chat.open"]
+    // },
+    // {
+    //   // Close auxiliary bar
+    //   "before": ["<leader>", "A"],
+    //   "commands": ["workbench.action.toggleAuxiliaryBar"]
+    // },
     // Artificial (Intelligence)
+    // {
+    //   // Accept Ours (don't take the AI edit)
+    //   "before": ["<leader>", "i", "o"],
+    //   "commands": ["chatEditor.action.undoHunk"]
+    // },
+    // {
+    //   // Accept All of Ours (don't take the AI edit)
+    //   "before": ["<leader>", "i", "O"],
+    //   "commands": ["chatEditor.action.reject"]
+    // },
+    // {
+    //   // Accept Theirs (take the AI edit)
+    //   "before": ["<leader>", "i", "t"],
+    //   "commands": ["chatEditor.action.acceptHunk"]
+    // },
+    // {
+    //   // Accept All of Theirs (take the AI edit)
+    //   "before": ["<leader>", "i", "T"],
+    //   "commands": ["chatEditor.action.acceptAllEdits"]
+    // },
+    // {
+    //   "before": ["<leader>", "i", "n"],
+    //   "commands": ["chatEditor.action.navigateNext"]
+    // },
+    // {
+    //   "before": ["<leader>", "i", "N"],
+    //   "commands": ["chatEditor.action.navigatePrevious"]
+    // },
+
+    // Tmux Switching
     {
-      // Accept Ours (don't take the AI edit)
-      "before": ["<leader>", "i", "o"],
-      "commands": ["chatEditor.action.undoHunk"]
+      "before": ["<leader>", "a"],
+      "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.openTerminal",
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "Tmux: Switch to AI"
+        },
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "StandardTerminal"
+        },
+        "extension.vim_escape"
+      ]
     },
     {
-      // Accept All of Ours (don't take the AI edit)
-      "before": ["<leader>", "i", "O"],
-      "commands": ["chatEditor.action.reject"]
-    },
-    {
-      // Accept Theirs (take the AI edit)
-      "before": ["<leader>", "i", "t"],
-      "commands": ["chatEditor.action.acceptHunk"]
-    },
-    {
-      // Accept All of Theirs (take the AI edit)
-      "before": ["<leader>", "i", "T"],
-      "commands": ["chatEditor.action.acceptAllEdits"]
-    },
-    {
-      "before": ["<leader>", "i", "n"],
-      "commands": ["chatEditor.action.navigateNext"]
-    },
-    {
-      "before": ["<leader>", "i", "N"],
-      "commands": ["chatEditor.action.navigatePrevious"]
+      "before": ["<leader>", "i"],
+      "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.openTerminal",
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "Tmux: Switch to Terminal"
+        },
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "StandardTerminal"
+        },
+        "extension.vim_escape"
+      ]
     },
     // UI
     {

@@ -5,10 +5,10 @@
     {
       "label": "StandardTerminal",
       "type": "shell",
-      "command": "zsh",
+      "command": "bash",
       "args": [
         "-c",
-        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); tmux new-session -A -s \"$sess\""
+        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\""
       ],
       "presentation": {
         "echo": false,
@@ -20,6 +20,40 @@
       },
       "runOptions": {
         "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Tmux: Switch to AI",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 1 --no-attach"
+      ],
+      "presentation": {
+        "echo": false,
+        "reveal": "silent",
+        "focus": false,
+        "close": true,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Tmux: Switch to Terminal",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 3 --no-attach"
+      ],
+      "presentation": {
+        "echo": false,
+        "reveal": "silent",
+        "focus": false,
+        "close": true,
+        "panel": "shared"
       },
       "problemMatcher": []
     },

@@ -1,0 +1,45 @@
+#!/bin/bash
+SESSION_NAME="$1"
+WINDOW_INDEX="$2"
+NO_ATTACH="$3"
+
+if [ -z "$SESSION_NAME" ]; then
+    echo "Usage: $0 <session_name> [window_index] [--no-attach]"
+    exit 1
+fi
+
+# Ensure session exists with correct layout if it doesn't exist at all
+if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+    # Create new session detached, name first window 'AI'
+    tmux new-session -d -s "$SESSION_NAME" -n "AI" "gemini --yolo"
+    # Create second window 'AI'
+    tmux new-window -t "$SESSION_NAME":2 -n "AI" "gemini --yolo"
+    # Create third window 'terminal'
+    tmux new-window -t "$SESSION_NAME":3 -n "terminal"
+    # Select the first window initially
+    tmux select-window -t "$SESSION_NAME":1
+fi
+
+# Switch window globally for the session
+if [ -n "$WINDOW_INDEX" ]; then
+    tmux select-window -t "${SESSION_NAME}:${WINDOW_INDEX}"
+fi
+
+# Check if we should exit without attaching
+if [ "$NO_ATTACH" == "--no-attach" ]; then
+    exit 0
+fi
+
+# Attach logic
+if [ -n "$TMUX" ]; then
+    # We are inside tmux. Switch client to this session if needed.
+    CURRENT_SESSION=$(tmux display-message -p '#S')
+    if [ "$CURRENT_SESSION" != "$SESSION_NAME" ]; then
+         tmux switch-client -t "$SESSION_NAME"
+    fi
+else
+    # We are outside tmux (e.g., standard VS Code terminal task).
+    # Attach to the session.
+    # 'new-session -A' attaches to the existing session.
+    exec tmux new-session -A -s "$SESSION_NAME"
+fi
