@@ -4,6 +4,8 @@
 #   --code   open matches in VS Code; default opens in nvim.
 #   PATH     directory or file to use as the search root; defaults to $PWD.
 # Requires: ripgrep (rg), fzf, bat, nvim (or VS Code if --code).
+# Special behavior: If the git repo is named 'src', uses git grep for C/C++ files.
+
 set -euo pipefail
 
 # Build args as an array so quoting stays correct.
@@ -41,43 +43,98 @@ command -v bat >/dev/null 2>&1 || {
   exit 1
 }
 
-# We output three colon-delimited fields for fzf:
+# Awk scripts for formatting fzf output
+# We export them to avoid quoting hell when constructing the reload command.
+
+# For standard RG output:
 #   1: raw path
 #   2: raw line number
 #   3: pretty display (colored "path:line[:col]: text" with rg match highlights)
-reload_cmd="cd '$root' && rg --line-number --column --with-filename --no-heading --color=always --smart-case -- {q} \
-  | awk 'BEGIN{
-      FS=\":\"; OFS=\":\";
-      mag=\"\\033[38;2;106;153;85m\";   # filename color
-      gre=\"\\033[32m\";                # line/col color
-      rst=\"\\033[0m\";
-    }
-    function strip_ansi(s) {
-      gsub(/\\033\\[[0-9;]*[A-Za-z]/, \"\", s);
-      return s;
-    }
-    {
-      raw=\$0;
-      p=strip_ansi(\$1);
-      l=strip_ansi(\$2);
-      rest=raw;
-      c=strip_ansi(\$3);
-      if (c ~ /^[0-9]+$/) {
-        if (match(rest, /^[^:]*:[^:]*:[^:]*:/)) {
-          rest = substr(rest, RLENGTH + 1);
-        }
-        pretty = mag p rst \" \" gre rst \" \" gre rst \" \" rest;
-      } else {
-        if (match(rest, /^[^:]*:[^:]*:/)) {
-          rest = substr(rest, RLENGTH + 1);
-        }
-        pretty = mag p rst \"   \" rst \"   \" rest;
+export RG_AWK_SCRIPT='BEGIN{
+    FS=":"; OFS=":";
+    mag="\033[38;2;106;153;85m";   # filename color
+    gre="\033[32m";                # line/col color
+    rst="\033[0m";
+  }
+  function strip_ansi(s) {
+    gsub(/\033\[[0-9;]*[A-Za-z]/, "", s);
+    return s;
+  }
+  {
+    raw=$0;
+    p=strip_ansi($1);
+    l=strip_ansi($2);
+    rest=raw;
+    c=strip_ansi($3);
+    if (c ~ /^[0-9]+$/) {
+      if (match(rest, /^[^:]*:[^:]*:[^:]*:/)) {
+        rest = substr(rest, RLENGTH + 1);
       }
-      print p, l, pretty;
-    }'"
+      pretty = mag p rst " " gre rst " " gre rst " " rest;
+    } else {
+      if (match(rest, /^[^:]*:[^:]*:/)) {
+        rest = substr(rest, RLENGTH + 1);
+      }
+      pretty = mag p rst "   " rst "   " rest;
+    }
+    print p, l, pretty;
+  }'
+
+# For Git Grep output:
+#   1: raw path
+#   2: raw line number
+#   3: pretty display
+# Note: git grep -n output format is file:line:content
+export GIT_GREP_AWK_SCRIPT='BEGIN{
+    FS=":"; OFS=":";
+    mag="\033[38;2;106;153;85m";   # filename color
+    gre="\033[32m";                # line/col color
+    rst="\033[0m";
+  }
+  function strip_ansi(s) {
+    gsub(/\033\[[0-9;]*[A-Za-z]/, "", s);
+    return s;
+  }
+  {
+    raw=$0;
+    p=strip_ansi($1);
+    l=strip_ansi($2);
+    rest=raw;
+    
+    # remove path:line: from rest
+    if (match(rest, /^[^:]*:[^:]*:/)) {
+       rest = substr(rest, RLENGTH + 1);
+    }
+    
+    # Display: path   line   text
+    pretty = mag p rst "   " gre l rst "   " rest;
+    
+    print p, l, pretty;
+  }'
+
+# Check if we should use git grep (repo named src)
+use_git_grep=false
+if command -v git >/dev/null 2>&1; then
+  # Use git -C to check from the root perspective
+  if git_toplevel="$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)"; then
+    if [[ "$(basename "$git_toplevel")" == "src" ]]; then
+      use_git_grep=true
+    fi
+  fi
+fi
+
+# Note: We must escape the $ in $GIT_GREP_AWK_SCRIPT inside the double-quoted string
+# so that it is NOT expanded by the parent shell, but rather passed literally to fzf/sh.
+if [[ "$use_git_grep" == "true" ]]; then
+  # git grep version
+  reload_cmd="cd '$root' && git grep -n --color=always -e '{q}' -- '*.h' '*.c' '*.cc' '*.cpp' '*.m' '*.mm' | awk \"\$GIT_GREP_AWK_SCRIPT\""
+else
+  # rg version
+  reload_cmd="cd '$root' && rg --line-number --column --with-filename --no-heading --color=always --smart-case -- {q} | awk \"\$RG_AWK_SCRIPT\""
+fi
 
 for i in "${!ADDITIONAL_ARGS[@]}"; do
-  ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//\{root\}/$root}"
+  ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//'{root}'/$root}"
 done
 
 exec fzf \
