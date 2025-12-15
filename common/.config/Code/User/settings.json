@@ -539,6 +539,11 @@
       "commands": ["workbench.action.zoomOut"]
     },
     {
+      // Reset text size (reset)
+      "before": ["<leader>", "u", "r"],
+      "commands": ["workbench.action.zoomReset"]
+    },
+    {
       // Toggle inline parameter name hints
       "before": ["<leader>", "u", "h"],
       "commands": ["clangd.inlayHints.toggle"]
