@@ -11,13 +11,15 @@ fi
 # Ensure session exists with correct layout if it doesn't exist at all
 if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     # Create new session detached, name first window 'AI'
-    tmux new-session -d -s "$SESSION_NAME" -n "AI" "gemini --yolo --resume"
+    tmux new-session -d -s "$SESSION_NAME" -n "AI"
+    tmux send-keys -t "$SESSION_NAME":1 "gemini --yolo --resume" C-m
+
     # Create second window 'AI'
-    tmux new-window -t "$SESSION_NAME":2 -n "AI" "gemini --yolo"
+    tmux new-window -t "$SESSION_NAME":2 -n "AI"
+    tmux send-keys -t "$SESSION_NAME":2 "gemini --yolo" C-m
+
     # Create third window 'terminal'
     tmux new-window -t "$SESSION_NAME":3 -n "terminal"
-    # Select the first window initially
-    tmux select-window -t "$SESSION_NAME":1
 fi
 
 # Switch window globally for the session
@@ -30,7 +32,7 @@ if [ "$NO_ATTACH" == "--no-attach" ]; then
     exit 0
 fi
 
-# Attach logic
+Attach logic
 if [ -n "$TMUX" ]; then
     # We are inside tmux. Switch client to this session if needed.
     CURRENT_SESSION=$(tmux display-message -p '#S')
