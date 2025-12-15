@@ -8,7 +8,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\""
+        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); tmux-session \"$sess\" || true"
       ],
       "presentation": {
         "echo": false,
