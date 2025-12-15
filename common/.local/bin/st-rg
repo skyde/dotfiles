@@ -106,8 +106,9 @@ export GIT_GREP_AWK_SCRIPT='BEGIN{
        rest = substr(rest, RLENGTH + 1);
     }
     
-    # Display: path   line   text
-    pretty = mag p rst "   " gre l rst "   " rest;
+    # Display: path   text
+    # Match st-rg standard flow: filename (colored) + 3 spaces + content
+    pretty = mag p rst "   " rest;
     
     print p, l, pretty;
   }'
