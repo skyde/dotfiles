@@ -41,11 +41,39 @@ command -v bat >/dev/null 2>&1 || {
   exit 1
 }
 
+use_git_grep=false
+if command -v git >/dev/null 2>&1; then
+  if git_root="$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)"; then
+    if [[ "$(basename "$git_root")" == src ]]; then
+      use_git_grep=true
+    fi
+  fi
+fi
+
+git_grep_patterns=(
+  "*.h" "*.hh" "*.hpp"
+  "*.c" "*.cc" "*.cpp"
+  "*.py" "*.rs" "*.go"
+  "*.js" "*.ts" "*.lua"
+)
+
+pattern_filter=""
+if $use_git_grep; then
+  for pat in "${git_grep_patterns[@]}"; do
+    pattern_filter+=" '$pat'"
+  done
+fi
+
 # We output three colon-delimited fields for fzf:
 #   1: raw path
 #   2: raw line number
 #   3: pretty display (colored "path:line[:col]: text" with rg match highlights)
-reload_cmd="cd '$root' && rg --line-number --column --with-filename --no-heading --color=always --smart-case -- {q} \
+search_cmd="rg --line-number --column --with-filename --no-heading --color=always --smart-case -- {q}"
+if $use_git_grep; then
+  search_cmd="git -C '$root' grep -n --color=always --full-name -- {q} --${pattern_filter}"
+fi
+
+reload_cmd="cd '$root' && ${search_cmd} \
   | awk 'BEGIN{
       FS=\":\"; OFS=\":\";
       mag=\"\\033[38;2;106;153;85m\";   # filename color
