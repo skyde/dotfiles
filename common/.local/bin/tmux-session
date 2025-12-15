@@ -11,7 +11,7 @@ fi
 # Ensure session exists with correct layout if it doesn't exist at all
 if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     # Create new session detached, name first window 'AI'
-    tmux new-session -d -s "$SESSION_NAME" -n "AI" "gemini --yolo"
+    tmux new-session -d -s "$SESSION_NAME" -n "AI" "gemini --yolo --resume"
     # Create second window 'AI'
     tmux new-window -t "$SESSION_NAME":2 -n "AI" "gemini --yolo"
     # Create third window 'terminal'
