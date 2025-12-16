@@ -32,7 +32,7 @@ if [ "$NO_ATTACH" == "--no-attach" ]; then
     exit 0
 fi
 
-Attach logic
+# Attach logic
 if [ -n "$TMUX" ]; then
     # We are inside tmux. Switch client to this session if needed.
     CURRENT_SESSION=$(tmux display-message -p '#S')
