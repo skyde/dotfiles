@@ -1032,7 +1032,7 @@
     },
     {
       // Pops up parameter hints when you are calling another method
-      "before": ["<leader>", "c", "i"],
+      "before": ["<leader>", "c", "I"],
       "commands": ["editor.action.triggerParameterHints"]
     },
     {
@@ -1455,8 +1455,13 @@
     },
     {
       // Change the current side of the diff
-      "before": ["<leader>", "c", "s"],
+      "before": ["<leader>", "c", "d"],
       "commands": ["diffEditor.switchSide"]
+    },
+    {
+      // Toggle inline diff view
+      "before": ["<leader>", "c", "i"],
+      "commands": ["toggle.diff.renderSideBySide"]
     },
     {
       // Revert the current change within the diff view
