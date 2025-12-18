@@ -57,6 +57,23 @@
       },
       "problemMatcher": []
     },
+    {
+      "label": "Tmux: Kill Sessions",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "$HOME/dotfiles/common/.local/bin/kill-tmux"
+      ],
+      "presentation": {
+        "echo": false,
+        "reveal": "silent",
+        "focus": false,
+        "close": true,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
     // {
     //   "label": "Switch Running LF to Current Directory",
     //   "type": "shell",
