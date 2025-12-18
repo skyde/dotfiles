@@ -15,6 +15,19 @@
     "command": "cursorWordEndRight",
     "when": "editorTextFocus"
   },
+  {
+    // Ctrl+Backspace deletes the previous word (Windows-style)
+    "key": "ctrl+backspace",
+    "command": "deleteWordLeft",
+    "when": "textInputFocus && !terminalFocus"
+  },
+  {
+    // Ctrl+Backspace in the terminal deletes the previous word (send Ctrl+W)
+    "key": "ctrl+backspace",
+    "command": "workbench.action.terminal.sendSequence",
+    "when": "terminalFocus",
+    "args": { "text": "\u0017" }
+  },
   // Page Down - workround to make cursor movement match Nvim
   {
     "key": "pagedown",
