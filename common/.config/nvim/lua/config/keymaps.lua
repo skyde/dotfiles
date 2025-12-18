@@ -10,6 +10,8 @@ end
 -- And in Insert mode, use <C-o> to invoke a single Normal-mode command
 map("i", "<Up>", "<C-o>gk", { noremap = true, desc = "Move up screen-line (insert)" })
 map("i", "<Down>", "<C-o>gj", { noremap = true, desc = "Move down screen-line (insert)" })
+map("i", "<C-Left>", "<C-o>b", { noremap = true, desc = "Move to previous word (insert)" })
+map("i", "<C-Right>", "<C-o>w", { noremap = true, desc = "Move to next word (insert)" })
 
 vim.keymap.set("n", "<C-u>", "16k", { noremap = true, desc = "Scroll Up 16 lines" })
 vim.keymap.set("n", "<C-d>", "16j", { noremap = true, desc = "Scroll Down 16 lines" })
