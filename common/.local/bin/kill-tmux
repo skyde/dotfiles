@@ -1,0 +1,33 @@
+#!/bin/bash
+# Generic script to fix stuck tmux sessions
+
+USER_ID=$(id -u)
+SOCKET_DIR="/tmp/tmux-${USER_ID}"
+
+echo "Killing all tmux processes for user $(whoami)..."
+# Try graceful kill first
+pkill -u "$(whoami)" tmux
+
+# Wait a moment
+sleep 1
+
+# Force kill if still running
+if pgrep -u "$(whoami)" tmux > /dev/null; then
+    echo "Some tmux processes are still running. Force killing..."
+    pkill -9 -u "$(whoami)" tmux
+fi
+
+# Clean up socket directory
+if [ -d "$SOCKET_DIR" ]; then
+    echo "Removing socket directory: $SOCKET_DIR"
+    rm -rf "$SOCKET_DIR"
+fi
+
+echo "Tmux cleanup complete. Verifying..."
+if tmux new-session -d -s test-fix-tmux-verification; then
+    echo "Success! Tmux is working."
+    tmux kill-session -t test-fix-tmux-verification
+else
+    echo "Error: Tmux still seems to be having issues."
+    exit 1
+fi
