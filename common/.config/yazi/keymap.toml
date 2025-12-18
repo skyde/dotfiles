@@ -57,7 +57,7 @@ prepend_keymap = [
   { on = [ "9" ], run = "plugin relative-line-numbers 9", desc = "Jump (starts with 9)" },
 
   { on = [ "g", "d" ], run = "cd ~/dotfiles", desc = "Go to Stow Dotfiles" },
-  { on = [ "g", "l" ], run = "cd ~/dotfiles/locals", desc = "Go to Dotfiles locals" },
+  { on = [ "g", "l" ], run = "cd ~/dotfiles/common/.local/bin", desc = "Go to Dotfiles locals" },
   { on = [ "g", "o" ], run = "cd ~/Documents", desc = "Go to Documents" },
   { on = [ "g", "p" ], run = "cd ~/Projects", desc = "Go to Projects" },
   { on = [ "g", "e" ], run = "cd ~/Desktop", desc = "Go to Desktop" },
