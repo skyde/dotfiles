@@ -521,14 +521,6 @@
           "command": "workbench.action.tasks.runTask",
           "args": "Tmux: Kill Sessions"
         },
-        {
-          "command": "workbench.action.tasks.runTask",
-          "args": "Tmux: Switch to Terminal"
-        },
-        {
-          "command": "workbench.action.tasks.runTask",
-          "args": "StandardTerminal"
-        },
         "extension.vim_escape"
       ]
     },
