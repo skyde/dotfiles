@@ -1860,5 +1860,6 @@
   "window.confirmBeforeClose": "keyboardOnly",
   "terminal.integrated.stickyScroll.enabled": false,
   "terminal.integrated.copyOnSelection": false,
-  "diffEditor.codeLens": true
+  "diffEditor.codeLens": true,
+  "lldb.suppressUpdateNotifications": true
 }
