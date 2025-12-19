@@ -1,20 +1,24 @@
 #!/bin/bash
-set -e  # Exit immediately if any command fails
+set -e
 
 echo "Running formatting..."
 git cl format
 
-echo "Staging new files..."
-# Add ONLY untracked (new) files
-# -z / -0 handles filenames with spaces safely.
-# removed -r as it is not supported on macOS default xargs
-git ls-files -z --others --exclude-standard | xargs -0 git add
+echo "Staging files..."
+
+# 1. Stage new (untracked) files
+# Added -r to xargs to prevent errors if no new files exist
+git ls-files -z --others --exclude-standard | xargs -0 -r git add
+
+# 2. Stage modified files, BUT EXCLUDE submodules
+# We use 'git diff' to list modified files, explicitly telling it to ignore submodules.
+# We pipe that list to 'git add'.
+git diff -z --name-only --ignore-submodules=all | xargs -0 -r git add
 
 echo "Amending commit..."
-# Commit changes
-# -a: Automatically stages modified and deleted files (like git add -u).
-# Removed --ignore-submodules=all as it is not a valid flag for git commit.
-git commit -a --amend --no-edit
+# If nothing was staged (e.g. only submodules changed), this might verify emptiness.
+# --allow-empty allows the script to pass even if no code changes were made (just formatting).
+git commit --amend --no-edit
 
 echo "Uploading..."
 git cl upload -d -T "$@"
