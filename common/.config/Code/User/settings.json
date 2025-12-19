@@ -1859,5 +1859,6 @@
   "task.autoDetect": "off",
   "window.confirmBeforeClose": "keyboardOnly",
   "terminal.integrated.stickyScroll.enabled": false,
+  "terminal.integrated.copyOnSelection": false,
   "diffEditor.codeLens": true
 }
