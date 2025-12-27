@@ -3,12 +3,12 @@
 if [ -n "$ZSH_VERSION" ]; then
   typeset -U path PATH
 fi
-path=("$HOME/.local/bin" "$HOME/bin" "/opt/homebrew/bin" "/usr/local/bin" $path)
+path=("$HOME/.local/bin" "$HOME/local/bin" "$HOME/local/bin.local" "$HOME/bin" "/opt/homebrew/bin" "/usr/local/bin" $path)
 
 # Custom scripts
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/local/bin:$HOME/local/bin.local:$PATH"
 
-# Additional ustom scripts
+# Additional custom scripts
 export PATH="$HOME/bin:$PATH"
 
 # Go programs
