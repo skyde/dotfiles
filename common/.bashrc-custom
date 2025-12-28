@@ -19,7 +19,7 @@ if [[ $- == *i* ]] && [[ -t 0 ]]; then
 fi
 
 # -------- fast PATH (prefer user bins; include Homebrew on Apple Silicon)
-for d in "$HOME/.local/bin" "$HOME/local/bin" "$HOME/local/bin.local" "$HOME/bin" "/opt/homebrew/bin" "/usr/local/bin" "/usr/local/bin" "$HOME/go/bin"; do
+for d in "$HOME/.local/bin" "$HOME/bin" "/opt/homebrew/bin" "/usr/local/bin" "/usr/local/bin" "$HOME/go/bin"; do
   case ":$PATH:" in
     *":$d:"*) ;;
     *) PATH="$d:$PATH" ;;
