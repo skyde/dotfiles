@@ -74,6 +74,6 @@ while git show-ref --verify --quiet "refs/heads/$FINAL_BRANCH"; do
 done
 
 # 9. Rename the current (temp) branch to the final name
-git branch -m "$FINAL_BRANCH"
+git rename-branch "$FINAL_BRANCH"
 
 echo "✅ Patched to branch: $FINAL_BRANCH"
