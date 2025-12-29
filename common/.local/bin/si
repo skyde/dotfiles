@@ -16,10 +16,34 @@ echo "$cpu_count"
 
 IGNORES=".git,.svn,.hg,.idea,.vs,node_modules,out,build,dist,tmp,temp,cache,.cache,__pycache__,.mypy_cache,.pytest_cache,.tox,vendor,CMakeFiles,.gradle,.mvn,pkg,bin,.terraform,.jekyll-cache,_site"
 
-rm -rf .zoekt
+TARGET_DIR=".zoekt"
 
+# 1. Create a temp directory in the CURRENT folder.
+#    We do this locally (instead of /tmp) so the final 'mv' is an instant rename 
+#    rather than a slow file copy across filesystems.
+TEMP_DIR=$(mktemp -d "./${TARGET_DIR}.tmp.XXXXXX")
+
+# 2. Set a trap to clean up the temp dir on exit.
+#    - If the script crashes or you Ctrl+C, this deletes the partial index (TEMP_DIR).
+trap 'rm -rf "$TEMP_DIR"' EXIT
+
+# 3. Run the indexer into the temporary directory
 zoekt-index \
-  -index .zoekt \
+  -index "$TEMP_DIR" \
   -parallelism "$cpu_count" \
   -ignore_dirs="$IGNORES" \
   .
+
+# 4. If we reach this point, indexing succeeded. Swap the directories.
+echo "Indexing complete. Swapping in new index..."
+
+# Remove the old index
+rm -rf "$TARGET_DIR"
+
+# Move the new index into place (Atomic Rename)
+mv "$TEMP_DIR" "$TARGET_DIR"
+
+# Clear the trap so we don't try to delete the directory we just moved
+trap - EXIT
+
+echo "Done."
