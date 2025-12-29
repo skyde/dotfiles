@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# ==============================================================================
+# git-patch
+# A smart wrapper for 'git cl patch' that auto-names branches and handles duplicates.
+#
+# Usage: git patch <cl-number-or-url>
+# ==============================================================================
+
+# Exit immediately if any command fails
+set -e
+
+# 1. Validation
+if [ -z "$1" ]; then
+    echo "Usage: git patch <cl-number-or-url>"
+    exit 1
+fi
+
+INPUT="$1"
+
+# 2. Extract CL ID (for the branch name prefix)
+#    We look for the first sequence of 5+ digits. This ensures we grab the CL ID
+#    even from URLs like ".../+/1234567/3" (ignoring the patchset number '3').
+CL_ID=$(echo "$INPUT" | grep -oE '[0-9]{5,}' | head -1)
+
+#    Fallback: If no long number found (e.g. short ID), take the last number found.
+if [ -z "$CL_ID" ]; then
+    CL_ID=$(echo "$INPUT" | grep -oE '[0-9]+' | tail -1)
+fi
+
+if [ -z "$CL_ID" ]; then
+    echo "❌ Error: Could not extract CL number from input."
+    exit 1
+fi
+
+# 3. Create unique temp branch
+#    We use a timestamp to guarantee 'git cl patch' never fails on "Branch already exists".
+TEMP_BRANCH="temp-patch-${CL_ID}-$(date +%s)"
+
+echo "⬇️  Fetching CL ${CL_ID}..."
+
+# 4. Run git cl patch
+#    We silence standard output to reduce noise, but keep errors visible.
+#    If this step fails (e.g. bad ID, auth error), the script exits immediately.
+git cl patch "$INPUT" -b "$TEMP_BRANCH" > /dev/null
+
+# 5. Extract Title (The "Secret Sauce")
+#    Since we successfully patched, the HEAD commit now contains the CL description.
+RAW_TITLE=$(git log -1 --format=%s)
+
+# 6. Generate Branch Slug
+#    Lowercase, alphanumeric only, replace spaces with hyphens, truncate to 50 chars.
+SLUG=$(echo "$RAW_TITLE" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[^a-z0-9]+/-/g' \
+    | sed -E 's/^-+|-+$//g' \
+    | cut -c -50)
+
+#    Fallback if title is empty
+if [ -z "$SLUG" ]; then
+    SLUG="patch"
+fi
+
+# 7. Construct Final Name
+BASE_NAME="${CL_ID}-${SLUG}"
+FINAL_BRANCH="$BASE_NAME"
+COUNTER=1
+
+# 8. Handle Collisions (The "Postpend" Feature)
+#    If '12345-fix-bug' exists, try '12345-fix-bug-1', then '-2', etc.
+while git show-ref --verify --quiet "refs/heads/$FINAL_BRANCH"; do
+    FINAL_BRANCH="${BASE_NAME}-${COUNTER}"
+    ((COUNTER++))
+done
+
+# 9. Rename the current (temp) branch to the final name
+git branch -m "$FINAL_BRANCH"
+
+echo "✅ Patched to branch: $FINAL_BRANCH"
