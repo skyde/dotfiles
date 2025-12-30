@@ -12,7 +12,33 @@ fi
 
 echo "Checking for stale lock files in: $GIT_DIR"
 
-# 2. Safety Check: Ensure no git processes are currently running
+# 2. Define the specific lock files to remove
+LOCK_FILES=(
+    "$GIT_DIR/index.lock"
+    "$GIT_DIR/HEAD.lock"
+    "$GIT_DIR/config.lock"
+    "$GIT_DIR/packed-refs.lock"
+    "$GIT_DIR/objects/info/commit-graphs/commit-graph-chain.lock"
+)
+
+mapfile -t LOCKS_FOUND < <(
+    for lockfile in "${LOCK_FILES[@]}"; do
+        if [ -f "$lockfile" ]; then
+            echo "$lockfile"
+        fi
+    done
+
+    if [ -d "$GIT_DIR/refs" ]; then
+        find "$GIT_DIR/refs" -name "*.lock" -type f 2>/dev/null
+    fi
+)
+
+if [ ${#LOCKS_FOUND[@]} -eq 0 ]; then
+    echo "No lock files found. Your repo seems clean."
+    exit 0
+fi
+
+# 3. Safety Check: Ensure no git processes are currently running
 # Deleting locks while git is running can corrupt your repo.
 # We check for 'git' processes but exclude this script and grep itself.
 RUNNING_PROCESSES=$(ps -ef | grep "git " | grep -v "grep" | grep -v "git-unlock")
@@ -29,38 +55,10 @@ if [ -n "$RUNNING_PROCESSES" ]; then
     fi
 fi
 
-# 3. Define the specific lock files to remove
-LOCK_FILES=(
-    "$GIT_DIR/index.lock"
-    "$GIT_DIR/HEAD.lock"
-    "$GIT_DIR/config.lock"
-    "$GIT_DIR/packed-refs.lock"
-    "$GIT_DIR/objects/info/commit-graphs/commit-graph-chain.lock"
-)
-
-FOUND=0
-
-# Remove the known main lock files
-for lockfile in "${LOCK_FILES[@]}"; do
-    if [ -f "$lockfile" ]; then
-        echo "Removing: $lockfile"
-        rm -f "$lockfile"
-        FOUND=1
-    fi
+# 4. Remove the lock files we found
+for lockfile in "${LOCKS_FOUND[@]}"; do
+    echo "Removing: $lockfile"
+    rm -f "$lockfile"
 done
 
-# Remove loose reference locks (e.g., refs/heads/main.lock)
-# We use 'find' to safely look inside the refs directory only.
-if [ -d "$GIT_DIR/refs" ]; then
-    find "$GIT_DIR/refs" -name "*.lock" -type f 2>/dev/null | while read -r file; do
-        echo "Removing ref lock: $file"
-        rm -f "$file"
-        FOUND=1
-    done
-fi
-
-if [ $FOUND -eq 0 ]; then
-    echo "No lock files found. Your repo seems clean."
-else
-    echo "Locks cleared. You should be able to run your command now."
-fi
+echo "Locks cleared. You should be able to run your command now."
