@@ -438,6 +438,16 @@
       //   "workbench.action.terminal.focusAtIndex1"
       // ]
     },
+    {
+      // (S)ave file
+      "before": ["<leader>", "f", "s"],
+      "commands": ["workbench.action.files.save"]
+    },
+    {
+      // (S)ave as (new file)
+      "before": ["<leader>", "f", "S"],
+      "commands": ["workbench.action.files.saveAs"]
+    },
     // Copilot Chat
     // {
     //   // Open auxiliary bar (focus Copilot chat)
