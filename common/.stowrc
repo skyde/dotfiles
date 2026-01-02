@@ -8,7 +8,7 @@
 --ignore=Icon
 
 # Thumbnails
---ignore=\._.*
+--ignore=[.]_.*
 
 # Files that might appear in the root of a volume
 --ignore=\.DocumentRevisions-V100
@@ -35,7 +35,6 @@
 --ignore=\.bzr
 
 # Editor and IDE files
---ignore=\.vscode
 --ignore=\.idea
 --ignore=\.sublime-project
 --ignore=\.sublime-workspace
