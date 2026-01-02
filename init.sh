@@ -165,4 +165,13 @@ echo "Building bat cache for custom theme..."
 # Build bat cache for custom theme
 bat cache --build
 
+# Run local dotfiles initialization if it exists
+LOCAL_INIT_SCRIPT="$SCRIPT_DIR/../dotfiles-local/init.sh"
+if [ -f "$LOCAL_INIT_SCRIPT" ]; then
+  run_local=$(get_user_confirmation "Run local dotfiles initialization? (y/N): ")
+  if [[ "$run_local" =~ ^[Yy] ]]; then
+    echo "Running local initialization script..."
+    "$LOCAL_INIT_SCRIPT"
+  fi
+fi
 echo "Init complete!"
