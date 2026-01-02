@@ -15,6 +15,12 @@ cd "$SCRIPT_DIR"
 echo "Pulling latest changes..."
 git pull
 
+# Check for dotfiles-local and update if present
+if [ -d "$HOME/dotfiles-local/.git" ]; then
+    echo "Updating dotfiles-local from remote..."
+    git -C "$HOME/dotfiles-local" pull
+fi
+
 # Apply the updated dotfiles
 echo "Applying updated dotfiles..."
 # Pass through any additional arguments along with --restow
