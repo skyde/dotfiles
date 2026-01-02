@@ -4,33 +4,50 @@
 # git-patch
 # A smart wrapper for 'git cl patch' that auto-names branches and handles duplicates.
 #
-# Usage: git patch <cl-number-or-url>
+# Usage: git patch <cl-number-or-url> [--force|-f]
 # ==============================================================================
 
 # Exit immediately if any command fails
 set -e
 
-# 1. Validation
-if [ -z "$1" ]; then
-    echo "Usage: git patch <cl-number-or-url>"
-    exit 1
+# 1. Argument Parsing & Validation
+FORCE=false
+INPUT=""
+
+# Loop through all arguments to handle flags anywhere in the command
+while [[ $# -gt 0 ]]; do
+  case $1 in
+  --force | -f)
+    FORCE=true
+    shift # shift past the flag
+    ;;
+  *)
+    if [ -n "$INPUT" ]; then
+      echo "❌ Error: Multiple inputs detected. Please provide only one CL ID or URL."
+      exit 1
+    fi
+    INPUT="$1"
+    shift # shift past the input value
+    ;;
+  esac
+done
+
+if [ -z "$INPUT" ]; then
+  echo "Usage: git patch <cl-number-or-url> [--force]"
+  exit 1
 fi
 
-INPUT="$1"
-
 # 2. Extract CL ID (for the branch name prefix)
-#    We look for the first sequence of 5+ digits. This ensures we grab the CL ID
-#    even from URLs like ".../+/1234567/3" (ignoring the patchset number '3').
 CL_ID=$(echo "$INPUT" | grep -oE '[0-9]{5,}' | head -1)
 
 #    Fallback: If no long number found (e.g. short ID), take the last number found.
 if [ -z "$CL_ID" ]; then
-    CL_ID=$(echo "$INPUT" | grep -oE '[0-9]+' | tail -1)
+  CL_ID=$(echo "$INPUT" | grep -oE '[0-9]+' | tail -1)
 fi
 
 if [ -z "$CL_ID" ]; then
-    echo "❌ Error: Could not extract CL number from input."
-    exit 1
+  echo "❌ Error: Could not extract CL number from input."
+  exit 1
 fi
 
 # 3. Create unique temp branch
@@ -41,37 +58,47 @@ echo "⬇️  Fetching CL ${CL_ID}..."
 
 # 4. Run git cl patch
 #    We silence standard output to reduce noise, but keep errors visible.
-#    If this step fails (e.g. bad ID, auth error), the script exits immediately.
-git cl patch "$INPUT" -b "$TEMP_BRANCH" > /dev/null
+git cl patch "$INPUT" -b "$TEMP_BRANCH" >/dev/null
 
 # 5. Extract Title (The "Secret Sauce")
-#    Since we successfully patched, the HEAD commit now contains the CL description.
 RAW_TITLE=$(git log -1 --format=%s)
 
 # 6. Generate Branch Slug
 #    Lowercase, alphanumeric only, replace spaces with hyphens, truncate to 50 chars.
-SLUG=$(echo "$RAW_TITLE" \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/[^a-z0-9]+/-/g' \
-    | sed -E 's/^-+|-+$//g' \
-    | cut -c -50)
+SLUG=$(echo "$RAW_TITLE" |
+  tr '[:upper:]' '[:lower:]' |
+  sed -E 's/[^a-z0-9]+/-/g' |
+  sed -E 's/^-+|-+$//g' |
+  cut -c -50)
 
 #    Fallback if title is empty
 if [ -z "$SLUG" ]; then
-    SLUG="patch"
+  SLUG="patch"
 fi
 
 # 7. Construct Final Name
 BASE_NAME="${CL_ID}-${SLUG}"
 FINAL_BRANCH="$BASE_NAME"
-COUNTER=1
 
-# 8. Handle Collisions (The "Postpend" Feature)
-#    If '12345-fix-bug' exists, try '12345-fix-bug-1', then '-2', etc.
-while git show-ref --verify --quiet "refs/heads/$FINAL_BRANCH"; do
-    FINAL_BRANCH="${BASE_NAME}-${COUNTER}"
-    ((COUNTER++))
-done
+# 8. Handle Collisions
+#    Check if the target branch already exists
+if git show-ref --verify --quiet "refs/heads/$FINAL_BRANCH"; then
+  if [ "$FORCE" = true ]; then
+    # -- Force Mode --
+    # Delete the existing branch so 'git rename-branch' can overwrite it.
+    # We use standard 'git branch -D' to clear the path.
+    echo "⚠️  Force mode: Overwriting existing branch '$FINAL_BRANCH'..."
+    git branch -D "$FINAL_BRANCH" >/dev/null
+  else
+    # -- Safe Mode (Default) --
+    # If '12345-fix-bug' exists, try '12345-fix-bug-1', then '-2', etc.
+    COUNTER=1
+    while git show-ref --verify --quiet "refs/heads/$FINAL_BRANCH"; do
+      FINAL_BRANCH="${BASE_NAME}-${COUNTER}"
+      ((COUNTER++))
+    done
+  fi
+fi
 
 # 9. Rename the current (temp) branch to the final name
 git rename-branch "$FINAL_BRANCH"
