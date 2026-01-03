@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: sync_chrome [--aggressive-gc]
+Usage: sync-chrome [--aggressive-gc]
 
 Synchronize the local Chromium checkout and rebuild the default target.
 
