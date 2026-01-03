@@ -1,6 +1,7 @@
 ripgrep
 fzf
 bat
+btop
 git
 neovim
 tmux
