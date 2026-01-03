@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-lines=${1:-25000}
+lines=${1:-100}
 
 git diff -U"${lines}" "$(git merge-base HEAD origin/main)" | osc-copy
