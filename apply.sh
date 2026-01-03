@@ -41,7 +41,28 @@ stow_package() {
     shift
     [ -d "$pkg" ] || return 0
     echo "📦 Installing $pkg package"
-    
+
+    # Pre-create directories safely (never remove or replace existing paths)
+    if [ -d "$pkg" ]; then
+        echo "  Ensuring directories exist for $pkg..."
+        find "$pkg" -type d -mindepth 1 | sort | while read -r dir; do
+            rel_path="${dir#$pkg/}"
+            target_path="$HOME/$rel_path"
+
+            # If anything already exists at the target path (dir, file, or symlink),
+            # do nothing.
+            if [ -e "$target_path" ] || [ -L "$target_path" ]; then
+                continue
+            fi
+
+            if $DRY_RUN; then
+                echo "  [DRY RUN] Would create directory $target_path"
+            else
+                mkdir -p -- "$target_path"
+            fi
+        done
+    fi
+
     # Use restow to handle any conflicts or missing symlinks
     stow --target="$HOME" --verbose=1 "${ARGS[@]}" "$pkg"
 
