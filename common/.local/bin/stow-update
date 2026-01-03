@@ -3,5 +3,5 @@ set -euo pipefail
 
 repo="$HOME/dotfiles"
 
-"$repo/update.sh"
+"$repo/update.sh" "$@"
 exec "$repo/apply.sh" "$@"
