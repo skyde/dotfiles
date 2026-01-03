@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo="$HOME/dotfiles"
+
+"$repo/update.sh"
+AUTO_INSTALL=1 exec "$repo/init.sh" "$@"

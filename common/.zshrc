@@ -94,10 +94,6 @@ fi
 
 # -------- aliases
 alias grep='grep --color=auto'
-alias stow_apply='$HOME/dotfiles/apply.sh'
-alias stow_init='$HOME/dotfiles/init.sh'
-alias stow_update='$HOME/dotfiles/update.sh && $HOME/dotfiles/apply.sh'
-alias stow_update_init_auto='$HOME/dotfiles/update.sh && AUTO_INSTALL=1 $HOME/dotfiles/init.sh'
 
 # bat / batcat
 if (( $+commands[bat] )); then
