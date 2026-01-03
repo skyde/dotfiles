@@ -31,8 +31,7 @@
   {
     // Let terminal apps (e.g. yazi) receive F1 instead of opening the command palette
     "key": "f1",
-    "command": "-workbench.action.showCommands",
-    "when": "terminalFocus"
+    "command": "-workbench.action.showCommands"
   },
   // Page Down - workround to make cursor movement match Nvim
   {
