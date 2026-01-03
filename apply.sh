@@ -45,7 +45,7 @@ stow_package() {
     # Pre-create directories safely (never remove or replace existing paths)
     if [ -d "$pkg" ]; then
         echo "  Ensuring directories exist for $pkg..."
-        find "$pkg" -type d -mindepth 1 | sort | while read -r dir; do
+        find "$pkg" -mindepth 1 -type d | sort | while read -r dir; do
             rel_path="${dir#$pkg/}"
             target_path="$HOME/$rel_path"
 
