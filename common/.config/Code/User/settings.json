@@ -1801,6 +1801,7 @@
   "zenMode.fullScreen": true,
   "zenMode.hideStatusBar": true,
   "zenMode.hideActivityBar": true,
+  "chat.commandCenter.enabled": false,
   "window.commandCenter": false,
   "workbench.layoutControl.enabled": false,
   "C_Cpp.intelliSenseEngine": "disabled",
