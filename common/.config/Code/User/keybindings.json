@@ -1,5 +1,17 @@
 // Place your key bindings in this file to override the defaults
 [
+  // ----- LazyVim-style jumplist navigation -----
+  // Remove defaults that conflict with these bindings.
+  { "key": "cmd+o", "command": "-workbench.action.files.openFile" },
+  { "key": "cmd+i", "command": "-editor.action.triggerSuggest" },
+  { "key": "ctrl+i", "command": "-editor.action.triggerSuggest", "when": "editorHasCompletionItemProvider && editorTextFocus && !editorReadonly" },
+
+  // Navigate backward/forward through editor history.
+  { "key": "cmd+o", "command": "workbench.action.navigateBack" },
+  { "key": "cmd+i", "command": "workbench.action.navigateForward" },
+  { "key": "ctrl+o", "command": "workbench.action.navigateBack" },
+  { "key": "ctrl+i", "command": "workbench.action.navigateForward" },
+
   // Disable line move shortcuts
   { "key": "alt+down", "command": "-editor.action.moveLinesDownAction" },
   { "key": "alt+up", "command": "-editor.action.moveLinesUpAction" },
@@ -111,6 +123,108 @@
     "key": "shift+f3",
     "command": "workbench.action.quickOpen"
   },
+
+  // Scroll up 16 Lines
+  {
+    "key": "cmd+u",
+    "command": "runCommands",
+    "when": "textInputFocus && vim.mode == 'Normal'",
+    "args": {
+      "commands": [
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp",
+        "scrollLineUp",
+        "cursorUp"
+      ]
+    }
+  },
+  // Scroll down 16 Lines
+  {
+    "key": "cmd+d",
+    "command": "runCommands",
+    "when": "textInputFocus && vim.mode == 'Normal'",
+    "args": {
+      "commands": [
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown",
+        "scrollLineDown",
+        "cursorDown"
+      ]
+    }
+  },
+
+  // Left Side Bar (Explorer/SCM/Extensions...)
+  { "key": "cmd+b",  "command": "workbench.action.toggleSidebarVisibility" },
+
+  // Bottom Panel (Terminal/Problems/Output/Debug Console) — default toggle
+  { "key": "cmd+j", "command": "workbench.action.togglePanel" },
+
+  // Unified right side: Secondary Side Bar — toggle
+  { "key": "cmd+;",  "command": "workbench.action.toggleAuxiliaryBar" },
+
+  // Focus editor directly
+  { "key": "cmd+k",  "command": "workbench.action.focusActiveEditorGroup" },
+
   // Scroll up 16 Lines
   // Matches Nvim where small scrolls will keep the cursor in exacty the same relative place on the screen
   {
@@ -622,7 +736,7 @@
         "text": "\u001b\r"
     },
     "when": "terminalFocus"
-  }
+  },
   // {
   //   // There is an issue in the find it faster plugin where it does go back to your last focused window when closed
   //   "key": "escape",
@@ -642,4 +756,40 @@
   //     ]
   //   }
   // }
+  // Additional shortcuts
+  {
+    "key": "cmd+f5",
+    "command": "workbench.action.debug.stepInto",
+    "when": "debugState != 'inactive'"
+  },
+  {
+    "key": "cmd+f5",
+    "command": "-debug.openView",
+    "when": "!debuggersAvailable"
+  },
+  {
+    "key": "f11",
+    "command": "-workbench.action.debug.stepInto",
+    "when": "debugState != 'inactive'"
+  },
+  {
+    "key": "cmd+f6",
+    "command": "workbench.action.debug.stepOver",
+    "when": "debugState == 'stopped'"
+  },
+  {
+    "key": "f10",
+    "command": "-workbench.action.debug.stepOver",
+    "when": "debugState == 'stopped'"
+  },
+  {
+    "key": "f6",
+    "command": "-workbench.action.debug.pause",
+    "when": "debugState == 'running'"
+  },
+  {
+    "key": "f6",
+    "command": "-workbench.action.focusNextPart"
+  },
+  // End additional shortcuts
 ]

@@ -389,6 +389,11 @@
       "commands": [{ "command": "redo" }]
     },
     {
+      // Use Visual Studio code redo rather than VSVim
+      "before": ["<S-u>"],
+      "commands": [{ "command": "redo" }]
+    },
+    {
       "before": ["Y"],
       "after": ["y", "$"]
     },
@@ -654,6 +659,15 @@
       "before": ["[", "b"],
       "commands": ["workbench.action.previousEditor"]
     },
+    // These conflict with the NVim HML (high middle low) shortcuts - don't use that much though?
+    // {
+    //   "before": ["<S-l>"],
+    //   "commands": ["workbench.action.nextEditor"]
+    // },
+    // {
+    //   "before": ["<S-h>"],
+    //   "commands": ["workbench.action.previousEditor"]
+    // },
     {
       // Move tab left
       "before": ["<leader>", "b", "h"],
@@ -1382,6 +1396,27 @@
     //   "commands": ["files.openTimeline"]
     // },
     // Conflict (Merge)
+
+    // These conflict with the existing ones, but maybe better?
+    // // <leader>co – Accept Current (ours)
+    // { "before": ["<leader>", "c", "o"], "commands": ["merge-conflict.accept.current"] },
+    //
+    // // <leader>ct – Accept Incoming (theirs)
+    // { "before": ["<leader>", "c", "t"], "commands": ["merge-conflict.accept.incoming"] },
+
+    // <leader>ca – Accept Both / Accept Combination
+    { "before": ["<leader>", "c", "a"], "commands": [
+      "merge-conflict.accept.both"
+      // If you prefer the Merge Editor's Accept Combination button,
+      // add its command ID here once you look it up in the keyboard shortcuts JSON.
+    ]},
+    // Optional helper: open the current file in the Merge Editor
+    { "before": ["<leader>", "c", "m"], "commands": ["merge.openInMergeEditor"] } ,
+    {
+      // do  => revert selected ranges (take the other side into current)
+      "before": ["d", "o"],
+      "commands": [{ "command": "diffEditor.revert" }],
+    },
     {
       // Accept Ours
       "before": ["<leader>", "c", "o"],
@@ -1861,5 +1896,6 @@
   "terminal.integrated.stickyScroll.enabled": false,
   "terminal.integrated.copyOnSelection": false,
   "diffEditor.codeLens": true,
-  "lldb.suppressUpdateNotifications": true
+  "lldb.suppressUpdateNotifications": true,
+  "diffEditor.experimental.showMoves": true
 }
