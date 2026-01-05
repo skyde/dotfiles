@@ -23,6 +23,7 @@ echo "Installing Linux-specific packages..."
 ensure_apt zsh
 ensure_apt zsh-autosuggestions
 ensure_apt zsh-syntax-highlighting
+ensure_apt zsh-completions
 ensure_apt fonts-jetbrains-mono
 
 # Install kitty term info to ensure we can ssh properly
