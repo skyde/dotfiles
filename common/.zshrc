@@ -146,14 +146,39 @@ unset GIT_PAGER
 gg() { command lazygit; }
 
 # -------- plugins (load AFTER everything else; keep syntax-highlighting last)
-for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
-  for dir in "/opt/homebrew/share/$plugin" "/usr/local/share/$plugin" "/usr/share/$plugin"; do
-    if [[ -r "$dir/$plugin.zsh" ]]; then
-      source "$dir/$plugin.zsh"
-      break
+_source_zsh_plugin() {
+  local plugin_name="$1"
+  local init_file="$2"
+  # Prioritize Homebrew (Apple Silicon then Intel), then system locations, then user local
+  local -a locations=(
+    "/opt/homebrew/share"
+    "/usr/local/share"
+    "/usr/share/zsh/plugins"
+    "/usr/share"
+    "$HOME/.local/share"
+  )
+
+  for loc in "${locations[@]}"; do
+    local plugin_path="$loc/$plugin_name/$init_file"
+    if [[ -r "$plugin_path" ]]; then
+      source "$plugin_path"
+      return 0
     fi
   done
-done
+  return 1
+}
+
+_source_zsh_plugin "zsh-autosuggestions" "zsh-autosuggestions.zsh"
+
+# Prefer fast-syntax-highlighting (usually installs to zsh-fast-syntax-highlighting)
+# but some package managers might use fast-syntax-highlighting
+if ! _source_zsh_plugin "zsh-fast-syntax-highlighting" "fast-syntax-highlighting.plugin.zsh" && \
+   ! _source_zsh_plugin "fast-syntax-highlighting" "fast-syntax-highlighting.plugin.zsh"; then
+  # Fallback to standard zsh-syntax-highlighting
+  _source_zsh_plugin "zsh-syntax-highlighting" "zsh-syntax-highlighting.zsh"
+fi
+
+unset -f _source_zsh_plugin
 
 # -------- machine-specific overrides
 # shellcheck disable=SC1090

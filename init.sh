@@ -127,6 +127,17 @@ if [ -f "install-zoekt.sh" ]; then
   fi
 fi
 
+# Optional: Install zsh-fast-syntax-highlighting (manual install/clone)
+if [ -f "install-fast-syntax-highlighting.sh" ]; then
+  install_fsh=$(get_user_confirmation "Install zsh-fast-syntax-highlighting? (y/N): ")
+  if [[ "$install_fsh" =~ ^[Yy] ]]; then
+    echo "Running zsh-fast-syntax-highlighting installation script..."
+    ./install-fast-syntax-highlighting.sh
+  else
+    echo "Skipping zsh-fast-syntax-highlighting installation"
+  fi
+fi
+
 # Run platform-specific initialization
 platform_init=$(get_user_confirmation "Run platform-specific setup? (y/N): ")
 if [[ "$platform_init" =~ ^[Yy] ]]; then

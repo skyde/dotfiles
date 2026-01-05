@@ -14,7 +14,7 @@ echo "Installing macOS-specific packages and apps..."
 
 # Install macOS-specific shell enhancements
 ensure_brew zsh-autosuggestions
-ensure_brew zsh-syntax-highlighting
+ensure_brew zsh-fast-syntax-highlighting
 
 # Install macOS-specific apps via Homebrew casks
 for cask in fluor hammerspoon alt-tab betterdisplay kitty font-jetbrains-mono-nerd-font; do
