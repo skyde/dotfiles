@@ -31,6 +31,11 @@ bindkey '^X' edit-command-line          # Ctrl+X edits current prompt
 
 # -------- completion (cached)
 # Cache to XDG location and compile the dump for speed.
+# Include zsh-completions if installed via package managers.
+for dir in /usr/local/share/zsh-completions /opt/homebrew/share/zsh-completions /usr/share/zsh-completions; do
+  [[ -d $dir ]] && fpath=("$dir" $fpath)
+done
+
 zmodload -i zsh/complist
 autoload -Uz compinit
 : "${XDG_CACHE_HOME:=$HOME/.cache}"
