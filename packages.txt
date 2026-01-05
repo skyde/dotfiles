@@ -3,6 +3,7 @@ fzf
 bat
 btop
 git
+jq
 neovim
 tmux
 delta
