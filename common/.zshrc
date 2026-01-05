@@ -146,14 +146,51 @@ unset GIT_PAGER
 gg() { command lazygit; }
 
 # -------- plugins (load AFTER everything else; keep syntax-highlighting last)
-for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
-  for dir in "/opt/homebrew/share/$plugin" "/usr/local/share/$plugin" "/usr/share/$plugin"; do
-    if [[ -r "$dir/$plugin.zsh" ]]; then
-      source "$dir/$plugin.zsh"
-      break
-    fi
+_load_zsh_plugin() {
+  local plugin=$1
+  shift
+  local -a dirs=("$@")
+  for dir in "${dirs[@]}"; do
+    for candidate in "$dir/$plugin.plugin.zsh" "$dir/$plugin.zsh"; do
+      if [[ -r $candidate ]]; then
+        source "$candidate"
+        return 0
+      fi
+    done
   done
-done
+  return 1
+}
+
+local -a _zsh_autosuggestions_paths=(
+  "/opt/homebrew/share/zsh-autosuggestions"
+  "/usr/local/share/zsh-autosuggestions"
+  "/usr/share/zsh/plugins/zsh-autosuggestions"
+  "/usr/share/zsh-autosuggestions"
+)
+
+local -a _fast_syntax_highlighting_paths=(
+  "/opt/homebrew/share/zsh-fast-syntax-highlighting"
+  "/opt/homebrew/share/fast-syntax-highlighting"
+  "/usr/local/share/zsh-fast-syntax-highlighting"
+  "/usr/local/share/fast-syntax-highlighting"
+  "/usr/share/zsh/plugins/fast-syntax-highlighting"
+  "/usr/share/fast-syntax-highlighting"
+)
+
+local -a _zsh_syntax_highlighting_paths=(
+  "/opt/homebrew/share/zsh-syntax-highlighting"
+  "/usr/local/share/zsh-syntax-highlighting"
+  "/usr/share/zsh/plugins/zsh-syntax-highlighting"
+  "/usr/share/zsh-syntax-highlighting"
+)
+
+_load_zsh_plugin "zsh-autosuggestions" "${_zsh_autosuggestions_paths[@]}"
+
+if ! _load_zsh_plugin "fast-syntax-highlighting" "${_fast_syntax_highlighting_paths[@]}"; then
+  _load_zsh_plugin "zsh-syntax-highlighting" "${_zsh_syntax_highlighting_paths[@]}"
+fi
+
+unset -v _zsh_autosuggestions_paths _fast_syntax_highlighting_paths _zsh_syntax_highlighting_paths
 
 # -------- machine-specific overrides
 # shellcheck disable=SC1090
