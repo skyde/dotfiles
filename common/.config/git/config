@@ -29,7 +29,7 @@
     trustExitCode = true
 
 [difftool "nvimdiff"]
-     cmd = nvim -f -d "$LOCAL" "$REMOTE"
+    cmd = nvim -f -d "$LOCAL" "$REMOTE"
 
 [rerere]
     enabled = true                  # remember how you resolved a conflict
@@ -45,7 +45,7 @@
 
 [merge]
     conflictstyle = zdiff3
-     tool = vscode
+    tool = vscode
 
 [mergetool]
     prompt = false

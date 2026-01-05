@@ -1356,22 +1356,22 @@
         "workbench.action.terminal.toggleTerminal"
       ]
     },
-      {
-        // Copy diff of all changes compared to main (or the branch you are based off of)
-        "before": ["<leader>", "g", "y"],
-        "commands": [
-          {
-            "command": "workbench.action.tasks.runTask",
-            "args": "Copy Git Diff"
-          }
-        ]
-      },
+    {
+      // Copy diff of all changes compared to main (or the branch you are based off of)
+      "before": ["<leader>", "g", "y"],
+      "commands": [
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "Copy Git Diff"
+        }
+      ]
+    },
     // {
     //   "before": ["<leader>", "g", "A"],
     //   "commands": ["gitTreeCompare.refresh", "gitTreeCompare.openAllChanges"]
     // },
     // {
-      //   // Stage the current file you have open
+    //   // Stage the current file you have open
     //   "before": ["<leader>", "g", "s"],
     //   "commands": ["git.stage"]
     // },
@@ -1405,17 +1405,23 @@
     // { "before": ["<leader>", "c", "t"], "commands": ["merge-conflict.accept.incoming"] },
 
     // <leader>ca – Accept Both / Accept Combination
-    { "before": ["<leader>", "c", "a"], "commands": [
-      "merge-conflict.accept.both"
-      // If you prefer the Merge Editor's Accept Combination button,
-      // add its command ID here once you look it up in the keyboard shortcuts JSON.
-    ]},
+    {
+      "before": ["<leader>", "c", "a"],
+      "commands": [
+        "merge-conflict.accept.both"
+        // If you prefer the Merge Editor's Accept Combination button,
+        // add its command ID here once you look it up in the keyboard shortcuts JSON.
+      ]
+    },
     // Optional helper: open the current file in the Merge Editor
-    { "before": ["<leader>", "c", "m"], "commands": ["merge.openInMergeEditor"] } ,
+    {
+      "before": ["<leader>", "c", "m"],
+      "commands": ["merge.openInMergeEditor"]
+    },
     {
       // do  => revert selected ranges (take the other side into current)
       "before": ["d", "o"],
-      "commands": [{ "command": "diffEditor.revert" }],
+      "commands": [{ "command": "diffEditor.revert" }]
     },
     {
       // Accept Ours

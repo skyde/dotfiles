@@ -214,16 +214,16 @@
   },
 
   // Left Side Bar (Explorer/SCM/Extensions...)
-  { "key": "cmd+b",  "command": "workbench.action.toggleSidebarVisibility" },
+  { "key": "cmd+b", "command": "workbench.action.toggleSidebarVisibility" },
 
   // Bottom Panel (Terminal/Problems/Output/Debug Console) — default toggle
   { "key": "cmd+j", "command": "workbench.action.togglePanel" },
 
   // Unified right side: Secondary Side Bar — toggle
-  { "key": "cmd+;",  "command": "workbench.action.toggleAuxiliaryBar" },
+  { "key": "cmd+;", "command": "workbench.action.toggleAuxiliaryBar" },
 
   // Focus editor directly
-  { "key": "cmd+k",  "command": "workbench.action.focusActiveEditorGroup" },
+  { "key": "cmd+k", "command": "workbench.action.focusActiveEditorGroup" },
 
   // Scroll up 16 Lines
   // Matches Nvim where small scrolls will keep the cursor in exacty the same relative place on the screen
