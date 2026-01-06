@@ -160,11 +160,20 @@ end, { silent = true, desc = "File manager (Yazi/lf/mini.files/nvim-tree)" })
 map("v", "J", ":m '>+1<CR>gv=gv", { desc = "Move selection down", silent = true })
 map("v", "K", ":m '<-2<CR>gv=gv", { desc = "Move selection up", silent = true })
 
+local function shorten_path(path)
+  local home = vim.loop.os_homedir() or ""
+  if home ~= "" and path:sub(1, #home) == home then
+    return "~" .. path:sub(#home + 1)
+  end
+  return path
+end
+
 map({ "n", "v" }, "<leader>fl", function()
   local p = vim.fn.expand("%:p")
   if p == "" then
     return vim.notify("No file", vim.log.levels.WARN)
   end
-  vim.fn.setreg("+", p)
-  vim.notify("Copied path: " .. p)
+  local shortened = shorten_path(p)
+  vim.fn.setreg("+", shortened)
+  vim.notify("Copied path: " .. shortened)
 end, { desc = "Copy path of active file" })

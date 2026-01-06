@@ -637,7 +637,12 @@
     },
     {
       "before": ["<leader>", "f", "l"],
-      "commands": ["workbench.action.files.copyPathOfActiveFile"]
+      "commands": [
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "Copy Path (tilde)"
+        }
+      ]
     },
     {
       "before": ["<leader>", "f", "n"],

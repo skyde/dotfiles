@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+shorten() {
+  local path="${1:-}"
+  if [[ -z "$path" ]]; then
+    return
+  fi
+
+  # Normalize trailing slash for comparison but keep the original structure
+  local normalized="$path"
+  local home="${HOME%/}"
+
+  if [[ -n "$home" && "$normalized" == "$home"* ]]; then
+    normalized="~${normalized#"$home"}"
+  fi
+
+  printf '%s\n' "$normalized"
+}
+
+if [[ "$#" -gt 0 ]]; then
+  for p in "$@"; do
+    shorten "$p"
+  done
+else
+  while IFS= read -r line; do
+    shorten "$line"
+  done
+fi
