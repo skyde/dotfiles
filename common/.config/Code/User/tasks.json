@@ -80,7 +80,7 @@
       "command": "bash",
       "args": [
         "-lc",
-        "$HOME/dotfiles/common/.local/bin/shorten-path \"${file}\" | osc-copy"
+        "shortened=$($HOME/dotfiles/common/.local/bin/shorten-path \"${file}\"); if command -v pbcopy >/dev/null 2>&1; then printf '%s' \"$shortened\" | pbcopy; elif command -v osc-copy >/dev/null 2>&1; then printf '%s' \"$shortened\" | osc-copy; else printf '%s\\n' \"$shortened\"; fi"
       ],
       "options": {
         "env": {
