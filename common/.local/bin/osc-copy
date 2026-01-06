@@ -1,15 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-#!/bin/bash
+# Copy stdin to the system clipboard using OSC 52 or native clipboard tools.
+# Falls back to printing when no suitable channel is available.
 
-# Read input from stdin
-data=$(base64 | tr -d '\n')
+input=$(cat)
+
+# Prefer the native clipboard on local macOS sessions when available.
+if [[ -n "$input" ]] && command -v pbcopy >/dev/null 2>&1 && [[ -z "${SSH_CONNECTION:-}" ]]; then
+  printf '%s' "$input" | pbcopy
+  exit 0
+fi
+
+# If we don't have a TTY to target, just print the contents.
+if [[ ! -t 1 && ! -w /dev/tty ]]; then
+  printf '%s\n' "$input"
+  exit 0
+fi
+
+encoded=$(printf '%s' "$input" | base64 | tr -d '\n')
+out="/dev/tty"
 
 if [[ -n "${TMUX:-}" ]]; then
-    # Tmux wrapping
-    printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$data" > /dev/tty
+  printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$encoded" >"$out"
 else
-    # Standard OSC 52
-    printf "\033]52;c;%s\a" "$data" > /dev/tty
+  printf "\033]52;c;%s\a" "$encoded" >"$out"
 fi
