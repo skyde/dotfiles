@@ -251,6 +251,23 @@
         "clear": true
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Copy Relative Path",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "echo '${file}' | sed \"s|^$HOME|~|\" | $HOME/dotfiles/common/.local/bin/osc-copy"
+      ],
+      "presentation": {
+        "echo": false,
+        "reveal": "silent",
+        "focus": false,
+        "close": true,
+        "panel": "shared"
+      },
+      "problemMatcher": []
     }
   ]
 }
