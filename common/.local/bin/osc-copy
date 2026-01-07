@@ -8,8 +8,14 @@ input=$(cat)
 
 # Prefer the native clipboard on local macOS sessions when available.
 if [[ -n "$input" ]] && command -v pbcopy >/dev/null 2>&1 && [[ -z "${SSH_CONNECTION:-}" ]]; then
-  printf '%s' "$input" | pbcopy
-  exit 0
+  copier=(pbcopy)
+  if command -v reattach-to-user-namespace >/dev/null 2>&1; then
+    copier=(reattach-to-user-namespace pbcopy)
+  fi
+
+  if printf '%s' "$input" | "${copier[@]}"; then
+    exit 0
+  fi
 fi
 
 # If we don't have a TTY to target, just print the contents.
