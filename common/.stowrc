@@ -67,4 +67,3 @@
 --ignore=README.*
 --ignore=LICENSE.*
 --ignore=CHANGELOG.*
---ignore=\.md$
