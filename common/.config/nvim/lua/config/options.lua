@@ -57,6 +57,9 @@ vim.opt.guicursor = {
 -- Don't show whitespace characters like tabs by default
 vim.opt.list = false
 
+-- Enable word wrap by default
+vim.opt.wrap = true
+
 -- Use a blank space for deleted lines in diff mode
 vim.opt.fillchars:append({
   diff = " ",
