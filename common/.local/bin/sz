@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# sz — Hybrid code search with Zoekt (indexed) + ripgrep (changed files).
+# UI: fzf with live reload; preview via bat; open in VS Code (default) or Neovim (--vim).
+
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage: sz [--vim] [PATH]
+  --vim   Open in Neovim instead of VS Code
+  PATH    Optional: directory or a file within a repo to set the search root.
+          Defaults to git root if inside a repo, otherwise $PWD.
+
+Notes:
+- If <root>/.zoekt exists and 'zoekt' is installed, sz uses Zoekt for indexed files
+  and ripgrep for changed/untracked files. Deleted files are filtered from Zoekt output.
+- If no index is present, sz falls back to ripgrep for the whole root.
+USAGE
+}
+
+# --- internal backend for fzf reload (do not call directly)
+if [[ "${1:-}" == "--_backend" ]]; then
+  root="$2"; index_dir="$3"; shift 3
+  if [[ "${1:-}" == "--" ]]; then shift; fi
+  query="${*:-}"
+
+  cd "$root"
+
+  use_zoekt=false
+  if [[ -d "$index_dir" ]] && command -v zoekt >/dev/null 2>&1; then
+    use_zoekt=true
+  fi
+
+  if $use_zoekt; then
+    # Build lists of changed/untracked/deleted files (paths relative to repo root)
+    changed_list_file="$(mktemp)"
+    deleted_list_file="$(mktemp)"
+    filter_list_file="$(mktemp)"
+    trap 'rm -f "$changed_list_file" "$deleted_list_file" "$filter_list_file"' EXIT
+
+    # Modified + untracked
+    { git -C "$root" ls-files -m -z 2>/dev/null || true; \
+      git -C "$root" ls-files -o --exclude-standard -z 2>/dev/null || true; } \
+      | xargs -0 -I{} printf "%s\n" "{}" >> "$changed_list_file"
+
+    # Deleted
+    git -C "$root" ls-files --deleted -z 2>/dev/null \
+      | xargs -0 -I{} printf "%s\n" "{}" >> "$deleted_list_file" || true
+
+    cat "$changed_list_file" "$deleted_list_file" 2>/dev/null | sort -u > "$filter_list_file"
+
+    # 1) Zoekt for indexed files, filtering out changed/deleted paths
+    #    Zoekt prints "path:line:matched_line"
+    if [[ -s "$filter_list_file" ]]; then
+      zoekt -index_dir "$index_dir" -- "$query" 2>/dev/null \
+        | awk -F':' -v OFS=':' -v f="$filter_list_file" '
+            BEGIN { while ((getline line < f) > 0) { skip[line]=1 } }
+            { if (!($1 in skip)) print $0 }
+          '
+    else
+      zoekt -index_dir "$index_dir" -- "$query" 2>/dev/null
+    fi
+
+    # 2) ripgrep only across changed/untracked files (fresh content)
+    if [[ -s "$changed_list_file" ]] && command -v rg >/dev/null 2>&1; then
+      # rg prints "path:line:column:match" -> normalize to "path:line:match"
+      mapfile -t files < "$changed_list_file" || true
+      if [[ ${#files[@]} -gt 0 ]]; then
+        rg -H -n --color=never -- "$query" "${files[@]}" 2>/dev/null \
+          | sed -E 's/^([^:]+:[0-9]+):[0-9]+:/\1:/'
+      fi
+    fi
+    exit 0
+  else
+    # No index: ripgrep the whole root (respects .gitignore)
+    if command -v rg >/dev/null 2>&1; then
+      rg -H -n --color=never -- "$query" "$root" 2>/dev/null \
+        | sed -E 's/^([^:]+:[0-9]+):[0-9]+:/\1:/'
+      exit 0
+    fi
+    # Fallback if ripgrep missing
+    grep -RIn -- "$query" "$root" 2>/dev/null \
+      | sed -E 's/^([^:]+:[0-9]+):/\1:/'
+    exit 0
+  fi
+fi
+# --- end internal backend
+
+# Parse flags
+open_cmd="code -r -g {1}:{2}"
+target=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --vim) open_cmd="nvim +{2} {1}"; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) target="$1"; shift ;;
+  esac
+done
+
+# Resolve search root
+if [[ -n "${target}" ]]; then
+  if [[ -f "${target}" ]]; then
+    root="$(cd "$(dirname -- "${target}")" && pwd)"
+  else
+    root="$(cd "${target}" && pwd)"
+  fi
+elif git_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+  root="${git_root}"
+else
+  root="${PWD}"
+fi
+
+index_dir="${root}/.zoekt"
+
+# Require fzf + bat
+command -v fzf >/dev/null 2>&1 || { echo "fzf not found."; exit 1; }
+command -v bat >/dev/null 2>&1 || { echo "bat not found."; exit 1; }
+
+reload_cmd="sz --_backend '${root}' '${index_dir}' -- {q}"
+
+# FZF UI
+exec fzf \
+  --ansi \
+  --disabled \
+  --tiebreak=index \
+  --delimiter ':' \
+  --bind "start:reload:${reload_cmd} || true" \
+  --bind "change:reload:${reload_cmd} || true" \
+  --preview "cd '${root}' && bat --style=numbers --color=always --highlight-line {2} {1}" \
+  --preview-window 'bottom,30%,+{2}/2' \
+  --bind "enter:become(cd '${root}' && ${open_cmd})"
