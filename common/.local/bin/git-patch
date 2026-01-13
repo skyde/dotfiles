@@ -38,11 +38,12 @@ if [ -z "$INPUT" ]; then
 fi
 
 # 2. Extract CL ID (for the branch name prefix)
-CL_ID=$(echo "$INPUT" | grep -oE '[0-9]{5,}' | head -1)
+#    Added '|| true' to prevent script exit if grep finds nothing (set -e behavior)
+CL_ID=$(echo "$INPUT" | grep -oE '[0-9]{5,}' | head -1 || true)
 
 #    Fallback: If no long number found (e.g. short ID), take the last number found.
 if [ -z "$CL_ID" ]; then
-  CL_ID=$(echo "$INPUT" | grep -oE '[0-9]+' | tail -1)
+  CL_ID=$(echo "$INPUT" | grep -oE '[0-9]+' | tail -1 || true)
 fi
 
 if [ -z "$CL_ID" ]; then
@@ -54,6 +55,26 @@ fi
 #    We use a timestamp to guarantee 'git cl patch' never fails on "Branch already exists".
 TEMP_BRANCH="temp-patch-${CL_ID}-$(date +%s)"
 
+# Cleanup trap: Delete temp branch if the script fails/exits abnormally
+cleanup() {
+  RET=$?
+  if [ $RET -ne 0 ]; then
+    echo "❌ Script failed. Cleaning up..."
+    # Check if we are currently on the temp branch
+    CURRENT_BRANCH=$(git branch --show-current || true)
+    if [ "$CURRENT_BRANCH" = "$TEMP_BRANCH" ]; then
+      # Try to switch back to the previous branch
+      git checkout - >/dev/null 2>&1 || true
+    fi
+    # Delete the temp branch if it exists
+    if git show-ref --verify --quiet "refs/heads/$TEMP_BRANCH"; then
+      git branch -D "$TEMP_BRANCH" >/dev/null 2>&1 || true
+      echo "🗑️  Deleted temp branch $TEMP_BRANCH"
+    fi
+  fi
+}
+trap cleanup EXIT
+
 echo "⬇️  Fetching CL ${CL_ID}..."
 
 # 4. Run git cl patch
@@ -64,12 +85,12 @@ git cl patch "$INPUT" -b "$TEMP_BRANCH" --force >/dev/null
 RAW_TITLE=$(git log -1 --format=%s)
 
 # 6. Generate Branch Slug
-#    Lowercase, alphanumeric only, replace spaces with hyphens, truncate to 50 chars.
+#    Lowercase, alphanumeric only, replace spaces with hyphens, truncate to 30 chars.
 SLUG=$(echo "$RAW_TITLE" |
   tr '[:upper:]' '[:lower:]' |
   sed -E 's/[^a-z0-9]+/-/g' |
   sed -E 's/^-+|-+$//g' |
-  cut -c -50)
+  cut -c -30)
 
 #    Fallback if title is empty
 if [ -z "$SLUG" ]; then
@@ -100,7 +121,13 @@ if git show-ref --verify --quiet "refs/heads/$FINAL_BRANCH"; then
   fi
 fi
 
+echo "Renaming branch to $FINAL_BRANCH.."
+
 # 9. Rename the current (temp) branch to the final name
 git rename-branch "$FINAL_BRANCH"
+
+echo "Running gclient sync.."
+
+gclient sync -D
 
 echo "✅ Patched to branch: $FINAL_BRANCH"
