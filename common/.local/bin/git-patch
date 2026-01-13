@@ -58,7 +58,7 @@ echo "⬇️  Fetching CL ${CL_ID}..."
 
 # 4. Run git cl patch
 #    We silence standard output to reduce noise, but keep errors visible.
-git cl patch "$INPUT" -b "$TEMP_BRANCH" >/dev/null
+git cl patch "$INPUT" -b "$TEMP_BRANCH" --force >/dev/null
 
 # 5. Extract Title (The "Secret Sauce")
 RAW_TITLE=$(git log -1 --format=%s)
