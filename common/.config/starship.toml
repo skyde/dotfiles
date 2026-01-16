@@ -4,7 +4,7 @@
 # Inserts a blank line between shell prompts
 add_newline = true
 command_timeout = 1000
-format = "$username$hostname${custom.git_workspace}$directory$git_branch$git_commit$git_state$git_status$cmd_duration\n$character"
+format = "$username$hostname${custom.git_workspace}$directory$git_branch${custom.git_cl}$git_commit$git_state$git_status$cmd_duration\n$character"
 right_format = "$time"
 
 [fill]
@@ -79,3 +79,19 @@ echo "${parent##*/}"
 # No leading/trailing spaces; add "/" so it glues to $directory
 format = '[$output/]($style)'
 style  = 'cyan bold'
+
+[custom.git_cl]
+description = "Chromium CL number"
+# Check if the current branch has a gerritissue config
+when = """
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+[ -n "$branch" ] && git config branch."$branch".gerritissue >/dev/null 2>&1
+"""
+# If 'when' passes, we know we have a CL number.
+command = """
+branch=$(git symbolic-ref --short HEAD)
+cl=$(git config branch."$branch".gerritissue)
+echo " $cl"
+"""
+style = "bold blue"
+format = "at [$output]($style) "
