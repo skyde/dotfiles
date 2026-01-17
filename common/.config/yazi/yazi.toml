@@ -7,6 +7,9 @@ show_hidden = true
 sort_by = "mtime"
 sort_reverse = true
 
+[preview]
+wrap = "yes"
+
 # [[plugin.prepend_fetchers]]
 # id = "git"
 # name = "*"
