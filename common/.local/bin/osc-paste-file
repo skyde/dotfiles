@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+read_clipboard() {
+  if command -v pbpaste >/dev/null 2>&1; then
+    pbpaste
+    return
+  fi
+
+  if command -v wl-paste >/dev/null 2>&1; then
+    wl-paste --no-newline
+    return
+  fi
+
+  if command -v xclip >/dev/null 2>&1; then
+    xclip -selection clipboard -o
+    return
+  fi
+
+  if command -v xsel >/dev/null 2>&1; then
+    xsel --clipboard --output
+    return
+  fi
+
+  if command -v powershell.exe >/dev/null 2>&1; then
+    powershell.exe -NoProfile -Command Get-Clipboard
+    return
+  fi
+
+  echo "osc-paste-file: no clipboard reader found (pbpaste/wl-paste/xclip/xsel/powershell.exe)" >&2
+  return 1
+}
+
+clipboard=$(read_clipboard) || exit 1
+
+name=""
+data=""
+while IFS= read -r line; do
+  case "$line" in
+    YAZI_FILE_NAME=*)
+      name=${line#YAZI_FILE_NAME=}
+      ;;
+    YAZI_FILE_DATA=*)
+      data=${line#YAZI_FILE_DATA=}
+      ;;
+  esac
+done <<<"$clipboard"
+
+if [ -z "$name" ] || [ -z "$data" ]; then
+  echo "osc-paste-file: clipboard missing YAZI_FILE_NAME/YAZI_FILE_DATA payload" >&2
+  exit 1
+fi
+
+target=${1:-$name}
+if [ -z "$target" ]; then
+  echo "osc-paste-file: empty target filename" >&2
+  exit 1
+fi
+
+if [ -e "$target" ]; then
+  echo "osc-paste-file: refusing to overwrite existing '$target'" >&2
+  exit 1
+fi
+
+YAZI_FILE_DATA="$data" python3 - "$target" <<'PY'
+import base64
+import os
+import sys
+from pathlib import Path
+
+target = Path(sys.argv[1])
+data = os.environ["YAZI_FILE_DATA"].strip()
+
+try:
+    decoded = base64.b64decode(data)
+except Exception as exc:  # noqa: BLE001
+    sys.stderr.write(f"Failed to decode clipboard data: {exc}\n")
+    sys.exit(1)
+
+target.write_bytes(decoded)
+PY
