@@ -23,6 +23,7 @@ HISTFILE="$HOME/.zsh_history"
 
 # -------- key bindings
 bindkey -e                              # Emacs keybindings
+bindkey '^_' undo                       # Ctrl+_
 bindkey '^[[1;5C' forward-word          # Ctrl+Right
 bindkey '^[[1;5D' backward-word         # Ctrl+Left
 autoload -Uz edit-command-line
