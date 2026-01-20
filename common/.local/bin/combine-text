@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  cat <<'USAGE'
+  cat <<'EOF'
 combine-text — append right-hand text after piped stdin (stdin -> stdout filter)
 
 USAGE
@@ -30,7 +30,7 @@ EXAMPLES
 NOTES
   - TEXT is treated as literal text; this program does NOT execute commands you pass as arguments.
   - To include spaces/newlines reliably, quote your TEXT.
-USAGE
+EOF
 }
 
 sep="blank"
