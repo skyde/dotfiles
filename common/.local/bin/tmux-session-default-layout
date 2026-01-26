@@ -1,0 +1,10 @@
+# Create new session detached, name first window 'AI'
+tmux new-session -d -s "$SESSION_NAME" -n "AI"
+tmux send-keys -t "$SESSION_NAME":1 "gemini --yolo --resume" C-m
+
+# Create second window 'AI'
+tmux new-window -t "$SESSION_NAME":2 -n "AI"
+tmux send-keys -t "$SESSION_NAME":2 "gemini --yolo" C-m
+
+# Create third window 'terminal'
+tmux new-window -t "$SESSION_NAME":3 -n "terminal"
