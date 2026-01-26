@@ -15,12 +15,17 @@ if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
         DEFAULT_LOADER="${DEFAULT_LOADER}-local"
     fi
 
-    if ! command -v "$DEFAULT_LOADER" >/dev/null 2>&1; then
-        echo "Error: ${DEFAULT_LOADER} not found in PATH." >&2
-        exit 1
+    if command -v "$DEFAULT_LOADER" >/dev/null 2>&1; then
+        SESSION_NAME="$SESSION_NAME" "$DEFAULT_LOADER"
+    else
+        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+        DEFAULT_LOADER_PATH="${SCRIPT_DIR}/${DEFAULT_LOADER}"
+        if [ ! -x "$DEFAULT_LOADER_PATH" ]; then
+            echo "Error: ${DEFAULT_LOADER} not found in PATH or ${SCRIPT_DIR}." >&2
+            exit 1
+        fi
+        SESSION_NAME="$SESSION_NAME" "$DEFAULT_LOADER_PATH"
     fi
-
-    SESSION_NAME="$SESSION_NAME" "$DEFAULT_LOADER"
 fi
 
 # Switch window globally for the session
