@@ -127,6 +127,17 @@ if [ -f "install-zoekt.sh" ]; then
   fi
 fi
 
+# Optional: Install glow (terminal markdown viewer)
+if [ -f "install-glow.sh" ]; then
+  install_glow=$(get_user_confirmation "Install glow (terminal markdown viewer)? (y/N): ")
+  if [[ "$install_glow" =~ ^[Yy] ]]; then
+    echo "Running glow installation script..."
+    ./install-glow.sh
+  else
+    echo "Skipping glow installation"
+  fi
+fi
+
 # Optional: Install zsh-fast-syntax-highlighting (manual install/clone)
 if [ -f "install-fast-syntax-highlighting.sh" ]; then
   install_fsh=$(get_user_confirmation "Install zsh-fast-syntax-highlighting? (y/N): ")
