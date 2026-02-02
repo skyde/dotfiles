@@ -13,3 +13,4 @@ fd
 zoxide
 starship
 lf
+glow
