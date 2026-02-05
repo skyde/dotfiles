@@ -74,6 +74,28 @@
       },
       "problemMatcher": []
     },
+    {
+      "label": "Copy Path (tilde)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "printf '%s\\n' \"$($HOME/dotfiles/common/.local/bin/shorten-path \"${file}\")\" | osc-copy"
+      ],
+      "options": {
+        "env": {
+          "HOME": "${env:HOME}"
+        }
+      },
+      "presentation": {
+        "echo": false,
+        "reveal": "never",
+        "focus": false,
+        "close": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
     // {
     //   "label": "Switch Running LF to Current Directory",
     //   "type": "shell",
