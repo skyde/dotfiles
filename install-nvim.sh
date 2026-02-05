@@ -14,7 +14,7 @@ fi
 
 readonly url="https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage"
 readonly tmp_file="nvim-linux-x86_64.appimage"
-readonly install_dir="${HOME}/bin"
+readonly install_dir="${HOME}/.local/bin"
 readonly install_target="${install_dir}/nvim"
 
 printf '⬇️  Downloading Neovim AppImage...\n'

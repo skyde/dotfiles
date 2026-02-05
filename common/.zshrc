@@ -55,7 +55,7 @@ unset _compdump
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
-# # -------- prompt (Starship)
+# -------- prompt (Starship)
 eval "$(starship init zsh)"
 
 # -------- zoxide (smart cd)

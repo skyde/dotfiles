@@ -16,12 +16,6 @@ done
 
 # Install stow if needed
 if ! command -v stow >/dev/null; then
-# Check for dotfiles-local and run its apply script if present
-if [ -x "$HOME/dotfiles-local/apply.sh" ]; then
-    echo "🔗 Found dotfiles-local, applying..."
-    "$HOME/dotfiles-local/apply.sh" "${ARGS[@]}"
-fi
-
     if $DRY_RUN; then
         echo "[DRY RUN] Would install stow"
     else
@@ -67,12 +61,6 @@ stow_package() {
     stow --target="$HOME" --verbose=1 "${ARGS[@]}" "$pkg"
 
     # Skip verification in dry-run mode
-# Check for dotfiles-local and run its apply script if present
-if [ -x "$HOME/dotfiles-local/apply.sh" ]; then
-    echo "🔗 Found dotfiles-local, applying..."
-    "$HOME/dotfiles-local/apply.sh" "${ARGS[@]}"
-fi
-
     if $DRY_RUN; then
         echo "  [DRY RUN] Skipping verification"
         return 0
