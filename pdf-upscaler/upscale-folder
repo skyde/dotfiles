@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+"""Upscale all images in a folder to 4K using Nano Banana (Gemini) API."""
+
+import argparse
+import os
+import sys
+import time
+from pathlib import Path
+
+from google import genai
+from google.genai import types
+from PIL import Image
+
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".tiff", ".tif", ".bmp"}
+
+UPSCALE_PROMPT = (
+    "Upscale this image to 4K resolution. "
+    "Faithfully preserve every detail, color, and texture of the original image. "
+    "Do not alter, reinterpret, or add anything. "
+    "Enhance sharpness and clarity while maintaining the original composition exactly."
+)
+
+
+def upscale_image(client: genai.Client, image_path: Path, output_path: Path) -> None:
+    image = Image.open(image_path)
+
+    response = client.models.generate_content(
+        model="gemini-3-pro-image-preview",
+        contents=[UPSCALE_PROMPT, image],
+        config=types.GenerateContentConfig(
+            response_modalities=["TEXT", "IMAGE"],
+            image_config=types.ImageConfig(image_size="4K"),
+        ),
+    )
+
+    for part in response.parts:
+        img = part.as_image()
+        if img is not None:
+            img.save(str(output_path))
+            return
+
+    raise RuntimeError(f"No image returned from API for {image_path.name}")
+
+
+def run(input_dir: Path, output_dir: Path, max_retries: int) -> None:
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        print(
+            "Error: Set GEMINI_API_KEY or GOOGLE_API_KEY environment variable",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    client = genai.Client(api_key=api_key)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    files = sorted(
+        f for f in input_dir.iterdir() if f.suffix.lower() in IMAGE_EXTENSIONS
+    )
+
+    if not files:
+        print(f"No images found in {input_dir}", file=sys.stderr)
+        sys.exit(1)
+
+    total = len(files)
+    failed = []
+
+    for i, img_path in enumerate(files):
+        out_path = output_dir / f"{img_path.stem}.png"
+
+        if out_path.exists():
+            print(f"[{i + 1}/{total}] {img_path.name} (already exists, skipping)")
+            continue
+
+        for attempt in range(max_retries + 1):
+            try:
+                print(f"[{i + 1}/{total}] {img_path.name} ...", end=" ", flush=True)
+                upscale_image(client, img_path, out_path)
+                print("done")
+                break
+            except Exception as e:
+                if attempt < max_retries:
+                    wait = 2 ** (attempt + 1)
+                    print(f"retry in {wait}s ({e})")
+                    time.sleep(wait)
+                else:
+                    print(f"FAILED ({e})")
+                    failed.append(img_path.name)
+
+    print(f"\nProcessed {total - len(failed)}/{total} images to {output_dir}")
+    if failed:
+        print(f"Failed: {', '.join(failed)}", file=sys.stderr)
+        sys.exit(1)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Upscale all images in a folder to 4K using Nano Banana (Gemini) API."
+    )
+    parser.add_argument("input_dir", type=Path, help="Folder of images to upscale")
+    parser.add_argument(
+        "output_dir",
+        type=Path,
+        nargs="?",
+        default=None,
+        help="Output folder (default: <input_dir>_upscaled)",
+    )
+    parser.add_argument(
+        "--retries",
+        type=int,
+        default=3,
+        help="Max retries per image on API failure (default: 3)",
+    )
+    args = parser.parse_args()
+
+    if not args.input_dir.is_dir():
+        print(f"Error: {args.input_dir} is not a directory", file=sys.stderr)
+        sys.exit(1)
+
+    output_dir = args.output_dir or Path(f"{args.input_dir}_upscaled")
+    run(args.input_dir, output_dir, args.retries)
+
+
+if __name__ == "__main__":
+    main()
