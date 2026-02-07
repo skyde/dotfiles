@@ -1,1 +1,167 @@
-../../../../../common/.config/Code/User/tasks.json
+// Windows-specific VS Code tasks
+// Note: tmux is not available on Windows, so terminal tasks use PowerShell directly
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "StandardTerminal",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoExit", "-Command", "Set-Location '${workspaceFolder}'"],
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "close": false,
+        "panel": "dedicated"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "LazyGit",
+      "type": "shell",
+      "command": "lazygit",
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FZF Ripgrep",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-Command",
+        "& \"$HOME\\.local\\bin\\st.ps1\" -code"
+      ],
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FZF Ripgrep (No Cache)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-Command",
+        "& \"$HOME\\.local\\bin\\st-rg.ps1\" -code"
+      ],
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FZF Files",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-Command",
+        "& \"$HOME\\.local\\bin\\ff.ps1\" -code"
+      ],
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Zoekt Search",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-Command",
+        "& \"$HOME\\.local\\bin\\st-zoekt.ps1\" -code"
+      ],
+      "presentation": {
+        "echo": false,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Zoekt Index",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-Command",
+        "& \"$HOME\\.local\\bin\\si.ps1\" '${workspaceFolder}'"
+      ],
+      "presentation": {
+        "echo": true,
+        "clear": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Git CL Format",
+      "type": "shell",
+      "command": "git cl format",
+      "presentation": {
+        "echo": false,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Copy Git Diff",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-Command",
+        "& \"$HOME\\.local\\bin\\git-copy.ps1\""
+      ],
+      "presentation": {
+        "echo": false,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
