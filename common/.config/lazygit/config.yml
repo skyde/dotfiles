@@ -40,3 +40,7 @@ customCommands:
     command: "sh -c 'id=$(git stash create); if [ -n \"$id\" ]; then git stash store -m \"snapshot $(date +%Y-%m-%d\\ %H:%M:%S)\" \"$id\"; fi'"
     context: "global"
     description: "Stash snapshot (keep worktree)"
+  - key: 'Y' # You can change this to any key (e.g., 'C' or '<c-c>')
+    context: 'commits, subCommits'
+    description: 'Copy diff of selected commit(s) to clipboard'
+    command: 'git diff --no-color {{if .SelectedCommitRange}}{{.SelectedCommitRange.From}}^..{{.SelectedCommitRange.To}}{{else}}{{.SelectedLocalCommit.Hash}}^!{{end}} | osc-copy'
