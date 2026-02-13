@@ -5,5 +5,10 @@
   "chromium.runtimeExecutable": "chrome",
   "chromium.runtimeExecutableMac": "Chromium.app/Contents/MacOS/Chromium",
   "chromium.runtimeExecutableLinux": "chrome",
-  "chromium.userDataDir": "${workspaceFolder}/.vscode/chrome-user-data"
+  "chromium.runtimeExecutableWindows": "chrome.exe",
+  "chromium.userDataDir": "${workspaceFolder}/.vscode/chrome-user-data",
+  "chromium.nativeUserDataDir": "${workspaceFolder}/.vscode/chrome-native-profile",
+  "chromium.nativeAttachUrl": "https://example.test/",
+  "chromium.rendererPidFile": "${workspaceFolder}/.vscode/.renderer_pid",
+  "chromium.rendererWaitTimeout": 120
 }
