@@ -34,6 +34,20 @@ if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 or vim.fn.has("win32unix
     },
     cache_enabled = 0, -- 1 if you want selections cached for speed
   }
+else
+  -- Use Neovim's built-in OSC 52 for remote/tmux sessions
+  local osc52 = require("vim.ui.clipboard.osc52")
+  vim.g.clipboard = {
+    name = "OSC 52",
+    copy = {
+      ["+"] = osc52.copy("+"),
+      ["*"] = osc52.copy("*"),
+    },
+    paste = {
+      ["+"] = osc52.paste("+"),
+      ["*"] = osc52.paste("*"),
+    },
+  }
 end
 
 vim.opt.clipboard:append("unnamedplus")
