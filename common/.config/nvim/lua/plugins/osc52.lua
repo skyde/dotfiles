@@ -1,21 +1,19 @@
 return {
-  -- Replaced ojroques/nvim-osc52 with local script to avoid /dev/fd/2 write errors
-  name = 'osc52-clipboard',
-  dir = vim.fn.stdpath('config'), -- Dummy path to satisfy lazy.nvim
+  'ojroques/nvim-osc52',
   config = function()
+    require('osc52').setup {
+      max_length = 0,           -- No limit
+      silent = false,           -- Show message on copy
+      tmux_passthrough = true,  -- vital for your tmux setup
+    }
+
+    -- Automatically copy to system clipboard on yank
     local function copy()
       if vim.v.event.operator == 'y' and vim.v.event.regname == '' then
-        local text = vim.fn.getreg('"')
-        -- Use the external osc-copy script which handles /dev/tty writing
-        -- and tmux wrapping correctly.
-        -- Ensure 'osc-copy' is in PATH.
-        vim.fn.system({'osc-copy'}, text)
+        require('osc52').copy_register('')
       end
     end
 
-    vim.api.nvim_create_autocmd('TextYankPost', {
-      group = vim.api.nvim_create_augroup('OSC52Yank', { clear = true }),
-      callback = copy,
-    })
+    vim.api.nvim_create_autocmd('TextYankPost', { callback = copy })
   end
 }
