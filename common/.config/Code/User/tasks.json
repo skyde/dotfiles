@@ -24,6 +24,23 @@
       "problemMatcher": []
     },
     {
+      "label": "Copy Active File Path (Home)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "$HOME/dotfiles/common/.local/bin/copy-path-home \"${file}\""
+      ],
+      "presentation": {
+        "echo": false,
+        "reveal": "silent",
+        "focus": false,
+        "close": true,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Tmux: Switch to AI",
       "type": "shell",
       "command": "bash",
