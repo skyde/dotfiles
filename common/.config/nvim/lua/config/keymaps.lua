@@ -165,6 +165,7 @@ map({ "n", "v" }, "<leader>fl", function()
   if p == "" then
     return vim.notify("No file", vim.log.levels.WARN)
   end
+  p = vim.fn.fnamemodify(p, ":~")
   vim.fn.setreg("+", p)
   vim.notify("Copied path: " .. p)
 end, { desc = "Copy path of active file" })

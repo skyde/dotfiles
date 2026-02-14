@@ -637,7 +637,12 @@
     },
     {
       "before": ["<leader>", "f", "l"],
-      "commands": ["workbench.action.files.copyPathOfActiveFile"]
+      "commands": [
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "Copy Relative Path"
+        }
+      ]
     },
     {
       "before": ["<leader>", "f", "n"],

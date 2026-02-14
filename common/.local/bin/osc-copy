@@ -1,15 +1,57 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-#!/bin/bash
+# Read input into a variable
+# We use 'cat' to read all of stdin
+input=$(cat)
 
-# Read input from stdin
-data=$(base64 | tr -d '\n')
+# 1. Try Local Clipboard Tools
+#    (Useful when running locally in VS Code, terminals, etc.)
 
-if [[ -n "${TMUX:-}" ]]; then
-    # Tmux wrapping
-    printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$data" > /dev/tty
+# macOS
+if command -v pbcopy >/dev/null 2>&1; then
+    echo -n "$input" | pbcopy
+fi
+
+# Linux X11
+if command -v xclip >/dev/null 2>&1; then
+    # Try selection clipboard
+    echo -n "$input" | xclip -selection clipboard 2>/dev/null || true
+fi
+
+# Linux Wayland
+if command -v wl-copy >/dev/null 2>&1; then
+    echo -n "$input" | wl-copy 2>/dev/null || true
+fi
+
+# 2. Emit OSC 52 Sequence
+#    (Useful for remote SSH sessions, tmux, nested terminals)
+#    We encode the input to base64 and strip newlines.
+
+data=$(echo -n "$input" | base64 | tr -d '
+')
+
+# Check if we are connected to a TTY before trying to write to it
+if [ -t 1 ]; then
+    tty_dev="/dev/tty"
 else
-    # Standard OSC 52
-    printf "\033]52;c;%s\a" "$data" > /dev/tty
+    # If stdout is not a TTY, we can try explicitly writing to /dev/tty
+    # but some environments (like non-interactive tasks) might not have one.
+    # We attempt to write to /dev/tty if it exists.
+    if [ -e "/dev/tty" ]; then
+        tty_dev="/dev/tty"
+    else
+        # Fallback to stdout if /dev/tty is not available, though OSC 52
+        # usually needs to go to the controlling terminal.
+        tty_dev="/dev/stdout"
+    fi
+fi
+
+# Emit the sequence
+if [[ -n "${TMUX:-}" ]]; then
+    # Tmux wrapping: Ptmux; ... \
+    printf "Ptmux;]52;c;%s\" "$data" > "$tty_dev" 2>/dev/null || true
+else
+    # Standard OSC 52: ]52;c; ... 
+    printf "]52;c;%s" "$data" > "$tty_dev" 2>/dev/null || true
 fi
