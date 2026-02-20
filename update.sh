@@ -19,6 +19,10 @@ git pull
 if [ -d "$HOME/dotfiles-local/.git" ]; then
     echo "Updating dotfiles-local from remote..."
     git -C "$HOME/dotfiles-local" pull
+    if [ -f "$HOME/dotfiles-local/install.sh" ]; then
+        echo "Running dotfiles-local install script..."
+        "$HOME/dotfiles-local/install.sh"
+    fi
 fi
 
 # Apply the updated dotfiles
