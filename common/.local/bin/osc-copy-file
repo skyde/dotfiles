@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -lt 1 ]; then
+  echo "Usage: osc-copy-file <file>" >&2
+  exit 1
+fi
+
+file=$1
+
+if [ ! -f "$file" ]; then
+  echo "osc-copy-file: '$file' is not a regular file" >&2
+  exit 1
+fi
+
+name=${file##*/}
+
+file_data=$(base64 < "$file" | tr -d '\n')
+
+printf "YAZI_FILE_NAME=%s\nYAZI_FILE_DATA=%s\n" "$name" "$file_data" | osc-copy
