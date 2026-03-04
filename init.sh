@@ -43,18 +43,20 @@ if [ -f "packages.txt" ]; then
   install_apps=$(get_user_confirmation "Install packages ($packages)? (y/N): ")
   if [[ "$install_apps" =~ ^[Yy] ]]; then
     echo "Installing packages..."
+    # Intentionally split the package list into separate arguments.
+    IFS=' ' read -r -a package_array <<<"$packages"
     case "$(uname)" in
     Darwin)
-      command -v brew >/dev/null && brew install $packages || echo "Homebrew not found. Install it first: https://brew.sh"
+      command -v brew >/dev/null && brew install "${package_array[@]}" || echo "Homebrew not found. Install it first: https://brew.sh"
       ;;
     Linux)
-      command -v apt >/dev/null && sudo apt update && sudo apt install -y $packages
+      command -v apt >/dev/null && sudo apt update && sudo apt install -y "${package_array[@]}"
       ;;
     MINGW* | MSYS* | CYGWIN*)
       if command -v winget >/dev/null; then
         for pkg in $packages; do winget install "$pkg" --silent --accept-source-agreements --accept-package-agreements; done
       elif command -v choco >/dev/null; then
-        choco install $packages -y
+        choco install "${package_array[@]}" -y
       else
         echo "Neither winget nor chocolatey found. Please install packages manually: $packages"
       fi

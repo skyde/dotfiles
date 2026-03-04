@@ -27,6 +27,7 @@ jobs:
             brew install stow gnu-time
           elif [ "$RUNNER_OS" == "Windows" ]; then
             winget install --id MathiasCodes.Winstow --exact --silent --accept-package-agreements --accept-source-agreements || echo "Winstow install failed; continuing"
+            echo "$LOCALAPPDATA\\Microsoft\\WinGet\\Links" >> "$GITHUB_PATH"
           fi
         shell: bash
 

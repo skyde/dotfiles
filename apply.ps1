@@ -2,12 +2,26 @@
 $ErrorActionPreference = 'Stop'
 
 function Get-StowCommand {
-    if (Get-Command stow -ErrorAction SilentlyContinue) {
-        return "stow"
+    $stowCmd = Get-Command stow -ErrorAction SilentlyContinue
+    if ($stowCmd) {
+        return $stowCmd.Source
     }
-    if (Get-Command winstow -ErrorAction SilentlyContinue) {
-        return "winstow"
+
+    $winstowCmd = Get-Command winstow -ErrorAction SilentlyContinue
+    if ($winstowCmd) {
+        return $winstowCmd.Source
     }
+
+    $wingetLinkPath = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\winstow.exe"
+    if (Test-Path $wingetLinkPath) {
+        return $wingetLinkPath
+    }
+
+    $windowsAppsPath = Join-Path $env:LOCALAPPDATA "Microsoft\WindowsApps\winstow.exe"
+    if (Test-Path $windowsAppsPath) {
+        return $windowsAppsPath
+    }
+
     return $null
 }
 
@@ -17,6 +31,13 @@ if (-not $stowCommand) {
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         try {
             winget install --id MathiasCodes.Winstow --exact --silent --accept-package-agreements --accept-source-agreements | Out-Null
+            $wingetLinksDir = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links"
+            if (Test-Path $wingetLinksDir) {
+                $pathParts = $env:PATH -split ';'
+                if ($pathParts -notcontains $wingetLinksDir) {
+                    $env:PATH = "$env:PATH;$wingetLinksDir"
+                }
+            }
         } catch {
             Write-Host "Warning: failed to install Winstow via winget: $($_.Exception.Message)" -ForegroundColor Yellow
         }

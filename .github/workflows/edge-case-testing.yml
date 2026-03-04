@@ -35,6 +35,7 @@ jobs:
             brew install stow
           elif [ "$RUNNER_OS" == "Windows" ]; then
             winget install --id MathiasCodes.Winstow --exact --silent --accept-package-agreements --accept-source-agreements || echo "Winstow install failed; continuing"
+            echo "$LOCALAPPDATA\\Microsoft\\WinGet\\Links" >> "$GITHUB_PATH"
           fi
         shell: bash
 
@@ -50,7 +51,7 @@ jobs:
 
           # Create conflicting files
           echo "Creating pre-existing files..."
-          echo "# Existing bashrc" > "$home_dir/.bashrc"
+          echo "# Existing bashrc-custom" > "$home_dir/.bashrc-custom"
           echo "# Existing zshrc" > "$home_dir/.zshrc"
           mkdir -p "$home_dir/.config"
           echo "# Existing config" > "$home_dir/.config/existing.conf"
@@ -111,13 +112,13 @@ jobs:
             AUTO_INSTALL=0 ./init.sh > /dev/null 2>&1
             
             # Verify basic functionality
-            test -f "$HOME/.bashrc" || { echo "❌ Install failed on cycle $i"; exit 1; }
+            test -f "$HOME/.bashrc-custom" || { echo "❌ Install failed on cycle $i"; exit 1; }
 
             # Uninstall
             ./apply.sh --delete > /dev/null 2>&1
 
             # Verify cleanup
-            test ! -e "$HOME/.bashrc" || { echo "❌ Cleanup failed on cycle $i"; exit 1; }
+            test ! -e "$HOME/.bashrc-custom" || { echo "❌ Cleanup failed on cycle $i"; exit 1; }
           done
 
           echo "✅ Rapid cycle test completed"
@@ -182,7 +183,7 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Verify installation worked
-          test -f "$HOME/.bashrc" || { echo "❌ Offline installation failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Offline installation failed"; exit 1; }
 
           # Test package operations
           ./apply.sh --restow
@@ -263,17 +264,17 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Break some symlinks manually
-          rm -rf common/.bashrc
+          rm -rf common/.bashrc-custom
 
           # Test recovery via restow
           ./apply.sh --restow || echo "Expected failure with missing file"
 
           # Restore the file
-          echo "# Restored bashrc" > common/.bashrc
+          echo "# Restored bashrc-custom" > common/.bashrc-custom
 
           # Test successful recovery
           ./apply.sh --restow
-          test -f "$HOME/.bashrc" || { echo "❌ Recovery failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Recovery failed"; exit 1; }
 
           echo "✅ Recovery test completed"
 
@@ -291,7 +292,7 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Verify everything is properly installed
-          test -f "$HOME/.bashrc" || { echo "❌ Partial recovery failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Partial recovery failed"; exit 1; }
           test -f "$HOME/.config/git/config" || { echo "❌ Full installation after partial failed"; exit 1; }
 
           echo "✅ Partial installation recovery test completed"
@@ -333,6 +334,7 @@ jobs:
             echo "Testing macOS specific features..."
           elif [[ "${{ matrix.platform }}" == windows* ]]; then
             winget install --id MathiasCodes.Winstow --exact --silent --accept-package-agreements --accept-source-agreements || echo "Winstow install failed; continuing"
+            echo "$LOCALAPPDATA\\Microsoft\\WinGet\\Links" >> "$GITHUB_PATH"
           fi
         shell: bash
 
@@ -351,7 +353,7 @@ jobs:
             echo "Git version: $(git --version)"
           elif [[ "${{ matrix.platform }}" == windows* ]]; then
             echo "Windows version: $(systeminfo | findstr /B /C:"OS Name" /C:"OS Version")"
-            stow --version || winstow --version
+            pwsh -Command 'if (Get-Command stow -ErrorAction SilentlyContinue) { stow --version } elseif (Get-Command winstow -ErrorAction SilentlyContinue) { winstow --version } else { Write-Host "No stow-compatible command in PATH" }'
             git --version
           fi
 
