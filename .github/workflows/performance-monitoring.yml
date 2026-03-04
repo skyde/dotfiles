@@ -26,7 +26,7 @@ jobs:
           elif [ "$RUNNER_OS" == "macOS" ]; then
             brew install stow gnu-time
           elif [ "$RUNNER_OS" == "Windows" ]; then
-            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+            winget install --id MathiasCodes.Winstow --exact --silent --accept-package-agreements --accept-source-agreements || echo "Winstow install failed; continuing"
           fi
         shell: bash
 
@@ -37,8 +37,7 @@ jobs:
           start_time=$(date +%s)
 
           if [ "$RUNNER_OS" == "Windows" ]; then
-            $env:AUTO_INSTALL = "0"
-            Measure-Command { & pwsh -File init.ps1 } | Select-Object TotalSeconds
+            pwsh -Command '$env:AUTO_INSTALL = "0"; Measure-Command { & "./init.ps1" } | Select-Object -ExpandProperty TotalSeconds'
           else
             time AUTO_INSTALL=0 ./init.sh
           fi
@@ -60,29 +59,35 @@ jobs:
         run: |
           echo "📦 Measuring package operation performance..."
 
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            apply_cmd="pwsh -File apply.ps1"
-          else
-            apply_cmd="./apply.sh"
-          fi
-
           # Measure restow time
           start_time=$(date +%s)
-          $apply_cmd --restow
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            pwsh -Command '& "./apply.ps1" --restow'
+          else
+            ./apply.sh --restow
+          fi
           end_time=$(date +%s)
           restow_duration=$((end_time - start_time))
           echo "Restow completed in ${restow_duration} seconds"
 
           # Measure delete time
           start_time=$(date +%s)
-          $apply_cmd --delete
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            pwsh -Command '& "./apply.ps1" --delete'
+          else
+            ./apply.sh --delete
+          fi
           end_time=$(date +%s)
           delete_duration=$((end_time - start_time))
           echo "Delete completed in ${delete_duration} seconds"
 
           # Measure install time
           start_time=$(date +%s)
-          $apply_cmd
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            pwsh -Command '& "./apply.ps1"'
+          else
+            ./apply.sh
+          fi
           end_time=$(date +%s)
           install_duration=$((end_time - start_time))
           echo "Install completed in ${install_duration} seconds"
@@ -263,8 +268,7 @@ jobs:
           hyperfine --warmup 1 --runs 10 './apply.sh --restow'
 
           # Benchmark individual package operations
-          cd dotfiles
-          hyperfine --warmup 1 --runs 10 'stow --target=$HOME --restow shell'
+          hyperfine --warmup 1 --runs 10 'stow --target=$HOME --restow common'
 
           echo "✅ Benchmark comparison completed"
 

@@ -56,10 +56,10 @@ jobs:
           echo "📄 Validating configuration files..."
 
           # Check essential config files exist
-          test -f "dotfiles/common/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
-          test -f "dotfiles/common/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
-          test -f "dotfiles/common/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
-          test -f "dotfiles/common/.config/git/config" || { echo "❌ git config missing"; exit 1; }
+          test -f "common/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
+          test -f "common/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
+          test -f "common/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
+          test -f "common/.config/git/config" || { echo "❌ git config missing"; exit 1; }
           echo "✅ Essential config files present"
 
           # Validate shell script syntax
@@ -71,7 +71,7 @@ jobs:
 
           # Validate shell config syntax
           echo "🔍 Validating shell configuration syntax..."
-          bash -n dotfiles/common/.bashrc || { echo "❌ .bashrc has syntax errors"; exit 1; }
+          bash -n common/.bashrc || { echo "❌ .bashrc has syntax errors"; exit 1; }
           echo "✅ Shell configurations have valid syntax"
 
   # Multi-platform testing matrix
@@ -140,12 +140,11 @@ jobs:
             brew install stow
             echo "✅ macOS dependencies installed"
           elif [ "${{ matrix.platform }}" = "windows" ]; then
-            # Install stow via winget (check if available first)
+            # Install Winstow (GNU Stow-compatible CLI for Windows)
             if command -v winget >/dev/null 2>&1; then
-              winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements || echo "winget install failed, trying alternative"
+              winget install --id MathiasCodes.Winstow --exact --silent --accept-package-agreements --accept-source-agreements || echo "Winstow install failed, continuing"
             else
-              echo "winget not available, using chocolatey fallback"
-              choco install stow -y || echo "choco install failed"
+              echo "winget not available, continuing without explicit stow install"
             fi
             echo "✅ Windows dependencies installation attempted"
           fi
@@ -218,7 +217,7 @@ jobs:
           echo "🔗 Verifying package-based symlinks..."
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
@@ -254,7 +253,7 @@ jobs:
           echo "📄 Testing configuration file access..."
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
@@ -324,7 +323,7 @@ jobs:
           echo "⚡ Testing configuration loading..."
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
@@ -360,7 +359,6 @@ jobs:
             echo "✅ Shell restow operation successful"
             
             # Test individual package operations  
-            cd dotfiles
             stow --target=$HOME --verbose common
             stow --target=$HOME --delete common
             stow --target=$HOME common
@@ -373,7 +371,7 @@ jobs:
           echo "🔄 Testing update functionality..."
 
           # Create a test change
-          echo "# Test comment" >> dotfiles/common/.bashrc
+          echo "# Test comment" >> common/.bashrc
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell update script..."
@@ -422,16 +420,16 @@ jobs:
           echo "🌐 Testing cross-platform compatibility..."
 
           # Display entry counts for reference
-          common_actual=$(find dotfiles/common -mindepth 1 -maxdepth 1 | wc -l)
+          common_actual=$(find common -mindepth 1 -maxdepth 1 | wc -l)
           echo "Common entries: $common_actual"
 
-          mac_actual=$(find dotfiles/mac -mindepth 1 -maxdepth 1 | wc -l)
+          mac_actual=$(find mac -mindepth 1 -maxdepth 1 | wc -l)
           echo "macOS entries: $mac_actual"
 
-          windows_actual=$(find dotfiles/windows -mindepth 1 -maxdepth 1 | wc -l)
+          windows_actual=$(find windows -mindepth 1 -maxdepth 1 | wc -l)
           echo "Windows entries: $windows_actual"
 
-          if ! grep -q 'dotfiles/common' README.md; then
+          if ! grep -q 'common/' README.md; then
             echo "⚠️ README structure reference may need updating"
           fi
 

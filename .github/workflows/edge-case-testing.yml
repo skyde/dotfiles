@@ -34,7 +34,7 @@ jobs:
           elif [ "$RUNNER_OS" == "macOS" ]; then
             brew install stow
           elif [ "$RUNNER_OS" == "Windows" ]; then
-            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+            winget install --id MathiasCodes.Winstow --exact --silent --accept-package-agreements --accept-source-agreements || echo "Winstow install failed; continuing"
           fi
         shell: bash
 
@@ -43,13 +43,9 @@ jobs:
           echo "🔥 Testing conflict resolution..."
 
           if [ "$RUNNER_OS" == "Windows" ]; then
-            home_dir="$USERPROFILE"
-            init_cmd="pwsh -File init.ps1"
-            apply_cmd="pwsh -File apply.ps1"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
-            init_cmd="./init.sh"
-            apply_cmd="./apply.sh"
           fi
 
           # Create conflicting files
@@ -62,10 +58,9 @@ jobs:
           # Test adoption behavior
           echo "Testing --adopt behavior..."
           if [ "$RUNNER_OS" == "Windows" ]; then
-            $env:AUTO_INSTALL = "0"
-            & $apply_cmd --adopt
+            pwsh -Command '$env:AUTO_INSTALL = "0"; & "./apply.ps1" --adopt'
           else
-            AUTO_INSTALL=0 $apply_cmd --adopt
+            AUTO_INSTALL=0 ./apply.sh --adopt
           fi
 
           echo "✅ Conflict resolution test completed"
@@ -290,11 +285,9 @@ jobs:
           ./apply.sh --delete 2>/dev/null || true
 
           # Simulate partial installation by manually creating some symlinks
-          cd dotfiles
           stow --target=$HOME common
 
           # Now run full installation - should handle existing symlinks gracefully
-          cd ..
           AUTO_INSTALL=0 ./init.sh
 
           # Verify everything is properly installed
@@ -339,7 +332,7 @@ jobs:
             # Test with different shell environments
             echo "Testing macOS specific features..."
           elif [[ "${{ matrix.platform }}" == windows* ]]; then
-            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+            winget install --id MathiasCodes.Winstow --exact --silent --accept-package-agreements --accept-source-agreements || echo "Winstow install failed; continuing"
           fi
         shell: bash
 
@@ -358,14 +351,13 @@ jobs:
             echo "Git version: $(git --version)"
           elif [[ "${{ matrix.platform }}" == windows* ]]; then
             echo "Windows version: $(systeminfo | findstr /B /C:"OS Name" /C:"OS Version")"
-            stow --version
+            stow --version || winstow --version
             git --version
           fi
 
           # Run standard test
           if [[ "${{ matrix.platform }}" == windows* ]]; then
-            $env:AUTO_INSTALL = "0"
-            pwsh -File init.ps1
+            pwsh -Command '$env:AUTO_INSTALL = "0"; & "./init.ps1"'
           else
             AUTO_INSTALL=0 ./init.sh
           fi
