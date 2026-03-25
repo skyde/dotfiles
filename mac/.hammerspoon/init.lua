@@ -137,3 +137,4 @@ hs.hotkey.bind({"cmd"}, "4", function() hs.application.launchOrFocus("Google Chr
 hs.hotkey.bind({"cmd"}, "5", function() hs.application.launchOrFocus("Google Chat") end)
 hs.hotkey.bind({"cmd"}, "6", function() hs.application.launchOrFocus("Google Chrome Beta") end)
 hs.hotkey.bind({"cmd"}, "7", function() hs.application.launchOrFocus("kitty") end)
+hs.hotkey.bind({"cmd"}, "8", function() hs.application.launchOrFocus("Jetski") end)
