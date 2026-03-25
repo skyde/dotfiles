@@ -63,8 +63,16 @@ stow_package() {
         done
     fi
 
+    # Filter out -y/--yes from stow arguments
+    STOW_ARGS=()
+    for arg in "${ARGS[@]}"; do
+        if [[ "$arg" != "-y" ]] && [[ "$arg" != "--yes" ]]; then
+            STOW_ARGS+=("$arg")
+        fi
+    done
+
     # Use restow to handle any conflicts or missing symlinks
-    stow --target="$HOME" --verbose=1 "${ARGS[@]}" "$pkg"
+    stow --target="$HOME" --verbose=1 "${STOW_ARGS[@]}" "$pkg"
 
     # Skip verification in dry-run mode
 # Check for dotfiles-local and run its apply script if present
