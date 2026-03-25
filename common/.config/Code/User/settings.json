@@ -1881,7 +1881,7 @@
   "editor.renderWhitespace": "none",
 
   // Disable git blame on line
-  "git.blame.statusBarItem.enabled": false,
+  "git.blame.statusBarItem.enabled": true,
   "git-blame.config.inlineBlame.hoverMessage.activeLine": false,
   "git-blame.config.showBlameInline": false,
   "gitlens.currentLine.uncommittedChangesFormat": "",
@@ -1907,5 +1907,9 @@
   "diffEditor.experimental.showMoves": true,
   "terminal.integrated.hideOnStartup": "always",
   "terminal.integrated.enablePersistentSessions": false,
-  "powershell.integratedConsole.showOnStartup": false
+  "powershell.integratedConsole.showOnStartup": false,
+  "workbench.editorAssociations": {
+    "*.pdf": "pdf.preview"
+  },
+  "workbench.editorLargeFileConfirmation": 1000
 }
