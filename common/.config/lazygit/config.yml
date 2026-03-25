@@ -1,21 +1,17 @@
 git:
-  paging:
-    # Delta wants colored input; LazyGit handles paging itself
-    colorArg: always # recommended for delta as a pager
-    pager: delta --dark --paging=never \
-      --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
+  pagers:
+    - # Delta wants colored input; LazyGit handles paging itself
+      colorArg: always # recommended for delta as a pager
+      pager: delta --dark --paging=never \ --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
   parseEmoji: false
-
 promptToReturnFromSubprocess: false
 promptToOpenMergeTool: false
 scrollOffBehavior: margin
-
 os:
   editPreset: nvim
   open: "code --reuse-window {{filename}}"
   openDirInEditor: "code --reuse-window {{dir}}"
   copyToClipboardCmd: "echo {{text}} | osc-copy"
-
 gui:
   scrollHeight: 32
   scrollPastBottom: false
@@ -30,14 +26,12 @@ gui:
     selectedLineBgColor: ["#2d3f76"]
     optionsTextColor: ["#ffc777"]
     defaultFgColor: ["#c8d3f5"]
-
 keybinding:
   universal:
     undo: u
-
 customCommands:
   - key: "Z"
-    command: "sh -c 'id=$(git stash create); if [ -n \"$id\" ]; then git stash store -m \"snapshot $(date +%Y-%m-%d\\ %H:%M:%S)\" \"$id\"; fi'"
+    command: "sh -c 'id=$(git stash create); if [ -n \"$id\" ]; then git stash store -m \"snapshot $(date +%Y-%m-%d\ %H:%M:%S)\" \"$id\"; fi'"
     context: "global"
     description: "Stash snapshot (keep worktree)"
   - key: 'Y' # You can change this to any key (e.g., 'C' or '<c-c>')
