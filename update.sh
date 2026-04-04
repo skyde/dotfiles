@@ -17,12 +17,12 @@ git pull
 
 # Check for dotfiles-local and update if present
 if [ -d "$HOME/dotfiles-local/.git" ]; then
-    echo "Updating dotfiles-local from remote..."
-    git -C "$HOME/dotfiles-local" pull
-    if [ -f "$HOME/dotfiles-local/install.sh" ]; then
-        echo "Running dotfiles-local install script..."
-        "$HOME/dotfiles-local/install.sh"
-    fi
+  echo "Updating dotfiles-local from remote..."
+  git -C "$HOME/dotfiles-local" pull
+  if [ -f "$HOME/dotfiles-local/apply.sh" ]; then
+    echo "Running dotfiles-local apply script..."
+    "$HOME/dotfiles-local/apply.sh"
+  fi
 fi
 
 # Apply the updated dotfiles
