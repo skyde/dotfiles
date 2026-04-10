@@ -122,12 +122,17 @@ fi
 
 # -------- file managers that cd to the last visited dir
 e() {
-  local tmp cwd
+  local tmp cwd yazi_cmd
   tmp="$(mktemp -t yazi-cwd.XXXXXX)"
-  command yazi "$@" --cwd-file="$tmp"
+  if [[ -x "$HOME/.local/bin/yazi" ]]; then
+    yazi_cmd="$HOME/.local/bin/yazi"
+  else
+    yazi_cmd="$(command -v yazi)"
+  fi
+  "$yazi_cmd" "$@" --cwd-file="$tmp"
   cwd="$(<"$tmp")"
   rm -f -- "$tmp"
-  [[ -n $cwd && $cwd != "$PWD" ]] && builtin cd -- "$cwd"
+  [[ -n $cwd && $cwd != "$PWD" ]] && builtin cd -- "$cwd" || return
 }
 
 lfcd() {

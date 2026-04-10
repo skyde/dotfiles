@@ -1,79 +1,278 @@
-# Custom bindings for yazi - general goal is to make bindings similar to files.mini from Nvim
+# Custom bindings for Yazi. The general goal is to make bindings similar to
+# files.mini from Neovim.
 #
-# Default Bindings
+# Default bindings:
 # https://github.com/sxyazi/yazi/blob/shipped/yazi-config/preset/keymap-default.toml
+#
+# Machine-local additions:
+#   Create ~/.config/yazi-local/keymap.toml with extra [[mgr.prepend_keymap]]
+#   blocks to add per-computer shortcuts without tracking them in this repo.
+#   Example:
+#     [[mgr.prepend_keymap]]
+#     on = [ "g", "w" ]
+#     run = "cd ~/work"
+#     desc = "Go to Work"
+#
+# The yazi wrapper in ~/.local/bin/yazi concatenates that local file onto this
+# one at launch when it exists.
 
 "$schema" = "https://yazi-rs.github.io/schemas/keymap.json"
 
-[mgr]
-prepend_keymap = [
-  # Operations
-  { on = "<Esc>", run = "quit", desc = "Close Yazi" },
-	# { on = "s",         run = "open",                        desc = "Open selected files" },
-	# { on = "S",         run = "open --interactive",          desc = "Open selected files interactively" },
-	{ on = "x",         run = "yank --cut",                  desc = "Yank selected files (cut)" },
-	{ on = "X",         run = "shell 'chmod +x \"$@\"'",     desc = "Make executable" },
-	{ on = "d",         run = "remove",                      desc = "Trash selected files" },
-	{ on = "D",         run = "remove --permanently",        desc = "Permanently delete selected files" },
-  { on = "o",         run = "create",                      desc = "Create a file (ends with / for directories)" },
-  { on = "O",         run = "create --dir",                desc = "Create a folde(r)" },
-  { on = "r",         run = "open --interactive",          desc = "Reveal a file (also gives other options)" },
+[[mgr.prepend_keymap]]
+on = "<Esc>"
+run = "quit"
+desc = "Close Yazi"
 
-  { on = "i",         run = "rename --cursor=before_ext",  desc = "Rename selected file(s)" },
-  { on = "c",         run = "rename --cursor=start --empty=stem", desc = "Change name keeping extension" },
-  { on = ["<Space>"], run = "plugin fzf" },
+[[mgr.prepend_keymap]]
+on = "x"
+run = "yank --cut"
+desc = "Yank selected files (cut)"
 
-  # Copy (f-prefixed)
-  { on = [ "f", "l" ], run = "copy path",             desc = "Copy the file path" },
-  { on = [ "f", "d" ], run = "copy dirname",          desc = "Copy the directory path" },
-  { on = [ "f", "f" ], run = "copy filename",         desc = "Copy the filename" },
-  { on = [ "f", "n" ], run = "copy name_without_ext", desc = "Copy the filename without extension" },
-	{ on = [ "s"],         run = "search --via=rg",             desc = "Search files by content via ripgrep" },
-	{ on = "<Backspace>", run = [ "toggle", "arrow next" ], desc = "Toggle the current selection state" },#
+[[mgr.prepend_keymap]]
+on = "X"
+run = "shell 'chmod +x \"$@\"'"
+desc = "Make executable"
 
-	# Visual mode
-	{ on = "v", run = "visual_mode",         desc = "Enter visual mode (selection mode)" },
-	{ on = "V", run = "visual_mode",         desc = "Enter visual mode (selection mode)" },
-	{ on = "a", run = "visual_mode --unset", desc = "Enter visual mode (unset mode)" },
+[[mgr.prepend_keymap]]
+on = "d"
+run = "remove"
+desc = "Trash selected files"
 
-  # Shortcuts
-	{ on = "<D-f>", run = "find --smart",            desc = "Find next file" },
-	{ on = "<S-D-f>",         run = "search --via=rg",             desc = "Search files by content via ripgrep" },
+[[mgr.prepend_keymap]]
+on = "D"
+run = "remove --permanently"
+desc = "Permanently delete selected files"
 
-  # Macros
-	{ on = "<S-F3>", run = "search --via=fd",             desc = "Search files by name via fd" },
-	{ on = "<S-F4>", run = "arrow -50%",  desc = "Move cursor up half page" },
-	{ on = "<S-F6>", run = "arrow 50%",   desc = "Move cursor down half page" },
+[[mgr.prepend_keymap]]
+on = "o"
+run = "create"
+desc = "Create a file (ends with / for directories)"
 
-  { on = [ "0" ], run = "plugin relative-line-numbers 0", desc = "Jump (starts with 0)" },
-  { on = [ "1" ], run = "plugin relative-line-numbers 1", desc = "Jump (starts with 1)" },
-  { on = [ "2" ], run = "plugin relative-line-numbers 2", desc = "Jump (starts with 2)" },
-  { on = [ "3" ], run = "plugin relative-line-numbers 3", desc = "Jump (starts with 3)" },
-  { on = [ "4" ], run = "plugin relative-line-numbers 4", desc = "Jump (starts with 4)" },
-  { on = [ "5" ], run = "plugin relative-line-numbers 5", desc = "Jump (starts with 5)" },
-  { on = [ "6" ], run = "plugin relative-line-numbers 6", desc = "Jump (starts with 6)" },
-  { on = [ "7" ], run = "plugin relative-line-numbers 7", desc = "Jump (starts with 7)" },
-  { on = [ "8" ], run = "plugin relative-line-numbers 8", desc = "Jump (starts with 8)" },
-  { on = [ "9" ], run = "plugin relative-line-numbers 9", desc = "Jump (starts with 9)" },
+[[mgr.prepend_keymap]]
+on = "O"
+run = "create --dir"
+desc = "Create a folde(r)"
 
-  { on = [ "g", "d" ], run = "cd ~/dotfiles-local", desc = "Go to local Stow Dotfiles" },
-  { on = [ "g", "D" ], run = "cd ~/dotfiles", desc = "Go to Stow Dotfiles" },
-  { on = [ "g", "l" ], run = "cd ~/dotfiles-local/common/local/bin", desc = "Go to local Dotfiles locals" },
-  { on = [ "g", "L" ], run = "cd ~/dotfiles/common/.local/bin", desc = "Go to Dotfiles locals" },
-  { on = [ "g", "o" ], run = "cd ~/Documents", desc = "Go to Documents" },
-  { on = [ "g", "p" ], run = "cd ~/Projects", desc = "Go to Projects" },
-  { on = [ "g", "e" ], run = "cd ~/Desktop", desc = "Go to Desktop" },
-  { on = [ "g", "V" ], run = "cd ~/.config/Code/User", desc = "Go to Global VS Code config" },
-  { on = [ "g", "G" ], run = "cd ~/.gemini", desc = "Go to Gemini" },
-  { on = [ "g", "n" ], run = "cd ~/Downloads", desc = "Go to Downloads" },
-  { on = [ "g", "N" ], run = "cd ~/.config/nvim", desc = "Go to NVim" },
-  { on = [ "g", "c" ], run = "cd ~/.config", desc = "Go to Config" },
+[[mgr.prepend_keymap]]
+on = "r"
+run = "open --interactive"
+desc = "Reveal a file (also gives other options)"
 
-  { on = [ "g", "s" ], run = "cd ~/chrome/src", desc = "Go to Chrome src" },
-  { on = [ "g", "b" ], run = "cd ~/chrome/src/out/Default", desc = "Go to Chrome Default Build out" },
-  { on = [ "g", "v" ], run = "cd ~/chrome/src/.vscode", desc = "Go to Chrome VS Code config" },
+[[mgr.prepend_keymap]]
+on = "i"
+run = "rename --cursor=before_ext"
+desc = "Rename selected file(s)"
 
-  # Tabs
-  { on = [ "b", "d" ], run = "close", desc = "Close current tab" },
-  { on = [ "b", "n" ], run = "tab_create --current", desc = "New tab" },
-]
+[[mgr.prepend_keymap]]
+on = "c"
+run = "rename --cursor=start --empty=stem"
+desc = "Change name keeping extension"
+
+[[mgr.prepend_keymap]]
+on = ["<Space>"]
+run = "plugin fzf"
+
+[[mgr.prepend_keymap]]
+on = [ "f", "l" ]
+run = "copy path"
+desc = "Copy the file path"
+
+[[mgr.prepend_keymap]]
+on = [ "f", "d" ]
+run = "copy dirname"
+desc = "Copy the directory path"
+
+[[mgr.prepend_keymap]]
+on = [ "f", "f" ]
+run = "copy filename"
+desc = "Copy the filename"
+
+[[mgr.prepend_keymap]]
+on = [ "f", "n" ]
+run = "copy name_without_ext"
+desc = "Copy the filename without extension"
+
+[[mgr.prepend_keymap]]
+on = ["s"]
+run = "search --via=rg"
+desc = "Search files by content via ripgrep"
+
+[[mgr.prepend_keymap]]
+on = "<Backspace>"
+run = [ "toggle", "arrow next" ]
+desc = "Toggle the current selection state"
+
+[[mgr.prepend_keymap]]
+on = "v"
+run = "visual_mode"
+desc = "Enter visual mode (selection mode)"
+
+[[mgr.prepend_keymap]]
+on = "V"
+run = "visual_mode"
+desc = "Enter visual mode (selection mode)"
+
+[[mgr.prepend_keymap]]
+on = "a"
+run = "visual_mode --unset"
+desc = "Enter visual mode (unset mode)"
+
+[[mgr.prepend_keymap]]
+on = "<D-f>"
+run = "find --smart"
+desc = "Find next file"
+
+[[mgr.prepend_keymap]]
+on = "<S-D-f>"
+run = "search --via=rg"
+desc = "Search files by content via ripgrep"
+
+[[mgr.prepend_keymap]]
+on = "<S-F3>"
+run = "search --via=fd"
+desc = "Search files by name via fd"
+
+[[mgr.prepend_keymap]]
+on = "<S-F4>"
+run = "arrow -50%"
+desc = "Move cursor up half page"
+
+[[mgr.prepend_keymap]]
+on = "<S-F6>"
+run = "arrow 50%"
+desc = "Move cursor down half page"
+
+[[mgr.prepend_keymap]]
+on = ["0"]
+run = "plugin relative-line-numbers 0"
+desc = "Jump (starts with 0)"
+
+[[mgr.prepend_keymap]]
+on = ["1"]
+run = "plugin relative-line-numbers 1"
+desc = "Jump (starts with 1)"
+
+[[mgr.prepend_keymap]]
+on = ["2"]
+run = "plugin relative-line-numbers 2"
+desc = "Jump (starts with 2)"
+
+[[mgr.prepend_keymap]]
+on = ["3"]
+run = "plugin relative-line-numbers 3"
+desc = "Jump (starts with 3)"
+
+[[mgr.prepend_keymap]]
+on = ["4"]
+run = "plugin relative-line-numbers 4"
+desc = "Jump (starts with 4)"
+
+[[mgr.prepend_keymap]]
+on = ["5"]
+run = "plugin relative-line-numbers 5"
+desc = "Jump (starts with 5)"
+
+[[mgr.prepend_keymap]]
+on = ["6"]
+run = "plugin relative-line-numbers 6"
+desc = "Jump (starts with 6)"
+
+[[mgr.prepend_keymap]]
+on = ["7"]
+run = "plugin relative-line-numbers 7"
+desc = "Jump (starts with 7)"
+
+[[mgr.prepend_keymap]]
+on = ["8"]
+run = "plugin relative-line-numbers 8"
+desc = "Jump (starts with 8)"
+
+[[mgr.prepend_keymap]]
+on = ["9"]
+run = "plugin relative-line-numbers 9"
+desc = "Jump (starts with 9)"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "d" ]
+run = "cd ~/dotfiles"
+desc = "Go to Stow Dotfiles"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "D" ]
+run = "cd ~/dotfiles-local"
+desc = "Go to local Stow Dotfiles"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "l" ]
+run = "cd ~/dotfiles/common/.local/bin"
+desc = "Go to Dotfiles locals"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "L" ]
+run = "cd ~/dotfiles-local/common/local/bin"
+desc = "Go to local Dotfiles locals"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "o" ]
+run = "cd ~/Documents"
+desc = "Go to Documents"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "p" ]
+run = "cd ~/Projects"
+desc = "Go to Projects"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "e" ]
+run = "cd ~/Desktop"
+desc = "Go to Desktop"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "V" ]
+run = "cd ~/.config/Code/User"
+desc = "Go to Global VS Code config"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "G" ]
+run = "cd ~/.gemini"
+desc = "Go to Gemini"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "n" ]
+run = "cd ~/Downloads"
+desc = "Go to Downloads"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "N" ]
+run = "cd ~/.config/nvim"
+desc = "Go to NVim"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "c" ]
+run = "cd ~/.config"
+desc = "Go to Config"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "s" ]
+run = "cd ~/chrome/src"
+desc = "Go to Chrome src"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "b" ]
+run = "cd ~/chrome/src/out/Default"
+desc = "Go to Chrome Default Build out"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "v" ]
+run = "cd ~/chrome/src/.vscode"
+desc = "Go to Chrome VS Code config"
+
+[[mgr.prepend_keymap]]
+on = [ "b", "d" ]
+run = "close"
+desc = "Close current tab"
+
+[[mgr.prepend_keymap]]
+on = [ "b", "n" ]
+run = "tab_create --current"
+desc = "New tab"

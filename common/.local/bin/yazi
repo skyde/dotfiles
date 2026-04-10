@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+resolve_config_home() {
+  if [[ -n "${YAZI_CONFIG_HOME:-}" ]]; then
+    printf '%s\n' "$YAZI_CONFIG_HOME"
+  elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+    printf '%s/yazi\n' "$XDG_CONFIG_HOME"
+  else
+    printf '%s/.config/yazi\n' "$HOME"
+  fi
+}
+
+resolve_local_keymap() {
+  if [[ -n "${YAZI_LOCAL_KEYMAP:-}" ]]; then
+    printf '%s\n' "$YAZI_LOCAL_KEYMAP"
+  elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+    printf '%s/yazi-local/keymap.toml\n' "$XDG_CONFIG_HOME"
+  else
+    printf '%s/.config/yazi-local/keymap.toml\n' "$HOME"
+  fi
+}
+
+find_real_yazi() {
+  local self candidate dir
+  self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
+
+  IFS=':' read -r -a path_parts <<< "${PATH:-}"
+  for dir in "${path_parts[@]}"; do
+    [[ -n "$dir" ]] || dir='.'
+    candidate="$dir/yazi"
+    [[ -x "$candidate" ]] || continue
+    candidate="$(cd "$(dirname "$candidate")" && pwd -P)/$(basename "$candidate")"
+    if [[ "$candidate" != "$self" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+link_config_tree() {
+  local source_dir=$1
+  local target_dir=$2
+  local entry
+
+  [[ -d "$source_dir" ]] || return 0
+
+  shopt -s dotglob nullglob
+  for entry in "$source_dir"/*; do
+    [[ "$(basename "$entry")" == "keymap.toml" ]] && continue
+    ln -s "$entry" "$target_dir/$(basename "$entry")"
+  done
+  shopt -u dotglob nullglob
+}
+
+build_merged_keymap() {
+  local source_dir=$1
+  local target_dir=$2
+  local local_keymap=$3
+  local base_keymap="$source_dir/keymap.toml"
+  local merged_keymap="$target_dir/keymap.toml"
+
+  if [[ -r "$base_keymap" ]]; then
+    cat "$base_keymap" > "$merged_keymap"
+  else
+    : > "$merged_keymap"
+  fi
+
+  if [[ -r "$local_keymap" ]]; then
+    if [[ -s "$merged_keymap" ]]; then
+      printf '\n' >> "$merged_keymap"
+    fi
+    cat "$local_keymap" >> "$merged_keymap"
+  fi
+}
+
+main() {
+  local config_home local_keymap real_yazi temp_config rc
+
+  config_home="$(resolve_config_home)"
+  local_keymap="$(resolve_local_keymap)"
+
+  if [[ ! -r "$local_keymap" ]]; then
+    real_yazi="$(find_real_yazi)" || {
+      printf 'yazi wrapper: could not find the real yazi binary in PATH\n' >&2
+      exit 127
+    }
+    exec "$real_yazi" "$@"
+  fi
+
+  real_yazi="$(find_real_yazi)" || {
+    printf 'yazi wrapper: could not find the real yazi binary in PATH\n' >&2
+    exit 127
+  }
+
+  temp_config="$(mktemp -d "${TMPDIR:-/tmp}/yazi-config.XXXXXX")"
+  trap 'rm -rf -- "$temp_config"' EXIT
+
+  link_config_tree "$config_home" "$temp_config"
+  build_merged_keymap "$config_home" "$temp_config" "$local_keymap"
+
+  YAZI_CONFIG_HOME="$temp_config" "$real_yazi" "$@"
+  rc=$?
+  rm -rf -- "$temp_config"
+  trap - EXIT
+  exit "$rc"
+}
+
+main "$@"
