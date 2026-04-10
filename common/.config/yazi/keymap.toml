@@ -193,22 +193,22 @@ run = "plugin relative-line-numbers 9"
 desc = "Jump (starts with 9)"
 
 [[mgr.prepend_keymap]]
-on = [ "g", "d" ]
+on = [ "g", "D" ]
 run = "cd ~/dotfiles"
 desc = "Go to Stow Dotfiles"
 
 [[mgr.prepend_keymap]]
-on = [ "g", "D" ]
+on = [ "g", "d" ]
 run = "cd ~/dotfiles-local"
 desc = "Go to local Stow Dotfiles"
 
 [[mgr.prepend_keymap]]
-on = [ "g", "l" ]
+on = [ "g", "L" ]
 run = "cd ~/dotfiles/common/.local/bin"
 desc = "Go to Dotfiles locals"
 
 [[mgr.prepend_keymap]]
-on = [ "g", "L" ]
+on = [ "g", "l" ]
 run = "cd ~/dotfiles-local/common/local/bin"
 desc = "Go to local Dotfiles locals"
 
