@@ -4,7 +4,7 @@
 # Inserts a blank line between shell prompts
 add_newline = true
 command_timeout = 1000
-format = "$username$hostname${custom.git_workspace}$directory$git_branch${custom.git_cl}$git_commit$git_state$git_status$cmd_duration\n$character"
+format = "$username$hostname${custom.cloud_workspace}${custom.git_workspace}$directory$git_branch${custom.git_cl}$git_commit$git_state$git_status$cmd_duration\n$character"
 right_format = "$time"
 
 [fill]
@@ -58,6 +58,13 @@ disabled = true
 
 [rust]
 disabled = true
+
+[custom.cloud_workspace]
+description = "Cloud workspace name"
+when = 'echo "$PWD" | grep -q "^/google/src/cloud/[^/]*/[^/]*"'
+command = 'echo "$PWD" | cut -d/ -f6'
+format = '[$output]($style) '
+style = 'bold #af87ff'
 
 [custom.git_workspace]
 description = "Chromium workspace name (chrome/chrome2/etc)"
