@@ -253,6 +253,11 @@ run = "cd ~/.config"
 desc = "Go to Config"
 
 [[mgr.prepend_keymap]]
+on = [ "g", "y" ]
+run = "cd ~/.config/yazi-local"
+desc = "Go to local Yazi config"
+
+[[mgr.prepend_keymap]]
 on = [ "g", "s" ]
 run = "cd ~/chrome/src"
 desc = "Go to Chrome src"
