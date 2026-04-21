@@ -103,38 +103,90 @@ hs.hotkey.bind(
 --------------------------------------------------------------------------------
 
 local function focusVSCodeInstance(keyword)
-    local app = hs.application.find("Code") or hs.application.find("com.microsoft.VSCode")
-    
-    if app then
-        local found = false
-        -- Iterate through all windows of VS Code
-        for _, win in ipairs(app:allWindows()) do
-            local title = win:title()
-            -- Case-insensitive match for the keyword in the window title
-            if title and string.find(string.lower(title), string.lower(keyword), 1, true) then
-                win:focus()
-                found = true
-                break
-            end
-        end
-        
-        if not found then
-            hs.alert.show("VS Code: No window found with '" .. keyword .. "'")
-        end
-    else
-        hs.alert.show("VS Code is not running")
-    end
+	local app = hs.application.find("Code") or hs.application.find("com.microsoft.VSCode")
+
+	if app then
+		local found = false
+		-- Iterate through all windows of VS Code
+		for _, win in ipairs(app:allWindows()) do
+			local title = win:title()
+			-- Case-insensitive match for the keyword in the window title
+			if title and string.find(string.lower(title), string.lower(keyword), 1, true) then
+				win:focus()
+				found = true
+				break
+			end
+		end
+
+		if not found then
+			hs.alert.show("VS Code: No window found with '" .. keyword .. "'")
+		end
+	else
+		hs.alert.show("VS Code is not running")
+	end
+end
+
+-- Optional local overrides (outside this repo):
+-- ~/.hammerspoon.local.lua
+--
+-- Example file contents:
+-- return {
+--   window_switch_shortcuts = {
+--     vscode = {
+--       ["1"] = "[Work] Visual Studio Code",
+--     },
+--     apps = {
+--       ["4"] = "Safari",
+--       ["8"] = false, -- disable a default binding
+--     },
+--   },
+-- }
+local windowSwitchLocalOverrides = {}
+local localOverridesPath = os.getenv("HOME") .. "/.hammerspoon.local.lua"
+if hs.fs.attributes(localOverridesPath) then
+	local ok, localConfig = pcall(dofile, localOverridesPath)
+	if ok and type(localConfig) == "table" and type(localConfig.window_switch_shortcuts) == "table" then
+		windowSwitchLocalOverrides = localConfig.window_switch_shortcuts
+	else
+		hs.alert.show("Hammerspoon local override file has errors")
+	end
+end
+
+local vscodeWindowShortcuts = {
+	["1"] = "[Local] Visual Studio Code",
+	["2"] = "[Top] Visual Studio Code",
+	["3"] = "[Virtual] Visual Studio Code",
+}
+for key, keyword in pairs(windowSwitchLocalOverrides.vscode or {}) do
+	vscodeWindowShortcuts[key] = keyword
+end
+
+local appSwitchShortcuts = {
+	["4"] = "Google Chrome",
+	["5"] = "Google Chat",
+	["6"] = "Google Chrome Beta",
+	["7"] = "kitty",
+	["8"] = "Jetski",
+}
+for key, appName in pairs(windowSwitchLocalOverrides.apps or {}) do
+	appSwitchShortcuts[key] = appName
 end
 
 -- VS Code Instances
 -- Requires adding "window.title": "${activeEditorShort} - [Tag]" to .vscode/settings.json or workspace settings
-hs.hotkey.bind({"cmd"}, "1", function() focusVSCodeInstance("[Local] Visual Studio Code") end)
-hs.hotkey.bind({"cmd"}, "2", function() focusVSCodeInstance("[Top] Visual Studio Code") end)
-hs.hotkey.bind({"cmd"}, "3", function() focusVSCodeInstance("[Virtual] Visual Studio Code") end)
+for key, keyword in pairs(vscodeWindowShortcuts) do
+	if keyword then
+		hs.hotkey.bind({ "cmd" }, key, function()
+			focusVSCodeInstance(keyword)
+		end)
+	end
+end
 
 -- Other Apps
-hs.hotkey.bind({"cmd"}, "4", function() hs.application.launchOrFocus("Google Chrome") end)
-hs.hotkey.bind({"cmd"}, "5", function() hs.application.launchOrFocus("Google Chat") end)
-hs.hotkey.bind({"cmd"}, "6", function() hs.application.launchOrFocus("Google Chrome Beta") end)
-hs.hotkey.bind({"cmd"}, "7", function() hs.application.launchOrFocus("kitty") end)
-hs.hotkey.bind({"cmd"}, "8", function() hs.application.launchOrFocus("Jetski") end)
+for key, appName in pairs(appSwitchShortcuts) do
+	if appName then
+		hs.hotkey.bind({ "cmd" }, key, function()
+			hs.application.launchOrFocus(appName)
+		end)
+	end
+end
