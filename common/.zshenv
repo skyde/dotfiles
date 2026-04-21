@@ -14,6 +14,9 @@ export PATH="$HOME/bin:$PATH"
 # Go programs
 export PATH="$HOME/go/bin:$PATH"
 
+# Rust programs
+export PATH="$HOME/.cargo/bin:$PATH"
+
 # Custom
 export PATH="$HOME/depot_tools:$PATH"
 export SKIP_GCE_AUTH_FOR_GIT=1
