@@ -46,7 +46,7 @@ stow_package() {
     if [ -d "$pkg" ]; then
         echo "  Ensuring directories exist for $pkg..."
         find "$pkg" -mindepth 1 -type d | sort | while read -r dir; do
-            rel_path="${dir#$pkg/}"
+            rel_path="${dir#"$pkg"/}"
             target_path="$HOME/$rel_path"
 
             # If anything already exists at the target path (dir, file, or symlink),

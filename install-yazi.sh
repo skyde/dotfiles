@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Try to source shared helpers if available
 if [ -f "$SCRIPT_DIR/lib/run_ensure.sh" ]; then
-  # shellcheck disable=SC1090
+  # shellcheck disable=SC1090,SC1091
   . "$SCRIPT_DIR/lib/run_ensure.sh"
 fi
 
@@ -81,8 +81,10 @@ install_from_github() {
   # Requires: curl, unzip/tar
   local repo="sxyazi/yazi"
   local os_arch_triple=""
-  local uname_s="$(uname -s)"
-  local uname_m="$(uname -m)"
+  local uname_s
+  local uname_m
+  uname_s="$(uname -s)"
+  uname_m="$(uname -m)"
 
   case "$uname_s" in
     Linux)
@@ -214,6 +216,7 @@ echo "Yazi installation script starting..."
 case "$OS" in
   Linux)
     # Only run custom Yazi install on Debian/Ubuntu
+    # shellcheck disable=SC1091
     if [ -r /etc/os-release ]; then . /etc/os-release; fi
     if [ "${ID:-}" = "debian" ] || [ "${ID:-}" = "ubuntu" ]; then
       if HAVE apt-get; then
