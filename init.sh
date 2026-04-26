@@ -105,17 +105,6 @@ if [ -f "install-nvim.sh" ] && [[ "$(uname)" == "Linux" ]]; then
   fi
 fi
 
-# Optional: Install lazyjj (Linux only)
-if [ -f "install-lazyjj.sh" ] && [[ "$(uname)" == "Linux" ]]; then
-  install_lazyjj=$(get_user_confirmation "Install lazyjj (Rust jj TUI)? (y/N): ")
-  if [[ "$install_lazyjj" =~ ^[Yy] ]]; then
-    echo "Running lazyjj installation script..."
-    ./install-lazyjj.sh
-  else
-    echo "Skipping lazyjj installation"
-  fi
-fi
-
 # Optional: Install Yazi with enhanced features (GitHub binary for Linux)
 if [ -f "install-yazi.sh" ]; then
   install_yazi=$(get_user_confirmation "Install Yazi (may prompt again for install method)? (y/N): ")
