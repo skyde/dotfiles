@@ -1322,7 +1322,10 @@
     // SCM specific
     {
       "before": ["<leader>", "g", "c"],
-      "commands": ["workbench.view.scm"]
+      "commands": [
+        "workbench.view.scm",
+        "workbench.scm.focus",
+      ]
     },
     {
       "before": ["<leader>", "g", "r"],
