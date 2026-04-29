@@ -643,6 +643,11 @@
       "before": ["<leader>", "f", "n"],
       "commands": ["workbench.action.files.newUntitledFile"]
     },
+    // Find Project
+    {
+      "before": ["<leader>", "f", "p"],
+      "commands": ["g4d"]
+    },
     // Buffers
     {
       // New tab
