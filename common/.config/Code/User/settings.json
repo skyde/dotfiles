@@ -1328,8 +1328,9 @@
     {
       "before": ["<leader>", "g", "c"],
       "commands": [
-        "workbench.view.scm",
         "workbench.scm.focus",
+        "list.focusUp",
+        "list.focusDown",
       ]
     },
     {
