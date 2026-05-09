@@ -189,3 +189,6 @@ unset -f _source_zsh_plugin
 # -------- machine-specific overrides
 # shellcheck disable=SC1090
 [[ -r "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
+
+# Dynamic Tmux Title
+[[ -f ~/.local/bin/tmux-title.zsh ]] && source ~/.local/bin/tmux-title.zsh
