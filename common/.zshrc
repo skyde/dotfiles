@@ -30,6 +30,11 @@ autoload -Uz edit-command-line
 zle -N edit-command-line
 bindkey '^X' edit-command-line          # Ctrl+X edits current prompt
 
+# -------- help on current command (Esc h)
+unalias run-help 2>/dev/null
+autoload -Uz run-help
+bindkey '^[h' run-help
+
 # -------- completion (cached)
 # Cache to XDG location and compile the dump for speed.
 zmodload -i zsh/complist
@@ -52,7 +57,9 @@ if [[ -s $_compdump && ( ! -s $_compdump.zwc || $_compdump -nt $_compdump.zwc ) 
 fi
 unset _compdump
 
+zstyle ':completion:*' verbose yes
 zstyle ':completion:*' menu select
+zstyle ':completion:*:descriptions' format '%F{yellow}-- %d --%f'
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
 # # -------- prompt (Starship)
@@ -95,6 +102,79 @@ if ((! $+commands[delta] )) || ((! $+commands[code] )); then
     command git "${cfg[@]}" "$@"
   }
 fi
+
+# -------- show --help for command in current buffer (Ctrl-X h)
+show-help-for-buffer() {
+  emulate -L zsh
+
+  local -a words helpcmd
+  words=(${(z)BUFFER})
+
+  while (( $#words )); do
+    case "${words[1]}" in
+      sudo|command|exec|noglob|time)
+        shift words
+        ;;
+      env)
+        shift words
+        while (( $#words )) && [[ "${words[1]}" == *=* ]]; do
+          shift words
+        done
+        ;;
+      *=*)
+        shift words
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
+  if (( $#words == 0 )); then
+    zle -M "No command found"
+    return
+  fi
+
+  local cmd="${words[1]}"
+  helpcmd=("$cmd")
+
+  case "$cmd" in
+    git|docker|kubectl|cargo|npm|pnpm|yarn|go|gh|brew)
+      shift words
+      local w
+      for w in "${words[@]}"; do
+        case "$w" in
+          -*|">"|"<"|"|"|"&&"|"||"|";")
+            break
+            ;;
+          *)
+            helpcmd+=("$w")
+            ;;
+        esac
+        (( $#helpcmd >= 3 )) && break
+      done
+      ;;
+  esac
+
+  local tmp
+  tmp="$(mktemp "${TMPDIR:-/tmp}/zsh-help.XXXXXX")" || return
+
+  zle -I
+
+  "${helpcmd[@]}" --help >"$tmp" 2>&1
+
+  if [[ -s "$tmp" ]]; then
+    less -R "$tmp"
+  else
+    man "$cmd" 2>/dev/null
+  fi
+
+  rm -f "$tmp"
+  zle reset-prompt
+}
+
+zle -N show-help-for-buffer
+bindkey '^Xh' show-help-for-buffer
 
 # -------- aliases
 alias grep='grep --color=auto'
