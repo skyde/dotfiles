@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source helper functions if available
 if [ -f "$SCRIPT_DIR/lib/run_ensure.sh" ]; then
+  # shellcheck disable=SC1091
   source "$SCRIPT_DIR/lib/run_ensure.sh"
 fi
 

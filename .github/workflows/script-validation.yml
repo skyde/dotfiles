@@ -147,7 +147,7 @@ jobs:
           done
 
           # Check VS Code extensions count
-          vscode_count=$(grep -v '^#' vscode_extensions.txt | grep -v '^$' | wc -l)
+          vscode_count=$(grep -vcE '^(#|$)' vscode_extensions.txt)
           echo "  VS Code extensions: $vscode_count"
 
           # Verify script documentation exists (in README.md or README-usage.md)

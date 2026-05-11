@@ -24,6 +24,8 @@ fi
 
     if $DRY_RUN; then
         echo "[DRY RUN] Would install stow"
+        echo "[DRY RUN] stow is not available; skipping stow simulation"
+        exit 0
     else
         echo "Installing stow..."
         case "$(uname)" in
@@ -46,7 +48,7 @@ stow_package() {
     if [ -d "$pkg" ]; then
         echo "  Ensuring directories exist for $pkg..."
         find "$pkg" -mindepth 1 -type d | sort | while read -r dir; do
-            rel_path="${dir#$pkg/}"
+            rel_path="${dir#"$pkg"/}"
             target_path="$HOME/$rel_path"
 
             # If anything already exists at the target path (dir, file, or symlink),

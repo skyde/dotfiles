@@ -4,7 +4,7 @@ set -e
 # GitHub repository and workflow monitoring script
 REPO="skyde/dotfiles"
 BRANCH="main"
-WORKFLOW_FILE="simple-test.yml"
+WORKFLOW_FILE="comprehensive-test.yml"
 
 echo "=== MULTI-PLATFORM TESTING AUTOMATION ==="
 echo "Repository: $REPO"
