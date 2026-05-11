@@ -8,7 +8,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); tmux-session \"$sess\" || true"
+        "sess=$(if command -v get-workspace-name >/dev/null; then get-workspace-name; else echo '${workspaceFolder}' | tr '/.' '_'; fi); tmux-session \"$sess\" || true"
       ],
       "presentation": {
         "echo": false,
@@ -29,7 +29,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 1 --no-attach"
+        "sess=$(if command -v get-workspace-name >/dev/null; then get-workspace-name; else echo '${workspaceFolder}' | tr '/.' '_'; fi); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 1 --no-attach"
       ],
       "presentation": {
         "echo": false,
@@ -46,7 +46,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "sess=$(echo '${workspaceFolder}' | tr '/.' '_'); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 3 --no-attach"
+        "sess=$(if command -v get-workspace-name >/dev/null; then get-workspace-name; else echo '${workspaceFolder}' | tr '/.' '_'; fi); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 3 --no-attach"
       ],
       "presentation": {
         "echo": false,
