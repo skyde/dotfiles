@@ -15,7 +15,7 @@ selected=$(
       --with-nth=1,2,3 \
       --prompt='session> ' \
       --header='enter: switch  ctrl-r: refresh  esc: cancel' \
-      --preview='tmux list-windows -t {1} -F "#{window_index}: #{window_name} (#{window_panes} panes) #{?window_active,*, }#{pane_current_path}"' \
+      --preview='~/.local/bin/tmux-fzf-session-preview {1}' \
       --preview-window='right:60%:wrap' \
       --bind='ctrl-r:reload(tmux list-sessions -F "#{session_activity}|#{session_name}|#{session_windows} windows|#{?session_attached,attached,detached}" | sort -rn -t"|" -k1,1 | cut -d"|" -f2-)' |
     cut -d'|' -f1
