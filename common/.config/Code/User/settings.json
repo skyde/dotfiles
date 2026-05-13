@@ -33,7 +33,7 @@
   // Prompt when opening files from untrusted workspaces
   "security.workspace.trust.untrustedFiles": "open",
   // Increase terminal scrollback similar to using a terminal split in Neovim
-  "terminal.integrated.scrollback": 10000,
+  "terminal.integrated.scrollback": 1000000,
 
   // Unified Size
   "editor.lineHeight": 1.44,
