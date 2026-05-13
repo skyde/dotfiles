@@ -71,6 +71,6 @@ config.default_cursor_style = 'SteadyBlock'
 
 -- QoL
 config.audible_bell = 'Disabled'
-config.scrollback_lines = 100000
+config.scrollback_lines = 1000000
 
 return config
