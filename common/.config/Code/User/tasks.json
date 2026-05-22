@@ -29,7 +29,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "sess=$(if command -v get-workspace-name >/dev/null; then get-workspace-name; else echo '${workspaceFolder}' | tr '/.' '_'; fi); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 1 --no-attach"
+        "sess=$(if command -v get-workspace-name >/dev/null; then get-workspace-name; else echo '${workspaceFolder}' | tr '/.' '_'; fi); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 2 --no-attach"
       ],
       "presentation": {
         "echo": false,
