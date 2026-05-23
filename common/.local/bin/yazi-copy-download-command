@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+  printf 'yazi-copy-download-command: no file or directory selected\n' >&2
+  exit 1
+fi
+
+if [[ -z "${SSH_CONNECTION:-}" ]]; then
+  printf 'yazi-copy-download-command: not running over SSH\n' >&2
+  exit 1
+fi
+
+remote_host="${SSH_CONNECTION##* }"
+remote_user="${USER:-$(id -un)}"
+
+escape_single_quotes() {
+  printf "%s" "$1" | sed "s/'/'\\\\''/g"
+}
+
+build_remote_arg() {
+  local path=$1
+  local escaped
+  escaped="$(escape_single_quotes "$path")"
+  printf "'%s@%s:%s'" "$remote_user" "$remote_host" "$escaped"
+}
+
+cmd="rsync -avz --progress"
+for path in "$@"; do
+  cmd+=" $(build_remote_arg "$path")"
+done
+cmd+=" ~/Downloads/"
+
+printf '%s\n' "$cmd" | osc-copy
+printf 'Copied local download command to clipboard:\n%s\n' "$cmd"
