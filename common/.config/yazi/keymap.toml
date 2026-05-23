@@ -93,6 +93,11 @@ run = "copy name_without_ext"
 desc = "Copy the filename without extension"
 
 [[mgr.prepend_keymap]]
+on = [ "y", "D" ]
+run = "shell 'yazi-copy-download-command \"$@\"'"
+desc = "Copy local rsync download command"
+
+[[mgr.prepend_keymap]]
 on = ["s"]
 run = "search --via=rg"
 desc = "Search files by content via ripgrep"
