@@ -1,15 +1,39 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-#!/bin/bash
+raw_data="$(cat)"
 
-# Read input from stdin
-data=$(base64 | tr -d '\n')
+if [[ -n "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
+  printf '%s' "$raw_data" | tmux load-buffer -w -
+  exit 0
+fi
+
+if command -v pbcopy >/dev/null 2>&1; then
+  printf '%s' "$raw_data" | pbcopy
+  exit 0
+fi
+
+if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
+  printf '%s' "$raw_data" | wl-copy
+  exit 0
+fi
+
+if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1; then
+  printf '%s' "$raw_data" | xclip -selection clipboard
+  exit 0
+fi
+
+if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1; then
+  printf '%s' "$raw_data" | xsel --clipboard --input
+  exit 0
+fi
+
+data=$(printf '%s' "$raw_data" | base64 | tr -d '\n')
+
+trap '' SIGTTOU
 
 if [[ -n "${TMUX:-}" ]]; then
-    # Tmux wrapping
-    printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$data" > /dev/tty
+  printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$data" >/dev/tty 2>/dev/null || true
 else
-    # Standard OSC 52
-    printf "\033]52;c;%s\a" "$data" > /dev/tty
+  printf "\033]52;c;%s\a" "$data" >/dev/tty 2>/dev/null || true
 fi
