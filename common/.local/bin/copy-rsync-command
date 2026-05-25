@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-src_dir="${1:-$PWD}"
+src_dir="${1:-$(pwd)}"
 dest_base="${2:-~/Downloads}"
 
 src_dir="${src_dir%/}"
