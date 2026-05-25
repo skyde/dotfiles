@@ -2,7 +2,7 @@
 set -euo pipefail
 
 src_dir="${1:-$PWD}"
-dest_base="${2:-$HOME/Downloads}"
+dest_base="${2:-~/Downloads}"
 
 src_dir="${src_dir%/}"
 if [[ ! -d "$src_dir" ]]; then
@@ -10,11 +10,12 @@ if [[ ! -d "$src_dir" ]]; then
   exit 1
 fi
 
-remote_host="${SSH_RSYNC_HOST:-$(hostname -s)}"
-timestamp="$(date +%Y%m%d-%H%M%S)"
+remote_host="${SSH_RSYNC_HOST:-$(hostname)}"
+timestamp="$(date +%Y-%m-%d-%H%M%S)"
 dir_name="$(basename "$src_dir")"
 dest_dir="${dest_base%/}/${dir_name}-${timestamp}"
 
 printf -v rsync_cmd 'rsync -avz %q:%q/ %q/' "$remote_host" "$src_dir" "$dest_dir"
+rsync_cmd="${rsync_cmd//\\~/\~}"
 printf '%s\n' "$rsync_cmd" | osc-copy
 printf '%s\n' "$rsync_cmd"
