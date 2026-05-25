@@ -94,8 +94,8 @@ desc = "Copy the filename without extension"
 
 [[mgr.prepend_keymap]]
 on = [ "f", "r" ]
-run = "shell 'copy-rsync-command \"$PWD\"'"
-desc = "Copy rsync command for current directory"
+run = "shell 'if [ -d \"$1\" ]; then copy-rsync-command \"$1\"; else copy-rsync-command; fi'"
+desc = "Copy rsync command for current or hovered directory"
 
 [[mgr.prepend_keymap]]
 on = ["s"]
