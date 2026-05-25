@@ -78,7 +78,7 @@ run = "copy path"
 desc = "Copy the file path"
 
 [[mgr.prepend_keymap]]
-on = [ "f", "d" ]
+on = [ "f", "D" ]
 run = "copy dirname"
 desc = "Copy the directory path"
 
@@ -93,9 +93,9 @@ run = "copy name_without_ext"
 desc = "Copy the filename without extension"
 
 [[mgr.prepend_keymap]]
-on = [ "f", "r" ]
+on = [ "f", "d" ]
 run = "shell 'if [ -d \"$1\" ]; then copy-rsync-command \"$1\"; else copy-rsync-command; fi'"
-desc = "Copy rsync command for current or hovered directory"
+desc = "Copy download command for current or hovered directory"
 
 [[mgr.prepend_keymap]]
 on = ["s"]
