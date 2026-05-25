@@ -93,6 +93,11 @@ run = "copy name_without_ext"
 desc = "Copy the filename without extension"
 
 [[mgr.prepend_keymap]]
+on = [ "f", "r" ]
+run = "shell 'copy-rsync-command \"$PWD\"'"
+desc = "Copy rsync command for current directory"
+
+[[mgr.prepend_keymap]]
 on = ["s"]
 run = "search --via=rg"
 desc = "Search files by content via ripgrep"
