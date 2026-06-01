@@ -34,6 +34,11 @@ run = "shell 'chmod +x \"$@\"'"
 desc = "Make executable"
 
 [[mgr.prepend_keymap]]
+on = "R"
+run = "shell 'chmod g+r \"$@\"'"
+desc = "Grant group read permission"
+
+[[mgr.prepend_keymap]]
 on = "d"
 run = "remove"
 desc = "Trash selected files"
