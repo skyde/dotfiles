@@ -215,12 +215,22 @@
 
   // Left Side Bar (Explorer/SCM/Extensions...)
   { "key": "cmd+b", "command": "workbench.action.toggleSidebarVisibility" },
+  {
+    "key": "ctrl+b",
+    "command": "workbench.action.toggleSidebarVisibility",
+    "when": "isWindows || isLinux"
+  },
 
   // Bottom Panel (Terminal/Problems/Output/Debug Console) — default toggle
   { "key": "cmd+j", "command": "workbench.action.togglePanel" },
 
   // Unified right side: Secondary Side Bar — toggle
   { "key": "cmd+;", "command": "workbench.action.toggleAuxiliaryBar" },
+  {
+    "key": "ctrl+alt+b",
+    "command": "workbench.action.toggleAuxiliaryBar",
+    "when": "isWindows || isLinux"
+  },
 
   // Focus editor directly
   { "key": "cmd+k", "command": "workbench.action.focusActiveEditorGroup" },
@@ -491,11 +501,30 @@
     "key": "d",
     "when": "filesExplorerFocus && !inputFocus"
   },
+  // Files Explorer cursor movement should not change the multi-selection set.
+  {
+    "key": "j",
+    "command": "extension.multiCommand.execute",
+    "when": "filesExplorerFocus && !inputFocus",
+    "args": {
+      "interval": 100,
+      "sequence": ["list.focusDown", "workbench.action.focusSideBar"]
+    }
+  },
+  {
+    "key": "k",
+    "command": "extension.multiCommand.execute",
+    "when": "filesExplorerFocus && !inputFocus",
+    "args": {
+      "interval": 100,
+      "sequence": ["list.focusUp", "workbench.action.focusSideBar"]
+    }
+  },
   // Sidebar explorer & git tree compare focus
   {
     "key": "j",
     "command": "extension.multiCommand.execute",
-    "when": "sideBarFocus && listFocus && !inputFocus",
+    "when": "sideBarFocus && listFocus && !inputFocus && !filesExplorerFocus",
     "args": {
       "interval": 300,
       "sequence": [
@@ -508,7 +537,7 @@
   {
     "key": "k",
     "command": "extension.multiCommand.execute",
-    "when": "sideBarFocus && listFocus && !inputFocus",
+    "when": "sideBarFocus && listFocus && !inputFocus && !filesExplorerFocus",
     "args": {
       "interval": 300,
       "sequence": [
@@ -632,13 +661,23 @@
     // Goto next change
     "key": "alt+down",
     "command": "workbench.action.compareEditor.nextChange",
-    "when": "textCompareEditorVisible && editorTextFocus"
+    "when": "textCompareEditorVisible && !sideBarFocus && !panelFocus && !terminalFocus && !inputFocus"
+  },
+  {
+    // Goto next change in the multi-file Git changes editor
+    "key": "alt+down",
+    "command": "multiDiffEditor.goToNextChange"
   },
   {
     // Goto previous change
     "key": "alt+up",
     "command": "workbench.action.compareEditor.previousChange",
-    "when": "textCompareEditorVisible && editorTextFocus"
+    "when": "textCompareEditorVisible && !sideBarFocus && !panelFocus && !terminalFocus && !inputFocus"
+  },
+  {
+    // Goto previous change in the multi-file Git changes editor
+    "key": "alt+up",
+    "command": "multiDiffEditor.goToPreviousChange"
   },
 
   // Merging
@@ -670,7 +709,7 @@
   },
   // Selection
   {
-    "key": "ctrl-n",
+    "key": "ctrl+n",
     "command": "editor.action.addSelectionToNextFindMatch",
     "when": "(vim.mode == 'Normal' || vim.mode == 'Visual') && (editorTextFocus || !inputFocus)"
   },
@@ -690,6 +729,12 @@
     "command": "workbench.action.terminal.sendSequence",
     "args": { "text": "\u001B[15;2~" }, // sends Shift‑F5
     "when": "terminalFocus"
+  },
+  {
+    "key": "ctrl+s",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[15;2~" }, // sends Shift-F5
+    "when": "terminalFocus && (isWindows || isLinux)"
   },
   {
     "key": "alt+o",

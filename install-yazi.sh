@@ -6,9 +6,18 @@ set -euo pipefail
 
 HAVE() { command -v "$1" >/dev/null 2>&1; }
 
+HAVE_WORKING_YAZI() {
+  HAVE yazi && yazi --version >/dev/null 2>&1
+}
+
 SUDO_CMD=""
 if [ "$(id -u)" -ne 0 ] && HAVE sudo; then
-  SUDO_CMD="sudo"
+  if sudo -n true >/dev/null 2>&1; then
+    SUDO_CMD="sudo"
+  else
+    # Keep non-interactive setup from blocking on a password prompt.
+    SUDO_CMD="sudo -n"
+  fi
 fi
 
 OS="$(uname -s)"
@@ -16,7 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Try to source shared helpers if available
 if [ -f "$SCRIPT_DIR/lib/run_ensure.sh" ]; then
-  # shellcheck disable=SC1090
+  # shellcheck source=lib/run_ensure.sh
   . "$SCRIPT_DIR/lib/run_ensure.sh"
 fi
 
@@ -81,8 +90,10 @@ install_from_github() {
   # Requires: curl, unzip/tar
   local repo="sxyazi/yazi"
   local os_arch_triple=""
-  local uname_s="$(uname -s)"
-  local uname_m="$(uname -m)"
+  local uname_s
+  local uname_m
+  uname_s="$(uname -s)"
+  uname_m="$(uname -m)"
 
   case "$uname_s" in
     Linux)
@@ -194,16 +205,21 @@ install_from_github() {
 
   # Install to appropriate location based on OS
   local install_prefix="/usr/local"
+  local install_sudo="$SUDO_CMD"
   if [ "$OS" = "Darwin" ] && [ -w "/opt/homebrew/bin" ]; then
     install_prefix="/opt/homebrew"
+  elif [ "$OS" = "Linux" ] && [ "$(id -u)" -ne 0 ] && ! sudo -n true >/dev/null 2>&1; then
+    install_prefix="$HOME/.local/opt/yazi"
+    install_sudo=""
   fi
 
-  $SUDO_CMD install -m 0755 "$yazi_bin" "${install_prefix}/bin/yazi"
+  $install_sudo install -d -m 0755 "${install_prefix}/bin"
+  $install_sudo install -m 0755 "$yazi_bin" "${install_prefix}/bin/yazi"
   if [ -n "$ya_bin" ]; then
-    $SUDO_CMD install -m 0755 "$ya_bin" "${install_prefix}/bin/ya"
+    $install_sudo install -m 0755 "$ya_bin" "${install_prefix}/bin/ya"
   fi
 
-  if ! command -v yazi >/dev/null 2>&1; then
+  if ! HAVE_WORKING_YAZI; then
     echo "Failed to install yazi to ${install_prefix}/bin" >&2
     return 1
   fi
@@ -214,7 +230,10 @@ echo "Yazi installation script starting..."
 case "$OS" in
   Linux)
     # Only run custom Yazi install on Debian/Ubuntu
-    if [ -r /etc/os-release ]; then . /etc/os-release; fi
+    if [ -r /etc/os-release ]; then
+      # shellcheck source=/dev/null
+      . /etc/os-release
+    fi
     if [ "${ID:-}" = "debian" ] || [ "${ID:-}" = "ubuntu" ]; then
       if HAVE apt-get; then
         # Ensure minimal dependencies with AUTO_INSTALL/prompt semantics
@@ -232,7 +251,7 @@ case "$OS" in
           # Debian provides the binary as 'batcat' in the 'bat' package
           ensure_pkg_cmd bat batcat || true
         fi
-        if ! HAVE yazi; then
+        if ! HAVE_WORKING_YAZI; then
           if confirm_yazi_install "GitHub prebuilt binary (Debian/Ubuntu, GNU)"; then
             install_from_github || echo "[warn] GitHub install failed; Yazi not installed" >&2
           else
@@ -257,7 +276,7 @@ case "$OS" in
   Darwin)
     # On macOS, prefer Homebrew but offer GitHub fallback
     if HAVE brew; then
-      if ! HAVE yazi; then
+      if ! HAVE_WORKING_YAZI; then
         if confirm_yazi_install "Homebrew"; then
           brew install yazi || echo "[warn] Homebrew install failed" >&2
         else
@@ -268,7 +287,7 @@ case "$OS" in
       fi
     else
       # Fallback to GitHub releases if Homebrew is not available
-      if ! HAVE yazi; then
+      if ! HAVE_WORKING_YAZI; then
         if confirm_yazi_install "GitHub prebuilt binary (macOS)"; then
           install_from_github || echo "[warn] GitHub install failed; Yazi not installed" >&2
         else

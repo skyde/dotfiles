@@ -2,7 +2,37 @@
 # si — Simple Zoekt indexer
 
 set -euo pipefail
-set -x
+
+usage() {
+  cat <<'EOF'
+Usage: si [PATH]
+
+Build or rebuild a local .zoekt index for PATH.
+
+Options:
+  -h, --help   Show this help message
+
+PATH may be a directory or file. It defaults to the current directory.
+EOF
+}
+
+case "${1:-}" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
+target_input="${1:-$PWD}"
+target="$target_input"
+if [[ -f "$target" ]]; then
+  target="$(dirname "$target")"
+fi
+if ! root="$(cd "$target" >/dev/null 2>&1 && pwd -P)"; then
+  echo "error: index root not found: $target_input" >&2
+  exit 1
+fi
+cd "$root"
 
 # Get CPU count for parallelism
 if command -v sysctl >/dev/null 2>&1; then
@@ -12,9 +42,9 @@ elif command -v nproc >/dev/null 2>&1; then
 else
   cpu_count=256
 fi
-echo "$cpu_count"
+echo "Indexing ${root} with ${cpu_count} workers"
 
-IGNORES=".git,.svn,.hg,.idea,.vs,node_modules,out,build,dist,tmp,temp,cache,.cache,__pycache__,.mypy_cache,.pytest_cache,.tox,vendor,CMakeFiles,.gradle,.mvn,pkg,bin,.terraform,.jekyll-cache,_site"
+IGNORES=".git,.svn,.hg,.idea,.vs,node_modules,out,build,dist,tmp,temp,cache,.cache,__pycache__,.mypy_cache,.pytest_cache,.tox,vendor,CMakeFiles,.gradle,.mvn,pkg,.terraform,.jekyll-cache,_site"
 
 TARGET_DIR=".zoekt"
 

@@ -9,7 +9,8 @@
 
 # Use zsh if available for interactive shells
 if [ -t 1 ] && command -v zsh >/dev/null 2>&1; then
-  export SHELL="$(command -v zsh)"
+  SHELL="$(command -v zsh)"
+  export SHELL
   exec zsh -l
 fi
 
@@ -146,10 +147,10 @@ fi
 
 # -------- aliases
 alias grep='grep --color=auto'
-alias stow_apply="$HOME/dotfiles/apply.sh"
-alias stow_init="$HOME/dotfiles/init.sh"
-alias stow_update="$HOME/dotfiles/update.sh && $HOME/dotfiles/apply.sh"
-alias stow_update_init_auto="$HOME/dotfiles/update.sh && AUTO_INSTALL=1 $HOME/dotfiles/init.sh"
+alias stow_apply='$HOME/dotfiles/apply.sh'
+alias stow_init='$HOME/dotfiles/init.sh'
+alias stow_update='$HOME/dotfiles/update.sh && $HOME/dotfiles/apply.sh'
+alias stow_update_init_auto='$HOME/dotfiles/update.sh && AUTO_INSTALL=1 $HOME/dotfiles/init.sh'
 
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 export BAT_THEME="Visual Studio Dark+"

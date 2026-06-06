@@ -44,17 +44,15 @@ jobs:
 
           if [ "$RUNNER_OS" == "Windows" ]; then
             home_dir="$USERPROFILE"
-            init_cmd="pwsh -File init.ps1"
             apply_cmd="pwsh -File apply.ps1"
           else
             home_dir="$HOME"
-            init_cmd="./init.sh"
             apply_cmd="./apply.sh"
           fi
 
           # Create conflicting files
           echo "Creating pre-existing files..."
-          echo "# Existing bashrc" > "$home_dir/.bashrc"
+          echo "# Existing bashrc custom" > "$home_dir/.bashrc-custom"
           echo "# Existing zshrc" > "$home_dir/.zshrc"
           mkdir -p "$home_dir/.config"
           echo "# Existing config" > "$home_dir/.config/existing.conf"
@@ -62,8 +60,7 @@ jobs:
           # Test adoption behavior
           echo "Testing --adopt behavior..."
           if [ "$RUNNER_OS" == "Windows" ]; then
-            $env:AUTO_INSTALL = "0"
-            & $apply_cmd --adopt
+            $apply_cmd --adopt
           else
             AUTO_INSTALL=0 $apply_cmd --adopt
           fi
@@ -116,13 +113,13 @@ jobs:
             AUTO_INSTALL=0 ./init.sh > /dev/null 2>&1
             
             # Verify basic functionality
-            test -f "$HOME/.bashrc" || { echo "❌ Install failed on cycle $i"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Install failed on cycle $i"; exit 1; }
 
             # Uninstall
             ./apply.sh --delete > /dev/null 2>&1
 
             # Verify cleanup
-            test ! -e "$HOME/.bashrc" || { echo "❌ Cleanup failed on cycle $i"; exit 1; }
+          test ! -e "$HOME/.bashrc-custom" || { echo "❌ Cleanup failed on cycle $i"; exit 1; }
           done
 
           echo "✅ Rapid cycle test completed"
@@ -153,7 +150,7 @@ jobs:
 
           # Monitor memory during installation
           (while true; do
-            ps aux | grep -E "(stow|bash)" | grep -v grep
+            pgrep -af "(stow|bash)" || true
             sleep 1
           done) &
           monitor_pid=$!
@@ -187,7 +184,7 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Verify installation worked
-          test -f "$HOME/.bashrc" || { echo "❌ Offline installation failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Offline installation failed"; exit 1; }
 
           # Test package operations
           ./apply.sh --restow
@@ -230,7 +227,7 @@ jobs:
 
           # Wait for all to complete
           for pid in "${pids[@]}"; do
-            wait $pid || echo "Process $pid failed"
+            wait "$pid" || echo "Process $pid failed"
           done
 
           # Check results
@@ -268,17 +265,17 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Break some symlinks manually
-          rm -rf common/.bashrc
+          rm -rf common/.bashrc-custom
 
           # Test recovery via restow
           ./apply.sh --restow || echo "Expected failure with missing file"
 
           # Restore the file
-          echo "# Restored bashrc" > common/.bashrc
+          echo "# Restored bashrc custom" > common/.bashrc-custom
 
           # Test successful recovery
           ./apply.sh --restow
-          test -f "$HOME/.bashrc" || { echo "❌ Recovery failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Recovery failed"; exit 1; }
 
           echo "✅ Recovery test completed"
 
@@ -290,15 +287,13 @@ jobs:
           ./apply.sh --delete 2>/dev/null || true
 
           # Simulate partial installation by manually creating some symlinks
-          cd dotfiles
-          stow --target=$HOME common
+          stow --target="$HOME" common
 
           # Now run full installation - should handle existing symlinks gracefully
-          cd ..
           AUTO_INSTALL=0 ./init.sh
 
           # Verify everything is properly installed
-          test -f "$HOME/.bashrc" || { echo "❌ Partial recovery failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Partial recovery failed"; exit 1; }
           test -f "$HOME/.config/git/config" || { echo "❌ Full installation after partial failed"; exit 1; }
 
           echo "✅ Partial installation recovery test completed"
@@ -309,15 +304,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             platform: linux-old
           - os: ubuntu-latest
             platform: linux-new
-          - os: macos-12
+          - os: macos-14
             platform: macos-old
           - os: macos-latest
             platform: macos-new
-          - os: windows-2019
+          - os: windows-2022
             platform: windows-old
           - os: windows-latest
             platform: windows-new
@@ -327,18 +322,19 @@ jobs:
 
       - name: Platform-specific setup
         run: |
-          echo "🎯 Testing platform-specific edge cases on ${{ matrix.platform }}..."
+          platform="${{ matrix.platform }}"
+          echo "🎯 Testing platform-specific edge cases on $platform..."
 
-          if [[ "${{ matrix.platform }}" == linux* ]]; then
+          if [[ "$platform" == linux* ]]; then
             sudo apt update
             sudo apt install -y stow git
             # Test with different shells
             sudo apt install -y zsh fish dash
-          elif [[ "${{ matrix.platform }}" == macos* ]]; then
+          elif [[ "$platform" == macos* ]]; then
             brew install stow
             # Test with different shell environments
             echo "Testing macOS specific features..."
-          elif [[ "${{ matrix.platform }}" == windows* ]]; then
+          elif [[ "$platform" == windows* ]]; then
             winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
           fi
         shell: bash
@@ -346,26 +342,26 @@ jobs:
       - name: Test version compatibility
         run: |
           echo "📊 Testing version compatibility..."
+          platform="${{ matrix.platform }}"
 
           # Show versions
-          if [[ "${{ matrix.platform }}" == linux* ]]; then
+          if [[ "$platform" == linux* ]]; then
             echo "Linux version: $(lsb_release -d)"
             echo "Stow version: $(stow --version)"
             echo "Git version: $(git --version)"
-          elif [[ "${{ matrix.platform }}" == macos* ]]; then
+          elif [[ "$platform" == macos* ]]; then
             echo "macOS version: $(sw_vers)"
             echo "Stow version: $(stow --version)"
             echo "Git version: $(git --version)"
-          elif [[ "${{ matrix.platform }}" == windows* ]]; then
+          elif [[ "$platform" == windows* ]]; then
             echo "Windows version: $(systeminfo | findstr /B /C:"OS Name" /C:"OS Version")"
             stow --version
             git --version
           fi
 
           # Run standard test
-          if [[ "${{ matrix.platform }}" == windows* ]]; then
-            $env:AUTO_INSTALL = "0"
-            pwsh -File init.ps1
+          if [[ "$platform" == windows* ]]; then
+            AUTO_INSTALL=0 pwsh -NoLogo -NoProfile -File init.ps1
           else
             AUTO_INSTALL=0 ./init.sh
           fi

@@ -52,12 +52,25 @@ cmd open ${{
 	fi
 }}
 
-# Open files with macOS default application (e.g., PDFs in Preview)
+# Open files with the platform default application
 cmd open-default ${{
-	open -- $fx
+	for file in $fx; do
+		if command -v cmd.exe >/dev/null 2>&1; then
+			if command -v cygpath >/dev/null 2>&1; then
+				file="$(cygpath -w "$file")"
+			fi
+			cmd.exe /c start "" "$file"
+		elif command -v open >/dev/null 2>&1; then
+			open -- "$file"
+		elif command -v xdg-open >/dev/null 2>&1; then
+			xdg-open "$file" >/dev/null 2>&1 &
+		else
+			printf 'lf: no platform opener found for %s\n' "$file" >&2
+		fi
+	done
 }}
 
-# Map shift+enter to open with default macOS application
+# Map shift+enter to open with the platform default application
 map E open-default
 
 # # Custom command: adjust per-file scroll offset and redraw

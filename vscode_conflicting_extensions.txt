@@ -1,0 +1,4 @@
+# These modal-editor extensions conflict with the VSCodeVim-based settings
+# and keybindings in this dotfiles repo.
+asvetliakov.vscode-neovim
+jasew.vscode-helix-emulation

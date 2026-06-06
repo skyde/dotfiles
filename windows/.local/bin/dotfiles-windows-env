@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# Source this from Git Bash tasks launched by Windows GUI apps.
+
+prepend_path() {
+  local entry="$1"
+  [[ -n "$entry" && -d "$entry" ]] || return 0
+  local old_path="${PATH:-}"
+  local new_path="" part
+  IFS=':' read -r -a path_parts <<< "$old_path"
+  for part in "${path_parts[@]}"; do
+    [[ -n "$part" && "$part" != "$entry" ]] || continue
+    new_path="${new_path:+$new_path:}$part"
+  done
+  export PATH="$entry${new_path:+:$new_path}"
+}
+
+remove_path() {
+  local entry="$1"
+  local old_path="${PATH:-}"
+  local new_path="" part
+  IFS=':' read -r -a path_parts <<< "$old_path"
+  for part in "${path_parts[@]}"; do
+    [[ -n "$part" && "$part" != "$entry" ]] || continue
+    new_path="${new_path:+$new_path:}$part"
+  done
+  export PATH="$new_path"
+}
+
+prepend_path "$HOME/.local/bin"
+prepend_path "$HOME/scoop/shims"
+
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CACHE_HOME="$HOME/.cache"
+
+if command -v fd >/dev/null 2>&1; then
+  export FZF_DEFAULT_COMMAND="${FZF_DEFAULT_COMMAND:-fd --type f --hidden --follow --exclude .git}"
+  export FZF_CTRL_T_COMMAND="${FZF_CTRL_T_COMMAND:-$FZF_DEFAULT_COMMAND}"
+fi
+
+if [[ -z "${FZF_DEFAULT_OPTS:-}" ]]; then
+  export FZF_DEFAULT_OPTS="--reverse --ansi --info=inline --style=minimal --no-cycle --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f,hl:215,hl+:215"
+fi
+
+if [[ -z "${YAZI_FILE_ONE:-}" && -x /usr/bin/file ]]; then
+  if command -v cygpath >/dev/null 2>&1; then
+    YAZI_FILE_ONE="$(cygpath -w /usr/bin/file)"
+    export YAZI_FILE_ONE
+  else
+    export YAZI_FILE_ONE="/usr/bin/file"
+  fi
+fi
+
+if command -v cygpath >/dev/null 2>&1 && [[ -n "${LOCALAPPDATA:-}" ]]; then
+  local_appdata="$(cygpath -u "$LOCALAPPDATA")"
+
+  # Native Windows tools launched from Git Bash should share the same data/cache
+  # roots they use from PowerShell. This keeps Neovim's Mason packages from
+  # splitting between ~/.local/share/nvim-data and %LOCALAPPDATA%/nvim-data.
+  export XDG_DATA_HOME="$local_appdata"
+  export XDG_CACHE_HOME="$local_appdata/Temp"
+
+  # Keep the Windows Store app-alias directory out of Git Bash task PATH.
+  # It can shadow /usr/bin/bash and break #!/usr/bin/env bash scripts.
+  remove_path "$local_appdata/Microsoft/WindowsApps"
+  if [[ "${DOTFILES_ENABLE_NATIVE_WINDOWS_TMUX:-}" != "1" ]]; then
+    for dir in "$local_appdata"/Microsoft/WinGet/Packages/arndawg.tmux-windows_*; do
+      remove_path "$dir"
+    done
+  fi
+  for dir in "$local_appdata"/Microsoft/WinGet/Packages/aristocratos.btop4win_*; do
+    prepend_path "$dir"
+  done
+
+  vscode_cli="$local_appdata/Programs/Microsoft VS Code/bin/code.cmd"
+  if [[ -f "$vscode_cli" ]]; then
+    export VSCODE_CLI="$vscode_cli"
+  fi
+fi
+
+prepend_path "$HOME/scoop/shims"
+prepend_path "$HOME/.local/bin"
+
+dotfiles_tmux_available() {
+  command -v tmux >/dev/null 2>&1 || return 1
+
+  case "$(uname -s 2>/dev/null || true)" in
+    MINGW* | MSYS* | CYGWIN*)
+      local socket="dotfiles_tmux_probe_$$"
+      if tmux -L "$socket" -f /dev/null new-session -d -s "$socket" >/dev/null 2>&1; then
+        tmux -L "$socket" kill-server >/dev/null 2>&1 || true
+        return 0
+      fi
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" && "$#" -gt 0 ]]; then
+  exec "$@"
+fi

@@ -1,10 +1,14 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # GitHub repository and workflow monitoring script
 REPO="skyde/dotfiles"
 BRANCH="main"
-WORKFLOW_FILE="simple-test.yml"
+WORKFLOW_FILE="comprehensive-test.yml"
+CYCLES=3
+TRIGGER_WORKFLOW=0
+COMMIT_DIRTY=0
+ALLOW_GIT_PUSH_TRIGGER=0
 
 echo "=== MULTI-PLATFORM TESTING AUTOMATION ==="
 echo "Repository: $REPO"
@@ -131,8 +135,12 @@ run_platform_tests() {
         # Trigger the workflow
         if check_gh_auth; then
             trigger_workflow_gh
-        else
+        elif [ "$ALLOW_GIT_PUSH_TRIGGER" -eq 1 ]; then
             trigger_workflow_git
+        else
+            echo "❌ GitHub CLI is not authenticated."
+            echo "Refusing to trigger by committing and pushing unless --allow-git-push-trigger is set."
+            return 1
         fi
         
         echo "Waiting 60 seconds for workflow to start..."
@@ -173,40 +181,88 @@ main() {
     git status --porcelain
     
     if [ -n "$(git status --porcelain)" ]; then
-        echo "⚠️  Working directory not clean - committing changes first"
-        git add -A
-        git commit -m "Auto-commit before platform testing"
-        git push origin "$BRANCH"
+        if [ "$COMMIT_DIRTY" -eq 1 ]; then
+            echo "⚠️  Working directory not clean - committing changes first because --commit-dirty was set"
+            git add -A
+            git commit -m "Auto-commit before platform testing"
+            git push origin "$BRANCH"
+        elif [ "$TRIGGER_WORKFLOW" -eq 1 ]; then
+            echo "❌ Working directory is not clean."
+            echo "Commit/stash changes first, or pass --commit-dirty to allow this script to commit and push them."
+            exit 1
+        fi
     fi
     
     echo ""
     get_workflow_status
     echo ""
     
-    # Default to 3 test cycles
-    local cycles=${1:-3}
-    run_platform_tests "$cycles"
+    if [ "$TRIGGER_WORKFLOW" -eq 1 ]; then
+        run_platform_tests "$CYCLES"
+    else
+        echo "Status-only mode. Pass --trigger to run workflow cycles."
+    fi
 }
 
-# Check command line arguments
-if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+usage() {
     echo "Usage: $0 [number_of_cycles]"
     echo ""
-    echo "This script triggers and monitors GitHub Actions workflows"
+    echo "By default this script only shows current workflow status."
+    echo "With --trigger, it triggers and monitors GitHub Actions workflows"
     echo "to test dotfiles installation across all platforms:"
     echo "  - Linux (Ubuntu)"
     echo "  - macOS (latest)"
     echo "  - Windows (latest)"
     echo ""
     echo "Options:"
-    echo "  number_of_cycles  Number of test cycles to run (default: 3)"
-    echo "  --help, -h        Show this help message"
+    echo "  number_of_cycles          Number of test cycles to run (default: 3)"
+    echo "  --status-only             Show latest workflow status and exit (default behavior)"
+    echo "  --trigger                 Trigger workflow cycles"
+    echo "  --commit-dirty            Allow auto-commit/push of dirty working tree before triggering"
+    echo "  --allow-git-push-trigger  Allow git-push fallback trigger when gh is not authenticated"
+    echo "  --help, -h                Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0              # Run 3 test cycles"
-    echo "  $0 5            # Run 5 test cycles"
-    exit 0
+    echo "  $0                         # Show latest workflow status"
+    echo "  $0 --status-only           # Show latest workflow status"
+    echo "  $0 --trigger               # Run 3 test cycles via gh workflow run"
+    echo "  $0 --trigger 5             # Run 5 test cycles"
+}
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        --trigger)
+            TRIGGER_WORKFLOW=1
+            ;;
+        --status-only)
+            TRIGGER_WORKFLOW=0
+            ;;
+        --commit-dirty)
+            COMMIT_DIRTY=1
+            ;;
+        --allow-git-push-trigger)
+            ALLOW_GIT_PUSH_TRIGGER=1
+            ;;
+        ''|*[!0-9]*)
+            echo "Unknown argument: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+        *)
+            CYCLES="$1"
+            ;;
+    esac
+    shift
+done
+
+if [ "$CYCLES" -lt 1 ]; then
+    echo "number_of_cycles must be at least 1" >&2
+    exit 2
 fi
 
 # Run main function with arguments
-main "$@"
+main

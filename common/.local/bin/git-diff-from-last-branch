@@ -53,4 +53,4 @@ base="$(git rev-list HEAD | grep -m1 -F -x -f "$tmp" || true)"
 [[ -n "${base:-}" ]] || { echo "Could not determine a base commit." >&2; exit 1; }
 
 # --- Diff working tree vs that base --------------------------------
-exec git diff "$base" -- "$@"
+exec git diff "$base" "$@"

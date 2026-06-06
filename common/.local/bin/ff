@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+usage() {
+  cat <<'EOF'
+Usage: ff [--code]
+
+Interactive file picker with fzf.
+
+Options:
+  --code       Open matches in VS Code instead of Neovim
+  -h, --help   Show this help message
+EOF
+}
+
+case "${1:-}" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
 # Build args as an array so quoting stays correct.
 ADDITIONAL_ARGS=(--bind "enter:become(nvim {1})")
 

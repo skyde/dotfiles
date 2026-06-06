@@ -8,8 +8,15 @@
       "command": "bash",
       "args": [
         "-c",
-        "sess=$(if command -v get-workspace-name >/dev/null; then get-workspace-name; else echo '${workspaceFolder}' | tr '/.' '_'; fi); tmux-session \"$sess\" || true"
+        "sess=$(get-workspace-name 2>/dev/null || { base=${PWD%/}; base=${base##*/}; base=${base//[^A-Za-z0-9_-]/_}; printf \"%s\\n\" \"${base:-workspace}\"; }); tmux-session \"$sess\" || true"
       ],
+      "windows": {
+        "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+        "args": [
+          "-lc",
+          "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; sess=$(get-workspace-name 2>/dev/null || { base=${PWD%/}; base=${base##*/}; base=${base//[^A-Za-z0-9_-]/_}; printf \"%s\\n\" \"${base:-workspace}\"; }); if dotfiles_tmux_available; then tmux-session \"$sess\" || exec pwsh -NoLogo; else exec pwsh -NoLogo; fi"
+        ]
+      },
       "presentation": {
         "echo": false,
         "clear": true,
@@ -29,8 +36,15 @@
       "command": "bash",
       "args": [
         "-c",
-        "sess=$(if command -v get-workspace-name >/dev/null; then get-workspace-name; else echo '${workspaceFolder}' | tr '/.' '_'; fi); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 2 --no-attach"
+        "sess=$(get-workspace-name 2>/dev/null || { base=${PWD%/}; base=${base##*/}; base=${base//[^A-Za-z0-9_-]/_}; printf \"%s\\n\" \"${base:-workspace}\"; }); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 2 --no-attach"
       ],
+      "windows": {
+        "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+        "args": [
+          "-lc",
+          "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; if dotfiles_tmux_available; then sess=$(get-workspace-name 2>/dev/null || { base=${PWD%/}; base=${base##*/}; base=${base//[^A-Za-z0-9_-]/_}; printf \"%s\\n\" \"${base:-workspace}\"; }); tmux-session \"$sess\" 2 --no-attach || true; fi"
+        ]
+      },
       "presentation": {
         "echo": false,
         "reveal": "silent",
@@ -46,8 +60,15 @@
       "command": "bash",
       "args": [
         "-c",
-        "sess=$(if command -v get-workspace-name >/dev/null; then get-workspace-name; else echo '${workspaceFolder}' | tr '/.' '_'; fi); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 3 --no-attach"
+        "sess=$(get-workspace-name 2>/dev/null || { base=${PWD%/}; base=${base##*/}; base=${base//[^A-Za-z0-9_-]/_}; printf \"%s\\n\" \"${base:-workspace}\"; }); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 3 --no-attach"
       ],
+      "windows": {
+        "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+        "args": [
+          "-lc",
+          "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; if dotfiles_tmux_available; then sess=$(get-workspace-name 2>/dev/null || { base=${PWD%/}; base=${base##*/}; base=${base//[^A-Za-z0-9_-]/_}; printf \"%s\\n\" \"${base:-workspace}\"; }); tmux-session \"$sess\" 3 --no-attach || true; fi"
+        ]
+      },
       "presentation": {
         "echo": false,
         "reveal": "silent",
@@ -65,6 +86,13 @@
         "-c",
         "$HOME/dotfiles/common/.local/bin/kill-tmux"
       ],
+      "windows": {
+        "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+        "args": [
+          "-lc",
+          "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; if dotfiles_tmux_available; then kill-tmux || true; fi"
+        ]
+      },
       "presentation": {
         "echo": false,
         "reveal": "silent",
@@ -123,6 +151,10 @@
       "label": "LazyGit",
       "type": "shell",
       "command": "lazygit",
+      "windows": {
+        "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+        "args": ["-lc", "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; lazygit"]
+      },
       "presentation": {
         "echo": false,
         "clear": true,
@@ -139,6 +171,10 @@
       "args": [
         "--code",
       ],
+      "windows": {
+        "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+        "args": ["-lc", "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; st --code"]
+      },
       "presentation": {
         "echo": false,
         "clear": true,
@@ -158,6 +194,10 @@
       "args": [
         "--code",
       ],
+      "windows": {
+        "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+        "args": ["-lc", "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; st-rg --code"]
+      },
       "presentation": {
         "echo": false,
         "clear": true,
@@ -177,6 +217,10 @@
       "args": [
         "--code",
       ],
+      "windows": {
+        "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+        "args": ["-lc", "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; ff --code"]
+      },
       "presentation": {
         "echo": false,
         "clear": true,
@@ -196,6 +240,10 @@
       "args": [
         "--code"
       ],
+      "windows": {
+        "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+        "args": ["-lc", "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; sz --code"]
+      },
       "presentation": {
         "echo": false,
         "clear": true,
@@ -215,6 +263,10 @@
       "args": [
         "${workspaceFolder}"
       ],
+      "windows": {
+        "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+        "args": ["-lc", "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; si"]
+      },
       "presentation": {
         "echo": true,
         "clear": true,
@@ -228,6 +280,13 @@
         "label": "Run Git CL Format",
         "type": "shell",
         "command": "git cl format",
+        "windows": {
+            "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+            "args": [
+                "-lc",
+                "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; if git cl format --help >/dev/null 2>&1; then git cl format; else echo \"git cl format is unavailable. Install Chromium depot_tools and ensure git-cl is on PATH.\"; fi"
+            ]
+        },
         "presentation": {
             "echo": false,
             "reveal": "silent",
@@ -242,6 +301,10 @@
       "label": "Copy Git Diff",
       "type": "shell",
       "command": "git-copy",
+      "windows": {
+        "command": "C:\\Program Files\\Git\\bin\\bash.exe",
+        "args": ["-lc", "source \"$HOME/.local/bin/dotfiles-windows-env\" 2>/dev/null || true; git-copy"]
+      },
       "presentation": {
         "echo": false,
         "reveal": "silent",

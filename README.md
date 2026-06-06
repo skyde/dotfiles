@@ -69,16 +69,27 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
   - diffs are side-by-side by default, while LazyGit shows inline changes
 - `lazygit` for a simple git TUI
 - `starship` for a customizable cross-shell prompt
+- `tree-sitter` CLI for LazyVim/nvim-treesitter parser installs
 
 ## Nvim Version
 
-If Nvim is using a version that is too old it can be made to use the newest version by running this
+LazyVim requires Nvim 0.11.2 or newer and a recent `tree-sitter` CLI. Some Linux distro packages lag behind those requirements, so on Linux use the bundled installers:
 
 ```
-curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage
-chmod u+x nvim-linux-x86_64.appimage
+./install-tree-sitter-cli.sh
+./install-nvim.sh
+```
+
+Or install the latest release manually:
+
+```
+curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+tar -xzf nvim-linux-x86_64.tar.gz
 mkdir -p ~/.local/bin
-mv nvim-linux-x86_64.appimage ~/.local/bin/nvim
+mkdir -p ~/.local/opt
+rm -rf ~/.local/opt/nvim
+mv nvim-linux-x86_64 ~/.local/opt/nvim
+ln -sfn ~/.local/opt/nvim/bin/nvim ~/.local/bin/nvim
 ```
 
 ## Mac
@@ -115,6 +126,15 @@ Allows increased brightness when viewing SDR content on an HDR monitor.
 
 ## Windows
 
+`init.ps1 --no-persist` is available for test installs: it applies the files and
+Windows AppData config links without writing user PATH, user environment values,
+or key-repeat registry settings.
+
+If VS Code rewrites a managed user file such as `settings.json` or `tasks.json`
+and breaks the Windows hardlink, run `./apply.ps1 --restow` to restore the repo
+version and recreate the link. Run `./apply.ps1` without `--restow` when you
+intentionally want to adopt a managed local rewrite back into the dotfiles.
+
 ### Config
 
 ```text
@@ -126,6 +146,20 @@ Allows increased brightness when viewing SDR content on an HDR monitor.
 ```
 
 lf expects its configuration under `%AppData%\lf` on Windows. These dotfiles create a symlink to `~/.config/lf` so settings apply across OSes.
+
+kitty is not a native Windows terminal; the shared WezTerm config in
+`common/.config/wezterm/wezterm.lua` is the Windows GUI-terminal counterpart
+and is installed by `init.ps1`.
+
+The native WinGet `tmux` build is not used by default because it can fail to
+start its server on Windows. The shared `tmux` wrapper delegates to WSL `tmux`
+from Git Bash/PowerShell on Windows, and delegates to the real local binary on
+macOS/Linux. Set `DOTFILES_ENABLE_NATIVE_WINDOWS_TMUX=1` only if you want to
+try a native Windows `tmux` build explicitly.
+
+Fresh Neovim/Lazy plugin installs can need paths longer than the classic
+Windows `MAX_PATH` limit. The Windows init scripts enable Git long path support
+with `git config --global core.longpaths true` so plugin checkouts work.
 
 ### PowerShell 7
 

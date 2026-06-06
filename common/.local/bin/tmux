@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+is_windows_shell() {
+  case "$(uname -s 2>/dev/null || true)" in
+    MINGW* | MSYS* | CYGWIN*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+self_path() {
+  local dir
+  dir="$(cd "$(dirname "$0")" && pwd -P)"
+  printf '%s/%s\n' "$dir" "$(basename "$0")"
+}
+
+find_real_tmux() {
+  local self dir candidate canonical
+  self="$(self_path)"
+
+  IFS=':' read -r -a path_parts <<< "${PATH:-}"
+  for dir in "${path_parts[@]}"; do
+    [[ -n "$dir" ]] || dir='.'
+    candidate="$dir/tmux"
+    [[ -x "$candidate" ]] || continue
+
+    canonical="$(cd "$(dirname "$candidate")" && pwd -P)/$(basename "$candidate")"
+    [[ "$canonical" != "$self" ]] || continue
+
+    if is_windows_shell &&
+       [[ "$canonical" == *"/Microsoft/WinGet/Packages/arndawg.tmux-windows_"* ]] &&
+       [[ "${DOTFILES_ENABLE_NATIVE_WINDOWS_TMUX:-}" != "1" ]]; then
+      continue
+    fi
+
+    printf '%s\n' "$candidate"
+    return 0
+  done
+
+  return 1
+}
+
+run_wsl_tmux() {
+  local wsl_cwd
+
+  command -v wsl.exe >/dev/null 2>&1 || return 1
+  wsl.exe -e sh -lc 'command -v tmux >/dev/null 2>&1' >/dev/null 2>&1 || return 1
+
+  if command -v wslpath >/dev/null 2>&1; then
+    wsl_cwd="$(wslpath -u "$PWD" 2>/dev/null || true)"
+  else
+    wsl_cwd=""
+  fi
+
+  if [[ -n "$wsl_cwd" ]]; then
+    exec wsl.exe -e sh -lc 'cd "$1" && shift && exec tmux "$@"' dotfiles-tmux "$wsl_cwd" "$@"
+  fi
+
+  exec wsl.exe -e tmux "$@"
+}
+
+if is_windows_shell; then
+  run_wsl_tmux "$@" || true
+fi
+
+real_tmux="$(find_real_tmux)" || {
+  printf 'tmux wrapper: could not find a working tmux binary\n' >&2
+  if is_windows_shell; then
+    printf 'tmux wrapper: install tmux inside WSL or set DOTFILES_ENABLE_NATIVE_WINDOWS_TMUX=1 to try native Windows tmux\n' >&2
+  fi
+  exit 127
+}
+
+exec "$real_tmux" "$@"

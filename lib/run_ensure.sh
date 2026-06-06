@@ -112,11 +112,22 @@ ensure_cask() {
 ensure_apt() {
   local pkg="$1"
   local SUDO_CMD=""
+  local update_cmd
   if [ "$(id -u)" -ne 0 ] && have sudo; then
-    SUDO_CMD="sudo"
+    if sudo -n true >/dev/null 2>&1; then
+      SUDO_CMD="sudo"
+    else
+      # Avoid hanging non-interactive setup on a password prompt.
+      SUDO_CMD="sudo -n"
+    fi
+  fi
+  if [[ "$SUDO_CMD" == "sudo -n" ]]; then
+    update_cmd="$SUDO_CMD apt-get install -y --only-upgrade '$pkg' >/dev/null 2>&1 || true"
+  else
+    update_cmd="$SUDO_CMD apt-get install -y --only-upgrade '$pkg' || true"
   fi
   ensure "$pkg" \
     "dpkg -s '$pkg' >/dev/null 2>&1" \
     "$SUDO_CMD apt-get update -y && $SUDO_CMD apt-get install -y '$pkg'" \
-    "$SUDO_CMD apt-get install -y --only-upgrade '$pkg' || true"
+    "$update_cmd"
 }

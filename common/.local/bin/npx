@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+portable="$HOME/.local/opt/nodejs/npx.cmd"
+if [[ -f "$portable" ]]; then
+  exec "$portable" "$@"
+fi
+
+exec node "$(dirname "$0")/../opt/nodejs/node_modules/npm/bin/npx-cli.js" "$@"

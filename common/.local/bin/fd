@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if command -v fdfind >/dev/null 2>&1; then
+  exec fdfind "$@"
+fi
+
+if command -v fd.exe >/dev/null 2>&1; then
+  exec fd.exe "$@"
+fi
+
+for candidate in /opt/homebrew/bin/fd /usr/local/bin/fd /usr/bin/fd /bin/fd; do
+  if [[ -x "$candidate" ]]; then
+    exec "$candidate" "$@"
+  fi
+done
+
+echo "fd not found. Install fd or fd-find." >&2
+exit 127

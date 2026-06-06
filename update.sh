@@ -4,6 +4,15 @@ set -e
 
 echo "Updating dotfiles from remote..."
 
+PREVIEW_ONLY=false
+for arg in "$@"; do
+  case "$arg" in
+    --no | --dry-run | --preview)
+      PREVIEW_ONLY=true
+      ;;
+  esac
+done
+
 # Save current directory
 ORIGINAL_DIR="$PWD"
 
@@ -13,15 +22,23 @@ cd "$SCRIPT_DIR"
 
 # Pull latest changes
 echo "Pulling latest changes..."
-git pull
+if [ "$PREVIEW_ONLY" = true ]; then
+  git pull --dry-run
+else
+  git pull
+fi
 
 # Check for dotfiles-local and update if present
 if [ -d "$HOME/dotfiles-local/.git" ]; then
   echo "Updating dotfiles-local from remote..."
-  git -C "$HOME/dotfiles-local" pull
+  if [ "$PREVIEW_ONLY" = true ]; then
+    git -C "$HOME/dotfiles-local" pull --dry-run
+  else
+    git -C "$HOME/dotfiles-local" pull
+  fi
   if [ -f "$HOME/dotfiles-local/apply.sh" ]; then
     echo "Running dotfiles-local apply script..."
-    "$HOME/dotfiles-local/apply.sh"
+    "$HOME/dotfiles-local/apply.sh" --restow "$@"
   fi
 fi
 

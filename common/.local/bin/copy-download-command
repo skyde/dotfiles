@@ -26,12 +26,21 @@ if [[ ! -d "$src_dir" ]]; then
   exit 1
 fi
 
+rsync_src="$src_dir"
+if command -v cygpath >/dev/null 2>&1; then
+  case "$rsync_src" in
+    [A-Za-z]:\\* | [A-Za-z]:/*)
+      rsync_src="$(cygpath -u "$rsync_src")"
+      ;;
+  esac
+fi
+
 remote_host="${SSH_RSYNC_HOST:-$(hostname)}"
 timestamp="$(date +%Y-%m-%d-%H%M%S)"
-dir_name="$(basename "$src_dir")"
+dir_name="$(basename "$rsync_src")"
 dest_dir="${dest_base%/}/${dir_name}-${timestamp}"
 
-printf -v download_cmd 'rsync -avz %q:%q/ %q/' "$remote_host" "$src_dir" "$dest_dir"
+printf -v download_cmd 'rsync -avz %q:%q/ %q/' "$remote_host" "$rsync_src" "$dest_dir"
 download_cmd="${download_cmd//\\~/\~}"
 printf '%s\n' "$download_cmd" | osc-copy
 printf '%s\n' "$download_cmd"

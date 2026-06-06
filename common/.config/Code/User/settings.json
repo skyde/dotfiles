@@ -75,6 +75,15 @@
 
   "terminal.integrated.defaultProfile.linux": "zsh",
   "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell"
+    },
+    "Git Bash": {
+      "path": "C:\\Program Files\\Git\\bin\\bash.exe",
+      "args": ["--login", "-i"]
+    }
+  },
   "terminal.integrated.defaultProfile.windows": "PowerShell",
   // Ensure tmux receives Option/Alt based prefixes inside the VS Code terminal
   "terminal.integrated.macOptionIsMeta": true,
@@ -628,7 +637,12 @@
         "workbench.view.explorer",
 
         // Scroll-to-and-select the file open in the active editor
-        "workbench.files.action.showActiveFileInExplorer"
+        "workbench.files.action.showActiveFileInExplorer",
+
+        // Newer VS Code builds reveal the file but can leave keyboard focus in
+        // the editor, which breaks the Explorer-only yazi-style keys.
+        "workbench.files.action.focusFilesExplorer",
+        "workbench.action.focusSideBar"
       ]
     },
     {
@@ -646,7 +660,7 @@
     // Find Project
     {
       "before": ["<leader>", "f", "p"],
-      "commands": ["g4d"]
+      "commands": ["workbench.action.openRecent"]
     },
     // Buffers
     {
@@ -1144,14 +1158,19 @@
       "commands": ["workbench.action.debug.restart"]
     },
     {
+      // Restart fallback for VSCodeVim on Windows, where dR can stay pending.
+      "before": ["<leader>", "d", "r"],
+      "commands": ["workbench.action.debug.restart"]
+    },
+    {
       // Goto
       "before": ["<leader>", "d", "g"],
-      "commands": ["workbench.action.debug.setNextStatement"]
+      "commands": ["debug.jumpToCursor"]
     },
     {
       // Toggle log point
       "before": ["<leader>", "d", "L"],
-      "commands": ["editor.debug.action.toggleLogPoint"]
+      "commands": ["editor.debug.action.addLogPoint"]
     },
     // Hover
     {
@@ -1268,7 +1287,7 @@
         {
           "command": "workbench.action.terminal.sendSequence",
           "args": {
-            "text": "if [[ \"${file}\" =~ ^[a-z-]+: ]]; then echo \"Cannot run git log on URI scheme file: ${file}\"; else git log -p --diff-algorithm=histogram --date=short \"${file}\" 2>/dev/null || echo \"File not in git repository or not found: ${file}\"; fi\u000D"
+            "text": "if [[ \"${file}\" =~ ^[A-Za-z]: ]]; then git log -p --diff-algorithm=histogram --date=short \"${file}\" 2>/dev/null || echo \"File not in git repository or not found: ${file}\"; elif [[ \"${file}\" =~ ^[A-Za-z][A-Za-z0-9+.-]*: ]]; then echo \"Cannot run git log on URI scheme file: ${file}\"; else git log -p --diff-algorithm=histogram --date=short \"${file}\" 2>/dev/null || echo \"File not in git repository or not found: ${file}\"; fi\u000D"
           }
         },
         "workbench.action.terminal.moveToEditor",
@@ -1287,22 +1306,22 @@
     //   ]
     // },
     {
-      // Open a diff for the changes for all files since branch from main
+      // Open the aggregate Git changes editor
       "before": ["<leader>", "g", "D"],
-      "commands": ["gitTreeCompare.refresh", "gitTreeCompare.openAllChanges"]
+      "commands": ["git.viewChanges"]
     },
     {
-      // Open a diff for all changes since last commit
+      // Open a diff for the current file's changes
       "before": ["<leader>", "g", "d"],
       "commands": ["git.openChange"]
     },
     {
-      // Change compare target for git tree compare
+      // Open the aggregate Git changes editor
       "before": ["<leader>", "g", "C"],
-      "commands": ["gitTreeCompare.changeBase"]
+      "commands": ["git.viewChanges"]
     },
     {
-      // Open a diff for the changes to the current file
+      // Open the aggregate Git changes editor
       "before": ["<leader>", "g", "a"],
       "commands": ["git.viewChanges"]
     },
@@ -1358,7 +1377,7 @@
         {
           "command": "workbench.action.terminal.sendSequence",
           "args": {
-            "text": "echo 'Showing diff for your next Gerrit patch'; git upstream-diff\u000D"
+            "text": "echo 'Showing diff for your next Gerrit patch'; diff-branch\u000D"
           }
         },
         "workbench.action.terminal.moveToEditor",
@@ -1428,13 +1447,6 @@
     // },
     // Conflict (Merge)
 
-    // These conflict with the existing ones, but maybe better?
-    // // <leader>co – Accept Current (ours)
-    // { "before": ["<leader>", "c", "o"], "commands": ["merge-conflict.accept.current"] },
-    //
-    // // <leader>ct – Accept Incoming (theirs)
-    // { "before": ["<leader>", "c", "t"], "commands": ["merge-conflict.accept.incoming"] },
-
     // <leader>ca – Accept Both / Accept Combination
     {
       "before": ["<leader>", "c", "a"],
@@ -1447,7 +1459,7 @@
     // Optional helper: open the current file in the Merge Editor
     {
       "before": ["<leader>", "c", "m"],
-      "commands": ["merge.openInMergeEditor"]
+      "commands": ["git.openMergeEditor"]
     },
     {
       // do  => revert selected ranges (take the other side into current)
@@ -1457,22 +1469,34 @@
     {
       // Accept Ours
       "before": ["<leader>", "c", "o"],
-      "commands": ["merge.toggleActiveConflictInput1"]
+      "commands": [
+        "merge-conflict.accept.current",
+        "merge.toggleActiveConflictInput1"
+      ]
     },
     {
       // Accept All of Ours
       "before": ["<leader>", "c", "O"],
-      "commands": ["merge.acceptAllInput1"]
+      "commands": [
+        "merge-conflict.accept.all-current",
+        "merge.acceptAllInput1"
+      ]
     },
     {
       // Accept Theirs
       "before": ["<leader>", "c", "t"],
-      "commands": ["merge.toggleActiveConflictInput2"]
+      "commands": [
+        "merge-conflict.accept.incoming",
+        "merge.toggleActiveConflictInput2"
+      ]
     },
     {
       // Accept All of Theirs
       "before": ["<leader>", "c", "T"],
-      "commands": ["merge.acceptAllInput2"]
+      "commands": [
+        "merge-conflict.accept.all-incoming",
+        "merge.acceptAllInput2"
+      ]
     },
     {
       // Accept Both
@@ -1494,6 +1518,7 @@
       "before": ["<leader>", "c", "n"],
       "commands": [
         "workbench.action.compareEditor.nextChange",
+        "multiDiffEditor.goToNextChange",
         "merge.goToNextUnhandledConflict"
       ]
     },
@@ -1502,6 +1527,7 @@
       "before": ["<leader>", "c", "p"],
       "commands": [
         "workbench.action.compareEditor.previousChange",
+        "multiDiffEditor.goToPreviousChange",
         "merge.goToPreviousUnhandledConflict"
       ]
     },
@@ -1513,17 +1539,23 @@
     {
       // Goto previous conflict
       "before": ["[", "x"],
-      "commands": ["merge.goToPreviousUnhandledConflict"]
+      "commands": ["merge-conflict.previous"]
     },
     {
       // Goto next conflict
       "before": ["]", "c"],
-      "commands": ["workbench.action.compareEditor.nextChange"]
+      "commands": [
+        "workbench.action.compareEditor.nextChange",
+        "multiDiffEditor.goToNextChange"
+      ]
     },
     {
       // Goto previous conflict
       "before": ["[", "c"],
-      "commands": ["workbench.action.compareEditor.previousChange"]
+      "commands": [
+        "workbench.action.compareEditor.previousChange",
+        "multiDiffEditor.goToPreviousChange"
+      ]
     },
     {
       // Change the current side of the diff
@@ -1548,11 +1580,11 @@
     // Testing
     {
       "before": ["<leader>", "T", "r"],
-      "commands": ["testing.runCurrentTest"]
+      "commands": ["testing.runAtCursor"]
     },
     {
       "before": ["<leader>", "T", "d"],
-      "commands": ["testing.debugCurrentTest"]
+      "commands": ["testing.debugAtCursor"]
     },
     {
       "before": ["<leader>", "T", "a"],
@@ -1572,40 +1604,40 @@
     },
     {
       "before": ["<leader>", "T", "e"],
-      "commands": ["testing.openTestView"] // focuses the Test Explorer
+      "commands": ["workbench.view.testing.focus"] // focuses the Test Explorer
     },
     // Make (Build)
     {
       "before": ["<leader>", "m", "T"],
-      "commands": ["workbench.action.tasks.runTask"]
+      "commands": [{ "command": "workbench.action.tasks.runTask" }]
     },
     {
       "before": ["<leader>", "m", "t"],
-      "commands": ["workbench.action.tasks.reRunTask"]
+      "commands": [{ "command": "workbench.action.tasks.reRunTask" }]
     },
     {
       "before": ["<leader>", "m", "b"],
-      "commands": ["workbench.action.tasks.build"]
+      "commands": [{ "command": "workbench.action.tasks.build" }]
     },
     {
       "before": ["<leader>", "m", "B"],
-      "commands": ["workbench.action.tasks.configureDefaultBuildTask"]
+      "commands": [{ "command": "workbench.action.tasks.configureDefaultBuildTask" }]
     },
     {
       "before": ["<leader>", "m", "c"],
-      "commands": ["workbench.action.tasks.terminate"]
+      "commands": [{ "command": "workbench.action.tasks.terminate" }]
     },
     {
       "before": ["<leader>", "m", "r"],
-      "commands": ["workbench.action.debug.start"]
+      "commands": [{ "command": "workbench.action.debug.start" }]
     },
     {
       "before": ["<leader>", "m", "R"],
-      "commands": ["workbench.action.debug.selectandstart"]
+      "commands": [{ "command": "workbench.action.debug.selectandstart" }]
     },
     {
       "before": ["<leader>", "m", "s"],
-      "commands": ["workbench.action.debug.stop"]
+      "commands": [{ "command": "workbench.action.debug.stop" }]
     },
     {
       "before": ["Z", "Z"],
@@ -1627,7 +1659,7 @@
     // Manually create undo stack
     { "before": ["<Esc>"], "after": ["<Esc>", "<C-g>u"] }
   ],
-  "vim.visualModeKeyBindings": [
+  "vim.visualModeKeyBindingsNonRecursive": [
     {
       // Easy way to exit, useful for some VS Code issues like going to definition though
       // a peek auto selects the text (just press enter twice)
@@ -1727,6 +1759,7 @@
     "sound": "off"
   },
   "terminal.integrated.confirmOnKill": "never",
+  "yazi-vscode.yaziPath": "~/.local/bin/yazi.cmd",
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": false
@@ -1830,7 +1863,6 @@
     // Go
     // -------------------
     "**/pkg": true,
-    "**/bin": true,
 
     // -------------------
     // Infra / DevOps
