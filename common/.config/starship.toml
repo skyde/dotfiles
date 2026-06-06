@@ -61,6 +61,7 @@ disabled = true
 
 [custom.cloud_workspace]
 description = "Cloud workspace name"
+shell = ["bash", "--noprofile", "--norc", "-c"]
 when = 'echo "$PWD" | grep -q "^/google/src/cloud/[^/]*/[^/]*"'
 command = 'echo "$PWD" | cut -d/ -f6'
 format = '[$output]($style) '
@@ -69,6 +70,7 @@ style = 'bold #af87ff'
 [custom.git_workspace]
 description = "Chromium workspace name (chrome/chrome2/etc)"
 require_repo = true
+shell = ["bash", "--noprofile", "--norc", "-c"]
 
 # Only show this module if the git repo root is a directory named 'src'
 when = '''
@@ -89,6 +91,7 @@ style  = 'cyan bold'
 
 [custom.git_cl]
 description = "Chromium CL number"
+shell = ["bash", "--noprofile", "--norc", "-c"]
 # Check if the current branch has a gerritissue config
 when = """
 branch=$(git symbolic-ref --short HEAD 2>/dev/null)

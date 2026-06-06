@@ -6,13 +6,35 @@
 # Requires: zoekt, fzf, ripgrep (for coloring), bat, nvim (or VS Code if --code).
 set -euo pipefail
 
+usage() {
+  cat <<'EOF'
+Usage: st-zoekt [--code] [PATH]
+
+Interactive search over a local Zoekt index.
+
+Options:
+  --code       Open matches in VS Code instead of Neovim
+  -h, --help   Show this help message
+
+PATH may be a directory or file within the indexed tree. It defaults to the
+current directory. Run si [PATH] first to build the .zoekt index.
+EOF
+}
+
+case "${1:-}" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
 # Build args as an array so quoting stays correct.
-ADDITIONAL_ARGS=(--bind "enter:become(cd '{root}' && nvim +{2} {1})")
+ADDITIONAL_ARGS=(--bind "enter:become(cd {root} && nvim +{2} {1})")
 
 if [[ "${1:-}" == "--code" ]]; then
   # Open at line without becoming; keep fzf running. Work relative to repo root.
   ADDITIONAL_ARGS=(
-    --bind "enter:execute-silent(cd '{root}' && code -r -g {1}:{2})"
+    --bind "enter:execute-silent(cd {root} && code -r -g {1}:{2})"
     --bind "esc:clear-query"
   )
   shift
@@ -46,7 +68,14 @@ if [[ ! -d "$index_dir" ]]; then
   exit 1
 fi
 
-# We output three colon-delimited fields for fzf:
+shell_quote() {
+  printf '%q' "$1"
+}
+
+root_q="$(shell_quote "$root")"
+index_dir_q="$(shell_quote "$index_dir")"
+
+# We output three tab-delimited fields for fzf:
 #   1: raw path
 #   2: raw line number
 #   3: pretty display (colored "path:line[:col]: text" with rg match highlights)
@@ -56,42 +85,64 @@ fi
 # - Then awk rebuilds a pretty, colored prefix for path/line/(col), while preserving rg's highlights in the text.
 # - fzf shows only field 3 (with-nth=3..), but uses {1} and {2} (raw) in bindings and preview.
 
-reload_cmd="zoekt -index_dir '$index_dir' -- {q} \
+reload_cmd="zoekt -index_dir ${index_dir_q} -- {q} \
   | rg --passthru --smart-case --color=always -- {q} \
   | awk 'BEGIN{
-      FS=\":\"; OFS=\":\";
+      FS=\"\t\"; OFS=\"\t\";
       mag=\"\\033[38;2;106;153;85m\";   # filename color
       gre=\"\\033[32m\";                # line/col color
       rst=\"\\033[0m\";
     }
-    {
-      p=\$1; l=\$2; rest=\$0;
-      gsub(/\033\[[0-9;]*m/, \"\", p);
-
-      if (\$3 ~ /^[0-9]+$/) {
-        c=\$3;
-        sub(/^[^:]*:[^:]*:[^:]*:/, \"\", rest);
-        pretty = mag p rst \" \" gre l rst \" \" gre c rst \" \" rest;
-      } else {
-        sub(/^[^:]*:[^:]*:/, \"\", rest);
-        pretty = mag p rst \"   \" rst \"   \" rest;
+    function strip_ansi(s) {
+      gsub(/\\033\\[[0-9;]*[A-Za-z]/, \"\", s);
+      return s;
+    }
+    function visible_suffix(s, prefix_len, i, c, visible, out, seq) {
+      visible = 0;
+      out = \"\";
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1);
+        if (c == \"\\033\") {
+          seq = c;
+          i++;
+          while (i <= length(s)) {
+            c = substr(s, i, 1);
+            seq = seq c;
+            if (c ~ /[A-Za-z]/) break;
+            i++;
+          }
+          if (visible >= prefix_len) out = out seq;
+        } else {
+          visible++;
+          if (visible > prefix_len) out = out c;
+        }
       }
+      return out;
+    }
+    {
+      raw=\$0;
+      plain=strip_ansi(raw);
+      if (!match(plain, /:[0-9]+:/)) next;
+      p=substr(plain, 1, RSTART - 1);
+      l=substr(plain, RSTART + 1, RLENGTH - 2);
+      rest=visible_suffix(raw, RSTART + RLENGTH - 1);
+      pretty = mag p rst \" \" gre l rst \"   \" rest;
       print p, l, pretty;
     }'"
 
 # Replace {root} placeholders in additional args
 for i in "${!ADDITIONAL_ARGS[@]}"; do
-  ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//\{root\}/$root}"
+  ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//\{root\}/$root_q}"
 done
 
 exec fzf \
   --ansi \
   --tiebreak=index \
   --disabled \
-  --delimiter : \
+  --delimiter $'\t' \
   --with-nth=3.. \
   --bind "start:reload:${reload_cmd} || true" \
   --bind "change:reload:${reload_cmd} || true" \
-  --preview "cd '${root}' && bat --style=numbers --color=always --paging=never {2} {1}" \
+  --preview "cd ${root_q} && bat --style=numbers --color=always --paging=never {2} {1}" \
   --preview-window 'bottom,30%,+{2}/2' \
   "${ADDITIONAL_ARGS[@]}"

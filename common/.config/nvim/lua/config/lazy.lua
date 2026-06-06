@@ -14,6 +14,18 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+local function load_config(name)
+  local ok, err = pcall(require, "config." .. name)
+  if not ok then
+    error(("Failed loading config.%s: %s"):format(name, err))
+  end
+end
+
+local function reload_config(name)
+  package.loaded["config." .. name] = nil
+  load_config(name)
+end
+
 require("lazy").setup({
   spec = {
     -- add LazyVim and import its plugins
@@ -51,3 +63,7 @@ require("lazy").setup({
     },
   },
 })
+
+reload_config("options")
+load_config("autocmds")
+load_config("keymaps")

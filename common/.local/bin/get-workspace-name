@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="${1:-}"
+if [[ -z "$root" ]]; then
+  if command -v git >/dev/null 2>&1 && git_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    root="$git_root"
+  else
+    root="$PWD"
+  fi
+fi
+
+root="${root//\\//}"
+root="${root%/}"
+name="${root##*/}"
+name="${name//[^A-Za-z0-9_-]/_}"
+
+printf '%s\n' "${name:-workspace}"

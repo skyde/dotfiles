@@ -1,7 +1,12 @@
 #!/bin/bash
-SESSION_NAME="$1"
-WINDOW_INDEX="$2"
-NO_ATTACH="$3"
+SESSION_NAME="${1:-}"
+WINDOW_INDEX="${2:-}"
+NO_ATTACH="${3:-}"
+
+if [ "$SESSION_NAME" = "--help" ] || [ "$SESSION_NAME" = "-h" ]; then
+    echo "Usage: $0 <session_name> [window_index] [--no-attach]"
+    exit 0
+fi
 
 if [ -z "$SESSION_NAME" ]; then
     echo "Usage: $0 <session_name> [window_index] [--no-attach]"

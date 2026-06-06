@@ -1,8 +1,16 @@
 #!/bin/bash
 # Generic script to fix stuck tmux sessions
 
-# Force kill if still running
-if pgrep -u "$(whoami)" tmux > /dev/null; then
+if command -v tmux >/dev/null 2>&1; then
+    tmux kill-server 2>/dev/null || true
+fi
+
+if command -v pgrep >/dev/null 2>&1 && command -v pkill >/dev/null 2>&1 && pgrep -u "$(whoami)" tmux > /dev/null; then
     echo "Some tmux processes are still running. Force killing..."
     pkill -9 -u "$(whoami)" tmux
+elif command -v tasklist.exe >/dev/null 2>&1 && command -v taskkill.exe >/dev/null 2>&1; then
+    if tasklist.exe /FI "IMAGENAME eq tmux.exe" 2>/dev/null | grep -qi 'tmux.exe'; then
+        echo "Some tmux processes are still running. Force killing..."
+        taskkill.exe /IM tmux.exe /F >/dev/null 2>&1 || true
+    fi
 fi

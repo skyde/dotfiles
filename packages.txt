@@ -14,3 +14,4 @@ zoxide
 starship
 lf
 glow
+tree-sitter-cli

@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+find_real_btop() {
+  local self candidate dir
+  if command -v readlink >/dev/null 2>&1; then
+    self="$(readlink -f "$0" 2>/dev/null || true)"
+  fi
+  if [[ -z "${self:-}" ]]; then
+    self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
+  fi
+
+  IFS=':' read -r -a path_parts <<< "${PATH:-}"
+  for dir in "${path_parts[@]}"; do
+    [[ -n "$dir" ]] || dir='.'
+    case "$dir" in
+      /mnt/c/* | /c/*)
+        continue
+        ;;
+    esac
+    candidate="$dir/btop"
+    [[ -x "$candidate" ]] || continue
+    if command -v readlink >/dev/null 2>&1; then
+      candidate="$(readlink -f "$candidate" 2>/dev/null || true)"
+    fi
+    if [[ -z "${candidate:-}" ]]; then
+      candidate="$(cd "$(dirname "$candidate")" && pwd -P)/$(basename "$candidate")"
+    fi
+    if [[ "$candidate" != "$self" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+case "$(uname -s 2>/dev/null || true)" in
+  MINGW* | MSYS* | CYGWIN*)
+    if command -v cygpath >/dev/null 2>&1 && [[ -n "${LOCALAPPDATA:-}" ]]; then
+      local_appdata="$(cygpath -u "$LOCALAPPDATA")"
+      for dir in "$local_appdata"/Microsoft/WinGet/Packages/aristocratos.btop4win_*/btop4win; do
+        if [[ -f "$dir/btop4win.exe" ]]; then
+          exec "$dir/btop4win.exe" "$@"
+        fi
+      done
+    fi
+
+    if command -v btop4win.exe >/dev/null 2>&1; then
+      exec btop4win.exe "$@"
+    fi
+
+    echo "btop: btop4win.exe not found" >&2
+    exit 127
+    ;;
+esac
+
+if real_btop="$(find_real_btop)"; then
+  exec "$real_btop" "$@"
+fi
+
+echo "btop: real btop binary not found in PATH" >&2
+exit 127

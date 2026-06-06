@@ -16,8 +16,9 @@ This document lists the custom shortcuts I use in VS Code. The same keybindings 
 
 ## Terminal
 - `Ctrl+/` – toggle the integrated terminal.
-- `Cmd+T` – toggle the terminal visibility and exit fullscreen if needed.
-- `Cmd+S` – when a terminal is focused, send Shift+F5 to the terminal (mapped in Neovim to save the file).
+- `Ctrl+T` / `Cmd+T` – toggle the terminal visibility and exit fullscreen if needed.
+- `Ctrl+Alt+B` / `Cmd+;` – toggle the secondary side bar.
+- `Ctrl+S` / `Cmd+S` – when a terminal is focused, send Shift+F5 to the terminal (mapped in Neovim to save the file).
 
 ## Build and Search
 - `Shift+F2` – start debugging.
@@ -34,9 +35,13 @@ This document lists the custom shortcuts I use in VS Code. The same keybindings 
 ## Explorer
 - `Escape` – focus the editor when the Explorer has focus.
 - `o` – create a new file.
-- `Shift+O` – create a new folder.
-- `c` – rename the selected file.
+- `Shift+I` – create a new folder.
+- `i` / `r` – rename the selected file.
 - `d` – delete the selected file.
+- `j` / `k` – move the Explorer cursor without changing multi-selection.
+- `v` – toggle multi-selection for the focused item.
+- `y` / `x` / `p` – copy, cut, and paste selected items.
+- `l` / `Enter` – open files or toggle folders; `h` collapses folders.
 
 ## Copilot Chat
 - `Escape` – focus the editor when Copilot Chat is active.
@@ -45,113 +50,204 @@ This document lists the custom shortcuts I use in VS Code. The same keybindings 
 - `Alt+Down` – go to next unhandled conflict.
 - `Alt+Up` – go to previous unhandled conflict.
 
-
 ## Vim Extension Mappings
 
-The following shortcuts are configured through the VS Code Vim extension's settings.
+The following shortcuts are generated from `common/.config/Code/User/settings.json`.
 Space is mapped as `<leader>`.
 
 ### Normal Mode
-- `<leader> v` – <C-v>
-- `<tab>` – indent lines
-- `<S-tab>` – outdent lines
-- `<C-u>` – 16k
-- `<C-d>` – 16j
-- `<D-Left>` – go back
-- `<D-Right>` – go forward
-- `<C-o>` – go back
-- `<C-i>` – go forward
-- `<C-h>` – focus left pane
-- `<C-j>` – focus pane below
-- `<C-k>` – focus pane above
-- `<Esc>` – <Esc>
-- `u` – undo
-- `<C-r>` – redo
-- `<C-l>` – focus right pane
-- `<leader> <leader>` – quick open
-- `<leader> a` – open chat
-- `<leader> f m` – toggle Yazi file manager
-- `<leader> f n` – new file
-- `<leader> e` – open explorer
-- `] b` – next tab
-- `[ b` – previous tab
-- `<leader> b d` – close tab
-- `<leader> b o` – close other tabs and pin current
-- `<leader> b b` – <C-6>
-- `<leader> b u` – unpin tab
-- `<leader> b p` – pin tab
-- `<leader> b P` – close other tabs
-- `<leader> b h` – move tab left
-- `<leader> b l` – move tab right
-- `<S-h>` – :bprevious
-- `<S-l>` – :bnext
-- `<leader> w f` – toggle fullscreen
-- `<leader> w F` – toggle Zen mode
-- `<leader> w v` – :vsplit
-- `<leader> w s` – :split
-- `<leader> w d` – close tab
-- `<leader> w h` – focus left pane
-- `<leader> w j` – focus pane below
-- `<leader> w k` – focus pane above
-- `<leader> w l` – focus right pane
-- `<leader> u w` – toggle word wrap
-- `<leader> u z` – toggle Zen mode
-- `<leader> u c` – toggle render whitespace
-- `<leader> u i` – toggle inline parameter name hints
-- `<leader> s g` – search within files
-- `<leader> s f` – search files
-- `<leader> s t` – search files by type
-- `<leader> s r` – resume search
-- `g d` – go to definition
-- `g p` – peek definition
-- `g i` – go to implementation
-- `g r` – find references
-- `g h` – switch header/source
-- `g u` – find usages
-- `g n` – show definition preview
-- `v i g` – g g V G
-- `y i g` – yank entire buffer
-- `d i g` – g g V G d
-- `<leader> c r` – rename symbol
-- `<leader> c i` – show parameter hints
-- `<leader> c e` – Quick Fix / Code Actions
-- `<leader> c s` – switch diff side
-- `<leader> c v` – revert selected ranges
-- `<leader> e e` – open problems view
-- `<leader> e n` – next problem
-- `<leader> e p` – previous problem
-- `<leader> d b` – toggle breakpoint
-- `<leader> d d` – disable all breakpoints
-- `<leader> d e` – enable all breakpoints
-- `<leader> d r` – remove all breakpoints
-- `<leader> d a` – focus breakpoints view
-- `<leader> d c` – continue debugging
-- `<leader> g g` – open LazyGit in an editor terminal
-- `<leader> g G` – open Source Control (SCM) view
-- `<leader> g d` – view file diff
-- `<leader> g w` – open file in repo
-- `<leader> g h` – show commit details
-- `<leader> g l` – open git log for current file
-- `<leader> T r` – run current test
-- `<leader> T d` – debug current test
-- `<leader> T a` – run all tests
-- `<leader> T R` – rerun last tests
-- `<leader> T o` – show test output
-- `<leader> T f` – run tests in file
-- `<leader> T e` – open test view
-- `<leader> m b` – run build task
-- `<leader> m c` – terminate task
-- `<leader> m r` – start debugging
-- `<leader> m s` – stop debugging
-- `<leader> d g` – set next statement
+
+- `<leader> v` - Vim <C-v>
+- `<tab>` - indent lines
+- `<S-tab>` - outdent lines
+- `<D-Left>` - go back
+- `<D-Right>` - go forward
+- `<C-o>` - go back
+- `<C-i>` - go forward
+- `<C-h>` - focus left editor group
+- `<C-l>` - focus right editor group
+- `<C-j>` - focus editor group below
+- `<C-k>` - focus editor group above
+- `<Esc>` - Vim <Esc>; clear search highlight; close parameter hints
+- `u` - undo
+- `<C-r>` - redo
+- `<S-u>` - redo
+- `Y` - Vim y $
+- `<leader> p` - show command palette
+- `<leader> r` - toggle side bar
+- `<backspace> n` - prepare terminal context; run task "StandardTerminal"; return to Vim Normal mode
+- `<leader> f t` - prepare terminal context; run task "StandardTerminal"; return to Vim Normal mode
+- `<leader> a` - prepare terminal context; run task "Tmux: Switch to AI"; run task "StandardTerminal"; return to Vim Normal mode
+- `<leader> i` - prepare terminal context; run task "Tmux: Switch to Terminal"; run task "StandardTerminal"; return to Vim Normal mode
+- `<leader> f T` - prepare terminal context; run task "Tmux: Kill Sessions"; return to Vim Normal mode
+- `<leader> u w` - toggle word wrap
+- `<leader> u z` - toggle Zen mode
+- `<leader> u c` - toggle render whitespace
+- `<leader> u p` - zoom in
+- `<leader> u m` - zoom out
+- `<leader> u r` - reset zoom
+- `<leader> u h` - toggle clangd inlay hints
+- `<leader> e` - prepare terminal context; toggle Yazi file manager
+- `<leader> E` - reveal file in OS
+- `<leader> f e` - focus Explorer; reveal active file in Explorer
+- `<leader> f r` - open recent
+- `<leader> f l` - copy active file path
+- `<leader> f n` - new untitled file
+- `<leader> f p` - open recent
+- `<leader> b n` - new untitled file
+- `] b` - next editor tab
+- `[ b` - previous editor tab
+- `<leader> b h` - move editor tab left
+- `<leader> b l` - move editor tab right
+- `<leader> b d` - unpin editor; close active editor
+- `<leader> b D` - reopen closed editor
+- `<leader> b o` - close all editor groups; reopen closed editor; pin editor
+- `<leader> b b` - Vim <C-6>
+- `<leader> b u` - unpin editor
+- `<leader> b p` - pin editor
+- `<leader> b P` - close other editors
+- `<leader> w f` - toggle fullscreen
+- `<leader> w v` - vertical split
+- `<leader> w s` - horizontal split
+- `<leader> w L` - move editor to right group
+- `<leader> w H` - move editor to left group
+- `<leader> w K` - move editor to above group
+- `<leader> w J` - move editor to below group
+- `<leader> w h` - focus left editor group
+- `<leader> w j` - focus editor group below
+- `<leader> w k` - focus editor group above
+- `<leader> w l` - focus right editor group
+- `<leader> w d` - close active editor
+- `<leader> <leader>` - quick open
+- `<leader> f f` - prepare terminal context; set context closePanelOnEnter=true; run task "FZF Files"; return to Vim Normal mode
+- `<leader> s g` - prepare terminal context; set context closePanelOnEnter=true; run task "FZF Ripgrep"; return to Vim Normal mode
+- `<leader> s T` - Vim y i w; prepare terminal context; set context closePanelOnEnter=true; run task "FZF Ripgrep (No Cache)"; run multi-command task.custom.delayedPaste
+- `<leader> s t` - Vim y i w; prepare terminal context; set context closePanelOnEnter=true; run task "FZF Ripgrep"; run multi-command task.custom.delayedPaste
+- `<leader> /` - Vim y i w; prepare terminal context; set context closePanelOnEnter=true; run task "FZF Ripgrep"; run multi-command task.custom.delayedPaste
+- `<leader> s z` - prepare terminal context; set context closePanelOnEnter=true; run task "Zoekt Search"; return to Vim Normal mode
+- `<leader> s i` - run task "Zoekt Index"
+- `<leader> s b` - workbench.action.showAllEditorsByMostRecentlyUsed
+- `<leader> s r` - rerun last task
+- `<leader> 1` - open editor tab 1
+- `<leader> 2` - open editor tab 2
+- `<leader> 3` - open editor tab 3
+- `<leader> 4` - open editor tab 4
+- `<leader> 5` - open editor tab 5
+- `<leader> 6` - open editor tab 6
+- `<leader> 7` - open editor tab 7
+- `<leader> 8` - open editor tab 8
+- `<leader> 9` - open editor tab 9
+- `<leader> 0` - open last editor tab
+- `g d` - go to definition
+- `g y` - go to type definition
+- `g Y` - peek type definition
+- `g p` - peek definition
+- `g i` - go to implementation
+- `g r` - find references
+- `g h` - switch header/source
+- `g u` - find usages
+- `g n` - show definition preview
+- `v i g` - Vim g g V G
+- `y i g` - Vim : % y <CR>
+- `d i g` - Vim g g V G d
+- `<leader> c r` - rename symbol
+- `<leader> c I` - show parameter hints
+- `<leader> c e` - quick fix / code actions
+- `<leader> c f` - save file; run task "Run Git CL Format"
+- `<leader> x x` - prepare terminal context; set context closePanelOnEnter=true; show Problems view; toggle maximized panel
+- `] d` - next problem
+- `[ d` - previous problem
+- `<leader> d b` - toggle breakpoint
+- `<leader> d B d` - disable all breakpoints
+- `<leader> d B e` - enable all breakpoints
+- `<leader> d B r` - remove all breakpoints
+- `<leader> d B c` - conditional breakpoint
+- `<leader> d c` - continue debugging
+- `<leader> d p` - pause debugging
+- `<leader> d S` - stop debugging
+- `<leader> d R` / `<leader> d r` - restart debugging
+- `<leader> d g` - jump debugger to cursor
+- `<leader> d L` - add logpoint
+- `<leader> Backspace` - show hover; show debug hover
+- `Backspace <leader>` - show parameter hints
+- `Backspace Backspace` - show hover
+- `<leader> d w` - add selection to watch
+- `<leader> d x` - evaluate selection in debug REPL
+- `<leader> t n` - debug step over
+- `<leader> t i` - debug step into
+- `<leader> t I` - debug step into target
+- `<leader> t o` - debug step out
+- `<leader> t l` - focus Variables view
+- `<leader> t w` - focus Watch view
+- `<leader> t h` - focus Debug Console
+- `<leader> t b` - focus Breakpoints view
+- `<leader> t c` - focus Call Stack view
+- `<leader> t u` - move up call stack
+- `<leader> t d` - move down call stack
+- `<leader> t U` - move to top call stack frame
+- `<leader> t D` - move to bottom call stack frame
+- `<leader> g g` - prepare terminal context; run task "LazyGit"; return to Vim Normal mode
+- `<leader> g l` - prepare terminal context; new terminal; send terminal sequence; move terminal to editor; toggle terminal panel; toggle terminal panel
+- `<leader> g D` - open aggregate Git changes editor
+- `<leader> g d` - open file diff
+- `<leader> g C` - open aggregate Git changes editor
+- `<leader> g a` - view Git changes
+- `<leader> g c` - focus Source Control; focus list up; focus list down
+- `<leader> g r` - focus SCM repositories
+- `<leader> g R` - refresh SCM graph
+- `<leader> g T` - set SCM graph tree mode
+- `<leader> g p` - prepare terminal context; run `diff-branch`; move terminal to editor; toggle terminal panel
+- `<leader> g A` - prepare terminal context; new terminal; send terminal sequence; move terminal to editor; toggle terminal panel; toggle terminal panel
+- `<leader> g y` - run task "Copy Git Diff"
+- `<leader> g w` - open worktree file
+- `<leader> c a` - accept both merge sides
+- `<leader> c m` - open merge editor
+- `d o` - revert selected diff range
+- `<leader> c o` - accept current/ours in an inline conflict; toggle ours in the merge editor
+- `<leader> c O` - accept all current/ours conflicts; accept all ours in the merge editor
+- `<leader> c t` - accept incoming/theirs in an inline conflict; toggle theirs in the merge editor
+- `<leader> c T` - accept all incoming/theirs conflicts; accept all theirs in the merge editor
+- `<leader> c b` - accept both merge sides
+- `<leader> c c` - toggle merge editor side
+- `<leader> c q` - accept merge
+- `<leader> c n` - next diff change; next unhandled conflict
+- `<leader> c p` - previous diff change; previous unhandled conflict
+- `] x` - next unhandled conflict
+- `[ x` - previous unhandled conflict
+- `] c` - next diff change
+- `[ c` - previous diff change
+- `<leader> c d` - switch diff side
+- `<leader> c i` - toggle side-by-side diff
+- `<leader> c v` - revert selected diff range
+- `<leader> c V` - revert selected Git ranges
+- `<leader> T r` - run test at cursor
+- `<leader> T d` - debug test at cursor
+- `<leader> T a` - run all tests
+- `<leader> T R` - rerun last tests
+- `<leader> T o` - show latest test output
+- `<leader> T f` - run tests in current file
+- `<leader> T e` - focus Test Explorer
+- `<leader> m T` - run task picker
+- `<leader> m t` - rerun last task
+- `<leader> m b` - run build task
+- `<leader> m B` - configure default build task
+- `<leader> m c` - terminate task
+- `<leader> m r` - start debugging
+- `<leader> m R` - select and start debugging
+- `<leader> m s` - stop debugging
+- `Z Z` - unpin editor; save file; close active editor
+- `Z Q` - unpin editor; revert and close active editor
+
 ### Insert Mode
 
-- `<Esc>` – <Esc> <C-g>u
+- `<Esc>` - Vim <Esc> <C-g>u
 
 ### Visual Mode
-- `<tab>` – indent lines
-- `<S-tab>` – outdent lines
-- `<` – outdent lines
-- `>` – indent lines
-- `J` – move line down
-- `K` – move line up
+
+- `<Enter>` - Vim <Escape>
+- `<tab>` - indent lines
+- `<S-tab>` - outdent lines
+- `<` - outdent lines
+- `>` - indent lines
+- `J` - editor.action.moveLinesDownAction
+- `K` - editor.action.moveLinesUpAction

@@ -22,15 +22,45 @@ resolve_local_keymap() {
 }
 
 find_real_yazi() {
-  local self candidate dir
-  self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
+  local self candidate dir platform fixed_candidate
+  if command -v readlink >/dev/null 2>&1; then
+    self="$(readlink -f "$0" 2>/dev/null || true)"
+  fi
+  if [[ -z "${self:-}" ]]; then
+    self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
+  fi
+  platform="$(uname -s 2>/dev/null || true)"
+
+  fixed_candidate="$HOME/.local/opt/yazi/bin/yazi"
+  if [[ -x "$fixed_candidate" ]]; then
+    if command -v readlink >/dev/null 2>&1; then
+      candidate="$(readlink -f "$fixed_candidate" 2>/dev/null || true)"
+    fi
+    if [[ -z "${candidate:-}" ]]; then
+      candidate="$fixed_candidate"
+    fi
+    if [[ "$candidate" != "$self" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  fi
 
   IFS=':' read -r -a path_parts <<< "${PATH:-}"
   for dir in "${path_parts[@]}"; do
     [[ -n "$dir" ]] || dir='.'
+    case "$platform:$dir" in
+      Linux:/mnt/c/* | Linux:/c/*)
+        continue
+        ;;
+    esac
     candidate="$dir/yazi"
     [[ -x "$candidate" ]] || continue
-    candidate="$(cd "$(dirname "$candidate")" && pwd -P)/$(basename "$candidate")"
+    if command -v readlink >/dev/null 2>&1; then
+      candidate="$(readlink -f "$candidate" 2>/dev/null || true)"
+    fi
+    if [[ -z "${candidate:-}" ]]; then
+      candidate="$(cd "$(dirname "$candidate")" && pwd -P)/$(basename "$candidate")"
+    fi
     if [[ "$candidate" != "$self" ]]; then
       printf '%s\n' "$candidate"
       return 0
@@ -38,6 +68,23 @@ find_real_yazi() {
   done
 
   return 1
+}
+
+handle_info_flags() {
+  case "${1:-}" in
+    --version | -V)
+      if command -v ya >/dev/null 2>&1; then
+        exec ya --version
+      fi
+      ;;
+    --help | -h)
+      if command -v ya >/dev/null 2>&1; then
+        ya --help
+        printf '\nThis wrapper launches the Yazi file manager and merges optional local keymaps.\n'
+        exit 0
+      fi
+      ;;
+  esac
 }
 
 link_config_tree() {
@@ -50,7 +97,9 @@ link_config_tree() {
   shopt -s dotglob nullglob
   for entry in "$source_dir"/*; do
     [[ "$(basename "$entry")" == "keymap.toml" ]] && continue
-    ln -s "$entry" "$target_dir/$(basename "$entry")"
+    if ! ln -s "$entry" "$target_dir/$(basename "$entry")" 2>/dev/null; then
+      cp -a "$entry" "$target_dir/$(basename "$entry")"
+    fi
   done
   shopt -u dotglob nullglob
 }
@@ -78,6 +127,8 @@ build_merged_keymap() {
 
 main() {
   local config_home local_keymap real_yazi temp_config rc
+
+  handle_info_flags "$@"
 
   config_home="$(resolve_config_home)"
   local_keymap="$(resolve_local_keymap)"

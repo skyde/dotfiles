@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+try_exec() {
+  local candidate="$1"
+  shift
+
+  if [[ -n "$candidate" && -f "$candidate" ]]; then
+    exec "$candidate" "$@"
+  fi
+}
+
+to_posix_path() {
+  local path="$1"
+
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -u "$path"
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+if [[ -n "${VSCODE_CLI:-}" ]]; then
+  try_exec "$(to_posix_path "$VSCODE_CLI")" "$@"
+fi
+
+if [[ -n "${LOCALAPPDATA:-}" ]]; then
+  try_exec "$(to_posix_path "$LOCALAPPDATA")/Programs/Microsoft VS Code/bin/code.cmd" "$@"
+fi
+
+if [[ -n "${ProgramFiles:-}" ]]; then
+  try_exec "$(to_posix_path "$ProgramFiles")/Microsoft VS Code/bin/code.cmd" "$@"
+fi
+
+if [[ "$(uname -s 2>/dev/null || true)" == "Darwin" ]]; then
+  try_exec "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" "$@"
+fi
+
+self_dir="$(cd "$(dirname "$0")" && pwd -P)"
+IFS=':' read -r -a path_parts <<< "${PATH:-}"
+for dir in "${path_parts[@]}"; do
+  [[ -n "$dir" ]] || dir='.'
+  [[ -d "$dir" ]] || continue
+
+  resolved_dir="$(cd "$dir" && pwd -P)"
+  [[ "$resolved_dir" == "$self_dir" ]] && continue
+
+  try_exec "$resolved_dir/code" "$@"
+  try_exec "$resolved_dir/code.cmd" "$@"
+done
+
+echo "code: Visual Studio Code CLI not found" >&2
+exit 127

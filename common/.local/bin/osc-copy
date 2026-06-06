@@ -8,6 +8,11 @@ if [[ -n "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
   exit 0
 fi
 
+if command -v clip.exe >/dev/null 2>&1; then
+  printf '%s' "$raw_data" | clip.exe
+  exit 0
+fi
+
 if command -v pbcopy >/dev/null 2>&1; then
   printf '%s' "$raw_data" | pbcopy
   exit 0

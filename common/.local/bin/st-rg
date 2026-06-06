@@ -8,13 +8,34 @@
 
 set -euo pipefail
 
+usage() {
+  cat <<'EOF'
+Usage: st-rg [--code] [PATH]
+
+Interactive ripgrep search with fzf.
+
+Options:
+  --code       Open matches in VS Code instead of Neovim
+  -h, --help   Show this help message
+
+PATH may be a directory or file. It defaults to the current directory.
+EOF
+}
+
+case "${1:-}" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
 # Build args as an array so quoting stays correct.
-ADDITIONAL_ARGS=(--bind "enter:become(cd '{root}' && nvim +{2} {1})")
+ADDITIONAL_ARGS=(--bind "enter:become(cd {root} && nvim +{2} {1})")
 
 if [[ "${1:-}" == "--code" ]]; then
   # Open at line without becoming; keep fzf running. Work relative to search root.
   ADDITIONAL_ARGS=(
-    --bind "enter:execute-silent(cd '{root}' && code -r -g {1}:{2})"
+    --bind "enter:execute-silent(cd {root} && code -r -g {1}:{2})"
     --bind "esc:clear-query"
   )
   shift
@@ -43,6 +64,12 @@ command -v bat >/dev/null 2>&1 || {
   exit 1
 }
 
+shell_quote() {
+  printf '%q' "$1"
+}
+
+root_q="$(shell_quote "$root")"
+
 # Awk scripts for formatting fzf output
 # We export them to avoid quoting hell when constructing the reload command.
 
@@ -50,6 +77,7 @@ command -v bat >/dev/null 2>&1 || {
 #   1: raw path
 #   2: raw line number
 #   3: pretty display (colored "path:line[:col]: text" with rg match highlights)
+# shellcheck disable=SC2016
 export RG_AWK_SCRIPT='BEGIN{
     FS=":"; OFS=":";
     mag="\033[38;2;106;153;85m";   # filename color
@@ -85,6 +113,7 @@ export RG_AWK_SCRIPT='BEGIN{
 #   2: raw line number
 #   3: pretty display
 # Note: git grep -n output format is file:line:content
+# shellcheck disable=SC2016
 export GIT_GREP_AWK_SCRIPT='BEGIN{
     FS=":"; OFS=":";
     mag="\033[38;2;106;153;85m";   # filename color
@@ -128,14 +157,14 @@ fi
 # so that it is NOT expanded by the parent shell, but rather passed literally to fzf/sh.
 if [[ "$use_git_grep" == "true" ]]; then
   # git grep version
-  reload_cmd="cd '$root' && git grep -n --color=always -e '{q}' -- '*.h' '*.c' '*.cc' '*.cpp' '*.m' '*.mm' | awk \"\$GIT_GREP_AWK_SCRIPT\""
+  reload_cmd="cd ${root_q} && git grep -n --color=always -e '{q}' -- '*.h' '*.c' '*.cc' '*.cpp' '*.m' '*.mm' | awk \"\$GIT_GREP_AWK_SCRIPT\""
 else
   # rg version
-  reload_cmd="cd '$root' && rg --line-number --column --with-filename --no-heading --color=always --smart-case -- {q} | awk \"\$RG_AWK_SCRIPT\""
+  reload_cmd="cd ${root_q} && rg --line-number --column --with-filename --no-heading --color=always --smart-case -- {q} | awk \"\$RG_AWK_SCRIPT\""
 fi
 
 for i in "${!ADDITIONAL_ARGS[@]}"; do
-  ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//'{root}'/$root}"
+  ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//\{root\}/$root_q}"
 done
 
 exec fzf \
@@ -146,6 +175,6 @@ exec fzf \
   --with-nth=3.. \
   --bind "start:reload:${reload_cmd} || true" \
   --bind "change:reload:${reload_cmd} || true" \
-  --preview "cd '${root}' && bat --style=numbers --color=always --paging=never {2} {1}" \
+  --preview "cd ${root_q} && bat --style=numbers --color=always --paging=never {2} {1}" \
   --preview-window 'bottom,30%,+{2}/2' \
   "${ADDITIONAL_ARGS[@]}"

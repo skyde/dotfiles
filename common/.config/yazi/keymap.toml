@@ -16,8 +16,6 @@
 # The yazi wrapper in ~/.local/bin/yazi concatenates that local file onto this
 # one at launch when it exists.
 
-"$schema" = "https://yazi-rs.github.io/schemas/keymap.json"
-
 [[mgr.prepend_keymap]]
 on = "<Esc>"
 run = "quit"
@@ -30,13 +28,27 @@ desc = "Yank selected files (cut)"
 
 [[mgr.prepend_keymap]]
 on = "X"
+for = "unix"
 run = "shell 'chmod +x \"$@\"'"
 desc = "Make executable"
 
 [[mgr.prepend_keymap]]
+on = "X"
+for = "windows"
+run = "noop"
+desc = "Make executable (Unix only)"
+
+[[mgr.prepend_keymap]]
 on = "R"
+for = "unix"
 run = "shell 'chmod g+r \"$@\"'"
 desc = "Grant group read permission"
+
+[[mgr.prepend_keymap]]
+on = "R"
+for = "windows"
+run = "noop"
+desc = "Grant group read permission (Unix only)"
 
 [[mgr.prepend_keymap]]
 on = "d"
@@ -133,7 +145,19 @@ run = "find --smart"
 desc = "Find next file"
 
 [[mgr.prepend_keymap]]
+on = "<C-f>"
+for = "windows"
+run = "find --smart"
+desc = "Find next file"
+
+[[mgr.prepend_keymap]]
 on = "<S-D-f>"
+run = "search --via=rg"
+desc = "Search files by content via ripgrep"
+
+[[mgr.prepend_keymap]]
+on = "<C-F>"
+for = "windows"
 run = "search --via=rg"
 desc = "Search files by content via ripgrep"
 

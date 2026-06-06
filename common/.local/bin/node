@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+portable="$HOME/.local/opt/nodejs/node.exe"
+if [[ -f "$portable" ]]; then
+  exec "$portable" "$@"
+fi
+
+self_dir="$(cd "$(dirname "$0")" && pwd -P)"
+IFS=':' read -r -a path_parts <<< "${PATH:-}"
+for dir in "${path_parts[@]}"; do
+  [[ -n "$dir" ]] || dir='.'
+  [[ -d "$dir" ]] || continue
+  resolved_dir="$(cd "$dir" && pwd -P)"
+  [[ "$resolved_dir" == "$self_dir" ]] && continue
+  if [[ -x "$resolved_dir/node" ]]; then
+    exec "$resolved_dir/node" "$@"
+  fi
+  if [[ -f "$resolved_dir/node.exe" ]]; then
+    exec "$resolved_dir/node.exe" "$@"
+  fi
+done
+
+echo "node: executable not found" >&2
+exit 127
