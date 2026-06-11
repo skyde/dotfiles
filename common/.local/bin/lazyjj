@@ -1,0 +1,323 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# lazyjj - a lazygit-style TUI for Jujutsu (jj), built on fzf.
+#
+# Views:
+#   log (default)  ctrl-b: bookmarks  ctrl-o: operation log
+#
+# Run `lazyjj --help` for the full keymap.
+
+SELF=$(realpath "$0")
+
+LOG_TEMPLATE='separate(" ",
+  change_id.shortest(8),
+  bookmarks,
+  tags,
+  if(conflict, label("conflict", "(conflict)")),
+  if(empty, label("empty", "(empty)")),
+  if(description, description.first_line(), label("description placeholder", "(no description)")),
+  label("timestamp", committer.timestamp().ago()),
+) ++ "\n"'
+
+OP_TEMPLATE='separate(" ",
+  id.short(12),
+  time.end().ago(),
+  description.first_line(),
+) ++ "\n"'
+
+# One self-contained line per bookmark, with remote refs fully qualified
+# as name@remote so the selected line alone identifies the bookmark.
+BOOKMARK_TEMPLATE='label("bookmarks", if(remote, name ++ "@" ++ remote, name)) ++ ": "
+  ++ if(normal_target,
+    normal_target.change_id().shortest(8) ++ " "
+      ++ if(normal_target.description(),
+        normal_target.description().first_line(),
+        label("description placeholder", "(no description)")),
+    label("conflict", "(conflicted)"))
+  ++ "\n"'
+
+usage() {
+  cat <<'EOF'
+lazyjj - lazygit-style TUI for jj
+
+Usage: lazyjj [log|bookmarks|oplog]
+
+Log view keys:
+  enter   full diff of selected change      ctrl-n  new change on top of selected
+  ctrl-e  edit selected change              alt-d   describe selected change
+  alt-a   abandon selected change           alt-s   squash selected into its parent
+  alt-r   rebase selected onto a revset     alt-b   create bookmark on selected
+  ctrl-f  git fetch                         ctrl-p  git push
+  ctrl-z  undo last operation               ctrl-r  refresh
+  ctrl-b  bookmarks view                    ctrl-o  operation log view
+  esc     quit
+
+Bookmarks view keys:
+  enter   show bookmark target    alt-x  delete bookmark   alt-t  track remote bookmark
+  ctrl-l  back to log             ctrl-r refresh
+
+Operation log view keys:
+  enter   show operation    alt-z  restore repo to operation
+  ctrl-l  back to log       ctrl-r refresh
+EOF
+}
+
+die() {
+  echo "lazyjj: $*" >&2
+  exit 1
+}
+
+# Extract the change id from a log line: the first token made of jj's
+# "reverse hex" digits (k-z); graph symbols and elided markers never match.
+line_rev() {
+  awk '{ for (i = 1; i <= NF; i++) if ($i ~ /^[k-z]{8,}$/) { print $i; exit } }' <<<"${1:-}"
+}
+
+require_rev() {
+  local rev
+  rev=$(line_rev "${1:-}")
+  [ -n "$rev" ] || {
+    echo "lazyjj: no change selected on this line" >&2
+    pause
+    exit 1
+  }
+  echo "$rev"
+}
+
+pause() {
+  echo
+  read -rn1 -p 'press any key to continue ' </dev/tty || true
+}
+
+# Clear leftovers from earlier actions off fzf's execute() screen.
+cls() {
+  printf '\033[2J\033[H' || true
+}
+
+# Run a jj command; on failure keep the output on screen until a key is pressed.
+run_jj() {
+  if ! jj "$@"; then
+    pause
+  fi
+}
+
+confirm() {
+  local reply
+  read -r -p "$1 [y/N] " reply </dev/tty || true
+  [ "${reply:-}" = y ] || [ "${reply:-}" = Y ]
+}
+
+# First token of a `jj bookmark list` line, without the trailing colon.
+line_bookmark() {
+  awk '{ sub(/:$/, "", $1); print $1; exit }' <<<"${1:-}"
+}
+
+log_lines() {
+  jj log --color always -T "$LOG_TEMPLATE"
+}
+
+bookmark_lines() {
+  jj bookmark list --all-remotes --color always -T "$BOOKMARK_TEMPLATE"
+}
+
+op_lines() {
+  jj op log --no-graph --color always -T "$OP_TEMPLATE"
+}
+
+log_view() {
+  local header
+  header=$(printf '%s\n%s' \
+    'enter:diff  ctrl-n:new  ctrl-e:edit  alt-d:describe  alt-a:abandon  alt-s:squash  alt-r:rebase  alt-b:bookmark' \
+    'ctrl-f:fetch  ctrl-p:push  ctrl-z:undo  ctrl-r:refresh  ctrl-b:bookmarks  ctrl-o:oplog  esc:quit')
+  log_lines | exec fzf \
+    --ansi --reverse --no-sort \
+    --prompt='log> ' \
+    --header="$header" \
+    --preview="'$SELF' __preview {}" \
+    --preview-window='right,60%' \
+    --bind "enter:execute('$SELF' __show {})" \
+    --bind "ctrl-n:execute('$SELF' __new {})+reload('$SELF' __log-lines)" \
+    --bind "ctrl-e:execute('$SELF' __edit {})+reload('$SELF' __log-lines)" \
+    --bind "alt-d:execute('$SELF' __describe {})+reload('$SELF' __log-lines)" \
+    --bind "alt-a:execute('$SELF' __abandon {})+reload('$SELF' __log-lines)" \
+    --bind "alt-s:execute('$SELF' __squash {})+reload('$SELF' __log-lines)" \
+    --bind "alt-r:execute('$SELF' __rebase {})+reload('$SELF' __log-lines)" \
+    --bind "alt-b:execute('$SELF' __bookmark-new {})+reload('$SELF' __log-lines)" \
+    --bind "ctrl-f:execute('$SELF' __fetch)+reload('$SELF' __log-lines)" \
+    --bind "ctrl-p:execute('$SELF' __push)+reload('$SELF' __log-lines)" \
+    --bind "ctrl-z:execute('$SELF' __undo)+reload('$SELF' __log-lines)" \
+    --bind "ctrl-r:reload('$SELF' __log-lines)" \
+    --bind "ctrl-b:become('$SELF' bookmarks)" \
+    --bind "ctrl-o:become('$SELF' oplog)"
+}
+
+bookmarks_view() {
+  bookmark_lines | exec fzf \
+    --ansi --reverse --no-sort \
+    --prompt='bookmarks> ' \
+    --header='enter:show  alt-x:delete  alt-t:track  ctrl-r:refresh  ctrl-l:log  esc:quit' \
+    --preview="'$SELF' __bookmark-preview {}" \
+    --preview-window='right,60%' \
+    --bind "enter:execute('$SELF' __bookmark-show {})" \
+    --bind "alt-x:execute('$SELF' __bookmark-delete {})+reload('$SELF' __bookmark-lines)" \
+    --bind "alt-t:execute('$SELF' __bookmark-track {})+reload('$SELF' __bookmark-lines)" \
+    --bind "ctrl-r:reload('$SELF' __bookmark-lines)" \
+    --bind "ctrl-l:become('$SELF' log)"
+}
+
+oplog_view() {
+  op_lines | exec fzf \
+    --ansi --reverse --no-sort \
+    --prompt='oplog> ' \
+    --header='enter:show  alt-z:restore  ctrl-r:refresh  ctrl-l:log  esc:quit' \
+    --preview="'$SELF' __op-preview {}" \
+    --preview-window='right,60%' \
+    --bind "enter:execute('$SELF' __op-show {})" \
+    --bind "alt-z:execute('$SELF' __op-restore {})+become('$SELF' log)" \
+    --bind "ctrl-r:reload('$SELF' __op-lines)" \
+    --bind "ctrl-l:become('$SELF' log)"
+}
+
+cmd=${1:-log}
+case "$cmd" in
+-h | --help | help)
+  usage
+  exit 0
+  ;;
+esac
+
+command -v jj >/dev/null 2>&1 || die 'jj is required (https://jj-vcs.github.io)'
+command -v fzf >/dev/null 2>&1 || die 'fzf is required'
+jj root >/dev/null 2>&1 || die 'not inside a jj repository (run "jj git init --colocate" first)'
+
+# Action subcommands run on fzf's execute() screen, which keeps whatever the
+# previous action printed; start them on a blank screen. Previews and line
+# generators must stay untouched.
+case "$cmd" in
+__preview | __bookmark-preview | __op-preview | __*-lines) ;;
+__*) cls ;;
+esac
+
+case "$cmd" in
+log) log_view ;;
+bookmarks) bookmarks_view ;;
+oplog) oplog_view ;;
+
+__log-lines) log_lines ;;
+__bookmark-lines) bookmark_lines ;;
+__op-lines) op_lines ;;
+
+__preview)
+  rev=$(line_rev "${2:-}")
+  [ -n "$rev" ] || exit 0
+  jj show --color always "$rev" 2>&1 | head -500
+  ;;
+__show)
+  rev=$(require_rev "${2:-}")
+  jj show --color always "$rev" | less -R
+  ;;
+__new)
+  rev=$(require_rev "${2:-}")
+  run_jj new "$rev"
+  ;;
+__edit)
+  rev=$(require_rev "${2:-}")
+  run_jj edit "$rev"
+  ;;
+__describe)
+  rev=$(require_rev "${2:-}")
+  run_jj describe "$rev"
+  ;;
+__abandon)
+  rev=$(require_rev "${2:-}")
+  if confirm "abandon $rev?"; then
+    run_jj abandon "$rev"
+  fi
+  ;;
+__squash)
+  rev=$(require_rev "${2:-}")
+  run_jj squash -r "$rev"
+  ;;
+__rebase)
+  rev=$(require_rev "${2:-}")
+  read -r -p "rebase $rev onto revset (empty to cancel): " dest </dev/tty || true
+  [ -n "${dest:-}" ] && run_jj rebase -s "$rev" -d "$dest"
+  ;;
+__bookmark-new)
+  rev=$(require_rev "${2:-}")
+  read -r -p "new bookmark name on $rev (empty to cancel): " name </dev/tty || true
+  [ -n "${name:-}" ] && run_jj bookmark create "$name" -r "$rev"
+  ;;
+__fetch)
+  run_jj git fetch
+  ;;
+__push)
+  if confirm 'push tracked bookmarks to remote?'; then
+    run_jj git push
+  fi
+  ;;
+__undo)
+  run_jj undo
+  ;;
+
+__bookmark-preview)
+  name=$(line_bookmark "${2:-}")
+  [ -n "$name" ] || exit 0
+  jj show --color always "$name" 2>&1 | head -500
+  ;;
+__bookmark-show)
+  name=$(line_bookmark "${2:-}")
+  [ -n "$name" ] || exit 0
+  jj show --color always "$name" | less -R
+  ;;
+__bookmark-delete)
+  name=$(line_bookmark "${2:-}")
+  [ -n "$name" ] || exit 0
+  case "$name" in
+  *@*)
+    echo "lazyjj: $name is a remote bookmark; delete the local one instead" >&2
+    pause
+    ;;
+  *)
+    if confirm "delete bookmark $name?"; then
+      run_jj bookmark delete "$name"
+    fi
+    ;;
+  esac
+  ;;
+__bookmark-track)
+  name=$(line_bookmark "${2:-}")
+  [ -n "$name" ] || exit 0
+  case "$name" in
+  *@*) run_jj bookmark track "$name" ;;
+  *)
+    echo "lazyjj: $name is already a local bookmark" >&2
+    pause
+    ;;
+  esac
+  ;;
+
+__op-preview)
+  op=$(awk '{ print $1; exit }' <<<"${2:-}")
+  [ -n "$op" ] || exit 0
+  jj op show --color always "$op" 2>&1 | head -500
+  ;;
+__op-show)
+  op=$(awk '{ print $1; exit }' <<<"${2:-}")
+  [ -n "$op" ] || exit 0
+  jj op show --color always "$op" | less -R
+  ;;
+__op-restore)
+  op=$(awk '{ print $1; exit }' <<<"${2:-}")
+  [ -n "$op" ] || exit 0
+  if confirm "restore repo to operation $op?"; then
+    run_jj op restore "$op"
+  fi
+  ;;
+
+*)
+  usage >&2
+  exit 1
+  ;;
+esac
