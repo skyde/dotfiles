@@ -48,10 +48,14 @@ Log view keys:
   ctrl-e  edit selected change              alt-d   describe selected change
   alt-a   abandon selected change           alt-s   squash selected into its parent
   alt-r   rebase selected onto a revset     alt-b   create bookmark on selected
-  ctrl-f  git fetch                         ctrl-p  git push
-  ctrl-z  undo last operation               ctrl-r  refresh
-  ctrl-b  bookmarks view                    ctrl-o  operation log view
-  esc     quit
+  ctrl-t  changed files of selected         ctrl-f  git fetch
+  ctrl-p  git push                          ctrl-z  undo last operation
+  ctrl-r  refresh                           ctrl-b  bookmarks view
+  ctrl-o  operation log view                esc     quit
+
+Files view keys:
+  enter   full diff of file    alt-x  discard the file's changes (confirm)
+  ctrl-l  back to log          ctrl-r refresh
 
 Bookmarks view keys:
   enter   show bookmark target    alt-x  delete bookmark   alt-t  track remote bookmark
@@ -125,11 +129,20 @@ op_lines() {
   jj op log --no-graph --color always -T "$OP_TEMPLATE"
 }
 
+file_lines() {
+  jj diff -r "$1" --summary --color always
+}
+
+# Path from a `jj diff --summary` line: strip the two-character status prefix.
+line_path() {
+  printf '%s\n' "${1:2}"
+}
+
 log_view() {
   local header
   header=$(printf '%s\n%s' \
     'enter:diff  ctrl-n:new  ctrl-e:edit  alt-d:describe  alt-a:abandon  alt-s:squash  alt-r:rebase  alt-b:bookmark' \
-    'ctrl-f:fetch  ctrl-p:push  ctrl-z:undo  ctrl-r:refresh  ctrl-b:bookmarks  ctrl-o:oplog  esc:quit')
+    'ctrl-t:files  ctrl-f:fetch  ctrl-p:push  ctrl-z:undo  ctrl-r:refresh  ctrl-b:bookmarks  ctrl-o:oplog  esc:quit')
   log_lines | exec fzf \
     --ansi --reverse --no-sort \
     --prompt='log> ' \
@@ -148,8 +161,23 @@ log_view() {
     --bind "ctrl-p:execute('$SELF' __push)+reload('$SELF' __log-lines)" \
     --bind "ctrl-z:execute('$SELF' __undo)+reload('$SELF' __log-lines)" \
     --bind "ctrl-r:reload('$SELF' __log-lines)" \
+    --bind "ctrl-t:become('$SELF' __files {})" \
     --bind "ctrl-b:become('$SELF' bookmarks)" \
     --bind "ctrl-o:become('$SELF' oplog)"
+}
+
+files_view() {
+  local rev=$1
+  file_lines "$rev" | exec fzf \
+    --ansi --reverse --no-sort \
+    --prompt="files($rev)> " \
+    --header='enter:diff  alt-x:discard changes  ctrl-r:refresh  ctrl-l:log  esc:quit' \
+    --preview="'$SELF' __file-preview '$rev' {}" \
+    --preview-window='right,60%' \
+    --bind "enter:execute('$SELF' __file-show '$rev' {})" \
+    --bind "alt-x:execute('$SELF' __file-discard '$rev' {})+reload('$SELF' __file-lines '$rev')" \
+    --bind "ctrl-r:reload('$SELF' __file-lines '$rev')" \
+    --bind "ctrl-l:become('$SELF' log)"
 }
 
 bookmarks_view() {
@@ -195,7 +223,7 @@ jj root >/dev/null 2>&1 || die 'not inside a jj repository (run "jj git init --c
 # previous action printed; start them on a blank screen. Previews and line
 # generators must stay untouched.
 case "$cmd" in
-__preview | __bookmark-preview | __op-preview | __*-lines) ;;
+__preview | __*-preview | __*-lines) ;;
 __*) cls ;;
 esac
 
@@ -207,6 +235,31 @@ oplog) oplog_view ;;
 __log-lines) log_lines ;;
 __bookmark-lines) bookmark_lines ;;
 __op-lines) op_lines ;;
+__file-lines) file_lines "${2:?}" ;;
+
+__files)
+  rev=$(line_rev "${2:-}")
+  [ -n "$rev" ] || exec "$SELF" log
+  files_view "$rev"
+  ;;
+__file-preview)
+  path=$(line_path "${3:-}")
+  [ -n "$path" ] || exit 0
+  jj diff -r "${2:?}" --color always -- "$path" 2>&1 | head -500
+  ;;
+__file-show)
+  path=$(line_path "${3:-}")
+  [ -n "$path" ] || exit 0
+  jj diff -r "${2:?}" --color always -- "$path" | less -R
+  ;;
+__file-discard)
+  rev=${2:?}
+  path=$(line_path "${3:-}")
+  [ -n "$path" ] || exit 0
+  if confirm "discard changes to $path in $rev?"; then
+    run_jj restore -c "$rev" -- "$path"
+  fi
+  ;;
 
 __preview)
   rev=$(line_rev "${2:-}")
