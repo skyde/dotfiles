@@ -81,8 +81,9 @@ install_from_github() {
   # Requires: curl, unzip/tar
   local repo="sxyazi/yazi"
   local os_arch_triple=""
-  local uname_s="$(uname -s)"
-  local uname_m="$(uname -m)"
+  local uname_s uname_m
+  uname_s="$(uname -s)"
+  uname_m="$(uname -m)"
 
   case "$uname_s" in
     Linux)
@@ -214,6 +215,7 @@ echo "Yazi installation script starting..."
 case "$OS" in
   Linux)
     # Only run custom Yazi install on Debian/Ubuntu
+    # shellcheck source=/dev/null
     if [ -r /etc/os-release ]; then . /etc/os-release; fi
     if [ "${ID:-}" = "debian" ] || [ "${ID:-}" = "ubuntu" ]; then
       if HAVE apt-get; then
