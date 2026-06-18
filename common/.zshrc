@@ -96,6 +96,18 @@ if ((! $+commands[delta] )) || ((! $+commands[code] )); then
   }
 fi
 
+# -------- VS Code Remote SSH: pick a live IPC socket before delegating to code
+code() {
+  local socket
+  for socket in "${VSCODE_IPC_HOOK_CLI:-}" /run/user/$UID/vscode-ipc-*.sock(NOm); do
+    if [[ -S "$socket" ]] && nc -z -U "$socket" >/dev/null 2>&1; then
+      export VSCODE_IPC_HOOK_CLI="$socket"
+      break
+    fi
+  done
+  command code "$@"
+}
+
 # -------- aliases
 alias grep='grep --color=auto'
 
