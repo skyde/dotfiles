@@ -68,11 +68,22 @@ fi
 if (( $+commands[fzf] )); then
   _fzf_history_widget() {
     local selected
-    selected=$(
-      fc -nrl 1 | awk '!seen[$0]++' | \
-      fzf --height=80% --reverse --tiebreak=index --no-sort \
-          --prompt='History> ' --style=minimal --query="$LBUFFER"
-    ) || return
+    local -a fzf_history_opts=(
+      --height=80%
+      --reverse
+      --tiebreak=index
+      --no-sort
+      --no-multi
+      --prompt='History> '
+      --style=minimal
+      --query="$LBUFFER"
+      --header='Ctrl-/ toggles wrapped preview for long commands'
+      --preview='printf %s {}'
+      --preview-window='down,40%,wrap,hidden'
+      --bind='ctrl-/:toggle-preview'
+    )
+
+    selected=$(fc -nrl 1 | awk '!seen[$0]++' | fzf "${fzf_history_opts[@]}") || return
     LBUFFER=$selected
     zle redisplay
   }
