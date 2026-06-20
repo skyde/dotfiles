@@ -9,7 +9,8 @@
 
 # Use zsh if available for interactive shells
 if [ -t 1 ] && command -v zsh >/dev/null 2>&1; then
-  export SHELL="$(command -v zsh)"
+  SHELL="$(command -v zsh)"
+  export SHELL
   exec zsh -l
 fi
 
@@ -116,10 +117,22 @@ if command -v fzf >/dev/null 2>&1; then
 
   __fzf_history_widget() {
     local selected
-    selected=$(fc -lnr |
-      awk '!seen[$0]++' |
-      fzf --height=80% --reverse --tiebreak=index --no-sort \
-          --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
+    local fzf_history_opts=(
+      --height=80%
+      --reverse
+      --tiebreak=index
+      --no-sort
+      --no-multi
+      --prompt='History> '
+      --style=minimal
+      --query "$READLINE_LINE"
+      --header='Ctrl-/ toggles wrapped preview for long commands'
+      --preview='printf %s {}'
+      --preview-window='down,40%,wrap,hidden'
+      --bind='ctrl-/:toggle-preview'
+    )
+
+    selected=$(fc -lnr | awk '!seen[$0]++' | fzf "${fzf_history_opts[@]}") || return
     READLINE_LINE=$selected
     READLINE_POINT=${#selected}
   }
@@ -158,10 +171,10 @@ code() {
 
 # -------- aliases
 alias grep='grep --color=auto'
-alias stow_apply="$HOME/dotfiles/apply.sh"
-alias stow_init="$HOME/dotfiles/init.sh"
-alias stow_update="$HOME/dotfiles/update.sh && $HOME/dotfiles/apply.sh"
-alias stow_update_init_auto="$HOME/dotfiles/update.sh && AUTO_INSTALL=1 $HOME/dotfiles/init.sh"
+stow_apply() { "$HOME/dotfiles/apply.sh"; }
+stow_init() { "$HOME/dotfiles/init.sh"; }
+stow_update() { "$HOME/dotfiles/update.sh" && "$HOME/dotfiles/apply.sh"; }
+stow_update_init_auto() { "$HOME/dotfiles/update.sh" && AUTO_INSTALL=1 "$HOME/dotfiles/init.sh"; }
 
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 export BAT_THEME="Visual Studio Dark+"
