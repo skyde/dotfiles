@@ -69,12 +69,16 @@ if (( $+commands[fzf] )); then
   _fzf_history_widget() {
     local selected
     selected=$(
-      fc -nrl 1 | awk '!seen[$0]++' | \
-      fzf --height=80% --reverse --tiebreak=index --no-sort \
+      fc -nrl 1 2>/dev/null | LC_ALL=C awk 'length && !seen[$0]++' | \
+      fzf --height=80% --layout=reverse --min-height=20 \
+          --tiebreak=index --no-sort --scheme=history --wrap \
+          --preview='printf "%s\n" {}' --preview-window='down,4,wrap' \
+          --bind='ctrl-/:toggle-preview' \
           --prompt='History> ' --style=minimal --query="$LBUFFER"
     ) || return
-    LBUFFER=$selected
-    zle redisplay
+    BUFFER=$selected
+    CURSOR=${#BUFFER}
+    zle reset-prompt
   }
   zle -N _fzf_history_widget
   bindkey '^R' _fzf_history_widget
