@@ -791,5 +791,107 @@
     "key": "f6",
     "command": "-workbench.action.focusNextPart"
   },
+
+  // ===== Windows-specific keybindings (ctrl+ equivalents for cmd+) =====
+
+  // Scroll up 16 Lines (Windows)
+  {
+    "key": "ctrl+u",
+    "command": "runCommands",
+    "when": "isWindows && textInputFocus && vim.mode == 'Normal'",
+    "args": {
+      "commands": [
+        "scrollLineUp", "cursorUp", "scrollLineUp", "cursorUp",
+        "scrollLineUp", "cursorUp", "scrollLineUp", "cursorUp",
+        "scrollLineUp", "cursorUp", "scrollLineUp", "cursorUp",
+        "scrollLineUp", "cursorUp", "scrollLineUp", "cursorUp",
+        "scrollLineUp", "cursorUp", "scrollLineUp", "cursorUp",
+        "scrollLineUp", "cursorUp", "scrollLineUp", "cursorUp",
+        "scrollLineUp", "cursorUp", "scrollLineUp", "cursorUp",
+        "scrollLineUp", "cursorUp", "scrollLineUp", "cursorUp",
+        "scrollLineUp", "cursorUp"
+      ]
+    }
+  },
+  // Scroll down 16 Lines (Windows)
+  {
+    "key": "ctrl+d",
+    "command": "runCommands",
+    "when": "isWindows && textInputFocus && vim.mode == 'Normal'",
+    "args": {
+      "commands": [
+        "scrollLineDown", "cursorDown", "scrollLineDown", "cursorDown",
+        "scrollLineDown", "cursorDown", "scrollLineDown", "cursorDown",
+        "scrollLineDown", "cursorDown", "scrollLineDown", "cursorDown",
+        "scrollLineDown", "cursorDown", "scrollLineDown", "cursorDown",
+        "scrollLineDown", "cursorDown", "scrollLineDown", "cursorDown",
+        "scrollLineDown", "cursorDown", "scrollLineDown", "cursorDown",
+        "scrollLineDown", "cursorDown", "scrollLineDown", "cursorDown",
+        "scrollLineDown", "cursorDown", "scrollLineDown", "cursorDown",
+        "scrollLineDown", "cursorDown"
+      ]
+    }
+  },
+
+  // Left Side Bar (Windows)
+  { "key": "ctrl+b", "command": "workbench.action.toggleSidebarVisibility", "when": "isWindows" },
+
+  // Bottom Panel (Windows)
+  { "key": "ctrl+j", "command": "workbench.action.togglePanel", "when": "isWindows" },
+
+  // Secondary Side Bar (Windows)
+  { "key": "ctrl+;", "command": "workbench.action.toggleAuxiliaryBar", "when": "isWindows" },
+
+  // Focus editor directly (Windows)
+  { "key": "ctrl+k", "command": "workbench.action.focusActiveEditorGroup", "when": "isWindows" },
+
+  // Vim search in current file (Windows)
+  {
+    "key": "ctrl+f",
+    "command": "runCommands",
+    "when": "isWindows && editorTextFocus",
+    "args": {
+      "commands": [
+        "extension.vim_escape",
+        { "command": "vim.remap", "args": { "after": ["/"] } }
+      ]
+    }
+  },
+
+  // Global search (Windows)
+  {
+    "key": "shift+ctrl+f",
+    "command": "runCommands",
+    "when": "isWindows && editorTextFocus",
+    "args": {
+      "commands": [
+        "extension.vim_escape",
+        { "command": "vim.remap", "args": { "after": ["<leader>", "s", "g"] } }
+      ]
+    }
+  },
+
+  // Terminal save sequence (Windows)
+  {
+    "key": "ctrl+s",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[15;2~" },
+    "when": "isWindows && terminalFocus"
+  },
+
+  // Debug step into (Windows)
+  {
+    "key": "ctrl+f5",
+    "command": "workbench.action.debug.stepInto",
+    "when": "isWindows && debugState != 'inactive'"
+  },
+
+  // Debug step over (Windows)
+  {
+    "key": "ctrl+f6",
+    "command": "workbench.action.debug.stepOver",
+    "when": "isWindows && debugState == 'stopped'"
+  }
+
   // End additional shortcuts
 ]
