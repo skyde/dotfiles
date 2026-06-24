@@ -34,7 +34,7 @@ jobs:
           elif [ "$RUNNER_OS" == "macOS" ]; then
             brew install stow
           elif [ "$RUNNER_OS" == "Windows" ]; then
-            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements || echo "winget install failed (stow may already be present)"
           fi
         shell: bash
 
@@ -61,12 +61,7 @@ jobs:
 
           # Test adoption behavior
           echo "Testing --adopt behavior..."
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            $env:AUTO_INSTALL = "0"
-            & $apply_cmd --adopt
-          else
-            AUTO_INSTALL=0 $apply_cmd --adopt
-          fi
+          AUTO_INSTALL=0 $apply_cmd --adopt
 
           echo "✅ Conflict resolution test completed"
         shell: bash
@@ -116,13 +111,13 @@ jobs:
             AUTO_INSTALL=0 ./init.sh > /dev/null 2>&1
             
             # Verify basic functionality
-            test -f "$HOME/.bashrc" || { echo "❌ Install failed on cycle $i"; exit 1; }
+            test -f "$HOME/.bashrc-custom" || { echo "❌ Install failed on cycle $i"; exit 1; }
 
             # Uninstall
             ./apply.sh --delete > /dev/null 2>&1
 
             # Verify cleanup
-            test ! -e "$HOME/.bashrc" || { echo "❌ Cleanup failed on cycle $i"; exit 1; }
+            test ! -e "$HOME/.bashrc-custom" || { echo "❌ Cleanup failed on cycle $i"; exit 1; }
           done
 
           echo "✅ Rapid cycle test completed"
@@ -187,7 +182,7 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Verify installation worked
-          test -f "$HOME/.bashrc" || { echo "❌ Offline installation failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Offline installation failed"; exit 1; }
 
           # Test package operations
           ./apply.sh --restow
@@ -235,7 +230,7 @@ jobs:
 
           # Check results
           for i in {1..5}; do
-            if grep -q "Done" "/tmp/test_$i.log"; then
+            if grep -q "Init complete" "/tmp/test_$i.log"; then
               echo "✅ Concurrent test $i completed"
             else
               echo "❌ Concurrent test $i failed"
@@ -268,17 +263,17 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Break some symlinks manually
-          rm -rf common/.bashrc
+          rm -f common/.bashrc-custom
 
           # Test recovery via restow
           ./apply.sh --restow || echo "Expected failure with missing file"
 
           # Restore the file
-          echo "# Restored bashrc" > common/.bashrc
+          echo "# Restored bashrc" > common/.bashrc-custom
 
           # Test successful recovery
           ./apply.sh --restow
-          test -f "$HOME/.bashrc" || { echo "❌ Recovery failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Recovery failed"; exit 1; }
 
           echo "✅ Recovery test completed"
 
@@ -290,15 +285,13 @@ jobs:
           ./apply.sh --delete 2>/dev/null || true
 
           # Simulate partial installation by manually creating some symlinks
-          cd dotfiles
-          stow --target=$HOME common
+          stow --target="$HOME" common
 
           # Now run full installation - should handle existing symlinks gracefully
-          cd ..
           AUTO_INSTALL=0 ./init.sh
 
           # Verify everything is properly installed
-          test -f "$HOME/.bashrc" || { echo "❌ Partial recovery failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Partial recovery failed"; exit 1; }
           test -f "$HOME/.config/git/config" || { echo "❌ Full installation after partial failed"; exit 1; }
 
           echo "✅ Partial installation recovery test completed"
@@ -309,15 +302,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             platform: linux-old
           - os: ubuntu-latest
             platform: linux-new
-          - os: macos-12
+          - os: macos-14
             platform: macos-old
           - os: macos-latest
             platform: macos-new
-          - os: windows-2019
+          - os: windows-2022
             platform: windows-old
           - os: windows-latest
             platform: windows-new
@@ -339,7 +332,7 @@ jobs:
             # Test with different shell environments
             echo "Testing macOS specific features..."
           elif [[ "${{ matrix.platform }}" == windows* ]]; then
-            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements || echo "winget install failed (stow may already be present)"
           fi
         shell: bash
 
@@ -364,8 +357,7 @@ jobs:
 
           # Run standard test
           if [[ "${{ matrix.platform }}" == windows* ]]; then
-            $env:AUTO_INSTALL = "0"
-            pwsh -File init.ps1
+            AUTO_INSTALL=0 pwsh -File init.ps1
           else
             AUTO_INSTALL=0 ./init.sh
           fi
