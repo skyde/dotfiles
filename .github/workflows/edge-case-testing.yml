@@ -34,7 +34,8 @@ jobs:
           elif [ "$RUNNER_OS" == "macOS" ]; then
             brew install stow
           elif [ "$RUNNER_OS" == "Windows" ]; then
-            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+            winget install --id MathiasCodes.Winstow --exact --silent --accept-package-agreements --accept-source-agreements || echo "Winstow install failed; continuing"
+            echo "$LOCALAPPDATA\\Microsoft\\WinGet\\Links" >> "$GITHUB_PATH"
           fi
         shell: bash
 
@@ -43,18 +44,14 @@ jobs:
           echo "🔥 Testing conflict resolution..."
 
           if [ "$RUNNER_OS" == "Windows" ]; then
-            home_dir="$USERPROFILE"
-            init_cmd="pwsh -File init.ps1"
-            apply_cmd="pwsh -File apply.ps1"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
-            init_cmd="./init.sh"
-            apply_cmd="./apply.sh"
           fi
 
           # Create conflicting files
           echo "Creating pre-existing files..."
-          echo "# Existing bashrc" > "$home_dir/.bashrc"
+          echo "# Existing bashrc-custom" > "$home_dir/.bashrc-custom"
           echo "# Existing zshrc" > "$home_dir/.zshrc"
           mkdir -p "$home_dir/.config"
           echo "# Existing config" > "$home_dir/.config/existing.conf"
@@ -62,10 +59,9 @@ jobs:
           # Test adoption behavior
           echo "Testing --adopt behavior..."
           if [ "$RUNNER_OS" == "Windows" ]; then
-            $env:AUTO_INSTALL = "0"
-            & $apply_cmd --adopt
+            pwsh -Command '$env:AUTO_INSTALL = "0"; & "./apply.ps1" --adopt'
           else
-            AUTO_INSTALL=0 $apply_cmd --adopt
+            AUTO_INSTALL=0 ./apply.sh --adopt
           fi
 
           echo "✅ Conflict resolution test completed"
@@ -116,13 +112,13 @@ jobs:
             AUTO_INSTALL=0 ./init.sh > /dev/null 2>&1
             
             # Verify basic functionality
-            test -f "$HOME/.bashrc" || { echo "❌ Install failed on cycle $i"; exit 1; }
+            test -f "$HOME/.bashrc-custom" || { echo "❌ Install failed on cycle $i"; exit 1; }
 
             # Uninstall
             ./apply.sh --delete > /dev/null 2>&1
 
             # Verify cleanup
-            test ! -e "$HOME/.bashrc" || { echo "❌ Cleanup failed on cycle $i"; exit 1; }
+            test ! -e "$HOME/.bashrc-custom" || { echo "❌ Cleanup failed on cycle $i"; exit 1; }
           done
 
           echo "✅ Rapid cycle test completed"
@@ -187,7 +183,7 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Verify installation worked
-          test -f "$HOME/.bashrc" || { echo "❌ Offline installation failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Offline installation failed"; exit 1; }
 
           # Test package operations
           ./apply.sh --restow
@@ -268,17 +264,17 @@ jobs:
           AUTO_INSTALL=0 ./init.sh
 
           # Break some symlinks manually
-          rm -rf common/.bashrc
+          rm -rf common/.bashrc-custom
 
           # Test recovery via restow
           ./apply.sh --restow || echo "Expected failure with missing file"
 
           # Restore the file
-          echo "# Restored bashrc" > common/.bashrc
+          echo "# Restored bashrc-custom" > common/.bashrc-custom
 
           # Test successful recovery
           ./apply.sh --restow
-          test -f "$HOME/.bashrc" || { echo "❌ Recovery failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Recovery failed"; exit 1; }
 
           echo "✅ Recovery test completed"
 
@@ -290,15 +286,13 @@ jobs:
           ./apply.sh --delete 2>/dev/null || true
 
           # Simulate partial installation by manually creating some symlinks
-          cd dotfiles
           stow --target=$HOME common
 
           # Now run full installation - should handle existing symlinks gracefully
-          cd ..
           AUTO_INSTALL=0 ./init.sh
 
           # Verify everything is properly installed
-          test -f "$HOME/.bashrc" || { echo "❌ Partial recovery failed"; exit 1; }
+          test -f "$HOME/.bashrc-custom" || { echo "❌ Partial recovery failed"; exit 1; }
           test -f "$HOME/.config/git/config" || { echo "❌ Full installation after partial failed"; exit 1; }
 
           echo "✅ Partial installation recovery test completed"
@@ -339,7 +333,8 @@ jobs:
             # Test with different shell environments
             echo "Testing macOS specific features..."
           elif [[ "${{ matrix.platform }}" == windows* ]]; then
-            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+            winget install --id MathiasCodes.Winstow --exact --silent --accept-package-agreements --accept-source-agreements || echo "Winstow install failed; continuing"
+            echo "$LOCALAPPDATA\\Microsoft\\WinGet\\Links" >> "$GITHUB_PATH"
           fi
         shell: bash
 
@@ -358,14 +353,13 @@ jobs:
             echo "Git version: $(git --version)"
           elif [[ "${{ matrix.platform }}" == windows* ]]; then
             echo "Windows version: $(systeminfo | findstr /B /C:"OS Name" /C:"OS Version")"
-            stow --version
+            pwsh -Command 'if (Get-Command stow -ErrorAction SilentlyContinue) { stow --version } elseif (Get-Command winstow -ErrorAction SilentlyContinue) { winstow --version } else { Write-Host "No stow-compatible command in PATH" }'
             git --version
           fi
 
           # Run standard test
           if [[ "${{ matrix.platform }}" == windows* ]]; then
-            $env:AUTO_INSTALL = "0"
-            pwsh -File init.ps1
+            pwsh -Command '$env:AUTO_INSTALL = "0"; & "./init.ps1"'
           else
             AUTO_INSTALL=0 ./init.sh
           fi

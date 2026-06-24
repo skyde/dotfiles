@@ -56,10 +56,10 @@ jobs:
           echo "📄 Validating configuration files..."
 
           # Check essential config files exist
-          test -f "dotfiles/common/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
-          test -f "dotfiles/common/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
-          test -f "dotfiles/common/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
-          test -f "dotfiles/common/.config/git/config" || { echo "❌ git config missing"; exit 1; }
+          test -f "common/.bashrc-custom" || { echo "❌ .bashrc-custom missing"; exit 1; }
+          test -f "common/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
+          test -f "common/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
+          test -f "common/.config/git/config" || { echo "❌ git config missing"; exit 1; }
           echo "✅ Essential config files present"
 
           # Validate shell script syntax
@@ -71,7 +71,7 @@ jobs:
 
           # Validate shell config syntax
           echo "🔍 Validating shell configuration syntax..."
-          bash -n dotfiles/common/.bashrc || { echo "❌ .bashrc has syntax errors"; exit 1; }
+          bash -n common/.bashrc-custom || { echo "❌ .bashrc-custom has syntax errors"; exit 1; }
           echo "✅ Shell configurations have valid syntax"
 
   # Multi-platform testing matrix
@@ -140,12 +140,12 @@ jobs:
             brew install stow
             echo "✅ macOS dependencies installed"
           elif [ "${{ matrix.platform }}" = "windows" ]; then
-            # Install stow via winget (check if available first)
+            # Install Winstow (GNU Stow-compatible CLI for Windows)
             if command -v winget >/dev/null 2>&1; then
-              winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements || echo "winget install failed, trying alternative"
+              winget install --id MathiasCodes.Winstow --exact --silent --accept-package-agreements --accept-source-agreements || echo "Winstow install failed, continuing"
+              echo "$LOCALAPPDATA\\Microsoft\\WinGet\\Links" >> "$GITHUB_PATH"
             else
-              echo "winget not available, using chocolatey fallback"
-              choco install stow -y || echo "choco install failed"
+              echo "winget not available, continuing without explicit stow install"
             fi
             echo "✅ Windows dependencies installation attempted"
           fi
@@ -218,7 +218,7 @@ jobs:
           echo "🔗 Verifying package-based symlinks..."
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
@@ -227,7 +227,7 @@ jobs:
 
           # Check for expected configuration files
           echo "Checking for expected configuration files..."
-          test -f "$home_dir/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
+          test -f "$home_dir/.bashrc-custom" || { echo "❌ .bashrc-custom missing"; exit 1; }
           test -f "$home_dir/.config/git/config" || { echo "❌ git config missing"; exit 1; }
           test -d "$home_dir/.config/nvim" || { echo "❌ nvim config missing"; exit 1; }
           test -f "$home_dir/.config/Code/User/settings.json" || { echo "❌ VS Code config missing"; exit 1; }
@@ -254,13 +254,13 @@ jobs:
           echo "📄 Testing configuration file access..."
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
 
           # Test shell configurations
-          test -f "$home_dir/.bashrc" || { echo "❌ .bashrc not accessible"; exit 1; }
+          test -f "$home_dir/.bashrc-custom" || { echo "❌ .bashrc-custom not accessible"; exit 1; }
           test -f "$home_dir/.zshrc" || { echo "❌ .zshrc not accessible"; exit 1; }
           test -f "$home_dir/.tmux.conf" || { echo "❌ .tmux.conf not accessible"; exit 1; }
           echo "✅ Shell configs accessible"
@@ -324,14 +324,14 @@ jobs:
           echo "⚡ Testing configuration loading..."
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
 
           # Test bash config syntax
-          bash -n "$home_dir/.bashrc" || { echo "❌ .bashrc has syntax errors"; exit 1; }
-          echo "✅ Bash config syntax valid"
+          bash -n "$home_dir/.bashrc-custom" || { echo "❌ .bashrc-custom has syntax errors"; exit 1; }
+          echo "✅ Bash custom config syntax valid"
 
           # Test git config validity
           git config --file "$home_dir/.config/git/config" --list > /dev/null || { echo "❌ Git config invalid"; exit 1; }
@@ -360,7 +360,6 @@ jobs:
             echo "✅ Shell restow operation successful"
             
             # Test individual package operations  
-            cd dotfiles
             stow --target=$HOME --verbose common
             stow --target=$HOME --delete common
             stow --target=$HOME common
@@ -373,7 +372,7 @@ jobs:
           echo "🔄 Testing update functionality..."
 
           # Create a test change
-          echo "# Test comment" >> dotfiles/common/.bashrc
+          echo "# Test comment" >> common/.bashrc-custom
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell update script..."
@@ -422,16 +421,16 @@ jobs:
           echo "🌐 Testing cross-platform compatibility..."
 
           # Display entry counts for reference
-          common_actual=$(find dotfiles/common -mindepth 1 -maxdepth 1 | wc -l)
+          common_actual=$(find common -mindepth 1 -maxdepth 1 | wc -l)
           echo "Common entries: $common_actual"
 
-          mac_actual=$(find dotfiles/mac -mindepth 1 -maxdepth 1 | wc -l)
+          mac_actual=$(find mac -mindepth 1 -maxdepth 1 | wc -l)
           echo "macOS entries: $mac_actual"
 
-          windows_actual=$(find dotfiles/windows -mindepth 1 -maxdepth 1 | wc -l)
+          windows_actual=$(find windows -mindepth 1 -maxdepth 1 | wc -l)
           echo "Windows entries: $windows_actual"
 
-          if ! grep -q 'dotfiles/common' README.md; then
+          if ! grep -q 'common/' README.md; then
             echo "⚠️ README structure reference may need updating"
           fi
 
@@ -443,7 +442,7 @@ jobs:
 
           # Test with existing files (conflict scenario)
           echo "Testing conflict handling..."
-          touch ~/.bashrc ~/.zshrc
+          touch ~/.bashrc-custom ~/.zshrc
           AUTO_INSTALL=0 ./init.sh || echo "Expected to handle conflicts"
 
           # Test multiple installs (idempotent behavior)
