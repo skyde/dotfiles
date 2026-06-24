@@ -58,7 +58,12 @@ elseif use_osc52 then
   end
 end
 
-vim.opt.clipboard:append("unnamedplus")
+local is_ssh = vim.env.SSH_CONNECTION ~= nil or vim.env.SSH_TTY ~= nil
+if is_ssh then
+  vim.opt.clipboard:remove("unnamedplus")
+else
+  vim.opt.clipboard:append("unnamedplus")
+end
 
 vim.diagnostic.config({ underline = false })
 
