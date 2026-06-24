@@ -791,5 +791,12 @@
     "key": "f6",
     "command": "-workbench.action.focusNextPart"
   },
+  // Remote SSH: download the folder containing the active file to local machine.
+  // This opens the "download folder" flow from Remote SSH and prompts for a local destination.
+  {
+    "key": "cmd+shift+alt+s",
+    "command": "opensshremotes.downloadFolder",
+    "when": "isRemote && resourceScheme =~ /^vscode-remote/"
+  },
   // End additional shortcuts
 ]
