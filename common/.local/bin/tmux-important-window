@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage: tmux-important-window <command> [args]
+
+Commands:
+  toggle [target]              Toggle the current/window target as important
+  mark [target]                Mark the current/window target as important
+  unmark [target]              Remove the important marker
+  view                         Show a switcher containing only important windows
+  kill-current                 Kill current window, guarding important windows
+USAGE
+}
+
+require_tmux() {
+  if ! command -v tmux >/dev/null 2>&1; then
+    printf 'tmux-important-window: tmux is required\n' >&2
+    exit 1
+  fi
+}
+
+window_target() {
+  if [ "${1:-}" = "" ]; then
+    tmux display-message -p '#{window_id}'
+  else
+    printf '%s\n' "$1"
+  fi
+}
+
+window_label() {
+  tmux display-message -p -t "$1" '#S:#I #W'
+}
+
+is_important() {
+  [ "$(tmux show-options -wqv -t "$1" @important 2>/dev/null || true)" = "1" ]
+}
+
+mark_window() {
+  local target label
+  target=$(window_target "${1:-}")
+  label=$(window_label "$target")
+  tmux set-option -wq -t "$target" @important 1
+  tmux display-message "Marked important: ${label}"
+}
+
+unmark_window() {
+  local target label
+  target=$(window_target "${1:-}")
+  label=$(window_label "$target")
+  tmux set-option -wqu -t "$target" @important
+  tmux display-message "Unmarked important: ${label}"
+}
+
+toggle_window() {
+  local target
+  target=$(window_target "${1:-}")
+  if is_important "$target"; then
+    unmark_window "$target"
+  else
+    mark_window "$target"
+  fi
+}
+
+list_important_windows() {
+  tmux list-windows -a -F '#{window_id}\t#{session_name}\t#{window_index}\t#{window_name}\t#{window_panes}\t#{pane_current_path}\t#{@important}' |
+    awk -F '\t' '$7 == "1" { printf "%s\t%s:%s\t%s\t%s panes\t%s\n", $1, $2, $3, $4, $5, $6 }'
+}
+
+view_important_windows() {
+  if ! list_important_windows | grep -q .; then
+    tmux display-message 'No important tmux windows marked yet'
+    return 0
+  fi
+
+  if command -v fzf >/dev/null 2>&1; then
+    tmux display-popup -E -w 90% -h 70% "tmux-important-window switch-with-fzf"
+  else
+    tmux choose-tree -Zw \
+      -f '#{==:#{@important},1}' \
+      -F '#{?@important,★ ,}#{session_name}:#{window_index} #{window_name} (#{window_panes} panes) #{pane_current_path}'
+  fi
+}
+
+switch_with_fzf() {
+  local selected target
+  selected=$(
+    list_important_windows |
+      fzf \
+        --delimiter='\t' \
+        --with-nth=2,3,4,5 \
+        --prompt='important window> ' \
+        --header='enter: switch  esc: cancel' \
+        --preview='tmux list-panes -t {1} -F "#{pane_index}: #{pane_current_command}  #{pane_current_path}"' \
+        --preview-window='right:55%:wrap'
+  ) || return 0
+
+  target=$(printf '%s\n' "$selected" | awk -F '\t' '{print $1}')
+  [ -n "$target" ] && tmux switch-client -t "$target"
+}
+
+kill_current() {
+  local target label
+  target=$(window_target "")
+
+  if is_important "$target"; then
+    label=$(window_label "$target")
+    tmux command-prompt \
+      -p "IMPORTANT ${label}: type KILL to close" \
+      "if -F '#{==:%%,KILL}' 'kill-window -t ${target}' 'display-message \"Important window kept\"'"
+  else
+    tmux confirm-before -p 'Kill window #W? (y/n)' "kill-window -t ${target}"
+  fi
+}
+
+command=${1:-}
+shift || true
+
+case "$command" in
+  -h|--help|help|'')
+    usage
+    exit 0
+    ;;
+  *)
+    require_tmux
+    ;;
+esac
+
+case "$command" in
+  toggle) toggle_window "${1:-}" ;;
+  mark) mark_window "${1:-}" ;;
+  unmark) unmark_window "${1:-}" ;;
+  view) view_important_windows ;;
+  switch-with-fzf) switch_with_fzf ;;
+  kill-current) kill_current ;;
+  *)
+    printf 'tmux-important-window: unknown command: %s\n' "$command" >&2
+    usage >&2
+    exit 2
+    ;;
+esac
