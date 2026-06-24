@@ -56,10 +56,10 @@ jobs:
           echo "📄 Validating configuration files..."
 
           # Check essential config files exist
-          test -f "dotfiles/common/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
-          test -f "dotfiles/common/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
-          test -f "dotfiles/common/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
-          test -f "dotfiles/common/.config/git/config" || { echo "❌ git config missing"; exit 1; }
+          test -f "common/.bashrc-custom" || { echo "❌ .bashrc missing"; exit 1; }
+          test -f "common/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
+          test -f "common/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
+          test -f "common/.config/git/config" || { echo "❌ git config missing"; exit 1; }
           echo "✅ Essential config files present"
 
           # Validate shell script syntax
@@ -71,7 +71,7 @@ jobs:
 
           # Validate shell config syntax
           echo "🔍 Validating shell configuration syntax..."
-          bash -n dotfiles/common/.bashrc || { echo "❌ .bashrc has syntax errors"; exit 1; }
+          bash -n common/.bashrc-custom || { echo "❌ .bashrc has syntax errors"; exit 1; }
           echo "✅ Shell configurations have valid syntax"
 
   # Multi-platform testing matrix
@@ -83,7 +83,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          [ubuntu-latest, ubuntu-20.04, macos-latest, macos-12, windows-latest]
+          [ubuntu-latest, ubuntu-22.04, macos-latest, macos-14, windows-latest]
         include:
           - os: ubuntu-latest
             platform: linux
@@ -91,7 +91,7 @@ jobs:
             init_script: ./init.sh
             apply_script: ./apply.sh
             update_script: ./update.sh
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             platform: linux
             shell_cmd: bash
             init_script: ./init.sh
@@ -103,7 +103,7 @@ jobs:
             init_script: ./init.sh
             apply_script: ./apply.sh
             update_script: ./update.sh
-          - os: macos-12
+          - os: macos-14
             platform: macos
             shell_cmd: bash
             init_script: ./init.sh
@@ -193,6 +193,7 @@ jobs:
             echo "Running Windows installation..."
             echo "Script path: ${{ matrix.init_script }}"
             if [ -f "${{ matrix.init_script }}" ]; then
+              # shellcheck disable=SC2016
               pwsh -Command '$env:AUTO_INSTALL = "0"; & "./${{ matrix.init_script }}"' || echo "Windows installation failed"
             else
               echo "❌ Windows init script not found"
@@ -227,7 +228,7 @@ jobs:
 
           # Check for expected configuration files
           echo "Checking for expected configuration files..."
-          test -f "$home_dir/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
+          test -f "$home_dir/.bashrc-custom" || { echo "❌ .bashrc missing"; exit 1; }
           test -f "$home_dir/.config/git/config" || { echo "❌ git config missing"; exit 1; }
           test -d "$home_dir/.config/nvim" || { echo "❌ nvim config missing"; exit 1; }
           test -f "$home_dir/.config/Code/User/settings.json" || { echo "❌ VS Code config missing"; exit 1; }
@@ -260,7 +261,7 @@ jobs:
           fi
 
           # Test shell configurations
-          test -f "$home_dir/.bashrc" || { echo "❌ .bashrc not accessible"; exit 1; }
+          test -f "$home_dir/.bashrc-custom" || { echo "❌ .bashrc not accessible"; exit 1; }
           test -f "$home_dir/.zshrc" || { echo "❌ .zshrc not accessible"; exit 1; }
           test -f "$home_dir/.tmux.conf" || { echo "❌ .tmux.conf not accessible"; exit 1; }
           echo "✅ Shell configs accessible"
@@ -330,7 +331,7 @@ jobs:
           fi
 
           # Test bash config syntax
-          bash -n "$home_dir/.bashrc" || { echo "❌ .bashrc has syntax errors"; exit 1; }
+          bash -n "$home_dir/.bashrc-custom" || { echo "❌ .bashrc has syntax errors"; exit 1; }
           echo "✅ Bash config syntax valid"
 
           # Test git config validity
@@ -360,10 +361,10 @@ jobs:
             echo "✅ Shell restow operation successful"
             
             # Test individual package operations  
-            cd dotfiles
-            stow --target=$HOME --verbose common
-            stow --target=$HOME --delete common
-            stow --target=$HOME common
+            cd .
+            stow --target="$HOME" --verbose common
+            stow --target="$HOME" --delete common
+            stow --target="$HOME" common
             echo "✅ Individual package operations successful"
           fi
         shell: bash
@@ -373,7 +374,7 @@ jobs:
           echo "🔄 Testing update functionality..."
 
           # Create a test change
-          echo "# Test comment" >> dotfiles/common/.bashrc
+          echo "# Test comment" >> common/.bashrc-custom
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell update script..."
@@ -400,7 +401,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y stow git curl zsh shellcheck
+          sudo apt install -y stow git curl zsh shellcheck ripgrep
 
       - name: Comprehensive shell script analysis
         run: |
@@ -412,8 +413,8 @@ jobs:
 
           # Function and variable analysis
           echo "Analyzing script dependencies..."
-          grep -r "command -v" *.sh || echo "No command checks found"
-          grep -r "AUTO_INSTALL" *.sh || echo "No AUTO_INSTALL usage found"
+          rg "command -v" -g "*.sh" . || echo "No command checks found"
+          rg "AUTO_INSTALL" -g "*.sh" . || echo "No AUTO_INSTALL usage found"
 
           echo "✅ Shell script analysis completed"
 
@@ -422,16 +423,16 @@ jobs:
           echo "🌐 Testing cross-platform compatibility..."
 
           # Display entry counts for reference
-          common_actual=$(find dotfiles/common -mindepth 1 -maxdepth 1 | wc -l)
+          common_actual=$(find common -mindepth 1 -maxdepth 1 | wc -l)
           echo "Common entries: $common_actual"
 
-          mac_actual=$(find dotfiles/mac -mindepth 1 -maxdepth 1 | wc -l)
+          mac_actual=$(find mac -mindepth 1 -maxdepth 1 | wc -l)
           echo "macOS entries: $mac_actual"
 
-          windows_actual=$(find dotfiles/windows -mindepth 1 -maxdepth 1 | wc -l)
+          windows_actual=$(find windows -mindepth 1 -maxdepth 1 | wc -l)
           echo "Windows entries: $windows_actual"
 
-          if ! grep -q 'dotfiles/common' README.md; then
+          if ! grep -q 'common' README.md; then
             echo "⚠️ README structure reference may need updating"
           fi
 
@@ -441,20 +442,24 @@ jobs:
         run: |
           echo "⚡ Running performance and edge case tests..."
 
-          # Test with existing files (conflict scenario)
+          test_home="$(mktemp -d)"
+          trap 'rm -rf "$test_home"' EXIT
+
+          # Test with existing files (conflict scenario) without polluting the runner home.
           echo "Testing conflict handling..."
-          touch ~/.bashrc ~/.zshrc
-          AUTO_INSTALL=0 ./init.sh || echo "Expected to handle conflicts"
+          touch "$test_home/.bashrc-custom" "$test_home/.zshrc"
+          HOME="$test_home" AUTO_INSTALL=0 ./init.sh || echo "Expected to handle conflicts"
+          rm -f "$test_home/.bashrc-custom" "$test_home/.zshrc"
 
           # Test multiple installs (idempotent behavior)
           echo "Testing idempotent behavior..."
-          AUTO_INSTALL=0 ./init.sh
-          AUTO_INSTALL=0 ./init.sh
+          HOME="$test_home" AUTO_INSTALL=0 ./init.sh
+          HOME="$test_home" AUTO_INSTALL=0 ./init.sh
           echo "✅ Multiple installs handled correctly"
 
           # Test cleanup
           echo "Testing cleanup..."
-          ./apply.sh --delete
+          HOME="$test_home" ./apply.sh --delete
           echo "✅ Cleanup successful"
 
           echo "✅ Performance and edge case testing completed"
@@ -474,11 +479,11 @@ jobs:
 
           # Check for sensitive information
           echo "Scanning for potential secrets..."
-          grep -r -i "password\|secret\|key\|token" --exclude-dir=.git --exclude="*.md" . || echo "✅ No obvious secrets found"
+          rg -i "password|secret|key|token" --glob "!*.md" --glob "!.git/**" . || echo "✅ No obvious secrets found"
 
           # Check file permissions
           echo "Checking file permissions..."
-          find . -type f -perm /111 | grep -v "\.sh$\|\.ps1$\|/bin/\|\.git/" && echo "⚠️ Unexpected executable files found" || echo "✅ File permissions appropriate"
+          find . -type f -perm /111 | rg -v "\.sh$|\.ps1$|/bin/|\.git/" && echo "⚠️ Unexpected executable files found" || echo "✅ File permissions appropriate"
 
           # Check for symlink attacks
           echo "Checking for suspicious symlinks..."
