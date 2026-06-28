@@ -1,24 +1,367 @@
-#!/usr/bin/env sh
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
-if ! command -v fzf >/dev/null 2>&1; then
-  tmux display-message 'fzf is required for fuzzy session switching'
-  exit 1
-fi
+ensure_usable_term() {
+  if [[ -z "${TERM:-}" ]]; then
+    export TERM=xterm-256color
+  elif command -v infocmp >/dev/null 2>&1 && ! infocmp "$TERM" >/dev/null 2>&1; then
+    export TERM=xterm-256color
+  fi
+}
 
-selected=$(
-  tmux list-sessions -F '#{session_activity}|#{session_name}|#{session_windows} windows|#{?session_attached,attached,detached}' |
-    sort -rn -t'|' -k1,1 |
-    cut -d'|' -f2- |
-    fzf \
-      --delimiter='|' \
-      --with-nth=1,2,3 \
-      --prompt='session> ' \
-      --header='enter: switch  ctrl-r: refresh  esc: cancel' \
-      --preview='tmux list-windows -t {1} -F "#{window_index}: #{window_name} (#{window_panes} panes) #{?window_active,*, }#{pane_current_path}"' \
-      --preview-window='right:60%:wrap' \
-      --bind='ctrl-r:reload(tmux list-sessions -F "#{session_activity}|#{session_name}|#{session_windows} windows|#{?session_attached,attached,detached}" | sort -rn -t"|" -k1,1 | cut -d"|" -f2-)' |
-    cut -d'|' -f1
-)
+display_tmux_message() {
+  local message="$1"
 
-[ -n "$selected" ] && tmux switch-client -t "$selected"
+  if [[ -n "${TMUX:-}" ]]; then
+    tmux display-message "$message" 2>/dev/null || printf '%s\n' "$message" >&2
+  else
+    printf '%s\n' "$message" >&2
+  fi
+}
+
+fallback_choose_tree() {
+  if [[ -n "${TMUX:-}" ]]; then
+    display_tmux_message "fzf unavailable; opening tmux choose-tree"
+    tmux choose-tree -sZ -O time
+  else
+    display_tmux_message "fzf is required for tmux session switching"
+    exit 1
+  fi
+}
+
+script_path() {
+  case "$0" in
+    */*) (cd -- "$(dirname -- "$0")" && printf '%s/%s\n' "$PWD" "$(basename -- "$0")") ;;
+    *) command -v -- "$0" ;;
+  esac
+}
+
+session_header() {
+  printf "%s\t%s\t%-22s\t%-14s\t%-9s\t%-9s\t%s\n" "ID" " " "SESSION" "WINDOW" "COUNT" "CLIENTS" "ACTIVE"
+}
+
+null_terminate_lines() {
+  tr '\n' '\0'
+}
+
+list_sessions() {
+  local current_id now tab
+  current_id=""
+  if [[ -n "${TMUX:-}" ]]; then
+    current_id="$(tmux display-message -p '#{session_id}' 2>/dev/null || true)"
+  fi
+  now="$(date +%s)"
+  tab="$(printf '\t')"
+
+  tmux list-sessions -F $'#{session_id}\t#{=999:session_name}\t#{session_windows}\t#{session_attached}\t#{session_activity}\t#{=999:window_name}\t#{=999:pane_current_command}' |
+    awk -F '\t' -v current="$current_id" 'BEGIN { OFS = FS } { print (($1 == current && current != "") ? 1 : 0), $0 }' |
+    sort -t "$tab" -k1,1n -k6,6rn -k3,3 |
+    cut -f2- |
+    awk -F '\t' -v current="$current_id" -v now="$now" '
+      function age(ts, diff) {
+        diff = now - ts
+        if (diff < 0) diff = 0
+        if (diff < 60) return diff "s ago"
+        if (diff < 3600) return int(diff / 60) "m ago"
+        if (diff < 86400) return int(diff / 3600) "h ago"
+        return int(diff / 86400) "d ago"
+      }
+
+      {
+        marker = ($1 == current) ? "*" : " "
+        window = ($6 == "") ? $7 : $6
+        if (window == "") window = "-"
+        windows = $3 " window" (($3 == 1) ? "" : "s")
+        clients = ($4 == 0) ? "detached" : $4 " client" (($4 == 1) ? "" : "s")
+        printf "%s\t%s\t%-22s\t%-14s\t%-9s\t%-9s\t%s\n", $1, marker, $2, window, windows, clients, age($5)
+      }
+    '
+}
+
+preview_session() {
+  local target="$1"
+  local clients last_active name window_count window_word client_phrase
+
+  if ! tmux has-session -t "$target" 2>/dev/null; then
+    printf 'Session no longer exists: %s\n' "$target"
+    return 0
+  fi
+
+  name="$(tmux display-message -p -t "$target" '#{=999:session_name}')"
+  window_count="$(tmux display-message -p -t "$target" '#{session_windows}')"
+  clients="$(tmux display-message -p -t "$target" '#{session_attached}')"
+  last_active="$(tmux display-message -p -t "$target" '#{t/p:session_activity}')"
+
+  window_word="windows"
+  [[ "$window_count" == "1" ]] && window_word="window"
+
+  if [[ "$clients" == "0" ]]; then
+    client_phrase="detached"
+  elif [[ "$clients" == "1" ]]; then
+    client_phrase="1 attached client"
+  else
+    client_phrase="$clients attached clients"
+  fi
+
+  printf '%s - %s %s - %s - last active %s\n' "$name" "$window_count" "$window_word" "$client_phrase" "$last_active"
+  if [[ "$clients" != "0" ]]; then
+    printf '\nClients\n'
+    tmux list-clients -t "$target" -F '  #{=999:client_name} #{client_width}x#{client_height} #{?client_active,active,inactive}'
+  fi
+  printf '\nWindows\n'
+  tmux list-windows -t "$target" -F '#{?window_active,*, } #{window_index}: #{=999:window_name} (#{window_panes} panes) #{=999:pane_current_path}'
+  printf '\nPanes\n'
+  tmux list-panes -s -t "$target" -F '  #{window_index}.#{pane_index} #{?pane_active,*, } #{=999:pane_current_command} #{=999:pane_current_path}'
+}
+
+trim_trailing_space() {
+  local value="$1"
+
+  while [[ "$value" == *[[:space:]] ]]; do
+    value="${value%?}"
+  done
+  printf '%s\n' "$value"
+}
+
+resolve_session_name_to_id() {
+  local session_name="$1"
+  local candidate_id candidate_name trimmed_name trimmed_id
+  local trimmed_matches=0
+
+  while IFS=$'\t' read -r candidate_id candidate_name; do
+    [[ -n "$candidate_id" ]] || continue
+
+    if [[ "$candidate_name" == "$session_name" ]]; then
+      printf '%s\n' "$candidate_id"
+      return 0
+    fi
+
+    trimmed_name="$(trim_trailing_space "$candidate_name")"
+    if [[ "$trimmed_name" == "$session_name" ]]; then
+      trimmed_matches=$((trimmed_matches + 1))
+      trimmed_id="$candidate_id"
+    fi
+  done < <(tmux list-sessions -F $'#{session_id}\t#{=999:session_name}')
+
+  if [[ "$trimmed_matches" == "1" ]]; then
+    printf '%s\n' "$trimmed_id"
+    return 0
+  fi
+
+  return 1
+}
+
+resolve_selected_id() {
+  local selected="$1"
+  local line selected_id session_name resolved_id candidate_id
+
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    [[ "$line" == *$'\t'* ]] || continue
+
+    selected_id="${line%%$'\t'*}"
+    if [[ "$selected_id" == \$* ]] && tmux has-session -t "$selected_id" 2>/dev/null; then
+      candidate_id="$selected_id"
+      continue
+    fi
+
+    # Some fzf options from FZF_DEFAULT_OPTS can make fzf print extra lines
+    # (for example --print-query) or the transformed display row instead of the
+    # original row (for example --no-sort with --with-nth). For transformed rows,
+    # field 2 is the padded session name.
+    session_name="$(awk -F '\t' '{ print $2 }' <<<"$line")"
+    session_name="$(trim_trailing_space "$session_name")"
+    [[ -n "$session_name" ]] || continue
+
+    resolved_id="$(resolve_session_name_to_id "$session_name" || true)"
+    if [[ -n "$resolved_id" ]]; then
+      candidate_id="$resolved_id"
+    fi
+  done <<<"$selected"
+
+  [[ -n "${candidate_id:-}" ]] || return 1
+  printf '%s\n' "$candidate_id"
+}
+
+fzf_supports_tmux_popup() {
+  [[ -z "${TMUX_FZF_DISABLE_TMUX:-}" && -n "${TMUX:-}" ]] && fzf_supports '--tmux'
+}
+
+fzf_help() {
+  if [[ -z "${__TMUX_FZF_HELP_CACHE+x}" ]]; then
+    __TMUX_FZF_HELP_CACHE="$(fzf --help 2>/dev/null || true)"
+  fi
+}
+
+fzf_supports() {
+  local option="$1"
+  fzf_help
+  [[ "$__TMUX_FZF_HELP_CACHE" == *"$option"* ]]
+}
+
+fzf_supports_preview_threshold() {
+  fzf_help
+  [[ "$__TMUX_FZF_HELP_CACHE" == *SIZE_THRESHOLD* ]]
+}
+
+tmux_supports_display_popup() {
+  tmux list-commands 2>/dev/null | grep -q '^display-popup'
+}
+
+run_in_tmux_popup() {
+  local helper quoted_helper
+
+  helper="$(script_path)"
+  printf -v quoted_helper '%q' "$helper"
+  tmux display-popup -E -w 90% -h 70% -T ' sessions ' "env TMUX_FZF_SWITCH_POPUP=1 $quoted_helper"
+}
+
+pick_session() {
+  local fzf_cmd selected selected_id current_id helper quoted_helper list_command preview_window use_read0
+  local -a fzf_args
+
+  if ! fzf_cmd="$(list_sessions)" || [[ -z "$fzf_cmd" ]]; then
+    display_tmux_message "No tmux sessions found"
+    return
+  fi
+
+  if [[ -n "${TMUX:-}" ]] && [[ "$(printf '%s\n' "$fzf_cmd" | wc -l | tr -d ' ')" == "1" ]]; then
+    selected_id="${fzf_cmd%%$'\t'*}"
+    current_id="$(tmux display-message -p '#{session_id}' 2>/dev/null || true)"
+    if [[ "$selected_id" == "$current_id" ]]; then
+      display_tmux_message "Only one tmux session"
+      return
+    fi
+  fi
+
+  if ! command -v fzf >/dev/null 2>&1; then
+    fallback_choose_tree
+    return
+  fi
+
+  if [[ -n "${TMUX:-}" && -z "${TMUX_FZF_SWITCH_POPUP:-}" ]] && ! fzf_supports_tmux_popup; then
+    # Older fzf builds need a real popup pane because run-shell has no TTY.
+    if tmux_supports_display_popup; then
+      run_in_tmux_popup
+    else
+      fallback_choose_tree
+    fi
+    return
+  fi
+
+  helper="$(script_path)"
+  printf -v quoted_helper '%q' "$helper"
+  use_read0=0
+  if fzf_supports '--read0'; then
+    use_read0=1
+  fi
+
+  list_command="$quoted_helper --list"
+  if [[ "$use_read0" == "1" ]]; then
+    list_command="$quoted_helper --list0"
+  fi
+  if fzf_supports '--header-lines'; then
+    fzf_cmd="$(session_header; printf '%s\n' "$fzf_cmd")"
+    list_command="$quoted_helper --list-with-header"
+    if [[ "$use_read0" == "1" ]]; then
+      list_command="$quoted_helper --list0-with-header"
+    fi
+  fi
+
+  preview_window='right:60%:wrap'
+  if fzf_supports_preview_threshold; then
+    preview_window='right:60%:wrap,<100(down:45%:wrap)'
+  fi
+
+  fzf_args=(
+    --delimiter=$'\t'
+    --with-nth='2..'
+    --nth='2..'
+    --layout=reverse
+    --cycle
+    +m
+    --prompt='session> '
+    --header='enter switch | ctrl-/ toggle preview | ctrl-r refresh | esc cancel'
+    --preview="$quoted_helper --preview {1}"
+    --preview-window="$preview_window"
+    --bind="ctrl-/:toggle-preview,ctrl-r:reload($list_command)"
+  )
+
+  if fzf_supports '--highlight-line'; then
+    fzf_args+=(--highlight-line)
+  fi
+
+  if fzf_supports '--track'; then
+    fzf_args+=(--track)
+  fi
+
+  if fzf_supports '--tabstop'; then
+    fzf_args+=(--tabstop=1)
+  fi
+
+  if fzf_supports '--header-lines'; then
+    fzf_args+=(--header-lines=1)
+  fi
+
+  if [[ "$use_read0" == "1" ]]; then
+    fzf_args+=(--read0)
+  fi
+
+  if [[ -z "${TMUX_FZF_SWITCH_POPUP:-}" ]] && fzf_supports_tmux_popup; then
+    fzf_args+=(--tmux 'center,90%,70%,border-native')
+  fi
+
+  if [[ "$use_read0" == "1" ]]; then
+    selected="$(printf '%s\n' "$fzf_cmd" | null_terminate_lines | fzf "${fzf_args[@]}" | tr '\0' '\n' || true)"
+  else
+    selected="$(printf '%s\n' "$fzf_cmd" | fzf "${fzf_args[@]}" | tr '\0' '\n' || true)"
+  fi
+  selected_id="$(resolve_selected_id "$selected" || true)"
+
+  [[ -n "$selected_id" ]] || return 0
+
+  if ! tmux has-session -t "$selected_id" 2>/dev/null; then
+    display_tmux_message "Selected tmux session no longer exists"
+    return 0
+  fi
+
+  if [[ -n "${TMUX:-}" ]]; then
+    current_id="$(tmux display-message -p '#{session_id}' 2>/dev/null || true)"
+    if [[ "$selected_id" != "$current_id" ]]; then
+      tmux switch-client -t "$selected_id" 2>/dev/null || display_tmux_message "Unable to switch tmux session"
+    fi
+  else
+    exec tmux attach-session -t "$selected_id"
+  fi
+}
+
+ensure_usable_term
+
+case "${1:-}" in
+  --list)
+    list_sessions
+    ;;
+  --list-with-header)
+    session_header
+    list_sessions
+    ;;
+  --list0)
+    list_sessions | null_terminate_lines
+    ;;
+  --list0-with-header)
+    (session_header; list_sessions) | null_terminate_lines
+    ;;
+  --preview)
+    if [[ -z "${2:-}" ]]; then
+      printf 'No session selected\n'
+      exit 0
+    fi
+    preview_session "$2"
+    ;;
+  --choose-tree)
+    fallback_choose_tree
+    ;;
+  *)
+    pick_session
+    ;;
+esac

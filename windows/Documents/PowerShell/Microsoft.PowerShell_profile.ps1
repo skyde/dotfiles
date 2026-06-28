@@ -7,7 +7,9 @@ Set-PSReadLineOption -MaximumHistoryCount 100000
 Set-PSReadLineOption -HistorySaveStyle SaveIncrementally
 Set-PSReadLineOption -HistorySavePath "$HOME\.powershell_history"
 
-# Key bindings (Emacs + Ctrl+←/→ for word jumps)
+# Key bindings (Emacs + history search + Ctrl+←/→ for word jumps)
+Set-PSReadLineKeyHandler -Key Ctrl+r           -Function ReverseSearchHistory
+Set-PSReadLineKeyHandler -Key Ctrl+s           -Function ForwardSearchHistory
 Set-PSReadLineKeyHandler -Key Ctrl+RightArrow  -Function ForwardWord
 Set-PSReadLineKeyHandler -Key Ctrl+LeftArrow   -Function BackwardWord
 
@@ -36,4 +38,3 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
 function rg {
     & rg.exe --hidden --smart-case --colors match:fg:yellow --glob '!.git' --glob '!node_modules' @Args
 }
-
