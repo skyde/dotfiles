@@ -177,6 +177,9 @@ Host devbox
 
 Use the “Remote-SSH: Connect to Host…” command in VS Code to start a session.
 
+How copy/paste is wired up across the VS Code terminal → SSH → tmux → nvim
+chain is documented in [`docs/clipboard.md`](docs/clipboard.md).
+
 ### Keyboard
 
 Run `kinesis-advantage2/sync-kinesis-layouts.ps1` with the Kinesis Advantage2 V-Drive connected & key bindings will auto sync.

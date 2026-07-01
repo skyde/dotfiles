@@ -21,10 +21,14 @@ vim.opt.mouse = "a"
 
 local win32yank_path = "win32yank.exe"
 local is_windows = vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 or vim.fn.has("win32unix") == 1
-local use_osc52 = vim.env.SSH_CLIENT ~= nil
-  or vim.env.SSH_TTY ~= nil
-  or vim.env.SSH_CONNECTION ~= nil
-  or vim.env.TMUX ~= nil
+local in_ssh = vim.env.SSH_CLIENT ~= nil or vim.env.SSH_TTY ~= nil or vim.env.SSH_CONNECTION ~= nil
+
+-- True when a local clipboard tool nvim can auto-detect is available
+-- (pbcopy on macOS, wl-copy/xclip/xsel on a Linux desktop). Mirrors the
+-- detection order in the osc-copy script.
+local has_local_clip = vim.fn.has("mac") == 1
+  or (vim.env.WAYLAND_DISPLAY ~= nil and vim.fn.executable("wl-copy") == 1)
+  or (vim.env.DISPLAY ~= nil and (vim.fn.executable("xclip") == 1 or vim.fn.executable("xsel") == 1))
 
 -- Clipboard provider (works in native Windows, MSYS2 and WSL)
 if is_windows then
@@ -40,10 +44,42 @@ if is_windows then
     },
     cache_enabled = 0, -- 1 if you want selections cached for speed
   }
-elseif use_osc52 then
+elseif vim.env.TMUX ~= nil and (in_ssh or not has_local_clip) then
+  -- SSH (or headless) + tmux: sync the clipboard through tmux's paste
+  -- buffer over its socket rather than writing OSC 52 escape sequences to
+  -- stdout. Escape sequences only reach the outer terminal when nvim owns
+  -- the real tty, so they get swallowed when nvim runs inside another
+  -- program's embedded terminal (e.g. an AI coding tool). The socket path
+  -- always works, and
+  -- with tmux's `set-clipboard on` the copy is still forwarded to the
+  -- local terminal (and thus the OS clipboard) via OSC 52.
+  -- Note: to paste text copied on the local machine, use the terminal's
+  -- paste key (Cmd+V); `p` pastes what was last yanked in nvim or tmux.
+  local tmux_paste = { "sh", "-c", "tmux save-buffer - 2>/dev/null || true" }
+  vim.g.clipboard = {
+    name = "tmux",
+    copy = {
+      ["+"] = { "tmux", "load-buffer", "-w", "-" },
+      ["*"] = { "tmux", "load-buffer", "-w", "-" },
+    },
+    paste = {
+      ["+"] = tmux_paste,
+      ["*"] = tmux_paste,
+    },
+    cache_enabled = 0,
+  }
+elseif in_ssh then
+  -- Plain SSH session without tmux: copy with OSC 52. Paste falls back to
+  -- the unnamed register because most terminals (VS Code included) refuse
+  -- to answer OSC 52 paste queries, which would otherwise leave `p`
+  -- waiting on a reply that never comes. Use the terminal's paste key
+  -- (Cmd+V) to insert text copied on the local machine.
   local ok, osc52 = pcall(require, "vim.ui.clipboard.osc52")
 
   if ok then
+    local function reg_paste()
+      return { vim.split(vim.fn.getreg('"'), "\n"), vim.fn.getregtype('"') }
+    end
     vim.g.clipboard = {
       name = "OSC 52",
       copy = {
@@ -51,8 +87,8 @@ elseif use_osc52 then
         ["*"] = osc52.copy("*"),
       },
       paste = {
-        ["+"] = osc52.paste("+"),
-        ["*"] = osc52.paste("*"),
+        ["+"] = reg_paste,
+        ["*"] = reg_paste,
       },
     }
   end
