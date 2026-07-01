@@ -5,46 +5,55 @@ in_ssh_session() {
   [[ -n "${SSH_CLIENT:-}" || -n "${SSH_TTY:-}" || -n "${SSH_CONNECTION:-}" ]]
 }
 
-content="$(cat)"
+emit_osc52() {
+  local encoded="$1"
+
+  [[ -w /dev/tty ]] || return 1
+
+  trap '' SIGTTOU
+  if [[ -n "${TMUX:-}" ]]; then
+    # tmux passthrough form for older tmux versions where load-buffer -w is not
+    # available or where the running server has stale clipboard settings.
+    printf '\033Ptmux;\033\033]52;c;%s\a\033\\' "$encoded" >/dev/tty
+  else
+    printf '\033]52;c;%s\a' "$encoded" >/dev/tty
+  fi
+}
+
+tmp="$(mktemp -t osc-copy.XXXXXX)"
+trap 'rm -f "$tmp"' EXIT
+cat >"$tmp"
 
 if [[ -n "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
-  if printf '%s' "$content" | tmux load-buffer -w - 2>/dev/null; then
+  if tmux load-buffer -w - <"$tmp" 2>/dev/null; then
     exit 0
   fi
 fi
 
 if ! in_ssh_session; then
   if command -v pbcopy >/dev/null 2>&1; then
-    printf '%s' "$content" | pbcopy
+    pbcopy <"$tmp"
     exit 0
   fi
 
   if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
-    printf '%s' "$content" | wl-copy
+    wl-copy <"$tmp"
     exit 0
   fi
 
   if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1; then
-    printf '%s' "$content" | xclip -selection clipboard
+    xclip -selection clipboard <"$tmp"
     exit 0
   fi
 
   if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1; then
-    printf '%s' "$content" | xsel --clipboard --input
+    xsel --clipboard --input <"$tmp"
     exit 0
   fi
 fi
 
-encoded=$(printf '%s' "$content" | base64 | tr -d '\n')
-
-trap '' SIGTTOU
-
-if [[ -w /dev/tty ]]; then
-  if [[ -n "${TMUX:-}" ]]; then
-    printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$encoded" >/dev/tty
-  else
-    printf "\033]52;c;%s\a" "$encoded" >/dev/tty
-  fi
+encoded="$(base64 <"$tmp" | tr -d '\r\n')"
+if emit_osc52 "$encoded"; then
   exit 0
 fi
 
