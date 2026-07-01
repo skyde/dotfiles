@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Verify the remote-tmux -> local-clipboard chain end to end.
+#
+# Run this on the LOCAL machine (e.g. the Mac) while a terminal you want to
+# test (VS Code integrated terminal, kitty, ...) is attached to the remote
+# tmux session. It loads a unique token into the remote tmux buffer with
+# forwarding (-w), which makes tmux emit OSC 52 to every attached client;
+# if the terminal applies it, the token shows up in the local clipboard.
+#
+# Usage: verify-clipboard <ssh-host>
+set -euo pipefail
+
+host="${1:?usage: verify-clipboard <ssh-host>}"
+token="clip-test-$(date +%s)-$RANDOM"
+
+local_paste() {
+  if command -v pbpaste >/dev/null 2>&1; then
+    pbpaste
+  elif [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-paste >/dev/null 2>&1; then
+    wl-paste
+  elif [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1; then
+    xclip -selection clipboard -o
+  else
+    echo "No local clipboard tool found (pbpaste/wl-paste/xclip)." >&2
+    exit 2
+  fi
+}
+
+echo "Sending token through $host's tmux buffer: $token"
+if ! ssh "$host" "printf '%s' '$token' | tmux load-buffer -w -"; then
+  echo "FAIL: could not reach tmux on $host (is a tmux server running?)" >&2
+  exit 1
+fi
+
+sleep 1
+got="$(local_paste)"
+
+if [[ "$got" == "$token" ]]; then
+  echo "PASS: remote tmux copy reached the local clipboard."
+  exit 0
+fi
+
+echo "FAIL: clipboard contains something else."
+echo "  expected: $token"
+echo "  got:      $got"
+echo
+echo "Checklist:"
+echo "  - Is a terminal actually attached to the remote tmux session?"
+echo "  - On the remote, inside tmux: tmux display -p '#{client_termfeatures}'"
+echo "    should include 'clipboard'."
+echo "  - Remote ~/.tmux.conf.local must not override 'set-clipboard on'."
+echo "  - See docs/clipboard.md for the full chain."
+exit 1

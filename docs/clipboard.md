@@ -52,6 +52,15 @@ step depending on who owns the tty.
   overridden in `~/.tmux.conf.local`.
 - VS Code new enough to support OSC 52 (anything from late 2022 on).
 
+## Verifying the whole chain
+
+Run `verify-clipboard <ssh-host>` **on the local machine** (it's stowed into
+`~/.local/bin` by these dotfiles) while VS Code or kitty has a terminal
+attached to the remote tmux session. It pushes a unique token through the
+remote tmux buffer with OSC 52 forwarding and checks that the token arrives
+in the local clipboard — a PASS means every hop from the remote tmux to the
+OS clipboard works.
+
 ## Troubleshooting
 
 - `:checkhealth clipboard` in nvim should report the `tmux` provider when
