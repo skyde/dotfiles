@@ -1,5 +1,54 @@
-#!/usr/bin/env sh
-set -eu
+#!/usr/bin/env bash
+# Fuzzy tmux session picker. Each session line also shows the AI coding
+# agents running inside it (Claude Code, opencode, codex, ...) and whether
+# they look busy or idle, courtesy of tmux-agent-status. See
+# docs/tmux-ai-agents.md for how to extend the agent list.
+set -euo pipefail
+
+bin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+self="$bin_dir/$(basename "${BASH_SOURCE[0]}")"
+agent_status="$bin_dir/tmux-agent-status"
+
+# One line per session, most recently active first:
+#   name|N windows|attached|agent[status] ...
+list_entries() {
+  local sessions agents
+  sessions=$(
+    tmux list-sessions -F '#{session_activity}|#{session_name}|#{session_windows} windows|#{?session_attached,attached,detached}' |
+      sort -rn -t'|' -k1,1 |
+      cut -d'|' -f2-
+  )
+  agents=$("$agent_status" summary --color 2>/dev/null || true)
+  awk -F'|' -v OFS='|' '
+    NR == FNR {
+      if ($0 == "") next
+      i = index($0, "\t")
+      summary[substr($0, 1, i - 1)] = substr($0, i + 1)
+      next
+    }
+    { print $1, $2, $3, ($1 in summary ? summary[$1] : "-") }
+  ' <(printf '%s\n' "$agents") <(printf '%s\n' "$sessions")
+}
+
+preview() {
+  tmux list-windows -t "$1" -F '#{window_index}: #{window_name} (#{window_panes} panes) #{?window_active,*, }#{pane_current_path}'
+  local agents
+  agents=$("$agent_status" session "$1" --color 2>/dev/null || true)
+  if [ -n "$agents" ]; then
+    printf '\nAI agents:\n%s\n' "$agents"
+  fi
+}
+
+case "${1:-}" in
+  --list)
+    list_entries
+    exit 0
+    ;;
+  --preview)
+    preview "$2"
+    exit 0
+    ;;
+esac
 
 if ! command -v fzf >/dev/null 2>&1; then
   tmux display-message 'fzf is required for fuzzy session switching'
@@ -7,18 +56,18 @@ if ! command -v fzf >/dev/null 2>&1; then
 fi
 
 selected=$(
-  tmux list-sessions -F '#{session_activity}|#{session_name}|#{session_windows} windows|#{?session_attached,attached,detached}' |
-    sort -rn -t'|' -k1,1 |
-    cut -d'|' -f2- |
-    fzf \
+  list_entries |
+    fzf --ansi \
+      --tmux center,90%,70% \
       --delimiter='|' \
-      --with-nth=1,2,3 \
       --prompt='session> ' \
       --header='enter: switch  ctrl-r: refresh  esc: cancel' \
-      --preview='tmux list-windows -t {1} -F "#{window_index}: #{window_name} (#{window_panes} panes) #{?window_active,*, }#{pane_current_path}"' \
-      --preview-window='right:60%:wrap' \
-      --bind='ctrl-r:reload(tmux list-sessions -F "#{session_activity}|#{session_name}|#{session_windows} windows|#{?session_attached,attached,detached}" | sort -rn -t"|" -k1,1 | cut -d"|" -f2-)' |
+      --preview="'$self' --preview {1}" \
+      --preview-window='right:50%:wrap' \
+      --bind="ctrl-r:reload('$self' --list)" |
     cut -d'|' -f1
-)
+) || true
 
-[ -n "$selected" ] && tmux switch-client -t "$selected"
+if [ -n "$selected" ]; then
+  tmux switch-client -t "$selected"
+fi

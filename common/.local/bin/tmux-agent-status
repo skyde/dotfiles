@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+# tmux-agent-status - report AI coding agents (Claude Code, opencode, codex,
+# aider, ...) running inside tmux panes, with a busy/idle status guess.
+#
+# Usage:
+#   tmux-agent-status [list]                    TSV: session window pane_id agent status
+#   tmux-agent-status summary [--color]         TSV: session "agent[status] ..."
+#   tmux-agent-status session <name> [--color]  readable lines for one session
+#
+# Agents are matched by process name: a pane counts as running an agent when
+# the pane's process or any of its descendants has that exact name
+# (case-insensitive). The built-in list can be extended without editing this
+# script:
+#   * ~/.config/tmux-agents.conf (path override: $TMUX_AGENTS_CONF)
+#       one agent per line: "name" or "name|busy-regex"
+#       lines starting with '#' and blank lines are ignored
+#       an entry with the same name as a built-in overrides it
+#   * $TMUX_AGENTS: extra names, comma/space/colon separated, e.g. "goose,amp"
+#
+# An agent is "busy" when the last $TMUX_AGENTS_SCAN_LINES (default 40)
+# visible lines of its pane match its busy-regex, which defaults to
+# $TMUX_AGENTS_BUSY_REGEX or a built-in pattern covering the common
+# "esc to interrupt" style hints these tools print while they are working.
+set -euo pipefail
+
+DEFAULT_AGENTS='claude
+opencode
+codex
+aider
+gemini
+goose
+amp
+crush
+droid
+cursor-agent
+copilot'
+
+DEFAULT_BUSY_REGEX='esc(ape)? to (interrupt|cancel|stop)|esc interrupt|ctrl\+c to (stop|interrupt|cancel|quit)|(working|thinking|generating)(\.\.\.|…)'
+
+SCAN_LINES="${TMUX_AGENTS_SCAN_LINES:-40}"
+BUSY_REGEX="${TMUX_AGENTS_BUSY_REGEX:-$DEFAULT_BUSY_REGEX}"
+CONF="${TMUX_AGENTS_CONF:-$HOME/.config/tmux-agents.conf}"
+
+PS_SNAPSHOT=''
+
+# Emit one "name|busy-regex" spec per line (regex may be empty). Later
+# sources win on duplicate names: defaults < config file < $TMUX_AGENTS.
+agent_specs() {
+  {
+    printf '%s\n' "$DEFAULT_AGENTS"
+    if [ -r "$CONF" ]; then
+      sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$CONF"
+    fi
+    if [ -n "${TMUX_AGENTS:-}" ]; then
+      printf '%s\n' "$TMUX_AGENTS" | tr ',: ' '\n\n\n' | sed '/^$/d'
+    fi
+  } | awk -F'|' '
+    {
+      name = tolower($1)
+      gsub(/^[ \t]+|[ \t]+$/, "", name)
+      if (name == "") next
+      if (!(name in spec)) order[++n] = name
+      spec[name] = $0
+    }
+    END { for (i = 1; i <= n; i++) print spec[order[i]] }'
+}
+
+# Print the process names (basename only) of pid $1 and all its descendants,
+# using the ps snapshot taken once per run.
+descendant_names() {
+  printf '%s\n' "$PS_SNAPSHOT" | awk -v root="$1" '
+    {
+      ppid[$1] = $2
+      c = $3
+      sub(/.*\//, "", c)
+      comm[$1] = c
+    }
+    END {
+      for (p in ppid) {
+        q = p
+        depth = 0
+        while (q != root && (q in ppid) && depth++ < 64) q = ppid[q]
+        if (q == root) print comm[p]
+      }
+    }'
+}
+
+pane_busy() {
+  tmux capture-pane -p -t "$1" 2>/dev/null | tail -n "$SCAN_LINES" | grep -Eiq -- "$2"
+}
+
+cmd_list() {
+  local panes specs sess win pane pid names name regex status
+  # tmux replaces tabs in expanded formats, so use '|' and keep the session
+  # name last: it is the only field that could itself contain a '|'.
+  panes=$(tmux list-panes -a -F '#{pane_pid}|#{window_index}|#{pane_id}|#{session_name}' 2>/dev/null) || return 0
+  [ -n "$panes" ] || return 0
+  specs=$(agent_specs)
+  PS_SNAPSHOT=$(ps -eo pid=,ppid=,comm=)
+  while IFS='|' read -r pid win pane sess; do
+    names=$(descendant_names "$pid")
+    while IFS='|' read -r name regex; do
+      [ -n "$name" ] || continue
+      if printf '%s\n' "$names" | grep -Fqxi -- "$name"; then
+        status=idle
+        if pane_busy "$pane" "${regex:-$BUSY_REGEX}"; then
+          status=busy
+        fi
+        printf '%s\t%s\t%s\t%s\t%s\n' "$sess" "$win" "$pane" "$name" "$status"
+      fi
+    done <<<"$specs"
+  done <<<"$panes"
+}
+
+cmd_summary() {
+  cmd_list | awk -F'\t' -v color="$1" '
+    {
+      if (!($1 in line)) order[++n] = $1
+      if (color) {
+        c = ($5 == "busy") ? "\033[33m" : "\033[32m"
+        item = c $4 "[" $5 "]\033[0m"
+      } else {
+        item = $4 "[" $5 "]"
+      }
+      if ($1 in line) {
+        line[$1] = line[$1] " " item
+      } else {
+        line[$1] = item
+      }
+    }
+    END { for (i = 1; i <= n; i++) printf "%s\t%s\n", order[i], line[order[i]] }'
+}
+
+cmd_session() {
+  cmd_list | awk -F'\t' -v color="$1" -v s="$2" '
+    $1 == s {
+      status = $5
+      if (color) status = (($5 == "busy") ? "\033[33m" : "\033[32m") $5 "\033[0m"
+      printf "%-14s %s  (window %s, pane %s)\n", $4, status, $2, $3
+    }'
+}
+
+usage() {
+  sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+cmd="${1:-list}"
+if [ $# -gt 0 ]; then
+  shift
+fi
+
+color=0
+target=''
+for arg in "$@"; do
+  case "$arg" in
+    --color) color=1 ;;
+    *) target="$arg" ;;
+  esac
+done
+
+case "$cmd" in
+  list) cmd_list ;;
+  summary) cmd_summary "$color" ;;
+  session)
+    if [ -z "$target" ]; then
+      echo 'usage: tmux-agent-status session <name> [--color]' >&2
+      exit 1
+    fi
+    cmd_session "$color" "$target"
+    ;;
+  help | -h | --help) usage ;;
+  *)
+    echo "tmux-agent-status: unknown command '$cmd' (try --help)" >&2
+    exit 1
+    ;;
+esac
