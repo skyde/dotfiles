@@ -99,8 +99,8 @@ desc = "Copy the filename without extension"
 
 [[mgr.prepend_keymap]]
 on = [ "f", "d" ]
-run = "shell 'if [ -d \"$1\" ]; then copy-download-command \"$1\"; else copy-download-command; fi'"
-desc = "Copy download command for current or hovered directory"
+run = "shell 'copy-download-command \"$1\"'"
+desc = "Copy download command for hovered file or directory"
 
 [[mgr.prepend_keymap]]
 on = ["s"]
