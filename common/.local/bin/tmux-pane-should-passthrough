@@ -1,0 +1,2513 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+current_command="${1:-}"
+pane_tty="${2:-}"
+passthrough_pattern='^(vi|view|vim|vimdiff|vim\.basic|vim\.tiny|nvim|nvimdiff|hx|helix|less|more|most|man|fzf|fzf-tmux|sk|lazygit|gitui|tig|tmux|screen|zellij|lazydocker|k9s|btop|htop|yazi|lf|ranger|nnn|bpython|ipython|ptpython|pdb|ipdb|pudb|irb|pry|rdbg|gdb|lldb|rr|ghci|iex|erl|utop|jshell|radian|phpdbg|codex|opencode|gemini|claude|aider|autossh|ssh|mosh|mosh-client)$'
+
+command_name() {
+  local command="$1"
+  command="${command##*/}"
+  command="${command##*\\}"
+  case "$command" in
+    *.[eE][xX][eE] | *.[cC][mM][dD] | *.[bB][aA][tT])
+      command="${command%.*}"
+      if [[ "$command" == [Rr] ]]; then
+        printf 'R\n'
+        return
+      fi
+      command="$(ascii_lower "$command")"
+      ;;
+  esac
+  printf '%s\n' "$command"
+}
+
+ascii_lower() {
+  local value="$1"
+  local upper="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  local lower="abcdefghijklmnopqrstuvwxyz"
+  local index
+
+  for ((index = 0; index < ${#upper}; index++)); do
+    value="${value//${upper:index:1}/${lower:index:1}}"
+  done
+
+  printf '%s\n' "$value"
+}
+
+command_matches() {
+  local name
+  name="$(command_name "$1")"
+  [[ "$name" =~ $passthrough_pattern ]]
+}
+
+split_result=()
+
+push_split_word() {
+  if [[ "${split_in_word:-0}" -eq 1 ]]; then
+    split_result+=("$split_current")
+    split_current=""
+    split_in_word=0
+  fi
+}
+
+split_words() {
+  local line="$1"
+  local quote="" escaped=0 index character next_character previous_character
+
+  split_result=()
+  split_current=""
+  split_in_word=0
+
+  for ((index = 0; index < ${#line}; index++)); do
+    character="${line:index:1}"
+    next_character="${line:index + 1:1}"
+    previous_character="${split_current: -1}"
+
+    if [[ "$escaped" -eq 1 ]]; then
+      split_current+="$character"
+      split_in_word=1
+      escaped=0
+    elif [[ "$character" == "\\" && "$quote" != "'" ]]; then
+      if [[ "$split_current" =~ ^[A-Za-z]: || "$split_current" == \\\\* ]]; then
+        split_current+="$character"
+        split_in_word=1
+      elif [[ -z "$split_current" && "$next_character" == "\\" ]]; then
+        split_current+="\\\\"
+        split_in_word=1
+        ((index++))
+      else
+        escaped=1
+        split_in_word=1
+      fi
+    elif [[ -n "$quote" ]]; then
+      if [[ "$character" == "$quote" ]]; then
+        quote=""
+      else
+        split_current+="$character"
+      fi
+      split_in_word=1
+    elif [[ "$character" == "'" || "$character" == '"' ]]; then
+      quote="$character"
+      split_in_word=1
+    elif [[ "$character" =~ [[:space:]] ]]; then
+      push_split_word
+    elif [[ "$character" == ";" ]]; then
+      push_split_word
+      split_result+=("$character")
+    elif [[ "$character" == "&" ]]; then
+      if [[ "$next_character" == "&" ]]; then
+        push_split_word
+        split_result+=("&&")
+        ((index++))
+      elif [[ "$next_character" == ">" || "$previous_character" == ">" || "$previous_character" == "<" ]]; then
+        split_current+="$character"
+        split_in_word=1
+      else
+        push_split_word
+        split_result+=("$character")
+      fi
+    elif [[ "$character" == "|" ]]; then
+      push_split_word
+      if [[ "$next_character" == "|" ]]; then
+        split_result+=("||")
+        ((index++))
+      else
+        split_result+=("$character")
+      fi
+    else
+      split_current+="$character"
+      split_in_word=1
+    fi
+  done
+
+  if [[ "$escaped" -eq 1 ]]; then
+    split_current+="\\"
+  fi
+
+  push_split_word
+}
+
+insert_split_words() {
+  local index="$1"
+  shift
+  local old_words=("${split_result[@]}")
+  local current_index word
+
+  split_result=()
+  for ((current_index = 0; current_index < index && current_index < ${#old_words[@]}; current_index++)); do
+    split_result+=("${old_words[$current_index]}")
+  done
+  for word in "$@"; do
+    split_result+=("$word")
+  done
+  for ((; current_index < ${#old_words[@]}; current_index++)); do
+    split_result+=("${old_words[$current_index]}")
+  done
+}
+
+is_assignment() {
+  [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]
+}
+
+is_control_operator() {
+  case "$1" in
+    "&" | "&&" | ";" | "|" | "||") return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_shell_command() {
+  case "$1" in
+    bash | dash | fish | ksh | nu | nushell | powershell | pwsh | sh | xonsh | zsh) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_shell_setup_command() {
+  case "$1" in
+    "." | alias | cd | clear | echo | export | popd | printf | pushd | set | source | trap | true | ulimit | umask | unset) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_failure_handler_command() {
+  case "$1" in
+    exit | return) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_wrapper_command() {
+  case "$1" in
+    arch | command | doas | env | exec | gtime | nice | noglob | rlwrap | setsid | sshpass | stdbuf | sudo | time | unbuffer | winpty) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_ssh_command() {
+  case "$1" in
+    autossh | ssh) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+dev_wrapper_command_index() {
+  local index="$1" command="$2"
+  local subcommand word option
+
+  case "$command" in
+    asdf)
+      if [[ "${split_result[$((index + 1))]:-}" == "exec" && -n "${split_result[$((index + 2))]:-}" ]]; then
+        printf '%s\n' "$((index + 2))"
+        return 0
+      fi
+      ;;
+    bundle | bundler)
+      bundle_exec_command_index "$index"
+      return $?
+      ;;
+    direnv)
+      if [[ "${split_result[$((index + 1))]:-}" == "exec" && -n "${split_result[$((index + 3))]:-}" ]]; then
+        index=$((index + 3))
+        [[ "${split_result[$index]:-}" == "--" ]] && ((index++))
+        [[ -n "${split_result[$index]:-}" ]] || return 1
+        printf '%s\n' "$index"
+        return 0
+      fi
+      ;;
+    devcontainer)
+      if [[ "${split_result[$((index + 1))]:-}" == "exec" ]]; then
+        index="$(devcontainer_exec_command_index "$((index + 2))")" || return 1
+        printf '%s\n' "$index"
+        return 0
+      fi
+      ;;
+    hatch)
+      hatch_command_index "$index"
+      return $?
+      ;;
+    mise | rtx)
+      subcommand="${split_result[$((index + 1))]:-}"
+      if [[ "$subcommand" == "exec" || "$subcommand" == "x" ]]; then
+        index=$((index + 2))
+        while [[ -n "${split_result[$index]:-}" ]]; do
+          if [[ "${split_result[$index]}" == "--" && -n "${split_result[$((index + 1))]:-}" ]]; then
+            printf '%s\n' "$((index + 1))"
+            return 0
+          fi
+          ((index++))
+        done
+      fi
+      ;;
+    nix)
+      local command_string
+
+      subcommand="${split_result[$((index + 1))]:-}"
+      if [[ "$subcommand" == "develop" || "$subcommand" == "shell" ]]; then
+        index=$((index + 2))
+        while [[ -n "${split_result[$index]:-}" ]]; do
+          word="${split_result[$index]}"
+          option="$(option_without_value "$word")"
+          if [[ "$option" == "-c" || "$option" == "--command" ]]; then
+            command_string="$(option_value "$word")"
+            if [[ -n "$command_string" ]]; then
+              command_string_result "$((index + 1))" "$command_string"
+              return $?
+            fi
+            [[ -n "${split_result[$((index + 1))]:-}" ]] || return 1
+            printf '%s\n' "$((index + 1))"
+            return 0
+          fi
+          ((index++))
+        done
+      elif [[ "$subcommand" == "run" ]]; then
+        index=$((index + 2))
+        while [[ -n "${split_result[$index]:-}" ]]; do
+          if [[ "${split_result[$index]}" == "--" && -n "${split_result[$((index + 1))]:-}" ]]; then
+            printf '%s\n' "$((index + 1))"
+            return 0
+          fi
+          ((index++))
+        done
+      fi
+      ;;
+    poetry)
+      index="$(skip_command_options "$((index + 1))" poetry-global)"
+      if [[ "${split_result[$index]:-}" == "run" ]]; then
+        poetry_run_command_index "$index"
+        return $?
+      fi
+      ;;
+    pixi)
+      pixi_command_index "$index"
+      return $?
+      ;;
+    pipenv)
+      index="$(skip_command_options "$((index + 1))" pipenv-global)"
+      if [[ "${split_result[$index]:-}" == "run" ]]; then
+        poetry_run_command_index "$index"
+        return $?
+      fi
+      ;;
+    pipx)
+      if [[ "${split_result[$((index + 1))]:-}" == "run" ]]; then
+        package_executable_command_index "$((index + 2))" pipx-run
+        return $?
+      fi
+      ;;
+    uv)
+      index="$(skip_command_options "$((index + 1))" uv-global)"
+      if [[ "${split_result[$index]:-}" == "run" ]]; then
+        uv_run_command_index "$index"
+        return $?
+      elif [[ "${split_result[$index]:-}" == "tool" ]]; then
+        index="$(skip_command_options "$((index + 1))" uv-global)"
+        if [[ "${split_result[$index]:-}" == "run" ]]; then
+          uv_tool_run_command_index "$index"
+          return $?
+        fi
+      fi
+      ;;
+    uvx)
+      uv_tool_run_command_index "$index"
+      return $?
+      ;;
+  esac
+
+  return 1
+}
+
+hatch_command_index() {
+  local index="$1" subcommand
+
+  index="$(skip_command_options "$((index + 1))" hatch-global)"
+  subcommand="${split_result[$index]:-}"
+  if [[ "$subcommand" == "run" ]]; then
+    hatch_run_command_index "$((index + 1))"
+    return $?
+  elif [[ "$subcommand" == "env" && "${split_result[$((index + 1))]:-}" == "run" ]]; then
+    index="$(skip_command_options "$((index + 2))" hatch-env-run)"
+    hatch_run_command_index "$index"
+    return $?
+  fi
+
+  return 1
+}
+
+bundle_exec_command_index() {
+  local index="$1" word
+
+  ((index++))
+  if [[ "${split_result[$index]:-}" == _*_ ]]; then
+    ((index++))
+  fi
+
+  [[ "${split_result[$index]:-}" == "exec" ]] || return 1
+  ((index++))
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    word="${split_result[$index]}"
+    ((index++))
+    [[ "$word" == "--" ]] && break
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+hatch_run_command_index() {
+  local index="$1" command_word command_name
+
+  while [[ -n "${split_result[$index]:-}" ]]; do
+    command_word="${split_result[$index]}"
+    if [[ "$command_word" == "--" ]]; then
+      ((index++))
+      break
+    fi
+    [[ "$command_word" == +* || "$command_word" == -* ]] || break
+    ((index++))
+  done
+
+  command_word="${split_result[$index]:-}"
+  [[ -n "$command_word" ]] || return 1
+
+  if [[ "$command_word" == *:* ]]; then
+    command_name="${command_word##*:}"
+    [[ -n "$command_name" ]] || return 1
+    command_string_result "$((index + 1))" "$command_name"
+    return $?
+  fi
+
+  printf '%s\n' "$index"
+}
+
+command_string_result() {
+  local index="$1" split_string="$2"
+
+  [[ -n "$split_string" ]] || return 1
+
+  printf 'command-string\n%s\n%s\n' "$split_string" "$index"
+}
+
+js_wrapper_command_index() {
+  local index="$1" command="$2"
+
+  case "$command" in
+    bun)
+      bun_command_index "$index"
+      return $?
+      ;;
+    bunx)
+      package_executable_command_index "$((index + 1))" bunx
+      return $?
+      ;;
+    corepack)
+      corepack_command_index "$index"
+      return $?
+      ;;
+    npm | npx)
+      npm_exec_command_index "$index" "$command"
+      return $?
+      ;;
+    pnpm)
+      pnpm_command_index "$index"
+      return $?
+      ;;
+    pnpx | pnx)
+      package_executable_command_index "$((index + 1))" pnpm-dlx
+      return $?
+      ;;
+    yarn | yarnpkg)
+      yarn_command_index "$index"
+      return $?
+      ;;
+  esac
+
+  return 1
+}
+
+corepack_command_index() {
+  local index="$1" manager manager_name
+
+  manager="${split_result[$((index + 1))]:-}"
+  [[ -n "$manager" && "$manager" != -* ]] || return 1
+  manager_name="${manager%@*}"
+
+  case "$manager_name" in
+    npm | npx)
+      npm_exec_command_index "$((index + 1))" "$manager_name"
+      return $?
+      ;;
+    pnpm)
+      pnpm_command_index "$((index + 1))"
+      return $?
+      ;;
+    pnpx | pnx)
+      package_executable_command_index "$((index + 2))" pnpm-dlx
+      return $?
+      ;;
+    yarn | yarnpkg)
+      yarn_command_index "$((index + 1))"
+      return $?
+      ;;
+  esac
+
+  return 1
+}
+
+package_executable_command_index() {
+  local index="$1" family="$2"
+  local word key
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+    ((index++))
+
+    if [[ "$word" == "--" ]]; then
+      break
+    elif command_option_takes_value "$family" "$key" && [[ "$word" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+bun_command_index() {
+  local index="$1"
+
+  if [[ "${split_result[$((index + 1))]:-}" == "x" ]]; then
+    package_executable_command_index "$((index + 2))" bunx
+    return $?
+  fi
+
+  return 1
+}
+
+yarn_command_index() {
+  local index="$1"
+  local subcommand command_string
+
+  subcommand="${split_result[$((index + 1))]:-}"
+  case "$subcommand" in
+    dlx)
+      package_executable_command_index "$((index + 2))" yarn-dlx
+      return $?
+      ;;
+    exec)
+      index=$((index + 2))
+      command_string="${split_result[$index]:-}"
+      [[ -n "$command_string" ]] || return 1
+      command_string_result "$((index + 1))" "$command_string"
+      return $?
+      ;;
+  esac
+
+  return 1
+}
+
+npm_exec_command_index() {
+  local index="$1" command="$2"
+  local subcommand word option key command_string
+
+  if [[ "$command" == "npm" ]]; then
+    subcommand="${split_result[$((index + 1))]:-}"
+    [[ "$subcommand" == "exec" || "$subcommand" == "x" ]] || return 1
+    index=$((index + 2))
+  else
+    index=$((index + 1))
+  fi
+
+  while [[ -n "${split_result[$index]:-}" ]]; do
+    word="${split_result[$index]}"
+    option="$(option_without_value "$word")"
+    key="$option"
+
+    if [[ "$word" == "--" ]]; then
+      ((index++))
+      [[ -n "${split_result[$index]:-}" ]] || return 1
+      printf '%s\n' "$index"
+      return 0
+    elif [[ "$key" == "-c" || "$key" == "--call" ]]; then
+      command_string="$(option_value "$word")"
+      ((index++))
+      if [[ "$word" == "$key" ]]; then
+        command_string="${split_result[$index]:-}"
+        ((index++))
+      fi
+      command_string_result "$index" "$command_string"
+      return $?
+    elif [[ "$word" == -* ]]; then
+      ((index++))
+      if command_option_takes_value npm-exec "$key" && [[ "$word" == "$key" ]]; then
+        ((index++))
+      fi
+    else
+      printf '%s\n' "$index"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+pnpm_command_index() {
+  local index="$1"
+  local word key subcommand shell_mode=0
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+
+    if [[ "$word" == "exec" || "$word" == "dlx" ]]; then
+      subcommand="$word"
+      ((index++))
+      break
+    fi
+
+    [[ "$word" == -* ]] || return 1
+    ((index++))
+    [[ "$word" == "--" ]] && return 1
+
+    if [[ "$key" == "-c" || "$key" == "--shell-mode" ]]; then
+      shell_mode=1
+    elif command_option_takes_value pnpm-global "$key" && [[ "$word" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+
+  case "${subcommand:-}" in
+    exec)
+      pnpm_subcommand_command_index "$index" pnpm-exec "$shell_mode"
+      return $?
+      ;;
+    dlx)
+      pnpm_subcommand_command_index "$index" pnpm-dlx "$shell_mode"
+      return $?
+      ;;
+  esac
+
+  return 1
+}
+
+pnpm_subcommand_command_index() {
+  local index="$1" family="$2" shell_mode="$3"
+  local word key command_word
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+    ((index++))
+
+    if [[ "$word" == "--" ]]; then
+      break
+    elif [[ "$key" == "-c" || "$key" == "--shell-mode" ]]; then
+      shell_mode=1
+    elif command_option_takes_value "$family" "$key" && [[ "$word" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  command_word="${split_result[$index]:-}"
+  [[ -n "$command_word" ]] || return 1
+  if [[ "$shell_mode" == "1" ]]; then
+    command_string_result "$index" "$command_word"
+    return $?
+  fi
+
+  printf '%s\n' "$index"
+}
+
+command_option_takes_value() {
+  local family="$1" key="$2"
+
+  case "$family:$key" in
+    bunx:--package | bunx:-p)
+      return 0
+      ;;
+    hatch-global:--env | hatch-global:-e)
+      return 0
+      ;;
+    hatch-env-run:--env | hatch-env-run:--exclude | hatch-env-run:--filter | hatch-env-run:--include | hatch-env-run:-e | hatch-env-run:-f | hatch-env-run:-i | hatch-env-run:-x)
+      return 0
+      ;;
+    npm-exec:--call | npm-exec:--package | npm-exec:--workspace | npm-exec:-c | npm-exec:-p | npm-exec:-w)
+      return 0
+      ;;
+    pipenv-global:--pypi-mirror | pipenv-global:--python)
+      return 0
+      ;;
+    pipx-run:--backend | pipx-run:--fetch-python | pipx-run:--index-url | pipx-run:--pip-args | pipx-run:--python | pipx-run:--spec | pipx-run:--with | pipx-run:-i)
+      return 0
+      ;;
+    pixi-global:--manifest-path)
+      return 0
+      ;;
+    pixi-run:--environment | pixi-run:-e)
+      return 0
+      ;;
+    poetry-global:--directory | poetry-global:--project | poetry-global:-C | poetry-global:-P)
+      return 0
+      ;;
+    pnpm-global:--dir | pnpm-global:--filter | pnpm-global:--filter-prod | pnpm-global:--workspace-concurrency | pnpm-global:-C | pnpm-global:-F)
+      return 0
+      ;;
+    pnpm-exec:--changed-files-ignore-pattern | pnpm-exec:--dir | pnpm-exec:--filter | pnpm-exec:--filter-prod | pnpm-exec:--loglevel | pnpm-exec:--resume-from | pnpm-exec:--test-pattern | pnpm-exec:-C | pnpm-exec:-F)
+      return 0
+      ;;
+    pnpm-dlx:--allow-build | pnpm-dlx:--package | pnpm-dlx:--reporter)
+      return 0
+      ;;
+    uv-global:--cache-dir | uv-global:--color | uv-global:--config-file | uv-global:--directory | uv-global:--keyring-provider | uv-global:--password | uv-global:--project | uv-global:--token | uv-global:--username | uv-global:-C | uv-global:-t | uv-global:-u)
+      return 0
+      ;;
+    uv-run:--allow-insecure-host | uv-run:--config-file | uv-run:--default-index | uv-run:--directory | uv-run:--env-file | uv-run:--exclude-newer | uv-run:--extra | uv-run:--extra-index-url | uv-run:--find-links | uv-run:--fork-strategy | uv-run:--from | uv-run:--group | uv-run:--index | uv-run:--index-strategy | uv-run:--index-url | uv-run:--keyring-provider | uv-run:--link-mode | uv-run:--managed-python | uv-run:--no-binary | uv-run:--no-binary-package | uv-run:--no-build | uv-run:--no-build-isolation-package | uv-run:--no-build-package | uv-run:--no-editable-package | uv-run:--no-extra | uv-run:--no-group | uv-run:--no-sources-package | uv-run:--only-group | uv-run:--override | uv-run:--overrides | uv-run:--package | uv-run:--prerelease | uv-run:--project | uv-run:--python | uv-run:--refresh-package | uv-run:--requirement | uv-run:--resolution | uv-run:--upgrade-package | uv-run:--with | uv-run:--with-editable | uv-run:--with-requirements | uv-run:--with-requirement | uv-run:--with-sources | uv-run:--with-workspace | uv-run:--workspace | uv-run:-C | uv-run:-i | uv-run:-p)
+      return 0
+      ;;
+    uv-tool-run:--allow-insecure-host | uv-tool-run:--build-constraint | uv-tool-run:--build-constraints | uv-tool-run:--cache-dir | uv-tool-run:--color | uv-tool-run:--config-file | uv-tool-run:--config-setting | uv-tool-run:--config-settings | uv-tool-run:--config-settings-package | uv-tool-run:--constraint | uv-tool-run:--constraints | uv-tool-run:--default-index | uv-tool-run:--directory | uv-tool-run:--env-file | uv-tool-run:--exclude-newer | uv-tool-run:--exclude-newer-package | uv-tool-run:--extra-index-url | uv-tool-run:--find-links | uv-tool-run:--fork-strategy | uv-tool-run:--from | uv-tool-run:--index | uv-tool-run:--index-strategy | uv-tool-run:--index-url | uv-tool-run:--keyring-provider | uv-tool-run:--link-mode | uv-tool-run:--no-binary-package | uv-tool-run:--no-build-isolation-package | uv-tool-run:--no-build-package | uv-tool-run:--no-sources-package | uv-tool-run:--override | uv-tool-run:--overrides | uv-tool-run:--password | uv-tool-run:--prerelease | uv-tool-run:--project | uv-tool-run:--python | uv-tool-run:--python-platform | uv-tool-run:--refresh-package | uv-tool-run:--reinstall-package | uv-tool-run:--resolution | uv-tool-run:--token | uv-tool-run:--torch-backend | uv-tool-run:--trusted-host | uv-tool-run:--upgrade-group | uv-tool-run:--upgrade-package | uv-tool-run:--username | uv-tool-run:--with | uv-tool-run:--with-editable | uv-tool-run:--with-requirements | uv-tool-run:-b | uv-tool-run:-C | uv-tool-run:-c | uv-tool-run:-f | uv-tool-run:-i | uv-tool-run:-p | uv-tool-run:-P | uv-tool-run:-t | uv-tool-run:-u | uv-tool-run:-w)
+      return 0
+      ;;
+    yarn-dlx:--package | yarn-dlx:-p)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+skip_command_options() {
+  local index="$1" family="$2"
+  local option key
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    if command_option_takes_value "$family" "$key" && [[ "$option" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  printf '%s\n' "$index"
+}
+
+poetry_run_command_index() {
+  local index="$1"
+
+  ((index++))
+  [[ "${split_result[$index]:-}" == "--" ]] && ((index++))
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+pixi_command_index() {
+  local index="$1" option key
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    case "$key" in
+      --help | -h | --version | -V)
+        return 1
+        ;;
+    esac
+
+    if command_option_takes_value pixi-global "$key" && [[ "$option" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ "${split_result[$index]:-}" == "run" ]] || return 1
+  pixi_run_command_index "$index"
+}
+
+pixi_run_command_index() {
+  local index="$1" option key
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    case "$key" in
+      --dry-run | -n | --help | -h | --version | -V)
+        return 1
+        ;;
+    esac
+
+    if command_option_takes_value pixi-run "$key" && [[ "$option" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+uv_run_command_index() {
+  local index="$1" option key
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    if [[ "$option" == "-m" || "$option" == "--module" ]]; then
+      return 1
+    fi
+
+    if command_option_takes_value uv-run "$key" && [[ "$option" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+uv_tool_run_command_index() {
+  local index="$1" option key
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    case "$key" in
+      --help | -h | --version | -V)
+        return 1
+        ;;
+    esac
+
+    if command_option_takes_value uv-tool-run "$key" && [[ "$option" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+devcontainer_exec_command_index() {
+  local index="$1" option key
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    case "$key" in
+      --workspace-folder | --config | --id-label | --log-level | --log-format | --remote-env | --remote-env-file | --user | --default-user-env-probe | --container-session-data-folder | --secrets-file | --secrets | --mount | --gpu-availability | --additional-features | --additional-features-file | --dotfiles-repository | --dotfiles-target-path | --dotfiles-install-command | --tmp-dir | --cache-from | --cache-to)
+        [[ "$option" == "$key" ]] && ((index++))
+        ;;
+    esac
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+container_global_option_takes_value() {
+  local command="$1" key="$2"
+
+  case "$command:$key" in
+    docker:--config | docker:--context | docker:--host | docker:--log-level | docker:--tlscacert | docker:--tlscert | docker:--tlskey | docker:-c | docker:-H | docker:-l)
+      return 0
+      ;;
+    podman:--cgroup-manager | podman:--config | podman:--connection | podman:--events-backend | podman:--identity | podman:--imagestore | podman:--log-level | podman:--module | podman:--namespace | podman:--network-cmd-path | podman:--out | podman:--root | podman:--runroot | podman:--runtime | podman:--storage-driver | podman:--storage-opt | podman:--tmpdir | podman:--url | podman:--volumepath)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+container_global_option_stops_execution() {
+  case "$1" in
+    --help | --version | -h | -v)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+skip_container_global_options() {
+  local index="$1" command="$2"
+  local option key
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]] || container_global_option_stops_execution "$key"; then
+      return 1
+    fi
+
+    if container_global_option_takes_value "$command" "$key" && [[ "$option" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+container_attach_matches() {
+  local index="$1" option key
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    case "$key" in
+      --no-stdin)
+        option_value_is_false "$option" || return 1
+        ;;
+      --detach-keys)
+        [[ "$option" == "$key" ]] && ((index++))
+        ;;
+    esac
+  done
+
+  [[ -n "${split_result[$index]:-}" ]]
+}
+
+container_start_matches() {
+  local index="$1" option key attach=0 interactive=0
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    if [[ "$key" == "-a" ]] || { [[ "$key" == "--attach" ]] && ! option_value_is_false "$option"; } ||
+      option_has_short_flag "$option" "a"; then
+      attach=1
+    fi
+    if [[ "$key" == "-i" ]] || { [[ "$key" == "--interactive" ]] && ! option_value_is_false "$option"; } ||
+      option_has_short_flag "$option" "i"; then
+      interactive=1
+    fi
+
+    case "$key" in
+      --checkpoint | --checkpoint-dir | --detach-keys)
+        [[ "$option" == "$key" ]] && ((index++))
+        ;;
+    esac
+  done
+
+  [[ "$attach" == "1" && "$interactive" == "1" && -n "${split_result[$index]:-}" ]]
+}
+
+container_exec_command_index() {
+  local index="$1" command="$2"
+  local option key subcommand
+
+  case "$command" in
+    docker | podman)
+      index="$(skip_container_global_options "$((index + 1))" "$command")" || return 1
+      subcommand="${split_result[$index]:-}"
+      if [[ "$subcommand" == "container" && "${split_result[$((index + 1))]:-}" == "attach" ]]; then
+        container_attach_matches "$((index + 2))" || return 1
+        printf 'passthrough\n'
+        return 0
+      elif [[ "$subcommand" == "container" && "${split_result[$((index + 1))]:-}" == "exec" ]]; then
+        index=$((index + 2))
+      elif [[ "$subcommand" == "container" && "${split_result[$((index + 1))]:-}" == "start" ]]; then
+        container_start_matches "$((index + 2))" || return 1
+        printf 'passthrough\n'
+        return 0
+      elif [[ "$subcommand" == "attach" ]]; then
+        container_attach_matches "$((index + 1))" || return 1
+        printf 'passthrough\n'
+        return 0
+      elif [[ "$subcommand" == "exec" ]]; then
+        index=$((index + 1))
+      elif [[ "$subcommand" == "run" ]]; then
+        index="$(container_run_command_index "$((index + 1))")" || return 1
+        printf '%s\n' "$index"
+        return 0
+      elif [[ "$subcommand" == "start" ]]; then
+        container_start_matches "$((index + 1))" || return 1
+        printf 'passthrough\n'
+        return 0
+      elif [[ "$subcommand" == "compose" ]]; then
+        index="$(compose_command_index "$((index + 1))")" || return 1
+        printf '%s\n' "$index"
+        return 0
+      else
+        return 1
+      fi
+
+      while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+        option="${split_result[$index]}"
+        key="$(option_without_value "$option")"
+        ((index++))
+
+        if [[ "$option" == "--" ]]; then
+          break
+        fi
+
+        case "$key" in
+          -e | --env | --env-file | -u | --user | -w | --workdir | --detach-keys)
+            [[ "$option" == "$key" ]] && ((index++))
+            ;;
+        esac
+      done
+
+      [[ -n "${split_result[$index]:-}" ]] || return 1
+      ((index++))
+      [[ -n "${split_result[$index]:-}" ]] || return 1
+      [[ "${split_result[$index]}" == "--" ]] && ((index++))
+      [[ -n "${split_result[$index]:-}" ]] || return 1
+      printf '%s\n' "$index"
+      return 0
+      ;;
+    docker-compose | podman-compose)
+      index="$(compose_command_index "$((index + 1))")" || return 1
+      printf '%s\n' "$index"
+      return 0
+      ;;
+    kubectl | oc)
+      index="$(skip_kubernetes_global_options "$((index + 1))")" || return 1
+      subcommand="${split_result[$index]:-}"
+      if [[ "$subcommand" == "exec" ]]; then
+        index="$(kubernetes_exec_command_index "$((index + 1))")" || return 1
+        printf '%s\n' "$index"
+      elif [[ "$subcommand" == "attach" ]]; then
+        kubernetes_attach_matches "$((index + 1))" || return 1
+        printf 'passthrough\n'
+      else
+        return 1
+      fi
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+kubernetes_exec_option_takes_value() {
+  case "$1" in
+    --as | --as-group | --as-uid | --cache-dir | --certificate-authority | --client-certificate | --client-key | --cluster | -c | --container | --context | -f | --filename | -l | --selector | --kubeconfig | --log-flush-frequency | -n | --namespace | --password | --pod-running-timeout | --profile | --profile-output | --request-timeout | -s | --server | --tls-server-name | --token | --user | --username | -v | --v | --vmodule)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+kubernetes_short_option_has_flag() {
+  local option="$1" flag="$2" flags character index
+
+  [[ "$option" == -[^-]* ]] || return 1
+  flags="${option#-}"
+
+  for ((index = 0; index < ${#flags}; index++)); do
+    character="${flags:index:1}"
+    if [[ "$character" == "$flag" ]]; then
+      return 0
+    fi
+    if kubernetes_exec_option_takes_value "-$character"; then
+      return 1
+    fi
+  done
+
+  return 1
+}
+
+skip_kubernetes_global_options() {
+  local index="$1" option key
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      return 1
+    fi
+
+    case "$key" in
+      --help | --version | -h)
+        return 1
+        ;;
+    esac
+
+    if kubernetes_exec_option_takes_value "$key" && [[ "$option" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+kubernetes_exec_command_index() {
+  local index="$1" option key
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      [[ -n "${split_result[$index]:-}" ]] || return 1
+      printf '%s\n' "$index"
+      return 0
+    fi
+
+    if kubernetes_exec_option_takes_value "$key" && [[ "$option" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  ((index++))
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    if kubernetes_exec_option_takes_value "$key" && [[ "$option" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+kubernetes_attach_matches() {
+  local index="$1" option key stdin=0 target=0
+
+  while [[ -n "${split_result[$index]:-}" ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+
+    if [[ "$option" == "--" ]]; then
+      ((index++))
+      continue
+    elif [[ "$option" == -* ]]; then
+      if [[ "$key" == "-i" ]] || { [[ "$key" == "--stdin" ]] && ! option_value_is_false "$option"; } ||
+        kubernetes_short_option_has_flag "$option" "i"; then
+        stdin=1
+      fi
+      ((index++))
+      if kubernetes_exec_option_takes_value "$key" && [[ "$option" == "$key" ]]; then
+        ((index++))
+      fi
+      continue
+    fi
+
+    target=1
+    ((index++))
+  done
+
+  [[ "$stdin" == "1" && "$target" == "1" ]]
+}
+
+compose_command_index() {
+  local index="$1" option key subcommand
+
+  while [[ -n "${split_result[$index]:-}" ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+
+    if [[ "$option" == "exec" || "$option" == "run" ]]; then
+      subcommand="$option"
+      index=$((index + 1))
+      break
+    fi
+
+    [[ "$option" == -* ]] || return 1
+    ((index++))
+    [[ "$option" == "--" ]] && return 1
+
+    case "$key" in
+      -f | --file | -p | --project-name | --profile | --env-file | --project-directory | --ansi | --progress | --parallel)
+        [[ "$option" == "$key" ]] && ((index++))
+        ;;
+    esac
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+
+  case "${subcommand:-}" in
+    exec)
+      compose_exec_command_index "$index"
+      return $?
+      ;;
+    run)
+      compose_run_command_index "$index"
+      return $?
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+compose_exec_command_index() {
+  local index="$1" option key
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    case "$key" in
+      -e | --env | -u | --user | -w | --workdir | --index)
+        [[ "$option" == "$key" ]] && ((index++))
+        ;;
+    esac
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  ((index++))
+  [[ "${split_result[$index]:-}" == "--" ]] && ((index++))
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+compose_run_command_index() {
+  local index="$1" option key entrypoint=""
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    case "$key" in
+      --entrypoint)
+        if [[ "$option" == "$key" ]]; then
+          entrypoint="${split_result[$index]:-}"
+          ((index++))
+        else
+          entrypoint="$(option_value "$option")"
+        fi
+        ;;
+      --add-host | --cap-add | --cap-drop | --dns | --dns-option | --dns-search | -e | --env | --env-from-file | --expose | -l | --label | --name | --network | -p | --publish | --pull | -u | --user | -v | --volume | -w | --workdir)
+        [[ "$option" == "$key" ]] && ((index++))
+        ;;
+    esac
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  ((index++))
+  [[ "${split_result[$index]:-}" == "--" ]] && ((index++))
+  if [[ -n "$entrypoint" ]]; then
+    printf 'entrypoint\n%s\n%s\n' "$entrypoint" "$index"
+    return 0
+  fi
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+script_command_index() {
+  local index="$1" option key command_string
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    case "$key" in
+      -c | --command)
+        command_string="$(option_value "$option")"
+        if [[ "$option" == "$key" ]]; then
+          command_string="${split_result[$index]:-}"
+          ((index++))
+        fi
+        command_string_result "$index" "$command_string"
+        return $?
+        ;;
+      -B | --log-io | -I | --log-in | --log-incoming | -O | --log-out | --log-output | -T | --log-timing | -t | --timing | --logging-format)
+        [[ "$option" == "$key" ]] && ((index++))
+        ;;
+    esac
+  done
+
+  if [[ -n "${split_result[$index]:-}" && -n "${split_result[$((index + 1))]:-}" ]]; then
+    printf '%s\n' "$((index + 1))"
+    return 0
+  fi
+
+  return 1
+}
+
+container_run_command_index() {
+  local index="$1" option key entrypoint=""
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    case "$key" in
+      --entrypoint)
+        if [[ "$option" == "$key" ]]; then
+          entrypoint="${split_result[$index]:-}"
+          ((index++))
+        else
+          entrypoint="$(option_value "$option")"
+        fi
+        ;;
+      --add-host | --annotation | -a | --attach | --blkio-weight-device | --cap-add | --cap-drop | --cgroup-parent | --cidfile | --cpu-period | --cpu-quota | --cpu-rt-period | --cpu-rt-runtime | -c | --cpu-shares | --cpuset-cpus | --cpuset-mems | --device | --device-cgroup-rule | --device-read-bps | --device-read-iops | --device-write-bps | --device-write-iops | --dns | --dns-option | --dns-search | --domainname | -e | --env | --env-file | --expose | --gpus | --group-add | --health-cmd | --health-interval | --health-retries | --health-start-period | --health-timeout | -h | --hostname | --ip | --ip6 | --ipc | --isolation | --kernel-memory | -l | --label | --label-file | --link | --log-driver | --log-opt | -m | --memory | --memory-reservation | --memory-swap | --memory-swappiness | --mount | --name | --network | --network-alias | --oom-score-adj | --pid | --platform | -p | --publish | --pull | --restart | --runtime | --security-opt | --shm-size | --stop-signal | --stop-timeout | --storage-opt | --sysctl | --tmpfs | --ulimit | -u | --user | --userns | -v | --volume | --volumes-from | -w | --workdir)
+        [[ "$option" == "$key" ]] && ((index++))
+        ;;
+    esac
+  done
+
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  ((index++))
+  [[ "${split_result[$index]:-}" == "--" ]] && ((index++))
+  if [[ -n "$entrypoint" ]]; then
+    printf 'entrypoint\n%s\n%s\n' "$entrypoint" "$index"
+    return 0
+  fi
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+  printf '%s\n' "$index"
+}
+
+option_without_value() {
+  local option="$1"
+  printf '%s\n' "${option%%=*}"
+}
+
+option_value() {
+  local option="$1"
+  if [[ "$option" == *=* ]]; then
+    printf '%s\n' "${option#*=}"
+  fi
+}
+
+option_value_is_false() {
+  local value
+
+  value="$(ascii_lower "$(option_value "$1")")"
+  [[ "$value" == "0" || "$value" == "false" || "$value" == "no" ]]
+}
+
+option_has_short_flag() {
+  local option="$1" flag="$2"
+  [[ "$option" == -[^-]* && "${option#-}" == *"$flag"* ]]
+}
+
+sudo_short_option_takes_value() {
+  case "$1" in
+    C | D | g | h | p | r | t | T | u) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+sudo_short_option_consumes_next() {
+  local option="$1" flags offset flag
+
+  [[ "$option" == -[^-]* ]] || return 1
+  flags="${option#-}"
+  for ((offset = 0; offset < ${#flags}; offset++)); do
+    flag="${flags:offset:1}"
+    if sudo_short_option_takes_value "$flag"; then
+      [[ "$offset" -eq $((${#flags} - 1)) ]]
+      return $?
+    fi
+  done
+
+  return 1
+}
+
+skip_wrapper_options() {
+  local index="$1" command="$2"
+  local option key consumed_value
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    option="${split_result[$index]}"
+    key="$(option_without_value "$option")"
+    consumed_value=0
+    ((index++))
+
+    if [[ "$option" == "--" ]]; then
+      break
+    fi
+
+    case "$command:$key" in
+      doas:-a | doas:-C | doas:-u)
+        if [[ "$option" == "$key" ]]; then
+          ((index++))
+          consumed_value=1
+        fi
+        ;;
+      rlwrap:-C | rlwrap:--command-name | rlwrap:-D | rlwrap:--history-no-dupes | rlwrap:-f | rlwrap:--file | rlwrap:-H | rlwrap:--history-filename | rlwrap:-p | rlwrap:--prompt-colour | rlwrap:-P | rlwrap:--pre-given | rlwrap:-s | rlwrap:--histsize)
+        if [[ "$option" == "$key" ]]; then
+          ((index++))
+          consumed_value=1
+        fi
+        ;;
+      stdbuf:-e | stdbuf:--error | stdbuf:-i | stdbuf:--input | stdbuf:-o | stdbuf:--output)
+        if [[ "$option" == "$key" ]]; then
+          ((index++))
+          consumed_value=1
+        fi
+        ;;
+      stdbuf:-[eio]?*)
+        ;;
+      gtime:-f | gtime:--format | gtime:-o | gtime:--output | nice:-n | nice:--adjustment | sudo:-C | sudo:-D | sudo:-g | sudo:-h | sudo:-p | sudo:-r | sudo:-t | sudo:-T | sudo:-u | sudo:--chdir | sudo:--close-from | sudo:--group | sudo:--host | sudo:--prompt | sudo:--role | sudo:--type | sudo:--user | time:-f | time:--format | time:-o | time:--output)
+        if [[ "$option" == "$key" ]]; then
+          ((index++))
+          consumed_value=1
+        fi
+        ;;
+      sshpass:-d | sshpass:-f | sshpass:-p | sshpass:-P)
+        if [[ "$option" == "$key" ]]; then
+          ((index++))
+          consumed_value=1
+        fi
+        ;;
+      nice:-[0-9]*)
+        ;;
+    esac
+
+    if [[ "$command" == "sudo" && "$consumed_value" == "0" ]] && sudo_short_option_consumes_next "$option"; then
+      ((index++))
+    fi
+  done
+
+  printf '%s\n' "$index"
+}
+
+skip_shell_command() {
+  local index="$1"
+
+  while [[ -n "${split_result[$index]:-}" ]] && ! is_control_operator "${split_result[$index]}"; do
+    ((index++))
+  done
+
+  printf '%s\n' "$index"
+}
+
+skip_control_operators() {
+  local index="$1"
+
+  while [[ -n "${split_result[$index]:-}" ]] && is_control_operator "${split_result[$index]}"; do
+    ((index++))
+  done
+
+  printf '%s\n' "$index"
+}
+
+next_shell_command_index() {
+  local index="$1" operator command
+
+  index="$(skip_shell_command "$index")"
+  operator="${split_result[$index]:-}"
+  index="$(skip_control_operators "$index")"
+
+  if [[ "$operator" == "||" ]]; then
+    command="$(command_name "${split_result[$index]:-}")"
+    if is_failure_handler_command "$command"; then
+      index="$(skip_shell_command "$((index + 1))")"
+      index="$(skip_control_operators "$index")"
+    fi
+  fi
+
+  printf '%s\n' "$index"
+}
+
+shell_supports_short_option_clusters() {
+  case "$1" in
+    bash | dash | ksh | sh | zsh) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+shell_command_string() {
+  local index="$1" command="$2" word option option_lower command_string
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    word="${split_result[$index]}"
+    option="$(option_without_value "$word")"
+    option_lower="$(ascii_lower "$option")"
+
+    if [[ "$word" == "--" ]]; then
+      return 1
+    elif [[ "$option" == "-c" || "$option_lower" == "-command" || "$option_lower" == "--command" ]]; then
+      command_string="$(option_value "$word")"
+      if [[ "$word" == "$option" ]]; then
+        command_string="${split_result[$((index + 1))]:-}"
+      fi
+      [[ -n "$command_string" ]] || return 1
+      printf '%s\n' "$command_string"
+      return 0
+    elif shell_supports_short_option_clusters "$command" && option_has_short_flag "$word" "c"; then
+      command_string="${split_result[$((index + 1))]:-}"
+      [[ -n "$command_string" ]] || return 1
+      printf '%s\n' "$command_string"
+      return 0
+    fi
+
+    ((index++))
+  done
+
+  return 1
+}
+
+windows_cmd_command_index() {
+  local index="$1" option option_lower
+
+  while [[ -n "${split_result[$index]:-}" ]]; do
+    option="${split_result[$index]}"
+    option_lower="$(ascii_lower "$option")"
+
+    case "$option_lower" in
+      /c | /k)
+        [[ -n "${split_result[$((index + 1))]:-}" ]] || return 1
+        if [[ -z "${split_result[$((index + 2))]:-}" ]]; then
+          command_string_result "$((index + 1))" "${split_result[$((index + 1))]}"
+          return $?
+        fi
+        printf '%s\n' "$((index + 1))"
+        return 0
+        ;;
+      /d | /q | /s | /a | /u | /e:* | /f:* | /v:*)
+        ((index++))
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  done
+
+  return 1
+}
+
+kitten_ssh_matches() {
+  local index="$1" subcommand
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    if [[ "${split_result[$index]}" == "--" ]]; then
+      ((index++))
+      break
+    fi
+    ((index++))
+  done
+
+  subcommand="$(command_name "${split_result[$index]:-}")"
+  [[ "$subcommand" == "ssh" ]]
+}
+
+is_python_command() {
+  [[ "$1" == "python" || "$1" == "pypy" || "$1" =~ ^python[0-9]+([.][0-9]+)?$ || "$1" =~ ^pypy[0-9]+([.][0-9]+)?$ ]]
+}
+
+is_python_interactive_module() {
+  local module
+  module="$(ascii_lower "$1")"
+  case "$module" in
+    bpython | ipython | ptpython | pdb | ipdb | pudb) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+python_short_option_suffix() {
+  local option="$1" flag="$2" flags character index
+
+  [[ "$option" == -[^-]* ]] || return 1
+  flags="${option#-}"
+
+  for ((index = 0; index < ${#flags}; index++)); do
+    character="${flags:index:1}"
+    if [[ "$character" == "$flag" ]]; then
+      printf '%s\n' "${flags:index + 1}"
+      return 0
+    fi
+
+    case "$character" in
+      c | m | W | X)
+        break
+        ;;
+    esac
+  done
+
+  return 1
+}
+
+python_command_matches() {
+  local index="$1" word key module interactive=0
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+
+    if python_short_option_suffix "$word" "i" >/dev/null; then
+      interactive=1
+    fi
+
+    if [[ "$word" == "--" ]]; then
+      ((index++))
+      break
+    fi
+
+    case "$key" in
+      -h | --help | -V | --version)
+        return 1
+        ;;
+      -m)
+        if [[ "$word" == "$key" ]]; then
+          module="${split_result[$((index + 1))]:-}"
+        else
+          module="${word#-m}"
+        fi
+        [[ "$interactive" == "1" ]] && return 0
+        is_python_interactive_module "$module"
+        return $?
+        ;;
+      -c)
+        [[ "$interactive" == "1" ]]
+        return $?
+        ;;
+    esac
+
+    if module="$(python_short_option_suffix "$word" "m")"; then
+      if [[ -z "$module" ]]; then
+        module="${split_result[$((index + 1))]:-}"
+      fi
+      [[ "$interactive" == "1" ]] && return 0
+      is_python_interactive_module "$module"
+      return $?
+    elif python_short_option_suffix "$word" "c" >/dev/null; then
+      [[ "$interactive" == "1" ]]
+      return $?
+    fi
+
+    ((index++))
+
+    case "$key" in
+      -W | -X | --check-hash-based-pycs | --cpu-count | --presite)
+        [[ "$word" == "$key" ]] && ((index++))
+        ;;
+    esac
+  done
+
+  [[ "$interactive" == "1" || -z "${split_result[$index]:-}" ]]
+}
+
+is_node_command() {
+  [[ "$1" == "node" || "$1" == "nodejs" ]]
+}
+
+is_deno_command() {
+  [[ "$1" == "deno" ]]
+}
+
+is_bun_command() {
+  [[ "$1" == "bun" ]]
+}
+
+is_php_command() {
+  [[ "$1" == "php" ]]
+}
+
+node_option_takes_value() {
+  case "$1" in
+    -C | --conditions | --diagnostic-dir | --experimental-loader | --heap-prof-dir | --import | --input-type | --loader | --require | -r | --title | --watch-path)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+node_short_option_suffix() {
+  local option="$1" flag="$2" flags character index
+
+  [[ "$option" == -[^-]* ]] || return 1
+  flags="${option#-}"
+
+  for ((index = 0; index < ${#flags}; index++)); do
+    character="${flags:index:1}"
+    if [[ "$character" == "$flag" ]]; then
+      printf '%s\n' "${flags:index + 1}"
+      return 0
+    fi
+
+    case "$character" in
+      C | e | p | r)
+        break
+        ;;
+    esac
+  done
+
+  return 1
+}
+
+node_command_matches() {
+  local index="$1" word key interactive=0 after_separator=0
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+
+    if node_short_option_suffix "$word" "i" >/dev/null || [[ "$key" == "--interactive" ]]; then
+      interactive=1
+    fi
+
+    if [[ "$word" == "--" ]]; then
+      after_separator=1
+      ((index++))
+      break
+    fi
+
+    case "$key" in
+      -h | --help | -v | --version | -c | --check | --test)
+        [[ "$interactive" == "1" ]]
+        return $?
+        ;;
+      -e | --eval | -p | --print)
+        [[ "$interactive" == "1" ]]
+        return $?
+        ;;
+    esac
+
+    if node_short_option_suffix "$word" "e" >/dev/null || node_short_option_suffix "$word" "p" >/dev/null; then
+      [[ "$interactive" == "1" ]]
+      return $?
+    fi
+
+    ((index++))
+    if node_option_takes_value "$key" && [[ "$word" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  if [[ "$after_separator" == "0" && "${split_result[$index]:-}" == "inspect" ]]; then
+    return 0
+  fi
+
+  [[ "$interactive" == "1" || -z "${split_result[$index]:-}" ]]
+}
+
+deno_option_takes_value() {
+  case "$1" in
+    -c | --config | --import-map | --cert | --location | --v8-flags | --env-file | --node-modules-dir)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+deno_one_shot_option() {
+  case "$1" in
+    -h | --help | -V | --version)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+deno_command_matches() {
+  local index="$1" subcommand word key
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+
+    if [[ "$key" == "--" ]] || deno_one_shot_option "$key"; then
+      return 1
+    fi
+
+    ((index++))
+    if deno_option_takes_value "$key" && [[ "$word" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  subcommand="${split_result[$index]:-}"
+  [[ -z "$subcommand" || "$subcommand" == "repl" ]]
+}
+
+bun_command_matches() {
+  local index="$1"
+
+  [[ "${split_result[$((index + 1))]:-}" == "repl" ]]
+}
+
+php_option_takes_value() {
+  case "$1" in
+    -c | --php-ini | -d | --define)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+php_command_matches() {
+  local index="$1" word key
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+
+    case "$key" in
+      --)
+        return 1
+        ;;
+      -a | --interactive)
+        return 0
+        ;;
+      -r | -B | -R | -E | -F | --run | --process-begin | --process-code | --process-end | --file)
+        return 1
+        ;;
+    esac
+
+    ((index++))
+    if php_option_takes_value "$key" && [[ "$word" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  return 1
+}
+
+is_ruby_command() {
+  [[ "$1" == "ruby" || "$1" =~ ^ruby[0-9]+([.][0-9]+)?$ ]]
+}
+
+is_rails_command() {
+  [[ "$1" == "rails" ]]
+}
+
+ruby_option_takes_value() {
+  case "$1" in
+    -C | -E | -I | -r | -T | -W | --disable | --enable | --encoding | --external-encoding | --internal-encoding | --jit-warnings | --mjit-max-cache | --mjit-min-calls | --mjit-verbose | --mjit-warnings | --require | --yjit-call-threshold | --yjit-exec-mem-size)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+ruby_one_shot_option() {
+  case "$1" in
+    -c | -e | -h | --help | -v | --version)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+rails_option_takes_value() {
+  case "$1" in
+    -e | --environment)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+rails_one_shot_option() {
+  case "$1" in
+    -h | --help | -v | --version)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+rails_command_matches_from() {
+  local index="$1" word key subcommand
+
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+
+    rails_one_shot_option "$key" && return 1
+    ((index++))
+    if rails_option_takes_value "$key" && [[ "$word" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  subcommand="${split_result[$index]:-}"
+  case "$subcommand" in
+    c | console | db | dbconsole)
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+    rails_one_shot_option "$key" && return 1
+    ((index++))
+  done
+
+  return 0
+}
+
+rails_command_matches() {
+  local index="$1"
+  rails_command_matches_from "$((index + 1))"
+}
+
+ruby_script_matches() {
+  local script="$1" index="$2" script_name
+
+  script_name="$(command_name "$script")"
+  case "$script_name" in
+    irb | pry | rdbg)
+      return 0
+      ;;
+    rails)
+      rails_command_matches_from "$index"
+      return $?
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+ruby_command_matches() {
+  local index="$1" word key script
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+
+    if [[ "$word" == "--" ]]; then
+      ((index++))
+      break
+    elif [[ "$key" == "-S" ]]; then
+      if [[ "$word" == "$key" ]]; then
+        script="${split_result[$((index + 1))]:-}"
+        index=$((index + 2))
+      else
+        script="${word#-S}"
+        ((index++))
+      fi
+      [[ -n "$script" ]] || return 1
+      ruby_script_matches "$script" "$index"
+      return $?
+    elif ruby_one_shot_option "$key" || [[ "$word" == -e?* ]]; then
+      return 1
+    fi
+
+    ((index++))
+    if ruby_option_takes_value "$key" && [[ "$word" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  script="${split_result[$index]:-}"
+  [[ -n "$script" ]] || return 1
+  ruby_script_matches "$script" "$((index + 1))"
+}
+
+is_database_shell_command() {
+  case "$1" in
+    duckdb | mariadb | mysql | psql | redis-cli | sqlite3) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+database_option_takes_value() {
+  local command="$1" key="$2"
+
+  case "$command:$key" in
+    duckdb:-init | duckdb:--init)
+      return 0
+      ;;
+    mysql:-D | mysql:--database | mysql:-h | mysql:--host | mysql:-P | mysql:--port | mysql:-S | mysql:--socket | mysql:-u | mysql:--user | mariadb:-D | mariadb:--database | mariadb:-h | mariadb:--host | mariadb:-P | mariadb:--port | mariadb:-S | mariadb:--socket | mariadb:-u | mariadb:--user)
+      return 0
+      ;;
+    psql:-d | psql:--dbname | psql:-h | psql:--host | psql:-p | psql:--port | psql:-U | psql:--username | psql:-v | psql:--set | psql:--variable | psql:-P | psql:--pset | psql:-F | psql:--field-separator | psql:-R | psql:--record-separator | psql:-T | psql:--table-attr)
+      return 0
+      ;;
+    redis-cli:-a | redis-cli:--pass | redis-cli:-h | redis-cli:--hostname | redis-cli:-i | redis-cli:--interval | redis-cli:-n | redis-cli:--db | redis-cli:-p | redis-cli:--port | redis-cli:-r | redis-cli:--repeat | redis-cli:-s | redis-cli:--socket | redis-cli:-u | redis-cli:--user | redis-cli:-U | redis-cli:--uri)
+      return 0
+      ;;
+    sqlite3:-cmd | sqlite3:-init | sqlite3:-newline | sqlite3:-separator)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+database_one_shot_option() {
+  local command="$1" key="$2"
+
+  case "$command:$key" in
+    duckdb:-c | duckdb:--command | duckdb:-help | duckdb:--help | duckdb:-version | duckdb:--version)
+      return 0
+      ;;
+    mysql:-e | mysql:--execute | mysql:-\? | mysql:--help | mysql:-V | mysql:--version | mariadb:-e | mariadb:--execute | mariadb:-\? | mariadb:--help | mariadb:-V | mariadb:--version)
+      return 0
+      ;;
+    psql:-c | psql:--command | psql:-f | psql:--file | psql:-l | psql:--list | psql:-\? | psql:--help | psql:-V | psql:--version)
+      return 0
+      ;;
+    redis-cli:--help | redis-cli:-v | redis-cli:--version)
+      return 0
+      ;;
+    sqlite3:-help | sqlite3:--help | sqlite3:-version | sqlite3:--version)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+database_one_shot_option_matches() {
+  local command="$1" word="$2" key="$3"
+
+  database_one_shot_option "$command" "$key" && return 0
+
+  case "$command:$word" in
+    duckdb:-c?* | mysql:-e?* | mariadb:-e?* | psql:-c?* | psql:-f?*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+database_command_matches() {
+  local index="$1" command="$2" word key positionals=0
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+
+    if [[ "$word" == "--" ]]; then
+      ((index++))
+      continue
+    elif [[ "$word" == -* ]]; then
+      database_one_shot_option_matches "$command" "$word" "$key" && return 1
+      ((index++))
+      if database_option_takes_value "$command" "$key" && [[ "$word" == "$key" ]]; then
+        ((index++))
+      fi
+      continue
+    fi
+
+    case "$command" in
+      redis-cli)
+        return 1
+        ;;
+      duckdb | sqlite3)
+        ((positionals++))
+        [[ "$positionals" -le 1 ]] || return 1
+        ;;
+    esac
+
+    ((index++))
+  done
+
+  return 0
+}
+
+is_language_repl_command() {
+  case "$1" in
+    lua | luajit | julia | R) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+language_repl_option_takes_value() {
+  local command="$1" key="$2"
+
+  case "$command:$key" in
+    julia:-L | julia:--load | julia:--project | julia:--sysimage | julia:-J | julia:--threads | julia:-t)
+      return 0
+      ;;
+    lua:-l | luajit:-l)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+language_repl_one_shot_option() {
+  local command="$1" key="$2"
+
+  case "$command:$key" in
+    julia:-e | julia:--eval | julia:-E | julia:--print | julia:-h | julia:--help | julia:-v | julia:--version)
+      return 0
+      ;;
+    lua:-e | luajit:-e)
+      return 0
+      ;;
+    R:-e | R:--file | R:-f | R:--help | R:-h | R:--version | R:--slave)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+language_repl_one_shot_option_matches() {
+  local command="$1" word="$2" key="$3"
+
+  language_repl_one_shot_option "$command" "$key" && return 0
+
+  case "$command:$word" in
+    lua:-e?* | luajit:-e?* | julia:-e?* | julia:-E?* | R:-e?* | R:-f?*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+language_repl_command_matches() {
+  local index="$1" command="$2" word key interactive=0
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" && "${split_result[$index]}" == -* ]]; do
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+
+    if [[ "$word" == "--" ]]; then
+      ((index++))
+      break
+    fi
+
+    if [[ "$key" == "-i" || "$key" == "--interactive" ]]; then
+      interactive=1
+    fi
+
+    if language_repl_one_shot_option_matches "$command" "$word" "$key"; then
+      [[ "$interactive" == "1" ]]
+      return $?
+    fi
+
+    ((index++))
+    if language_repl_option_takes_value "$command" "$key" && [[ "$word" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  if [[ "$command" == "R" && "${split_result[$index]:-}" == "CMD" ]]; then
+    return 1
+  fi
+
+  [[ "$interactive" == "1" || -z "${split_result[$index]:-}" ]]
+}
+
+ssh_option_takes_value() {
+  local command="$1" key="$2"
+
+  case "$key" in
+    -b | -c | -D | -E | -e | -F | -I | -i | -J | -L | -l | -m | -O | -o | -p | -Q | -R | -S | -W | -w)
+      return 0
+      ;;
+  esac
+
+  [[ "$command" == "autossh" && "$key" == "-M" ]]
+}
+
+ssh_short_word_has_flag() {
+  local word="$1" flag="$2" flags char index
+
+  [[ "$word" == -[^-]* ]] || return 1
+  flags="${word#-}"
+  for ((index = 0; index < ${#flags}; index++)); do
+    char="${flags:index:1}"
+    [[ "$char" == "$flag" ]] && return 0
+    ssh_option_takes_value ssh "-$char" && break
+  done
+
+  return 1
+}
+
+ssh_noninteractive_option_matches() {
+  local word="$1" key="$2" flag
+
+  case "$key" in
+    -f | -G | -N | -n | -O | -Q | -T | -V | -W | -h)
+      return 0
+      ;;
+  esac
+
+  for flag in f G N n O Q T V W; do
+    ssh_short_word_has_flag "$word" "$flag" && return 0
+  done
+
+  return 1
+}
+
+ssh_command_matches() {
+  local index="$1" command="$2" word key has_args=0
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" ]]; do
+    has_args=1
+    word="${split_result[$index]}"
+    key="$(option_without_value "$word")"
+
+    if [[ "$word" == "--" ]]; then
+      ((index++))
+      break
+    fi
+    [[ "$word" == -* ]] || break
+
+    ssh_noninteractive_option_matches "$word" "$key" && return 1
+
+    ((index++))
+    if ssh_option_takes_value "$command" "$key" && [[ "$word" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ "$has_args" == "0" || -n "${split_result[$index]:-}" ]]
+}
+
+command_words_match() {
+  local index=0 word name option split_string saved_words split_words_result wrapper_index container_index entrypoint_word
+
+  while [[ -n "${split_result[$index]:-}" ]]; do
+    word="${split_result[$index]}"
+    name="$(command_name "$word")"
+
+    if is_control_operator "$word" || is_assignment "$word"; then
+      ((index++))
+    elif is_shell_setup_command "$name"; then
+      index="$(next_shell_command_index "$((index + 1))")"
+    elif [[ "$name" == "cmd" ]]; then
+      if wrapper_index="$(windows_cmd_command_index "$((index + 1))")"; then
+        if [[ "$wrapper_index" == command-string$'\n'* ]]; then
+          wrapper_index="${wrapper_index#command-string$'\n'}"
+          split_string="${wrapper_index%%$'\n'*}"
+          wrapper_index="${wrapper_index#*$'\n'}"
+          saved_words=("${split_result[@]}")
+          split_words "$split_string"
+          split_words_result=("${split_result[@]}")
+          split_result=("${saved_words[@]}")
+          insert_split_words "$wrapper_index" "${split_words_result[@]}"
+        fi
+        index="$wrapper_index"
+      else
+        command_matches "$name"
+        return $?
+      fi
+    elif is_shell_command "$name"; then
+      if split_string="$(shell_command_string "$((index + 1))" "$name")"; then
+        command_line_matches "$split_string"
+        return $?
+      fi
+      command_matches "$name"
+      return $?
+    elif is_python_command "$name"; then
+      python_command_matches "$index"
+      return $?
+    elif is_node_command "$name"; then
+      node_command_matches "$index"
+      return $?
+    elif is_deno_command "$name"; then
+      deno_command_matches "$index"
+      return $?
+    elif is_bun_command "$name" && bun_command_matches "$index"; then
+      return 0
+    elif is_php_command "$name"; then
+      php_command_matches "$index"
+      return $?
+    elif is_ruby_command "$name"; then
+      ruby_command_matches "$index"
+      return $?
+    elif is_rails_command "$name"; then
+      rails_command_matches "$index"
+      return $?
+    elif is_database_shell_command "$name"; then
+      database_command_matches "$index" "$name"
+      return $?
+    elif is_language_repl_command "$name"; then
+      language_repl_command_matches "$index" "$name"
+      return $?
+    elif [[ "$name" == "kitten" ]]; then
+      kitten_ssh_matches "$((index + 1))" || command_matches "$name"
+      return $?
+    elif [[ "$name" == "kitty" && "${split_result[$((index + 1))]:-}" == "+kitten" ]]; then
+      kitten_ssh_matches "$((index + 2))" || command_matches "$name"
+      return $?
+    elif is_ssh_command "$name"; then
+      ssh_command_matches "$index" "$name"
+      return $?
+    elif [[ "$name" == "script" ]]; then
+      if wrapper_index="$(script_command_index "$index")"; then
+        if [[ "$wrapper_index" == command-string$'\n'* ]]; then
+          wrapper_index="${wrapper_index#command-string$'\n'}"
+          split_string="${wrapper_index%%$'\n'*}"
+          wrapper_index="${wrapper_index#*$'\n'}"
+          saved_words=("${split_result[@]}")
+          split_words "$split_string"
+          split_words_result=("${split_result[@]}")
+          split_result=("${saved_words[@]}")
+          insert_split_words "$wrapper_index" "${split_words_result[@]}"
+        fi
+        index="$wrapper_index"
+      else
+        return 1
+      fi
+    elif container_index="$(container_exec_command_index "$index" "$name")"; then
+      if [[ "$container_index" == "passthrough" ]]; then
+        return 0
+      fi
+      if [[ "$container_index" == entrypoint$'\n'* ]]; then
+        container_index="${container_index#entrypoint$'\n'}"
+        entrypoint_word="${container_index%%$'\n'*}"
+        container_index="${container_index#*$'\n'}"
+        insert_split_words "$container_index" "$entrypoint_word"
+      fi
+      index="$container_index"
+    elif wrapper_index="$(js_wrapper_command_index "$index" "$name")"; then
+      if [[ "$wrapper_index" == command-string$'\n'* ]]; then
+        wrapper_index="${wrapper_index#command-string$'\n'}"
+        split_string="${wrapper_index%%$'\n'*}"
+        wrapper_index="${wrapper_index#*$'\n'}"
+        saved_words=("${split_result[@]}")
+        split_words "$split_string"
+        split_words_result=("${split_result[@]}")
+        split_result=("${saved_words[@]}")
+        insert_split_words "$wrapper_index" "${split_words_result[@]}"
+      fi
+      index="$wrapper_index"
+    elif wrapper_index="$(dev_wrapper_command_index "$index" "$name")"; then
+      if [[ "$wrapper_index" == command-string$'\n'* ]]; then
+        wrapper_index="${wrapper_index#command-string$'\n'}"
+        split_string="${wrapper_index%%$'\n'*}"
+        wrapper_index="${wrapper_index#*$'\n'}"
+        saved_words=("${split_result[@]}")
+        split_words "$split_string"
+        split_words_result=("${split_result[@]}")
+        split_result=("${saved_words[@]}")
+        insert_split_words "$wrapper_index" "${split_words_result[@]}"
+      fi
+      index="$wrapper_index"
+    elif command_matches "$name"; then
+      return 0
+    elif ! is_wrapper_command "$name"; then
+      return 1
+    else
+      ((index++))
+      if [[ "$name" == "env" ]]; then
+        while [[ -n "${split_result[$index]:-}" ]]; do
+          word="${split_result[$index]}"
+          option="$(option_without_value "$word")"
+          if [[ "$word" == "--" ]]; then
+            ((index++))
+            break
+          elif [[ "$option" == "-S" || "$option" == "--split-string" ]]; then
+            split_string="$(option_value "$word")"
+            if [[ "$word" == "$option" ]]; then
+              split_string="${split_result[$((index + 1))]:-}"
+              index=$((index + 2))
+            else
+              ((index++))
+            fi
+            if [[ -n "$split_string" ]]; then
+              saved_words=("${split_result[@]}")
+              split_words "$split_string"
+              split_words_result=("${split_result[@]}")
+              split_result=("${saved_words[@]}")
+              insert_split_words "$index" "${split_words_result[@]}"
+            fi
+          elif [[ "$option" == "-C" || "$option" == "-u" || "$option" == "--chdir" || "$option" == "--unset" ]]; then
+            ((index++))
+            [[ "$word" == "$option" ]] && ((index++))
+          elif [[ "$word" == -* || "$word" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+            ((index++))
+          else
+            break
+          fi
+        done
+      else
+        index="$(skip_wrapper_options "$index" "$name")"
+      fi
+    fi
+  done
+
+  return 1
+}
+
+command_line_matches() {
+  local line="$1"
+
+  [[ -n "$line" ]] || return 1
+
+  split_words "$line"
+  command_words_match
+}
+
+current_command_is_bare_option_sensitive() {
+  local line="$1" name
+
+  split_words "$line"
+  [[ "${#split_result[@]}" -eq 1 ]] || return 1
+
+  name="$(command_name "${split_result[0]}")"
+  is_ssh_command "$name" || is_python_command "$name" || is_node_command "$name" || is_deno_command "$name" || is_database_shell_command "$name" || is_language_repl_command "$name"
+}
+
+state_is_active() {
+  local state="$1"
+  [[ -n "$state" && ! "$state" =~ ^[TXZ] ]]
+}
+
+if command_line_matches "$current_command"; then
+  if [[ -n "$pane_tty" ]] && current_command_is_bare_option_sensitive "$current_command"; then
+    :
+  else
+    exit 0
+  fi
+fi
+
+if [[ -z "$pane_tty" ]] || ! command -v ps >/dev/null 2>&1; then
+  exit 1
+fi
+
+tty_name="${pane_tty#/dev/}"
+ps_output="$(ps -o state= -o comm= -o args= -t "$tty_name" 2>/dev/null || true)"
+if [[ -z "$ps_output" ]]; then
+  exit 1
+fi
+
+states=()
+commands=()
+command_lines=()
+has_foreground_process=0
+
+while read -r state command args; do
+  [[ -n "${state:-}" && -n "${command:-}" ]] || continue
+  state_is_active "$state" || continue
+
+  states+=("$state")
+  commands+=("$command")
+  command_lines+=("${args:-$command}")
+  if [[ "$state" == *+* ]]; then
+    has_foreground_process=1
+  fi
+done <<<"$ps_output"
+
+for index in "${!commands[@]}"; do
+  if [[ "$has_foreground_process" -eq 1 && "${states[$index]}" != *+* ]]; then
+    continue
+  fi
+
+  if command_line_matches "${command_lines[$index]}"; then
+    exit 0
+  fi
+  if is_ssh_command "$(command_name "${commands[$index]}")"; then
+    continue
+  fi
+  if command_matches "${commands[$index]}"; then
+    exit 0
+  fi
+done
+
+exit 1

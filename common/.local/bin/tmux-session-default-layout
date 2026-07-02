@@ -1,10 +1,195 @@
-# Create new session detached, name first window 'AI'
-tmux new-session -d -s "$SESSION_NAME" -n "AI"
-tmux send-keys -t "$SESSION_NAME":1 "gemini --yolo --resume" C-m
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Create second window 'AI'
-tmux new-window -t "$SESSION_NAME":2 -n "AI"
-tmux send-keys -t "$SESSION_NAME":2 "gemini --yolo" C-m
+: "${SESSION_NAME:?SESSION_NAME must be set}"
+
+session_window_target() {
+  printf '=%s:' "$1"
+}
+
+tmux_client_is_live() {
+  [[ -n "${TMUX:-}" ]] || return 1
+  tmux display-message -p '#{pane_id}' >/dev/null 2>&1
+}
+
+tmux_cmd() {
+  if [[ "${TMUX_CLIENT_LIVE:-0}" == "1" || -z "${TMUX:-}" ]]; then
+    tmux "$@"
+  else
+    (unset TMUX; tmux "$@")
+  fi
+}
+
+send_window_command() {
+  local target="$1"
+  local command="$2"
+
+  [[ -n "$command" ]] || return 0
+  tmux_cmd send-keys -t "$target" "$command" C-m
+}
+
+shell_quote_word() {
+  printf '%q' "$1"
+}
+
+is_windows_environment() {
+  [[ "${OS:-}" == "Windows_NT" || "${OSTYPE:-}" == msys* || "${OSTYPE:-}" == cygwin* || -n "${MSYSTEM:-}" ]]
+}
+
+is_windows_absolute_path() {
+  [[ "$1" =~ ^[A-Za-z]:[\\/] || "$1" == \\\\* || "$1" == //* ]]
+}
+
+normalize_windows_absolute_path() {
+  local value="$1"
+
+  if is_windows_absolute_path "$value"; then
+    value="${value//\\//}"
+  fi
+
+  printf '%s\n' "$value"
+}
+
+command_name() {
+  local command="$1"
+
+  command="${command##*/}"
+  command="${command##*\\}"
+  case "$command" in
+    *.[eE][xX][eE] | *.[cC][mM][dD] | *.[bB][aA][tT])
+      command="${command%.*}"
+      ;;
+  esac
+
+  printf '%s\n' "$command"
+}
+
+default_agent_cli() {
+  local candidate
+
+  if [[ -n "${TMUX_SESSION_AGENT_CLI:-}" ]]; then
+    printf '%s\n' "$TMUX_SESSION_AGENT_CLI"
+    return 0
+  fi
+
+  for candidate in codex opencode gemini claude aider; do
+    if command -v -- "$candidate" >/dev/null 2>&1; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+}
+
+default_agent_command() {
+  local mode="$1"
+  local cli
+  local command_name
+  local executable
+  local quoted_executable
+
+  cli="$(default_agent_cli)"
+  [[ -n "$cli" ]] || return 0
+
+  if [[ "$cli" == *[[:space:]]* && ! -x "$cli" ]]; then
+    printf '%s\n' "$cli"
+    return 0
+  fi
+
+  executable="$cli"
+  if [[ "$cli" != */* ]]; then
+    executable="$(command -v -- "$cli" 2>/dev/null || printf '%s\n' "$cli")"
+  fi
+  command_name="$(command_name "$cli")"
+  quoted_executable="$(shell_quote_word "$executable")"
+
+  case "$command_name" in
+    codex)
+      if [[ "$mode" == "resume" ]]; then
+        printf '%s\n' "$quoted_executable resume --last"
+      else
+        printf '%s\n' "$quoted_executable"
+      fi
+      ;;
+    opencode)
+      if [[ "$mode" == "resume" ]]; then
+        printf '%s\n' "$quoted_executable --continue"
+      else
+        printf '%s\n' "$quoted_executable"
+      fi
+      ;;
+    gemini)
+      if [[ "$mode" == "resume" ]]; then
+        printf '%s\n' "$quoted_executable --yolo --resume latest"
+      else
+        printf '%s\n' "$quoted_executable --yolo"
+      fi
+      ;;
+    claude)
+      if [[ "$mode" == "resume" ]]; then
+        printf '%s\n' "$quoted_executable --continue"
+      else
+        printf '%s\n' "$quoted_executable"
+      fi
+      ;;
+    aider)
+      printf '%s\n' "$quoted_executable"
+      ;;
+    *)
+      printf '%s\n' "$quoted_executable"
+      ;;
+  esac
+}
+
+start_dir="${TMUX_SESSION_START_DIR:-$PWD}"
+case "$start_dir" in
+  "~") start_dir="${HOME:-$start_dir}" ;;
+  \~/*) start_dir="${HOME:-~}/${start_dir#\~/}" ;;
+esac
+if [[ ! -d "$start_dir" ]]; then
+  if is_windows_environment && is_windows_absolute_path "$start_dir"; then
+    start_dir="$(normalize_windows_absolute_path "$start_dir")"
+  else
+    start_dir="$PWD"
+  fi
+fi
+
+agent_resume_window_name="${TMUX_SESSION_AGENT_RESUME_WINDOW_NAME:-resume}"
+agent_window_name="${TMUX_SESSION_AGENT_WINDOW_NAME:-AI}"
+terminal_window_name="${TMUX_SESSION_TERMINAL_WINDOW_NAME:-terminal}"
+
+if ! command -v tmux >/dev/null 2>&1; then
+  echo "Error: tmux is not installed or not on PATH" >&2
+  exit 1
+fi
+
+TMUX_CLIENT_LIVE=0
+if tmux_client_is_live; then
+  TMUX_CLIENT_LIVE=1
+fi
+
+if [[ "${TMUX_SESSION_AGENT_RESUME_COMMAND+x}" == "x" ]]; then
+  agent_resume_command="$TMUX_SESSION_AGENT_RESUME_COMMAND"
+else
+  agent_resume_command="$(default_agent_command resume)"
+fi
+
+if [[ "${TMUX_SESSION_AGENT_COMMAND+x}" == "x" ]]; then
+  agent_command="$TMUX_SESSION_AGENT_COMMAND"
+else
+  agent_command="$(default_agent_command fresh)"
+fi
+
+# Capture window IDs as each window is created so the layout does not depend on
+# the tmux server's base-index setting.
+first_window="$(tmux_cmd new-session -d -s "$SESSION_NAME" -n "$agent_resume_window_name" -c "$start_dir" -P -F '#{window_id}')"
+send_window_command "$first_window" "$agent_resume_command"
+
+# Create second window for a fresh agent.
+second_window="$(
+  tmux_cmd new-window -d -t "$(session_window_target "$SESSION_NAME")" -n "$agent_window_name" -c "$start_dir" -P -F '#{window_id}'
+)"
+send_window_command "$second_window" "$agent_command"
 
 # Create third window 'terminal'
-tmux new-window -t "$SESSION_NAME":3 -n "terminal"
+tmux_cmd new-window -d -t "$(session_window_target "$SESSION_NAME")" -n "$terminal_window_name" -c "$start_dir"
+tmux_cmd select-window -t "$first_window"

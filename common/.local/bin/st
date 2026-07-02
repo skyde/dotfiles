@@ -1,8 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ -d .zoekt ]]; then
-  exec st-zoekt "$@"
-else
-  exec st-rg "$@"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+
+resolve_helper() {
+  local name="$1"
+  local candidate
+
+  for candidate in "$script_dir/$name" "${HOME:-}/.local/bin/$name" "${HOME:-}/dotfiles/common/.local/bin/$name"; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  command -v -- "$name" 2>/dev/null
+}
+
+search_target="${1:-$PWD}"
+if [[ "${1:-}" == "--code" ]]; then
+  search_target="${2:-$PWD}"
 fi
+if [[ -f "$search_target" ]]; then
+  search_target="$(dirname "$search_target")"
+fi
+
+helper_name="st-rg"
+if search_root="$(cd "$search_target" >/dev/null 2>&1 && pwd -P)" && [[ -d "$search_root/.zoekt" ]]; then
+  helper_name="st-zoekt"
+fi
+
+if ! helper="$(resolve_helper "$helper_name")"; then
+  printf 'st: %s not found\n' "$helper_name" >&2
+  exit 127
+fi
+
+exec "$helper" "$@"

@@ -34,6 +34,8 @@
   "security.workspace.trust.untrustedFiles": "open",
   // Increase terminal scrollback similar to using a terminal split in Neovim
   "terminal.integrated.scrollback": 1000000,
+  // New terminals should start near the active file, even in single-file windows.
+  "terminal.integrated.cwd": "${fileDirname}",
 
   // Unified Size
   "editor.lineHeight": 1.44,
@@ -502,6 +504,54 @@
       ]
     },
     {
+      "before": ["<leader>", "w", "r"],
+      "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.openTerminal",
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "Tmux: Switch to Resume"
+        },
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "StandardTerminal"
+        },
+        "extension.vim_escape"
+      ]
+    },
+    {
+      "before": ["<leader>", "w", "a"],
+      "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.openTerminal",
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "Tmux: Switch to AI"
+        },
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "StandardTerminal"
+        },
+        "extension.vim_escape"
+      ]
+    },
+    {
+      "before": ["<leader>", "w", "t"],
+      "commands": [
+        // Custom command when terminal is opened to clear any other context
+        "task.custom.openTerminal",
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "Tmux: Switch to Terminal"
+        },
+        {
+          "command": "workbench.action.tasks.runTask",
+          "args": "StandardTerminal"
+        },
+        "extension.vim_escape"
+      ]
+    },
+    {
       "before": ["<leader>", "i"],
       "commands": [
         // Custom command when terminal is opened to clear any other context
@@ -711,15 +761,14 @@
       "after": ["<C-6>"]
     },
     {
-      // TODO: Ideally <leader>bp is a toggle, but non-trivial to get this to work
+      // VSCodeVim remaps do not evaluate VS Code `when` clauses, and this
+      // VS Code build has no active-editor pin toggle command.
       "before": ["<leader>", "b", "u"],
-      "commands": ["workbench.action.unpinEditor"],
-      "when": "activeEditorIsPinned"
+      "commands": ["workbench.action.unpinEditor"]
     },
     {
       "before": ["<leader>", "b", "p"],
-      "commands": ["workbench.action.pinEditor"],
-      "when": "!activeEditorIsPinned"
+      "commands": ["workbench.action.pinEditor"]
     },
     {
       "before": ["<leader>", "b", "P"],
@@ -1155,22 +1204,23 @@
     },
     // Hover
     {
-      // Show the hover - or the debug hover
-      // TODO: Make sure the debug hover is working here
-      "before": ["<leader>", "Backspace"],
-      "commands": [
-        "editor.action.showHover",
-        "editor.debug.action.showDebugHover"
-      ]
+      // Show the normal hover.
+      "before": ["<leader>", "<BS>"],
+      "commands": ["editor.action.showHover"]
+    },
+    {
+      // Show debug values while stopped in a debug session.
+      "before": ["<leader>", "d", "<BS>"],
+      "commands": ["editor.debug.action.showDebugHover"]
     },
     {
       // Show parameter hints for a method
-      "before": ["Backspace", "<leader>"],
+      "before": ["<BS>", "<leader>"],
       "commands": ["editor.action.triggerParameterHints"]
     },
     {
       // Show standard hover, can be useful when in debug & want the normal one
-      "before": ["Backspace", "Backspace"],
+      "before": ["<BS>", "<BS>"],
       "commands": ["editor.action.showHover"]
     },
     // ── Watches & evaluation ─────────────────────────────────────────────────────

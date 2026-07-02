@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir() {
+  local source="${BASH_SOURCE[0]}"
+  local dir="."
+
+  if [[ "$source" == */* ]]; then
+    dir="${source%/*}"
+  fi
+
+  cd -- "$dir" && pwd
+}
+
+TMUX_CLIENT_LIVE=0
+
+tmux_client_is_live() {
+  [[ -n "${TMUX:-}" ]] || return 1
+  command -v tmux >/dev/null 2>&1 || return 1
+  tmux display-message -p '#{pane_id}' >/dev/null 2>&1
+}
+
+tmux_cmd() {
+  if [[ "$TMUX_CLIENT_LIVE" == "1" || -z "${TMUX:-}" ]]; then
+    tmux "$@"
+  else
+    (unset TMUX; tmux "$@")
+  fi
+}
+
+display_message() {
+  local message="$1"
+
+  if [[ -n "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
+    tmux_cmd display-message "$message" 2>/dev/null || printf '%s\n' "$message" >&2
+  else
+    printf '%s\n' "$message" >&2
+  fi
+}
+
+last_nonempty_line() {
+  local line
+  local last=""
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ -n "$line" ]]; then
+      last="$line"
+    fi
+  done
+
+  printf '%s\n' "$last"
+}
+
+find_tmux_session() {
+  local adjacent
+  adjacent="$(script_dir)/tmux-session"
+  if [[ -x "$adjacent" ]]; then
+    printf '%s\n' "$adjacent"
+    return 0
+  fi
+
+  local home_helper
+  home_helper="${HOME:-}/.local/bin/tmux-session"
+  if [[ -x "$home_helper" ]]; then
+    printf '%s\n' "$home_helper"
+    return 0
+  fi
+
+  home_helper="${HOME:-}/dotfiles/common/.local/bin/tmux-session"
+  if [[ -x "$home_helper" ]]; then
+    printf '%s\n' "$home_helper"
+    return 0
+  fi
+
+  if command -v tmux-session >/dev/null 2>&1; then
+    command -v tmux-session
+    return 0
+  fi
+
+  return 1
+}
+
+if tmux_client_is_live; then
+  TMUX_CLIENT_LIVE=1
+fi
+
+if ! tmux_session="$(find_tmux_session)"; then
+  display_message "tmux-session failed: helper is unavailable"
+  exit 127
+fi
+
+output=""
+if output="$("$tmux_session" "$@" 2>&1)"; then
+  [[ -z "$output" ]] || printf '%s\n' "$output"
+  exit 0
+else
+  status=$?
+  summary="$(last_nonempty_line <<<"$output")"
+  if [[ -z "$summary" ]]; then
+    summary="exit $status"
+  fi
+  display_message "tmux-session failed: $summary"
+  [[ -z "$output" ]] || printf '%s\n' "$output" >&2
+  exit "$status"
+fi

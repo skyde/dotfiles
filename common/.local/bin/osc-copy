@@ -5,46 +5,105 @@ in_ssh_session() {
   [[ -n "${SSH_CLIENT:-}" || -n "${SSH_TTY:-}" || -n "${SSH_CONNECTION:-}" ]]
 }
 
-content="$(cat)"
+tmux_client_is_live() {
+  [[ -n "${TMUX:-}" ]] || return 1
+  command -v tmux >/dev/null 2>&1 || return 1
+  tmux display-message -p '#{pane_id}' >/dev/null 2>&1
+}
 
-if [[ -n "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
-  if printf '%s' "$content" | tmux load-buffer -w - 2>/dev/null; then
+make_temp_file() {
+  local template="${TMPDIR:-/tmp}/osc-copy.XXXXXX"
+  local path attempt
+
+  if command -v mktemp >/dev/null 2>&1; then
+    mktemp "$template"
+    return
+  fi
+
+  attempt=0
+  while ((attempt < 100)); do
+    path="${TMPDIR:-/tmp}/osc-copy.$$.$attempt"
+    if (set -C; : >"$path") 2>/dev/null; then
+      printf '%s\n' "$path"
+      return 0
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  return 1
+}
+
+encode_content_file() {
+  local encoded
+
+  command -v base64 >/dev/null 2>&1 || return 1
+  encoded="$(base64 <"$content_file")" || return 1
+  encoded="${encoded//$'\n'/}"
+  encoded="${encoded//$'\r'/}"
+  printf '%s' "$encoded"
+}
+
+try_copy_command() {
+  "$@" <"$content_file" 2>/dev/null
+}
+
+content_file="$(make_temp_file)" || {
+  echo "No copy method available." >&2
+  exit 1
+}
+trap 'rm -f "$content_file" 2>/dev/null || true' EXIT
+cat >"$content_file"
+
+TMUX_CLIENT_LIVE=0
+if tmux_client_is_live; then
+  TMUX_CLIENT_LIVE=1
+fi
+
+if [[ "$TMUX_CLIENT_LIVE" == "1" ]]; then
+  if tmux load-buffer -w - <"$content_file" 2>/dev/null; then
+    exit 0
+  fi
+
+  if tmux load-buffer - <"$content_file" 2>/dev/null; then
     exit 0
   fi
 fi
 
 if ! in_ssh_session; then
-  if command -v pbcopy >/dev/null 2>&1; then
-    printf '%s' "$content" | pbcopy
+  if command -v pbcopy >/dev/null 2>&1 && try_copy_command pbcopy; then
     exit 0
   fi
 
-  if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
-    printf '%s' "$content" | wl-copy
+  if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1 &&
+    try_copy_command wl-copy; then
     exit 0
   fi
 
-  if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1; then
-    printf '%s' "$content" | xclip -selection clipboard
+  if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1 &&
+    try_copy_command xclip -selection clipboard; then
     exit 0
   fi
 
-  if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1; then
-    printf '%s' "$content" | xsel --clipboard --input
+  if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1 &&
+    try_copy_command xsel --clipboard --input; then
     exit 0
   fi
 fi
 
-encoded=$(printf '%s' "$content" | base64 | tr -d '\n')
+if ! encoded="$(encode_content_file)"; then
+  echo "No copy method available." >&2
+  exit 1
+fi
 
 trap '' SIGTTOU
 
-if [[ -w /dev/tty ]]; then
-  if [[ -n "${TMUX:-}" ]]; then
-    printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$encoded" >/dev/tty
-  else
-    printf "\033]52;c;%s\a" "$encoded" >/dev/tty
-  fi
+if [[ "$TMUX_CLIENT_LIVE" == "1" ]]; then
+  osc_sequence="$(printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$encoded")"
+else
+  osc_sequence="$(printf "\033]52;c;%s\a" "$encoded")"
+fi
+
+if printf '%s' "$osc_sequence" >"${OSC_TTY:-/dev/tty}" 2>/dev/null; then
   exit 0
 fi
 

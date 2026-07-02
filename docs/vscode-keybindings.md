@@ -7,8 +7,9 @@ This document lists the custom shortcuts I use in VS Code. The same keybindings 
 - `Ctrl+Shift+Tab` – switch to the previous tab (Windows only).
 - `PageDown` – scroll one page down and move the cursor to the top of the viewport (matches Vim behavior).
 - `PageUp` – scroll one page up and move the cursor to the bottom of the viewport (matches Vim behavior).
-- `Shift+F4` – scroll up 16 lines.
-- `Shift+F6` – scroll down 16 lines.
+- `Shift+F4` – scroll up 16 lines outside the integrated terminal.
+- `Shift+F6` – scroll down 16 lines outside the integrated terminal.
+- `Ctrl+O` / `Ctrl+I` – jump backward/forward through editor history outside the integrated terminal.
 
 ## Editing
 - `Alt+Up` – disabled to prevent moving the current line.
@@ -16,15 +17,22 @@ This document lists the custom shortcuts I use in VS Code. The same keybindings 
 
 ## Terminal
 - `Ctrl+/` – toggle the integrated terminal.
-- `Cmd+T` – toggle the terminal visibility and exit fullscreen if needed.
+- `Ctrl+T` – toggle the terminal visibility and exit fullscreen if needed.
 - `Cmd+S` – when a terminal is focused, send Shift+F5 to the terminal (mapped in Neovim to save the file).
+- `Ctrl+O` / `Ctrl+I` – passed through to terminal apps such as tmux and Neovim.
+- `Shift+F1` / `Shift+F12` – passed through to terminal apps when the terminal is focused.
+- `Shift+F2` / `Shift+F3` / `Shift+F7` – passed through to terminal apps when the terminal is focused.
+- `Shift+F4` / `Shift+F5` / `Shift+F6` – passed through to terminal apps when the terminal is focused.
+- `Shift+F8` / `Shift+F11` – passed through to terminal apps when the terminal is focused.
+- `Shift+F9` – passed through to terminal Neovim to toggle search highlighting.
+- `Shift+F10` – passed through to tmux as the secondary prefix key.
 
 ## Build and Search
-- `Shift+F2` – start debugging.
-- `Shift+F3` – quick open file or symbol.
+- `Shift+F2` – start debugging outside the integrated terminal.
+- `Shift+F3` – quick open file or symbol outside the integrated terminal.
 - `Shift+F8` – go to definition.
 - `Shift+F11` – toggle comment for the current line.
-- `Shift+F7` – stop build or debugging.
+- `Shift+F7` – stop build or debugging outside the integrated terminal.
 
 ## Debugging
 - `Alt+Down` – step over.
@@ -55,8 +63,8 @@ Space is mapped as `<leader>`.
 - `<leader> v` – <C-v>
 - `<tab>` – indent lines
 - `<S-tab>` – outdent lines
-- `<C-u>` – 16k
-- `<C-d>` – 16j
+- `<C-u>` – move up 16 lines (`16k`)
+- `<C-d>` – move down 16 lines (`16j`)
 - `<D-Left>` – go back
 - `<D-Right>` – go forward
 - `<C-o>` – go back
@@ -117,10 +125,14 @@ Space is mapped as `<leader>`.
 - `<leader> c e` – Quick Fix / Code Actions
 - `<leader> c s` – switch diff side
 - `<leader> c v` – revert selected ranges
+- `<leader> <BS>` – show hover
+- `<BS> <leader>` – show parameter hints
+- `<BS> <BS>` – show hover
 - `<leader> e e` – open problems view
 - `<leader> e n` – next problem
 - `<leader> e p` – previous problem
 - `<leader> d b` – toggle breakpoint
+- `<leader> d <BS>` – show debug hover
 - `<leader> d d` – disable all breakpoints
 - `<leader> d e` – enable all breakpoints
 - `<leader> d r` – remove all breakpoints

@@ -7,19 +7,23 @@
 #
 # [[ -r "$HOME/.bashrc-custom" ]] && source "$HOME/.bashrc-custom"
 
+_dotfiles_bash_interactive=0
+[[ $- == *i* ]] && _dotfiles_bash_interactive=1
+
 # Use zsh if available for interactive shells
-if [ -t 1 ] && command -v zsh >/dev/null 2>&1; then
-  export SHELL="$(command -v zsh)"
+if (( _dotfiles_bash_interactive )) && [ -t 1 ] && command -v zsh >/dev/null 2>&1; then
+  SHELL="$(command -v zsh)"
+  export SHELL
   exec zsh -l
 fi
 
 # -------- interactive TTY tweaks (skip in non-tty to avoid extra 'stty' call)
-if [[ $- == *i* ]] && [[ -t 0 ]]; then
+if (( _dotfiles_bash_interactive )) && [[ -t 0 ]]; then
   stty -ixon -ixoff
 fi
 
 # -------- fast PATH (prefer user bins; include Homebrew on Apple Silicon)
-for d in "$HOME/.local/bin" "$HOME/local/bin" "$HOME/bin" "/opt/homebrew/bin" "/usr/local/bin" "/usr/local/bin" "$HOME/go/bin"; do
+for d in "/usr/local/bin" "/opt/homebrew/bin" "$HOME/go/bin" "$HOME/bin" "$HOME/local/bin" "$HOME/.local/bin"; do
   case ":$PATH:" in
     *":$d:"*) ;;
     *) PATH="$d:$PATH" ;;
@@ -32,7 +36,10 @@ export EDITOR="nvim"
 export VISUAL="$EDITOR"
 
 # -------- shell options
-shopt -s autocd dotglob extglob histappend nocaseglob
+for _dotfiles_bash_opt in autocd dotglob extglob histappend nocaseglob; do
+  shopt -s "$_dotfiles_bash_opt" 2>/dev/null || true
+done
+unset _dotfiles_bash_opt
 HISTSIZE=100000
 HISTFILE="$HOME/.bash_history"
 HISTFILESIZE=100000
@@ -42,41 +49,71 @@ HISTCONTROL=ignoreboth:erasedups
 # fi
 
 set -o emacs
-bind '"\e[1;5C": forward-word'
-bind '"\e[1;5D": backward-word'
+if (( _dotfiles_bash_interactive )); then
+  bind '"\e[1;5C": forward-word'
+  bind '"\e[1;5D": backward-word'
+fi
 
 # -------- prompt (Starship)
-if command -v starship >/dev/null 2>&1; then
+if (( _dotfiles_bash_interactive )) && command -v starship >/dev/null 2>&1; then
   eval "$(starship init bash)"
 fi
 
 # -------- completion
-if ! shopt -oq posix; then
-  if [[ -r /usr/share/bash-completion/bash_completion ]]; then
-    # shellcheck disable=SC1091
-    source /usr/share/bash-completion/bash_completion
-  elif [[ -r /etc/bash_completion ]]; then
-    # shellcheck disable=SC1091
-    source /etc/bash_completion
+if (( _dotfiles_bash_interactive )); then
+  if ! shopt -oq posix; then
+    if [[ -r /usr/share/bash-completion/bash_completion ]]; then
+      # shellcheck disable=SC1091
+      source /usr/share/bash-completion/bash_completion
+    elif [[ -r /etc/bash_completion ]]; then
+      # shellcheck disable=SC1091
+      source /etc/bash_completion
+    fi
   fi
+  bind 'set show-all-if-ambiguous on'
+  bind 'set menu-complete-display-prefix on'
+  bind 'set completion-ignore-case on'
+  bind 'TAB:menu-complete'
 fi
-bind 'set show-all-if-ambiguous on'
-bind 'set menu-complete-display-prefix on'
-bind 'set completion-ignore-case on'
-bind 'TAB:menu-complete'
 
 # -------- zoxide (smart cd)
-if command -v zoxide >/dev/null 2>&1; then
+if (( _dotfiles_bash_interactive )) && command -v zoxide >/dev/null 2>&1; then
   eval "$(zoxide init bash)"
 fi
 
+_dotfiles_bash_tmux_client_live() {
+  [[ -n "${TMUX:-}" ]] || return 1
+  command -v tmux >/dev/null 2>&1 || return 1
+  tmux display-message -p '#{pane_id}' >/dev/null 2>&1
+}
+
+_dotfiles_bash_fzf_supports_tmux() {
+  local help
+
+  help="$(fzf --help 2>/dev/null || true)"
+  [[ "$help" == *--tmux* ]]
+}
+
+_dotfiles_bash_fzf_history_candidates() {
+  local line trimmed seen=$'\n'
+
+  while IFS= read -r line; do
+    trimmed="${line#"${line%%[![:space:]]*}"}"
+    [[ -n "$trimmed" ]] || continue
+    [[ "$seen" == *$'\n'"$trimmed"$'\n'* ]] && continue
+    seen="${seen}${trimmed}"$'\n'
+    printf '%s\n' "$trimmed"
+  done < <(builtin fc -lnr -2147483648 2>/dev/null)
+}
+
 # -------- fzf setup
-if [[ $- == *i* ]] && command -v fzf >/dev/null 2>&1; then
+if (( _dotfiles_bash_interactive )) && command -v fzf >/dev/null 2>&1; then
   _fzf_ctrl_r_opts="--height=80% --min-height=20 --layout=reverse --wrap --prompt='History> ' --with-nth=2.. --preview='printf \"%s\n\" {2..}' --preview-window='down,4,wrap,hidden' --bind='alt-p:toggle-preview' --header='Ctrl-R sort | Alt-R all | Alt-P preview | Ctrl-/ wrap'"
   # Prefer fzf's native tmux popup for Ctrl-R, unless local config opts into
   # fzf-tmux through FZF_TMUX/FZF_TMUX_OPTS.
-  if [[ -n "${TMUX:-}" && "${FZF_TMUX:-0}" == 0 && -z "${FZF_TMUX_OPTS:-}" ]] &&
-    command -v tmux >/dev/null 2>&1 && fzf --help 2>/dev/null | grep -q -- '--tmux'; then
+  if [[ "${FZF_TMUX:-0}" == 0 && -z "${FZF_TMUX_OPTS:-}" ]] &&
+    _dotfiles_bash_tmux_client_live &&
+    _dotfiles_bash_fzf_supports_tmux; then
     _tmux_version="$(tmux -V 2>/dev/null)"
     _tmux_version="${_tmux_version#tmux }"
     if [[ "$_tmux_version" =~ ^([4-9]|[1-9][0-9])\. ]] || [[ "$_tmux_version" =~ ^3\.([3-9]|[1-9][0-9]) ]]; then
@@ -127,21 +164,18 @@ if [[ $- == *i* ]] && command -v fzf >/dev/null 2>&1; then
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
   fi
 
-  export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS \
+  export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS:-} \
     --reverse \
     --ansi \
     --info=inline \
     --style=minimal \
     --no-cycle \
-    --style=minimal \
     --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f,hl:215,hl+:215"
 
   if (( ! _fzf_loaded )); then
     __fzf_history_widget_fallback() {
       local selected
-      selected=$(builtin fc -lnr -2147483648 2>/dev/null |
-        sed 's/^[[:space:]]*//' |
-        awk 'length && !seen[$0]++' |
+      selected=$(_dotfiles_bash_fzf_history_candidates |
         fzf --height=80% --layout=reverse --min-height=20 \
             --tiebreak=index --no-sort --scheme=history --wrap \
             --preview='printf "%s\n" {}' --preview-window='down,4,wrap,hidden' \
@@ -176,22 +210,29 @@ fi
 
 # -------- VS Code Remote SSH: pick a live IPC socket before delegating to code
 code() {
-  local socket
-  for socket in "${VSCODE_IPC_HOOK_CLI:-}" $(ls -t "/run/user/$UID"/vscode-ipc-*.sock 2>/dev/null); do
-    if [[ -S "$socket" ]] && nc -z -U "$socket" >/dev/null 2>&1; then
-      export VSCODE_IPC_HOOK_CLI="$socket"
-      break
+  local socket socket_dir found=0
+  if command -v nc >/dev/null 2>&1; then
+    socket_dir="${DOTFILES_VSCODE_IPC_DIR:-/run/user/$UID}"
+    for socket in "${VSCODE_IPC_HOOK_CLI:-}" "$socket_dir"/vscode-ipc-*.sock; do
+      if [[ -S "$socket" ]] && nc -z -U "$socket" >/dev/null 2>&1; then
+        export VSCODE_IPC_HOOK_CLI="$socket"
+        found=1
+        break
+      fi
+    done
+    if [[ "$found" == "0" ]]; then
+      unset VSCODE_IPC_HOOK_CLI
     fi
-  done
+  fi
   command code "$@"
 }
 
 # -------- aliases
 alias grep='grep --color=auto'
-alias stow_apply="$HOME/dotfiles/apply.sh"
-alias stow_init="$HOME/dotfiles/init.sh"
-alias stow_update="$HOME/dotfiles/update.sh && $HOME/dotfiles/apply.sh"
-alias stow_update_init_auto="$HOME/dotfiles/update.sh && AUTO_INSTALL=1 $HOME/dotfiles/init.sh"
+alias stow_apply='$HOME/dotfiles/apply.sh'
+alias stow_init='$HOME/dotfiles/init.sh'
+alias stow_update='$HOME/dotfiles/update.sh && $HOME/dotfiles/apply.sh'
+alias stow_update_init_auto='$HOME/dotfiles/update.sh && AUTO_INSTALL=1 $HOME/dotfiles/init.sh'
 
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 export BAT_THEME="Visual Studio Dark+"
@@ -216,19 +257,33 @@ fi
 
 # -------- file managers that cd to the last visited dir
 y() {
-  local tmp cwd yazi_cmd
+  local tmp cwd yazi_cmd rc
   tmp="$(mktemp -t yazi-cwd.XXXXXX)"
   if [[ -x "$HOME/.local/bin/yazi" ]]; then
     yazi_cmd="$HOME/.local/bin/yazi"
-  else
+  elif command -v yazi >/dev/null 2>&1; then
     yazi_cmd="$(command -v yazi)"
+  else
+    printf '%s\n' "y: yazi not found" >&2
+    rm -f -- "$tmp"
+    return 127
   fi
   "$yazi_cmd" "$@" --cwd-file="$tmp"
-  cwd=$(<"$tmp")
+  rc=$?
+  if [[ -r "$tmp" ]]; then
+    cwd=$(<"$tmp")
+  else
+    cwd=""
+  fi
   rm -f -- "$tmp"
-  [[ -n $cwd && $cwd != "$PWD" ]] && builtin cd -- "$cwd" || return
+  if (( rc == 0 )) && [[ -n $cwd && $cwd != "$PWD" ]]; then
+    builtin cd -- "$cwd" || return
+  fi
+  return "$rc"
 }
 
 # -------- machine-specific overrides
+unset _dotfiles_bash_interactive
+
 # shellcheck disable=SC1091
 [[ -r "$HOME/.bashrc.local" ]] && source "$HOME/.bashrc.local"

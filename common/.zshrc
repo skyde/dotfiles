@@ -56,7 +56,9 @@ zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
 # # -------- prompt (Starship)
-eval "$(starship init zsh)"
+if (( $+commands[starship] )); then
+  eval "$(starship init zsh)"
+fi
 
 # -------- zoxide (smart cd)
 if (( $+commands[zoxide] )); then
@@ -64,13 +66,38 @@ if (( $+commands[zoxide] )); then
   eval "$(zoxide init zsh)"
 fi
 
+_dotfiles_tmux_client_live() {
+  [[ -n "${TMUX:-}" ]] || return 1
+  (( $+commands[tmux] )) || return 1
+  tmux display-message -p '#{pane_id}' >/dev/null 2>&1
+}
+
+_dotfiles_fzf_supports_tmux() {
+  local help
+
+  help="$(fzf --help 2>/dev/null || true)"
+  [[ "$help" == *--tmux* ]]
+}
+
+_dotfiles_fzf_history_candidates() {
+  local line seen=$'\n'
+
+  fc -nrl 1 2>/dev/null | while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    [[ "$seen" == *$'\n'"$line"$'\n'* ]] && continue
+    seen="${seen}${line}"$'\n'
+    print -r -- "$line"
+  done
+}
+
 # -------- fzf-powered history search (Ctrl-R)
 if [[ -o interactive && -t 0 ]] && (( $+commands[fzf] )); then
   _fzf_ctrl_r_opts="--height=80% --min-height=20 --layout=reverse --wrap --prompt='History> ' --with-nth=2.. --preview='printf \"%s\n\" {2..}' --preview-window='down,4,wrap,hidden' --bind='alt-p:toggle-preview' --header='Ctrl-R sort | Alt-R all | Alt-P preview | Ctrl-/ wrap'"
   # Prefer fzf's native tmux popup for Ctrl-R, unless local config opts into
   # fzf-tmux through FZF_TMUX/FZF_TMUX_OPTS.
-  if [[ -n "${TMUX:-}" && "${FZF_TMUX:-0}" == 0 && -z "${FZF_TMUX_OPTS:-}" ]] &&
-    (( $+commands[tmux] )) && fzf --help 2>/dev/null | command grep -q -- '--tmux'; then
+  if [[ "${FZF_TMUX:-0}" == 0 && -z "${FZF_TMUX_OPTS:-}" ]] &&
+    _dotfiles_tmux_client_live &&
+    _dotfiles_fzf_supports_tmux; then
     _tmux_version="${$(tmux -V 2>/dev/null)#tmux }"
     if [[ "$_tmux_version" =~ '^([4-9]|[1-9][0-9])\.' || "$_tmux_version" =~ '^3\.([3-9]|[1-9][0-9])' ]]; then
       _fzf_ctrl_r_opts="--tmux=center,90%,70% $_fzf_ctrl_r_opts"
@@ -120,7 +147,7 @@ if [[ -o interactive && -t 0 ]] && (( $+commands[fzf] )); then
     _fzf_history_widget_fallback() {
       local selected
       selected=$(
-        fc -nrl 1 2>/dev/null | LC_ALL=C awk 'length && !seen[$0]++' | \
+        _dotfiles_fzf_history_candidates | \
         fzf --height=80% --layout=reverse --min-height=20 \
             --tiebreak=index --no-sort --scheme=history --wrap \
             --preview='printf "%s\n" {}' --preview-window='down,4,wrap,hidden' \
@@ -158,13 +185,23 @@ fi
 
 # -------- VS Code Remote SSH: pick a live IPC socket before delegating to code
 code() {
-  local socket
-  for socket in "${VSCODE_IPC_HOOK_CLI:-}" /run/user/$UID/vscode-ipc-*.sock(NOm); do
-    if [[ -S "$socket" ]] && nc -z -U "$socket" >/dev/null 2>&1; then
-      export VSCODE_IPC_HOOK_CLI="$socket"
-      break
+  local socket socket_dir found=0
+  if (( $+commands[nc] )); then
+    local -a sockets=()
+    [[ -n "${VSCODE_IPC_HOOK_CLI:-}" ]] && sockets+=("${VSCODE_IPC_HOOK_CLI}")
+    socket_dir="${DOTFILES_VSCODE_IPC_DIR:-/run/user/$UID}"
+    if [[ -d "$socket_dir" ]]; then
+      sockets+=("$socket_dir"/vscode-ipc-*.sock(N))
     fi
-  done
+    for socket in "${sockets[@]}"; do
+      if [[ -S "$socket" ]] && nc -z -U "$socket" >/dev/null 2>&1; then
+        export VSCODE_IPC_HOOK_CLI="$socket"
+        found=1
+        break
+      fi
+    done
+    (( found )) || unset VSCODE_IPC_HOOK_CLI
+  fi
   command code "$@"
 }
 
@@ -194,31 +231,56 @@ fi
 
 # -------- file managers that cd to the last visited dir
 e() {
-  local tmp cwd yazi_cmd
+  local tmp cwd yazi_cmd rc
   tmp="$(mktemp -t yazi-cwd.XXXXXX)"
   if [[ -x "$HOME/.local/bin/yazi" ]]; then
     yazi_cmd="$HOME/.local/bin/yazi"
+  elif (( $+commands[yazi] )); then
+    yazi_cmd="$commands[yazi]"
   else
-    yazi_cmd="$(command -v yazi)"
+    print -u2 "e: yazi not found"
+    rm -f -- "$tmp"
+    return 127
   fi
   "$yazi_cmd" "$@" --cwd-file="$tmp"
-  cwd="$(<"$tmp")"
+  rc=$?
+  if [[ -r "$tmp" ]]; then
+    cwd="$(<"$tmp")"
+  else
+    cwd=""
+  fi
   rm -f -- "$tmp"
-  [[ -n $cwd && $cwd != "$PWD" ]] && builtin cd -- "$cwd" || return
+  if (( rc == 0 )) && [[ -n $cwd && $cwd != "$PWD" ]]; then
+    builtin cd -- "$cwd" || return
+  fi
+  return "$rc"
 }
 
 lfcd() {
-  local tmp dir
+  local tmp dir rc
   tmp="$(mktemp -t lfcd.XXXXXX)"
-  command lf -last-dir-path "$tmp" -- "$@"
-  dir="$(<"$tmp")"
+  if ((! $+commands[lf] )); then
+    print -u2 "lfcd: lf not found"
+    rm -f -- "$tmp"
+    return 127
+  fi
+  "$commands[lf]" -last-dir-path "$tmp" -- "$@"
+  rc=$?
+  if [[ -r "$tmp" ]]; then
+    dir="$(<"$tmp")"
+  else
+    dir=""
+  fi
   rm -f -- "$tmp"
-  [[ -n $dir && $dir != "$PWD" ]] && builtin cd -- "$dir"
+  if (( rc == 0 )) && [[ -n $dir && $dir != "$PWD" ]]; then
+    builtin cd -- "$dir" || return
+  fi
+  return "$rc"
 }
 alias lf='lfcd'
 
-# TODO: This needs to be set for some reason to get everything
-# to work in the terminal - find the root cause & remove this
+# Keep inherited pager settings from overriding the git wrapper's fallback
+# `-c core.pager=less` when delta is unavailable.
 unset GIT_PAGER
 
 gg() { command lazygit; }
