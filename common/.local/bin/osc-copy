@@ -1,52 +1,39 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-in_ssh_session() {
-  [[ -n "${SSH_CLIENT:-}" || -n "${SSH_TTY:-}" || -n "${SSH_CONNECTION:-}" ]]
-}
-
-content="$(cat)"
+raw_data="$(cat)"
 
 if [[ -n "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
-  if printf '%s' "$content" | tmux load-buffer -w - 2>/dev/null; then
-    exit 0
-  fi
-fi
-
-if ! in_ssh_session; then
-  if command -v pbcopy >/dev/null 2>&1; then
-    printf '%s' "$content" | pbcopy
-    exit 0
-  fi
-
-  if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
-    printf '%s' "$content" | wl-copy
-    exit 0
-  fi
-
-  if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1; then
-    printf '%s' "$content" | xclip -selection clipboard
-    exit 0
-  fi
-
-  if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1; then
-    printf '%s' "$content" | xsel --clipboard --input
-    exit 0
-  fi
-fi
-
-encoded=$(printf '%s' "$content" | base64 | tr -d '\n')
-
-trap '' SIGTTOU
-
-if [[ -w /dev/tty ]]; then
-  if [[ -n "${TMUX:-}" ]]; then
-    printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$encoded" >/dev/tty
-  else
-    printf "\033]52;c;%s\a" "$encoded" >/dev/tty
-  fi
+  printf '%s' "$raw_data" | tmux load-buffer -w -
   exit 0
 fi
 
-echo "No copy method available." >&2
-exit 1
+if command -v pbcopy >/dev/null 2>&1; then
+  printf '%s' "$raw_data" | pbcopy
+  exit 0
+fi
+
+if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
+  printf '%s' "$raw_data" | wl-copy
+  exit 0
+fi
+
+if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1; then
+  printf '%s' "$raw_data" | xclip -selection clipboard
+  exit 0
+fi
+
+if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1; then
+  printf '%s' "$raw_data" | xsel --clipboard --input
+  exit 0
+fi
+
+data=$(printf '%s' "$raw_data" | base64 | tr -d '\n')
+
+trap '' SIGTTOU
+
+if [[ -n "${TMUX:-}" ]]; then
+  printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$data" >/dev/tty 2>/dev/null || true
+else
+  printf "\033]52;c;%s\a" "$data" >/dev/tty 2>/dev/null || true
+fi
