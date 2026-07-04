@@ -399,11 +399,15 @@ assert_eq "tmux passes Ctrl-Delete bytes to normal Neovim delete-next-word" \
   "$(cat "$normal_ctrl_delete_result")"
 
 visual_copy_result="$tmp/visual-ctrl-insert-copy.log"
-visual_copy_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'copy selection', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0')"
+visual_copy_ready="$tmp/visual-ctrl-insert-copy-ready.log"
+visual_copy_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'copy selection', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0'); vim.fn.writefile({'ok'}, $(lua_string "$visual_copy_ready"))"
 visual_copy_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$visual_copy_result"))"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$visual_copy_command" Enter
+wait_for_file "$visual_copy_ready"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'v4l'
+sleep 0.1
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$ctrl_insert_sequence"
+sleep 0.2
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$visual_copy_write_command" Enter
 wait_for_file "$visual_copy_result"
 assert_eq "tmux passes Ctrl-Insert bytes to visual Neovim copy" \
@@ -422,11 +426,15 @@ assert_eq "tmux passes Shift-Delete bytes to normal Neovim cut" \
   "$(cat "$normal_cut_result")"
 
 visual_cut_result="$tmp/visual-shift-delete-cut.log"
-visual_cut_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'delete selection', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0')"
+visual_cut_ready="$tmp/visual-shift-delete-cut-ready.log"
+visual_cut_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'delete selection', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0'); vim.fn.writefile({'ok'}, $(lua_string "$visual_cut_ready"))"
 visual_cut_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$visual_cut_result"))"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$visual_cut_command" Enter
+wait_for_file "$visual_cut_ready"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'v5l'
+sleep 0.1
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_delete_sequence"
+sleep 0.2
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$visual_cut_write_command" Enter
 wait_for_file "$visual_cut_result"
 assert_eq "tmux passes Shift-Delete bytes to visual Neovim cut" \
@@ -514,11 +522,15 @@ assert_eq "tmux passes Shift-Insert bytes to normal Neovim paste with count" \
   "$(cat "$normal_shift_insert_result")"
 
 visual_shift_insert_result="$tmp/visual-shift-insert-paste.log"
-visual_shift_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'AAA old ZZZ'}); vim.g.dotfiles_tmux_paste = 'new'; vim.fn.setreg('\"', 'unnamed keep', 'v'); vim.cmd('normal! gg04l')"
+visual_shift_insert_ready="$tmp/visual-shift-insert-paste-ready.log"
+visual_shift_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'AAA old ZZZ'}); vim.g.dotfiles_tmux_paste = 'new'; vim.fn.setreg('\"', 'unnamed keep', 'v'); vim.cmd('normal! gg04l'); vim.fn.writefile({'ok'}, $(lua_string "$visual_shift_insert_ready"))"
 visual_shift_insert_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line(), vim.fn.getreg('\"'), vim.fn.getregtype('\"')}, $(lua_string "$visual_shift_insert_result"))"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$visual_shift_insert_command" Enter
+wait_for_file "$visual_shift_insert_ready"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'v2l'
+sleep 0.1
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_insert_sequence"
+sleep 0.2
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$visual_shift_insert_write_command" Enter
 wait_for_file "$visual_shift_insert_result"
 assert_eq "tmux passes Shift-Insert bytes to visual Neovim paste without clobbering unnamed register" \
@@ -742,11 +754,15 @@ PY
     "$(cat "$attached_normal_shift_insert_result")"
 
   attached_visual_shift_insert_result="$tmp/attached-visual-shift-insert-paste.log"
-  attached_visual_shift_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'AAA old ZZZ'}); vim.g.dotfiles_tmux_paste = 'new'; vim.fn.setreg('\"', 'attached unnamed keep', 'v'); vim.cmd('normal! gg04l')"
+  attached_visual_shift_insert_ready="$tmp/attached-visual-shift-insert-paste-ready.log"
+  attached_visual_shift_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'AAA old ZZZ'}); vim.g.dotfiles_tmux_paste = 'new'; vim.fn.setreg('\"', 'attached unnamed keep', 'v'); vim.cmd('normal! gg04l'); vim.fn.writefile({'ok'}, $(lua_string "$attached_visual_shift_insert_ready"))"
   attached_visual_shift_insert_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line(), vim.fn.getreg('\"'), vim.fn.getregtype('\"')}, $(lua_string "$attached_visual_shift_insert_result"))"
   "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_shift_insert_command" Enter
+  wait_for_file "$attached_visual_shift_insert_ready"
   "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'v2l'
+  sleep 0.1
   send_attached_client_key "tmux attached client sends Shift-Insert bytes to visual Neovim" "$shift_insert_sequence"
+  sleep 0.2
   "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_shift_insert_write_command" Enter
   wait_for_file "$attached_visual_shift_insert_result"
   assert_eq "tmux attached client passes Shift-Insert bytes through to visual Neovim paste without clobbering unnamed register" \
@@ -1003,11 +1019,15 @@ PY
     "$(cat "$attached_ctrl_delete_result")"
 
   attached_visual_ctrl_insert_result="$tmp/attached-visual-ctrl-insert-copy.log"
-  attached_visual_ctrl_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached visual ctrl-insert copy', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0')"
+  attached_visual_ctrl_insert_ready="$tmp/attached-visual-ctrl-insert-copy-ready.log"
+  attached_visual_ctrl_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached visual ctrl-insert copy', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0'); vim.fn.writefile({'ok'}, $(lua_string "$attached_visual_ctrl_insert_ready"))"
   attached_visual_ctrl_insert_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$attached_visual_ctrl_insert_result"))"
   "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_ctrl_insert_command" Enter
+  wait_for_file "$attached_visual_ctrl_insert_ready"
   "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'v8l'
+  sleep 0.1
   send_attached_client_key "tmux attached client sends Ctrl-Insert bytes to visual Neovim" "$ctrl_insert_sequence"
+  sleep 0.2
   "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_ctrl_insert_write_command" Enter
   wait_for_file "$attached_visual_ctrl_insert_result"
   assert_eq "tmux attached client passes Ctrl-Insert bytes through to visual Neovim copy" \
@@ -1026,11 +1046,15 @@ PY
     "$(cat "$attached_shift_delete_result")"
 
   attached_visual_shift_delete_result="$tmp/attached-visual-shift-delete-cut.log"
-  attached_visual_shift_delete_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached visual shift-delete cut', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0')"
+  attached_visual_shift_delete_ready="$tmp/attached-visual-shift-delete-cut-ready.log"
+  attached_visual_shift_delete_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached visual shift-delete cut', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0'); vim.fn.writefile({'ok'}, $(lua_string "$attached_visual_shift_delete_ready"))"
   attached_visual_shift_delete_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$attached_visual_shift_delete_result"))"
   "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_shift_delete_command" Enter
+  wait_for_file "$attached_visual_shift_delete_ready"
   "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'v8l'
+  sleep 0.1
   send_attached_client_key "tmux attached client sends Shift-Delete bytes to visual Neovim" "$shift_delete_sequence"
+  sleep 0.2
   "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_shift_delete_write_command" Enter
   wait_for_file "$attached_visual_shift_delete_result"
   assert_eq "tmux attached client passes Shift-Delete bytes through to visual Neovim cut" \
