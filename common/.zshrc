@@ -34,7 +34,7 @@ bindkey '^X' edit-command-line          # Ctrl+X edits current prompt
 
 # -------- completion (cached)
 # Cache to XDG location and compile the dump for speed.
-if [[ -o interactive && -t 0 ]]; then
+if [[ -o interactive && -t 0 && "${DOTFILES_TEST_SKIP_COMPLETION:-0}" != 1 ]]; then
   zmodload -i zsh/complist
   autoload -Uz compinit
   : "${XDG_CACHE_HOME:=$HOME/.cache}"
