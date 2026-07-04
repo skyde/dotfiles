@@ -473,7 +473,7 @@ assert_contains \
 HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g HOME "$fake_home"
 
 for copy_table in copy-mode-vi copy-mode; do
-  for copy_key in Enter y MouseDragEnd1Pane DoubleClick1Pane TripleClick1Pane; do
+  for copy_key in Enter y C-IC MouseDragEnd1Pane DoubleClick1Pane TripleClick1Pane; do
     copy_binding="$("$real_tmux" -L "$socket_name" list-keys -T "$copy_table" "$copy_key")"
     assert_contains "$copy_table $copy_key uses copy helper" "$copy_binding" "tmux-copy-helper"
     assert_contains "$copy_table $copy_key uses explicit home" "$copy_binding" "$home_marker"

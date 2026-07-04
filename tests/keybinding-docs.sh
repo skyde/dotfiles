@@ -49,6 +49,9 @@ assert_contains "VS Code docs pass Shift-F10 to tmux" \
 assert_contains "VS Code docs explain terminal clipboard behavior" \
   "$vscode_docs" \
   "terminal auto-copy-on-selection is disabled"
+assert_contains "VS Code docs describe terminal Insert clipboard keys" \
+  "$vscode_docs" \
+  "Ctrl+Insert\` / \`Shift+Insert\` / \`Shift+Delete"
 
 assert_contains "Neovim config documents Shift-F10 reservation" \
   "$nvim_keymaps" \
