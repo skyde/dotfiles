@@ -1260,6 +1260,11 @@ fi
 cat >>"$TMUX_OPEN_HELPER_COPY_LOG"
 SH
 chmod +x "$isolated_path_bin/xsel"
+cat >"$isolated_path_bin/xdg-open" <<'SH'
+#!/usr/bin/env bash
+exit 42
+SH
+chmod +x "$isolated_path_bin/xdg-open"
 
 : >"$isolated_copy_log"
 TMUX_OPEN_HELPER_COPY_LOG="$isolated_copy_log" \
