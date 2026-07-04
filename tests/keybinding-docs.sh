@@ -92,6 +92,15 @@ assert_contains "Neovim config maps Ctrl-Backspace" \
 assert_contains "Neovim config maps Ctrl-Delete" \
   "$nvim_keymaps" \
   'for _, lhs in ipairs({ "<C-Del>", "\27[3;5~" }) do'
+assert_contains "Neovim config maps Ctrl-Insert raw terminal bytes" \
+  "$nvim_keymaps" \
+  'for _, lhs in ipairs({ "<C-Insert>", "\27[2;5~" }) do'
+assert_contains "Neovim config maps Shift-Delete raw terminal bytes" \
+  "$nvim_keymaps" \
+  'for _, lhs in ipairs({ "<S-Del>", "\27[3;2~" }) do'
+assert_contains "Neovim config maps Shift-Insert raw terminal bytes" \
+  "$nvim_keymaps" \
+  'for _, lhs in ipairs({ "<S-Insert>", "\27[2;2~" }) do'
 assert_contains "zshrc maps Ctrl-Right word motion" \
   "$zshrc" \
   "bindkey '^[[1;5C' forward-word"

@@ -615,18 +615,26 @@ _G.dotfiles_smoke_terminal_cut_callback = vim.fn.maparg("<D-x>", "t", false, tru
 assert(type(_G.dotfiles_smoke_terminal_cut_callback) == "function")
 _G.dotfiles_smoke_ctrl_insert_normal_copy_callback = vim.fn.maparg("<C-Insert>", "n", false, true).callback
 assert(_G.dotfiles_smoke_ctrl_insert_normal_copy_callback == _G.dotfiles_smoke_normal_copy_callback)
+assert(vim.fn.maparg("\27[2;5~", "n", false, true).callback == _G.dotfiles_smoke_ctrl_insert_normal_copy_callback)
 _G.dotfiles_smoke_ctrl_insert_visual_copy_callback = vim.fn.maparg("<C-Insert>", "v", false, true).callback
 assert(_G.dotfiles_smoke_ctrl_insert_visual_copy_callback == _G.dotfiles_smoke_visual_copy_callback)
+assert(vim.fn.maparg("\27[2;5~", "v", false, true).callback == _G.dotfiles_smoke_ctrl_insert_visual_copy_callback)
 assert(rhs_for("<C-Insert>", "i") == [[<C-o>"+yy]])
+assert(rhs_for("\27[2;5~", "i") == [[<C-o>"+yy]])
 _G.dotfiles_smoke_ctrl_insert_terminal_copy_callback = vim.fn.maparg("<C-Insert>", "t", false, true).callback
 assert(_G.dotfiles_smoke_ctrl_insert_terminal_copy_callback == _G.dotfiles_smoke_terminal_copy_callback)
+assert(vim.fn.maparg("\27[2;5~", "t", false, true).callback == _G.dotfiles_smoke_ctrl_insert_terminal_copy_callback)
 _G.dotfiles_smoke_shift_delete_normal_cut_callback = vim.fn.maparg("<S-Del>", "n", false, true).callback
 assert(_G.dotfiles_smoke_shift_delete_normal_cut_callback == _G.dotfiles_smoke_normal_cut_callback)
+assert(vim.fn.maparg("\27[3;2~", "n", false, true).callback == _G.dotfiles_smoke_shift_delete_normal_cut_callback)
 _G.dotfiles_smoke_shift_delete_visual_cut_callback = vim.fn.maparg("<S-Del>", "v", false, true).callback
 assert(_G.dotfiles_smoke_shift_delete_visual_cut_callback == _G.dotfiles_smoke_visual_cut_callback)
+assert(vim.fn.maparg("\27[3;2~", "v", false, true).callback == _G.dotfiles_smoke_shift_delete_visual_cut_callback)
 assert(rhs_for("<S-Del>", "i") == [[<C-o>"+dd]])
+assert(rhs_for("\27[3;2~", "i") == [[<C-o>"+dd]])
 _G.dotfiles_smoke_shift_delete_terminal_cut_callback = vim.fn.maparg("<S-Del>", "t", false, true).callback
 assert(_G.dotfiles_smoke_shift_delete_terminal_cut_callback == _G.dotfiles_smoke_terminal_cut_callback)
+assert(vim.fn.maparg("\27[3;2~", "t", false, true).callback == _G.dotfiles_smoke_shift_delete_terminal_cut_callback)
 _G.dotfiles_smoke_normal_paste_callback = vim.fn.maparg("<D-v>", "n", false, true).callback
 assert(type(_G.dotfiles_smoke_normal_paste_callback) == "function")
 _G.dotfiles_smoke_visual_paste_callback = vim.fn.maparg("<D-v>", "v", false, true).callback
@@ -637,12 +645,17 @@ _G.dotfiles_smoke_terminal_paste_callback = vim.fn.maparg("<D-v>", "t", false, t
 assert(type(_G.dotfiles_smoke_terminal_paste_callback) == "function")
 _G.dotfiles_smoke_shift_insert_normal_paste_callback = vim.fn.maparg("<S-Insert>", "n", false, true).callback
 assert(_G.dotfiles_smoke_shift_insert_normal_paste_callback == _G.dotfiles_smoke_normal_paste_callback)
+assert(vim.fn.maparg("\27[2;2~", "n", false, true).callback == _G.dotfiles_smoke_shift_insert_normal_paste_callback)
 _G.dotfiles_smoke_shift_insert_visual_paste_callback = vim.fn.maparg("<S-Insert>", "v", false, true).callback
 assert(_G.dotfiles_smoke_shift_insert_visual_paste_callback == _G.dotfiles_smoke_visual_paste_callback)
+assert(vim.fn.maparg("\27[2;2~", "v", false, true).callback == _G.dotfiles_smoke_shift_insert_visual_paste_callback)
 assert(rhs_for("<S-Insert>", "i") == "<C-r>+")
+assert(rhs_for("\27[2;2~", "i") == "<C-r>+")
 assert(rhs_for("<S-Insert>", "c") == "<C-r>+")
+assert(rhs_for("\27[2;2~", "c") == "<C-r>+")
 _G.dotfiles_smoke_shift_insert_terminal_paste_callback = vim.fn.maparg("<S-Insert>", "t", false, true).callback
 assert(_G.dotfiles_smoke_shift_insert_terminal_paste_callback == _G.dotfiles_smoke_terminal_paste_callback)
+assert(vim.fn.maparg("\27[2;2~", "t", false, true).callback == _G.dotfiles_smoke_shift_insert_terminal_paste_callback)
 assert(rhs_for("<D-a>") == "ggVG")
 assert(rhs_for("<D-a>", "v") == "ggVG")
 assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
@@ -769,6 +782,13 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   assert(stored_type == "V", stored_type)
   assert(lines_text() == "ctrl insert copy|normal keep", lines_text())
 
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "raw ctrl insert copy", "normal keep" })
+  feed("gg")
+  feed_raw("\27[2;5~")
+  assert(table.concat(stored_lines, "|") == "raw ctrl insert copy|", table.concat(stored_lines, "|"))
+  assert(stored_type == "V", stored_type)
+  assert(lines_text() == "raw ctrl insert copy|normal keep", lines_text())
+
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { "normal ctrl left alpha beta gamma" })
   feed("gg$")
   feed_raw("\27[1;5D")
@@ -877,6 +897,13 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   assert(stored_type == "V", stored_type)
   assert(lines_text() == "normal keep|normal tail", lines_text())
 
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "raw shift delete cut", "normal keep", "normal tail" })
+  feed("gg")
+  feed_raw("\27[3;2~")
+  assert(table.concat(stored_lines, "|") == "raw shift delete cut|", table.concat(stored_lines, "|"))
+  assert(stored_type == "V", stored_type)
+  assert(lines_text() == "normal keep|normal tail", lines_text())
+
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { "insert cmd cut", "insert keep", "insert tail" })
   feed("ggA")
   feed("<D-x>")
@@ -928,6 +955,13 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   feed("gg0")
   feed("<S-Insert>")
   assert(lines_text() == "aSHIFTb", lines_text())
+
+  stored_lines = { "RAW" }
+  stored_type = "v"
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "ab" })
+  feed("gg0")
+  feed_raw("\27[2;2~")
+  assert(lines_text() == "aRAWb", lines_text())
 
   stored_lines = { "VISUAL" }
   stored_type = "v"
