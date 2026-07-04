@@ -6,6 +6,13 @@ pane_id="${2:-}"
 current_command="${3:-}"
 pane_tty="${4:-}"
 
+script_source="${BASH_SOURCE[0]}"
+script_dir="."
+if [[ "$script_source" == */* ]]; then
+  script_dir="${script_source%/*}"
+fi
+script_dir="$(cd -- "$script_dir" && pwd -P)"
+
 find_helper() {
   local name="$1" helper
 
@@ -16,6 +23,12 @@ find_helper() {
         return 0
       }
     done
+  fi
+
+  helper="$script_dir/$name"
+  if [[ -x "$helper" ]]; then
+    printf '%s\n' "$helper"
+    return 0
   fi
 
   command -v "$name" 2>/dev/null

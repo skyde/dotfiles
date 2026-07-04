@@ -594,6 +594,73 @@ assert_contains "key router sends Shift-Insert bytes" "$key_router_script" "send
 assert_contains "key router sends Shift-Delete bytes" "$key_router_script" "send_hex 1b 5b 33 3b 32 7e"
 assert_contains "key router points plain Shift-Delete panes at copy mode" "$key_router_script" "Shift-Delete: use copy mode or a pane-aware app to cut"
 assert_contains "key router targets pane selection fallbacks" "$key_router_script" "tmux select-pane -t"
+assert_contains "key router checks helper next to router script" "$key_router_script" "script_dir/\$name"
+
+adjacent_router_dir="$tmp/adjacent-router"
+adjacent_router_path="$tmp/adjacent-router-path"
+adjacent_should_log="$tmp/adjacent-router-should.log"
+adjacent_paste_log="$tmp/adjacent-router-paste.log"
+adjacent_tmux_log="$tmp/adjacent-router-tmux.log"
+mkdir -p "$adjacent_router_dir" "$adjacent_router_path"
+ln -s "$root/common/.local/bin/tmux-pane-key-router" "$adjacent_router_dir/tmux-pane-key-router"
+cat >"$adjacent_router_path/tmux" <<'SH'
+#!/usr/bin/env bash
+{
+  printf 'tmux'
+  printf ' %s' "$@"
+  printf '\n'
+} >>"${TMUX_NAV_ADJACENT_TMUX_LOG:?}"
+SH
+chmod +x "$adjacent_router_path/tmux"
+cat >"$adjacent_router_dir/tmux-pane-should-passthrough" <<'SH'
+#!/usr/bin/env bash
+printf 'passthrough:%s|%s\n' "${1:-}" "${2:-}" >"${TMUX_NAV_ADJACENT_SHOULD_LOG:?}"
+exit 0
+SH
+chmod +x "$adjacent_router_dir/tmux-pane-should-passthrough"
+env -u HOME \
+  PATH="$adjacent_router_path:/usr/bin:/bin" \
+  TMUX_NAV_ADJACENT_SHOULD_LOG="$adjacent_should_log" \
+  TMUX_NAV_ADJACENT_TMUX_LOG="$adjacent_tmux_log" \
+  "$adjacent_router_dir/tmux-pane-key-router" nav-left %adjacent sh /dev/ttys010
+assert_eq \
+  "key router finds adjacent passthrough helper when HOME is unset" \
+  "passthrough:sh|/dev/ttys010" \
+  "$(cat "$adjacent_should_log")"
+assert_contains \
+  "key router uses adjacent passthrough helper for navigation" \
+  "$(cat "$adjacent_tmux_log")" \
+  "tmux send-keys -t %adjacent C-h"
+
+rm -f "$adjacent_should_log" "$adjacent_tmux_log"
+cat >"$adjacent_router_dir/tmux-pane-should-passthrough" <<'SH'
+#!/usr/bin/env bash
+printf 'paste-check:%s|%s|%s\n' "${1:-}" "${2:-}" "${3:-}" >"${TMUX_NAV_ADJACENT_SHOULD_LOG:?}"
+exit 1
+SH
+chmod +x "$adjacent_router_dir/tmux-pane-should-passthrough"
+cat >"$adjacent_router_dir/tmux-paste-helper" <<'SH'
+#!/usr/bin/env bash
+printf 'paste:%s\n' "${1:-}" >"${TMUX_NAV_ADJACENT_PASTE_LOG:?}"
+SH
+chmod +x "$adjacent_router_dir/tmux-paste-helper"
+env -u HOME \
+  PATH="$adjacent_router_path:/usr/bin:/bin" \
+  TMUX_NAV_ADJACENT_SHOULD_LOG="$adjacent_should_log" \
+  TMUX_NAV_ADJACENT_PASTE_LOG="$adjacent_paste_log" \
+  TMUX_NAV_ADJACENT_TMUX_LOG="$adjacent_tmux_log" \
+  "$adjacent_router_dir/tmux-pane-key-router" shift-insert %adjacent-paste sh /dev/ttys011
+assert_eq \
+  "key router checks adjacent passthrough helper before adjacent paste helper" \
+  "paste-check:--paste-key|sh|/dev/ttys011" \
+  "$(cat "$adjacent_should_log")"
+assert_eq \
+  "key router finds adjacent paste helper when HOME is unset" \
+  "paste:%adjacent-paste" \
+  "$(cat "$adjacent_paste_log")"
+assert_file_absent \
+  "key router avoids raw Shift-Insert bytes when adjacent paste helper handles paste" \
+  "$adjacent_tmux_log"
 
 rm -f "$fake_home/.local/bin/tmux-paste-helper"
 path_paste_path="$tmp/path-paste-path"
