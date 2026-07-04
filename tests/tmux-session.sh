@@ -586,6 +586,21 @@ HOME="$tmp/home" \
 selected="$(active_window "$named_session")"
 assert_eq "uppercase terminal alias selects without tr" "${named_session}:3" "$selected"
 
+no_tr_agent_log="$tmp/no-tr-uppercase-codex-exe-agent.log"
+make_fake_agent_cli_at "$no_tr_session_bin/CODEX.EXE"
+tmux_test tmux set-environment -g TMUX_SESSION_AGENT_LOG "$no_tr_agent_log"
+HOME="$tmp/home" \
+  PATH="$no_tr_session_bin" \
+  TMUX_TEST_REAL_TMUX="$real_tmux" \
+  TMUX_TEST_SOCKET="$socket_name" \
+  TMUX_SESSION_AGENT_CLI=CODEX.EXE \
+  "$root/common/.local/bin/tmux-session" "${session}-no-tr-uppercase-codex-exe-agent" --start-dir "$tmp/work" --no-attach
+wait_for_log_lines "default layout recognizes uppercase CODEX.EXE without tr" "$no_tr_agent_log" 2
+assert_eq \
+  "default layout uses uppercase CODEX.EXE resume command without tr" \
+  "$(printf 'CODEX.EXE\nCODEX.EXE resume --last')" \
+  "$(LC_ALL=C sort "$no_tr_agent_log")"
+
 no_agent_session="${session}-no-agent"
 tmux_direct_test \
   "$root/common/.local/bin/tmux-session" "$no_agent_session" --start-dir "$tmp/work" --no-attach

@@ -54,6 +54,19 @@ normalize_windows_absolute_path() {
   printf '%s\n' "$value"
 }
 
+ascii_lower() {
+  local value="$1"
+  local upper="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  local lower="abcdefghijklmnopqrstuvwxyz"
+  local index
+
+  for ((index = 0; index < ${#upper}; index++)); do
+    value="${value//${upper:index:1}/${lower:index:1}}"
+  done
+
+  printf '%s\n' "$value"
+}
+
 command_name() {
   local command="$1"
 
@@ -65,7 +78,7 @@ command_name() {
       ;;
   esac
 
-  printf '%s\n' "$command" | LC_ALL=C tr '[:upper:]' '[:lower:]'
+  ascii_lower "$command"
 }
 
 default_agent_cli() {
