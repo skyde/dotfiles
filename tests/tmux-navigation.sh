@@ -71,6 +71,21 @@ assert_contains_home_guard() {
   return 1
 }
 
+assert_contains_home_guard_raw() {
+  local name="$1"
+  local haystack="$2"
+
+  if [[ "$haystack" == *"$home_guard_raw"* || "$haystack" == *"$home_guard_raw_escaped"* ]]; then
+    printf 'ok - %s\n' "$name"
+    return 0
+  fi
+
+  printf 'not ok - %s\n' "$name" >&2
+  printf 'missing one of:\n%s\n%s\n' "$home_guard_raw" "$home_guard_raw_escaped" >&2
+  printf 'actual:\n%s\n' "$haystack" >&2
+  return 1
+}
+
 assert_eq() {
   local name="$1"
   local expected="$2"
@@ -219,6 +234,8 @@ home_guard="[ -n \\\"\\\${HOME:-}\\\" ]"
 home_guard_tmux34="[ -n \\\"\\\\\${HOME:-}\\\" ]"
 # shellcheck disable=SC2016
 home_guard_raw='[ -n "${HOME:-}" ]'
+# shellcheck disable=SC2016
+home_guard_raw_escaped='[ -n "\${HOME:-}" ]'
 
 for key in C-h C-j C-k C-l "C-\\"; do
   binding="$("$real_tmux" -L "$socket_name" list-keys -T root "$key")"
@@ -708,7 +725,7 @@ assert_contains "automatic rename uses tmux-status helper" "$automatic_rename_fo
 assert_contains "automatic rename uses explicit home" "$automatic_rename_format" "$home_marker"
 assert_contains "automatic rename has repo fallback" "$automatic_rename_format" "$repo_marker"
 assert_contains "automatic rename has PATH fallback" "$automatic_rename_format" "command -v tmux-status-name.sh"
-assert_contains "automatic rename guards unset HOME" "$automatic_rename_format" "$home_guard_raw"
+assert_contains_home_guard_raw "automatic rename guards unset HOME" "$automatic_rename_format"
 assert_contains "automatic rename shell-quotes current pane path" "$automatic_rename_format" '#{q:pane_current_path}'
 assert_contains "automatic rename shell-quotes current command" "$automatic_rename_format" '#{q:pane_current_command}'
 
