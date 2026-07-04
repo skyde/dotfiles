@@ -247,6 +247,7 @@ shift_f5_sequence="$(printf '\033[15;2~')"
 ctrl_insert_sequence="$(printf '\033[2;5~')"
 shift_insert_sequence="$(printf '\033[2;2~')"
 shift_delete_sequence="$(printf '\033[3;2~')"
+ctrl_backspace_sequence="$(printf '\033[127;5u')"
 ctrl_left_sequence="$(printf '\033[1;5D')"
 ctrl_right_sequence="$(printf '\033[1;5C')"
 ctrl_delete_sequence="$(printf '\033[3;5~')"
@@ -288,6 +289,18 @@ wait_for_file "$insert_cut_result"
 assert_eq "tmux passes Shift-Delete bytes to insert Neovim cut" \
   "$(printf 'insert shift-delete cut|\nV\nline 2Z|line 3')" \
   "$(cat "$insert_cut_result")"
+
+insert_ctrl_backspace_result="$tmp/insert-ctrl-backspace-word.log"
+insert_ctrl_backspace_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'insert ctrl backspace alpha beta gamma'}); vim.cmd('normal! gg$'); vim.cmd('startinsert!')"
+insert_ctrl_backspace_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line()}, $(lua_string "$insert_ctrl_backspace_result"))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$insert_ctrl_backspace_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$ctrl_backspace_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "Z"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$insert_ctrl_backspace_write_command" Enter
+wait_for_file "$insert_ctrl_backspace_result"
+assert_eq "tmux passes Ctrl-Backspace bytes to insert Neovim delete-previous-word" \
+  "insert ctrl backspace alpha beta Z" \
+  "$(cat "$insert_ctrl_backspace_result")"
 
 insert_ctrl_left_result="$tmp/insert-ctrl-left-word.log"
 insert_ctrl_left_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'insert ctrl left alpha beta gamma'}); vim.cmd('normal! gg$'); vim.cmd('startinsert!')"
@@ -335,6 +348,17 @@ wait_for_file "$normal_copy_result"
 assert_eq "tmux passes Ctrl-Insert bytes to normal Neovim copy" \
   "$(printf 'ctrl-insert copy|\nV\nctrl-insert copy|line 2')" \
   "$(cat "$normal_copy_result")"
+
+normal_ctrl_backspace_result="$tmp/normal-ctrl-backspace-word.log"
+normal_ctrl_backspace_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'normal ctrl backspace alpha beta gamma'}); vim.cmd('normal! gg$')"
+normal_ctrl_backspace_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line()}, $(lua_string "$normal_ctrl_backspace_result"))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$normal_ctrl_backspace_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$ctrl_backspace_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$normal_ctrl_backspace_write_command" Enter
+wait_for_file "$normal_ctrl_backspace_result"
+assert_eq "tmux passes Ctrl-Backspace bytes to normal Neovim delete-previous-word" \
+  "normal ctrl backspace alpha beta " \
+  "$(cat "$normal_ctrl_backspace_result")"
 
 normal_ctrl_left_result="$tmp/normal-ctrl-left-word.log"
 normal_ctrl_left_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'normal ctrl left alpha beta gamma'}); vim.cmd('normal! gg$')"
@@ -845,6 +869,20 @@ PY
     "$(printf 'attached insert shift-delete cut|\nV\nline 2Z|line 3')" \
     "$(cat "$attached_insert_shift_delete_result")"
 
+  attached_insert_ctrl_backspace_result="$tmp/attached-insert-ctrl-backspace-word.log"
+  attached_insert_ctrl_backspace_ready="$tmp/attached-insert-ctrl-backspace-word-ready.log"
+  attached_insert_ctrl_backspace_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached insert ctrl backspace alpha beta gamma'}); vim.cmd('normal! gg$'); vim.cmd('startinsert!'); vim.fn.writefile({'ok'}, $(lua_string "$attached_insert_ctrl_backspace_ready"))"
+  attached_insert_ctrl_backspace_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line()}, $(lua_string "$attached_insert_ctrl_backspace_result"))"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_insert_ctrl_backspace_command" Enter
+  wait_for_file "$attached_insert_ctrl_backspace_ready"
+  send_attached_client_key "tmux attached client sends Ctrl-Backspace bytes to insert Neovim" "$ctrl_backspace_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "Z"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_insert_ctrl_backspace_write_command" Enter
+  wait_for_file "$attached_insert_ctrl_backspace_result"
+  assert_eq "tmux attached client passes Ctrl-Backspace bytes through to insert Neovim delete-previous-word" \
+    "attached insert ctrl backspace alpha beta Z" \
+    "$(cat "$attached_insert_ctrl_backspace_result")"
+
   attached_insert_ctrl_left_result="$tmp/attached-insert-ctrl-left-word.log"
   attached_insert_ctrl_left_ready="$tmp/attached-insert-ctrl-left-word-ready.log"
   attached_insert_ctrl_left_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached insert ctrl left alpha beta gamma'}); vim.cmd('normal! gg$'); vim.cmd('startinsert!'); vim.fn.writefile({'ok'}, $(lua_string "$attached_insert_ctrl_left_ready"))"
@@ -897,6 +935,19 @@ PY
   assert_eq "tmux attached client passes Ctrl-Insert bytes through to Neovim copy" \
     "$(printf 'attached ctrl-insert copy|\nV\nattached ctrl-insert copy|line 2')" \
     "$(cat "$attached_ctrl_insert_result")"
+
+  attached_ctrl_backspace_result="$tmp/attached-ctrl-backspace-word.log"
+  attached_ctrl_backspace_ready="$tmp/attached-ctrl-backspace-word-ready.log"
+  attached_ctrl_backspace_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached ctrl backspace alpha beta gamma'}); vim.cmd('normal! gg$'); vim.fn.writefile({'ok'}, $(lua_string "$attached_ctrl_backspace_ready"))"
+  attached_ctrl_backspace_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line()}, $(lua_string "$attached_ctrl_backspace_result"))"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_ctrl_backspace_command" Enter
+  wait_for_file "$attached_ctrl_backspace_ready"
+  send_attached_client_key "tmux attached client sends Ctrl-Backspace bytes to normal Neovim" "$ctrl_backspace_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_ctrl_backspace_write_command" Enter
+  wait_for_file "$attached_ctrl_backspace_result"
+  assert_eq "tmux attached client passes Ctrl-Backspace bytes through to normal Neovim delete-previous-word" \
+    "attached ctrl backspace alpha beta " \
+    "$(cat "$attached_ctrl_backspace_result")"
 
   attached_ctrl_left_result="$tmp/attached-ctrl-left-word.log"
   attached_ctrl_left_ready="$tmp/attached-ctrl-left-word-ready.log"

@@ -86,6 +86,15 @@ bash_ctrl_delete_binding="$(
 )"
 assert_contains "bashrc-custom maps Ctrl-Delete to kill-word" "$bash_ctrl_delete_binding" '"\e[3;5~": kill-word'
 
+bash_ctrl_backspace_binding="$(
+  DOTFILES_BASHRC="$root/common/.bashrc-custom" \
+    HOME="$tmp/min-home" \
+    PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM=xterm-256color \
+    "$bash_path" --noprofile --norc -ic 'source "$DOTFILES_BASHRC"; bind -p | grep "\\\\e\\[127;5u"' 2>/dev/null
+)"
+assert_contains "bashrc-custom maps Ctrl-Backspace to backward-kill-word" "$bash_ctrl_backspace_binding" '"\e[127;5u": backward-kill-word'
+
 bash_word_motion_bindings="$(
   DOTFILES_BASHRC="$root/common/.bashrc-custom" \
     HOME="$tmp/min-home" \

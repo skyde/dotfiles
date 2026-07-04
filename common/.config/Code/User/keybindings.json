@@ -48,11 +48,11 @@
     "when": "textInputFocus && !terminalFocus"
   },
   {
-    // Ctrl+Backspace in the terminal deletes the previous word (send Ctrl+W)
+    // Ctrl+Backspace in the terminal sends a distinct previous-word delete key
     "key": "ctrl+backspace",
     "command": "workbench.action.terminal.sendSequence",
     "when": "terminalFocus",
-    "args": { "text": "\u0017" }
+    "args": { "text": "\u001B[127;5u" }
   },
   {
     // Ctrl+Delete deletes the next word (Windows-style)

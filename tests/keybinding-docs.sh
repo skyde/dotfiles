@@ -80,6 +80,9 @@ assert_contains "Neovim config maps Ctrl-Left" \
 assert_contains "Neovim config maps Ctrl-Right" \
   "$nvim_keymaps" \
   'for _, lhs in ipairs({ "<C-Right>", "\27[1;5C" }) do'
+assert_contains "Neovim config maps Ctrl-Backspace" \
+  "$nvim_keymaps" \
+  'for _, lhs in ipairs({ "<C-BS>", "\27[127;5u" }) do'
 assert_contains "Neovim config maps Ctrl-Delete" \
   "$nvim_keymaps" \
   'map({ "n", "i" }, "<C-Del>", delete_next_word'
@@ -89,6 +92,9 @@ assert_contains "zshrc maps Ctrl-Right word motion" \
 assert_contains "zshrc maps Ctrl-Left word motion" \
   "$zshrc" \
   "bindkey '^[[1;5D' backward-word"
+assert_contains "zshrc maps Ctrl-Backspace previous word delete" \
+  "$zshrc" \
+  "bindkey '^[[127;5u' backward-kill-word"
 assert_not_contains "Neovim keymaps avoid stale remap TODO" \
   "$nvim_keymaps" \
   "TODO: Use the vim.keymap.set style remap"
@@ -104,12 +110,18 @@ assert_contains "bashrc maps Ctrl-Right word motion" \
 assert_contains "bashrc maps Ctrl-Left word motion" \
   "$bashrc_custom" \
   "bind '\"\\e[1;5D\": backward-word'"
+assert_contains "bashrc maps Ctrl-Backspace previous word delete" \
+  "$bashrc_custom" \
+  "bind '\"\\e[127;5u\": backward-kill-word'"
 assert_contains "kitty maps Ctrl-Right to xterm sequence" \
   "$kitty_conf" \
   "map ctrl+right send_text all \\x1b[1;5C"
 assert_contains "kitty maps Ctrl-Left to xterm sequence" \
   "$kitty_conf" \
   "map ctrl+left send_text all \\x1b[1;5D"
+assert_contains "kitty maps Ctrl-Backspace to CSI-u sequence" \
+  "$kitty_conf" \
+  "map ctrl+backspace send_text all \\x1b[127;5u"
 assert_contains "kitty maps Ctrl-Delete to xterm sequence" \
   "$kitty_conf" \
   "map ctrl+delete send_text all \\x1b[3;5~"
@@ -126,6 +138,9 @@ assert_contains "tmux config passes Ctrl-Left to panes" \
 assert_contains "tmux config passes Ctrl-Right to panes" \
   "$tmux_conf" \
   "bind-key -n C-Right send-keys C-Right"
+assert_contains "tmux config passes Ctrl-Backspace to panes" \
+  "$tmux_conf" \
+  "bind-key -n C-BSpace send-keys C-BSpace"
 assert_contains "tmux config passes Ctrl-Delete to panes" \
   "$tmux_conf" \
   "bind-key -n C-Delete send-keys C-Delete"

@@ -26,6 +26,7 @@ bindkey -e                              # Emacs keybindings
 bindkey '^_' undo                       # Ctrl+_
 bindkey '^[[1;5C' forward-word          # Ctrl+Right
 bindkey '^[[1;5D' backward-word         # Ctrl+Left
+bindkey '^[[127;5u' backward-kill-word  # Ctrl+Backspace
 bindkey '^[[3;5~' kill-word             # Ctrl+Delete
 autoload -Uz edit-command-line
 zle -N edit-command-line

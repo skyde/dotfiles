@@ -227,6 +227,13 @@ for path, bindings in ((keybindings_file, keybindings), (mac_keybindings_file, m
     ), f"{path}: Ctrl+Right must reach shells, tmux, and terminal Neovim"
     assert has_keybinding(
         bindings,
+        "ctrl+backspace",
+        "workbench.action.terminal.sendSequence",
+        {"text": "\x1b[127;5u"},
+        "terminalFocus",
+    ), f"{path}: Ctrl+Backspace must reach shells, tmux, and terminal Neovim distinctly from Ctrl+W"
+    assert has_keybinding(
+        bindings,
         "ctrl+delete",
         "deleteWordRight",
         when="textInputFocus && !terminalFocus",

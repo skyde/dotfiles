@@ -588,6 +588,11 @@ assert(type(vim.fn.maparg("<C-Right>", "n", false, true).callback) == "function"
 assert(type(vim.fn.maparg("<C-Right>", "i", false, true).callback) == "function")
 assert(type(vim.fn.maparg("\27[1;5C", "n", false, true).callback) == "function")
 assert(type(vim.fn.maparg("\27[1;5C", "i", false, true).callback) == "function")
+assert(type(vim.fn.maparg("<C-BS>", "n", false, true).callback) == "function")
+assert(type(vim.fn.maparg("<C-BS>", "i", false, true).callback) == "function")
+assert(type(vim.fn.maparg("\27[127;5u", "n", false, true).callback) == "function")
+assert(type(vim.fn.maparg("\27[127;5u", "i", false, true).callback) == "function")
+assert(vim.fn.maparg("<C-w>", "n") == "", "normal Ctrl-W window prefix must remain available")
 assert(type(vim.fn.maparg("<C-Del>", "n", false, true).callback) == "function")
 assert(type(vim.fn.maparg("<C-Del>", "i", false, true).callback) == "function")
 _G.dotfiles_smoke_normal_copy_callback = vim.fn.maparg("<D-c>", "n", false, true).callback
@@ -772,10 +777,38 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   feed("aZ<Esc>")
   assert(lines_text() == "normalZ ctrl right alpha beta gamma", lines_text())
 
+  local normal_ctrl_backspace_callback = callback_for("\27[127;5u", "n")
+  local normal_ctrl_backspace_line = "normal ctrl backspace alpha beta gamma"
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { normal_ctrl_backspace_line })
+  vim.api.nvim_win_set_cursor(0, { 1, #normal_ctrl_backspace_line - 1 })
+  normal_ctrl_backspace_callback()
+  assert(lines_text() == "normal ctrl backspace alpha beta ", lines_text())
+
+  normal_ctrl_backspace_line = "normal ctrl backspace alpha beta gamma"
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { normal_ctrl_backspace_line })
+  vim.api.nvim_win_set_cursor(0, { 1, #"normal ctrl backspace alpha beta" - 1 })
+  normal_ctrl_backspace_callback()
+  assert(lines_text() == "normal ctrl backspace alpha  gamma", lines_text())
+
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { "normal ctrl delete alpha beta gamma" })
   feed("gg04w")
   feed("<C-Del>")
   assert(lines_text() == "normal ctrl delete alpha gamma", lines_text())
+
+  local insert_ctrl_backspace_line = "insert ctrl backspace alpha beta gamma"
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { insert_ctrl_backspace_line })
+  feed("ggA")
+  feed_raw("\27[127;5u")
+  assert(lines_text() == "insert ctrl backspace alpha beta ", lines_text())
+  feed("<Esc>")
+
+  insert_ctrl_backspace_line = "insert ctrl backspace alpha beta gamma"
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { insert_ctrl_backspace_line })
+  vim.api.nvim_win_set_cursor(0, { 1, #"insert ctrl backspace alpha beta" })
+  feed("i")
+  feed_raw("\27[127;5u")
+  assert(lines_text() == "insert ctrl backspace alpha  gamma", lines_text())
+  feed("<Esc>")
 
   local insert_ctrl_left_line = "insert ctrl left alpha beta gamma"
   local insert_ctrl_left_callback = callback_for("\27[1;5D", "i")

@@ -96,6 +96,15 @@ ctrl_delete_binding="$(
 )"
 assert_contains "zshrc maps Ctrl-Delete to kill-word" "$ctrl_delete_binding" "kill-word"
 
+ctrl_backspace_binding="$(
+  DOTFILES_ZSHRC="$root/common/.zshrc" \
+    HOME="$tmp/home" \
+    PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+    XDG_CACHE_HOME="$tmp/min-cache" \
+    "$zsh_path" -fic $'source "$DOTFILES_ZSHRC"; bindkey -M emacs "\e[127;5u"' 2>&1
+)"
+assert_contains "zshrc maps Ctrl-Backspace to backward-kill-word" "$ctrl_backspace_binding" "backward-kill-word"
+
 ctrl_right_binding="$(
   DOTFILES_ZSHRC="$root/common/.zshrc" \
     HOME="$tmp/home" \

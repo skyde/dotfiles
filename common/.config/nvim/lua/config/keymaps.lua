@@ -75,6 +75,83 @@ for _, lhs in ipairs({ "<C-Right>", "\27[1;5C" }) do
   map("i", lhs, move_next_word_insert, { desc = "Move to next word" })
 end
 
+local function previous_word_start(line, boundary)
+  if boundary <= 0 then
+    return nil
+  end
+
+  local trimmed_boundary = boundary
+  while trimmed_boundary > 0 and line:sub(trimmed_boundary, trimmed_boundary):match("%s") do
+    trimmed_boundary = trimmed_boundary - 1
+  end
+
+  local search_start = 1
+  local target_start = nil
+
+  while true do
+    local word_start, word_end = line:find("[%w_]+", search_start)
+    if not word_start or word_start > trimmed_boundary then
+      break
+    end
+
+    if word_end >= trimmed_boundary then
+      target_start = word_start
+      break
+    end
+
+    target_start = word_start
+    search_start = word_end + 1
+  end
+
+  return target_start
+end
+
+local function delete_previous_word_at(boundary, insert_mode)
+  local row = unpack(vim.api.nvim_win_get_cursor(0))
+  local line = vim.api.nvim_get_current_line()
+  local target_start = previous_word_start(line, boundary)
+
+  if not target_start then
+    if insert_mode then
+      vim.cmd("startinsert")
+    end
+    return
+  end
+
+  local new_line = line:sub(1, target_start - 1) .. line:sub(boundary + 1)
+  local new_col = target_start - 1
+
+  vim.api.nvim_set_current_line(new_line)
+  if not insert_mode and #new_line > 0 then
+    new_col = math.min(new_col, #new_line - 1)
+  end
+  vim.api.nvim_win_set_cursor(0, { row, new_col })
+
+  if insert_mode then
+    vim.cmd("startinsert")
+  end
+end
+
+local function delete_previous_word()
+  local _, col = unpack(vim.api.nvim_win_get_cursor(0))
+  delete_previous_word_at(col + 1, false)
+end
+
+local function delete_previous_word_insert()
+  local _, col = unpack(vim.api.nvim_win_get_cursor(0))
+  local boundary = col
+  if vim.fn.mode():sub(1, 1) ~= "i" and col < #vim.api.nvim_get_current_line() then
+    boundary = col + 1
+  end
+
+  delete_previous_word_at(boundary, true)
+end
+
+for _, lhs in ipairs({ "<C-BS>", "\27[127;5u" }) do
+  map("n", lhs, delete_previous_word, { desc = "Delete previous word" })
+  map("i", lhs, delete_previous_word_insert, { desc = "Delete previous word" })
+end
+
 -- Delete the next word with the same Ctrl+Delete convention used by shells
 -- and GUI editors.
 local function delete_next_word()
