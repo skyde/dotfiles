@@ -478,20 +478,32 @@ jobs:
         run: |
           echo "⚡ Running performance and edge case tests..."
 
+          edge_tmp=$(mktemp -d)
+          trap 'rm -rf "$edge_tmp"' EXIT
+
           # Test with existing files (conflict scenario)
           echo "Testing conflict handling..."
-          touch ~/.bashrc ~/.zshrc
-          AUTO_INSTALL=0 ./init.sh || echo "Expected to handle conflicts"
+          conflict_home="$edge_tmp/conflict-home"
+          mkdir -p "$conflict_home"
+          touch "$conflict_home/.bashrc" "$conflict_home/.zshrc"
+          if HOME="$conflict_home" AUTO_INSTALL=0 ./init.sh; then
+            echo "❌ Conflict scenario unexpectedly succeeded"
+            exit 1
+          else
+            echo "Expected conflict handled"
+          fi
 
           # Test multiple installs (idempotent behavior)
           echo "Testing idempotent behavior..."
-          AUTO_INSTALL=0 ./init.sh
-          AUTO_INSTALL=0 ./init.sh
+          install_home="$edge_tmp/install-home"
+          mkdir -p "$install_home"
+          HOME="$install_home" AUTO_INSTALL=0 ./init.sh
+          HOME="$install_home" AUTO_INSTALL=0 ./init.sh
           echo "✅ Multiple installs handled correctly"
 
           # Test cleanup
           echo "Testing cleanup..."
-          ./apply.sh --delete
+          HOME="$install_home" ./apply.sh --delete
           echo "✅ Cleanup successful"
 
           echo "✅ Performance and edge case testing completed"
