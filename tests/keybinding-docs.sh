@@ -52,6 +52,12 @@ assert_contains "VS Code docs explain terminal clipboard behavior" \
 assert_contains "VS Code docs describe terminal Insert clipboard keys" \
   "$vscode_docs" \
   "Ctrl+Insert\` / \`Shift+Insert\` / \`Shift+Delete"
+assert_contains "VS Code docs describe terminal-mode copy and cut" \
+  "$vscode_docs" \
+  "terminal-mode copy/cut of the visible terminal line"
+assert_contains "VS Code docs describe terminal-mode paste" \
+  "$vscode_docs" \
+  "terminal-normal, terminal-visual, and terminal-mode"
 
 assert_contains "Neovim config documents Shift-F10 reservation" \
   "$nvim_keymaps" \
