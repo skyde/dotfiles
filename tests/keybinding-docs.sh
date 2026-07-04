@@ -70,6 +70,9 @@ assert_contains "VS Code docs describe word delete keys" \
 assert_contains "VS Code docs describe word motion keys" \
   "$vscode_docs" \
   "Ctrl+Left\` / \`Ctrl+Right"
+assert_contains "VS Code docs describe tmux copy-mode Shift-F4/F6 scrolling" \
+  "$vscode_docs" \
+  "tmux copy mode uses Shift+F4/F6 to scroll 16 lines"
 
 assert_contains "Neovim config documents Shift-F10 reservation" \
   "$nvim_keymaps" \
@@ -132,6 +135,18 @@ assert_not_contains "VS Code keybindings avoid exactly typo" "$(<"$root/common/.
 assert_contains "tmux config binds Shift-F10 as prefix table" \
   "$tmux_conf" \
   "bind-key -n S-F10 switch-client -T prefix"
+assert_contains "tmux config maps VS Code Shift-F4 bytes for copy-mode" \
+  "$tmux_conf" \
+  "set-option -sq 'user-keys[90]' \"\\033[1;2S\""
+assert_contains "tmux config maps VS Code Shift-F6 bytes for copy-mode" \
+  "$tmux_conf" \
+  "set-option -sq 'user-keys[91]' \"\\033[17;2~\""
+assert_contains "tmux copy-mode scrolls up on VS Code Shift-F4 bytes" \
+  "$tmux_conf" \
+  "bind-key -T copy-mode-vi User90 send-keys -X -N 16 scroll-up"
+assert_contains "tmux copy-mode scrolls down on VS Code Shift-F6 bytes" \
+  "$tmux_conf" \
+  "bind-key -T copy-mode-vi User91 send-keys -X -N 16 scroll-down"
 assert_contains "tmux config passes Ctrl-Left to panes" \
   "$tmux_conf" \
   "bind-key -n C-Left send-keys C-Left"

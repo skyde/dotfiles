@@ -243,7 +243,9 @@ assert_eq "tmux passes VS Code Shift-F12 bytes to insert Neovim next buffer" "ot
 wait_for_file "$insert_previous_buffer_result"
 assert_eq "tmux passes VS Code Shift-F1 bytes to insert Neovim previous buffer" "search.txt" "$(cat "$insert_previous_buffer_result")"
 
+shift_f4_sequence="$(printf '\033[1;2S')"
 shift_f5_sequence="$(printf '\033[15;2~')"
+shift_f6_sequence="$(printf '\033[17;2~')"
 ctrl_insert_sequence="$(printf '\033[2;5~')"
 shift_insert_sequence="$(printf '\033[2;2~')"
 shift_delete_sequence="$(printf '\033[3;2~')"
@@ -1024,6 +1026,25 @@ PY
   assert_eq "tmux attached client passes Shift-Delete bytes through to visual Neovim cut" \
     "$(printf 'attached \nv\nvisual shift-delete cut|line 2')" \
     "$(cat "$attached_visual_shift_delete_result")"
+
+  copy_scroll_window="copy-scroll"
+  # shellcheck disable=SC2016
+  copy_scroll_command='for i in $(seq 1 100); do printf "copy scroll line %03d\n" "$i"; done; exec sleep 60'
+  "$tmux_bin" -L "$socket_name" new-window -d -t "nvim-keys:" -n "$copy_scroll_window" "$copy_scroll_command"
+  copy_scroll_pane="$("$tmux_bin" -L "$socket_name" list-panes -t "nvim-keys:$copy_scroll_window" -F '#{pane_id}')"
+  wait_for_pane_command "$socket_name" "$copy_scroll_pane" "sleep"
+  "$tmux_bin" -L "$socket_name" select-window -t "nvim-keys:$copy_scroll_window"
+  "$tmux_bin" -L "$socket_name" copy-mode -t "$copy_scroll_pane"
+  send_attached_client_key "tmux attached client sends VS Code Shift-F4 bytes to copy-mode" "$shift_f4_sequence"
+  assert_eq "tmux copy-mode handles VS Code Shift-F4 scroll-up bytes" \
+    "16" \
+    "$("$tmux_bin" -L "$socket_name" display-message -p -t "$copy_scroll_pane" '#{scroll_position}')"
+  send_attached_client_key "tmux attached client sends VS Code Shift-F6 bytes to copy-mode" "$shift_f6_sequence"
+  assert_eq "tmux copy-mode handles VS Code Shift-F6 scroll-down bytes" \
+    "0" \
+    "$("$tmux_bin" -L "$socket_name" display-message -p -t "$copy_scroll_pane" '#{scroll_position}')"
+  "$tmux_bin" -L "$socket_name" kill-window -t "nvim-keys:$copy_scroll_window"
+  "$tmux_bin" -L "$socket_name" select-pane -t "$pane_id"
 else
   skip "tmux attached client Insert/Delete Neovim copy-paste keys (python3 unavailable)"
 fi
@@ -1041,9 +1062,6 @@ assert_eq "tmux passes VS Code Shift-F5 bytes to visual Neovim save" "$visual_sa
 
 reset_lines_command="lua local lines = {'manual'}; for i = 2, 32 do lines[i] = 'line ' .. i end; vim.api.nvim_buf_set_lines(0, 0, -1, false, lines); vim.cmd('normal! gg')"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$reset_lines_command" Enter
-
-shift_f4_sequence="$(printf '\033[1;2S')"
-shift_f6_sequence="$(printf '\033[17;2~')"
 
 visual_up_result="$tmp/visual-up.log"
 visual_up_command="lua local lines=vim.fn.getreg('\"', 1, true); vim.fn.writefile({lines[1] or '', lines[#lines] or '', tostring(#lines), vim.fn.getregtype('\"')}, $(lua_string "$visual_up_result"))"

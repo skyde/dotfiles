@@ -28,7 +28,7 @@ This document lists the custom shortcuts I use in VS Code. The same keybindings 
 - `Ctrl+O` / `Ctrl+I` – passed through to terminal apps such as tmux and Neovim.
 - `Shift+F1` / `Shift+F12` – passed through to terminal apps when the terminal is focused.
 - `Shift+F2` / `Shift+F3` / `Shift+F7` – passed through to terminal apps when the terminal is focused.
-- `Shift+F4` / `Shift+F5` / `Shift+F6` – passed through to terminal apps when the terminal is focused.
+- `Shift+F4` / `Shift+F5` / `Shift+F6` – passed through to terminal apps when the terminal is focused; tmux copy mode uses Shift+F4/F6 to scroll 16 lines.
 - `Shift+F8` / `Shift+F11` – passed through to terminal apps when the terminal is focused.
 - `Shift+F9` – passed through to terminal Neovim to toggle search highlighting.
 - `Shift+F10` – passed through to tmux as the secondary prefix key.
