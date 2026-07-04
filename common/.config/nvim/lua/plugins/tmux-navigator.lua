@@ -3,6 +3,7 @@ local passthrough_commands = {
   autossh = true,
   claude = true,
   codex = true,
+  delta = true,
   fzf = true,
   ["fzf-tmux"] = true,
   gemini = true,

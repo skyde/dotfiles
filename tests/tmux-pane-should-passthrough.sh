@@ -56,6 +56,7 @@ assert_success "direct vim.basic command passes through" "$helper" /usr/bin/vim.
 assert_success "direct helix command passes through" "$helper" /opt/homebrew/bin/hx /dev/ttys001
 assert_success "direct less pager command passes through" "$helper" /usr/bin/less /dev/ttys001
 assert_success "direct man pager command passes through" "$helper" /usr/bin/man /dev/ttys001
+assert_success "direct delta pager command passes through" "$helper" /opt/homebrew/bin/delta /dev/ttys001
 assert_success "direct path yazi command passes through" "$helper" /opt/homebrew/bin/yazi /dev/ttys001
 assert_success "direct path ssh.exe command passes through without ps" env PATH=/usr/bin:/bin "$helper" /usr/bin/ssh.exe ""
 assert_success "direct Windows path ssh.exe command line passes through without ps" env PATH=/usr/bin:/bin "$helper" 'C:\tools\ssh.exe devbox' ""
@@ -83,6 +84,7 @@ assert_failure "paste key direct ssh command uses tmux paste" env PATH=/usr/bin:
 assert_failure "paste key direct ssh remote shell uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "ssh devbox" ""
 assert_failure "paste key direct kitten ssh uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "kitten ssh devbox" ""
 assert_failure "paste key direct mosh client uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key mosh-client ""
+assert_failure "paste key direct delta pager uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key delta ""
 assert_success "paste key direct docker exec nvim passes through" env PATH=/usr/bin:/bin "$helper" --paste-key "docker exec -it app nvim README.md" ""
 assert_failure "paste key direct docker exec ssh uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "docker exec -it app ssh devbox" ""
 assert_failure "paste key direct docker attach uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "docker attach app" ""
@@ -571,6 +573,8 @@ assert_success "foreground helix child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/hx' "$helper" zsh /dev/ttys001
 assert_success "foreground less child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /usr/bin/less' "$helper" zsh /dev/ttys001
+assert_success "foreground delta child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/delta /opt/homebrew/bin/delta README.md' "$helper" zsh /dev/ttys001
 assert_success "foreground nested tmux child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/tmux' "$helper" zsh /dev/ttys001
 assert_success "foreground screen child passes through behind shell" \

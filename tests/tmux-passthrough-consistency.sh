@@ -367,6 +367,7 @@ for label, (shell_function, lua_table) in simple_option_tables.items():
 
 behavior_cases = [
     ("windows ssh path", r"C:\tools\ssh.exe devbox"),
+    ("delta pager", "delta README.md"),
     ("windows unc ssh path", r"\\server\share\ssh.exe devbox"),
     ("windows slash unc ssh path", "//server/share/ssh.exe devbox"),
     ("windows ssh tunnel", r"C:\tools\ssh.exe -N -L 8080:localhost:80 devbox"),
