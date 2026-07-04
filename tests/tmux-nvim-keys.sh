@@ -677,7 +677,16 @@ try:
 
         if not sent and time.time() > deadline - 4.5:
             os.write(master, sequence_bytes)
-            time.sleep(0.3)
+            # Keep the transient client alive long enough for tmux's async
+            # if-shell key callbacks to resolve on slower CI runners.
+            settle_deadline = time.time() + 1.0
+            while time.time() < settle_deadline:
+                ready, _, _ = select.select([master], [], [], 0.05)
+                if ready:
+                    try:
+                        os.read(master, 4096)
+                    except OSError:
+                        break
             sys.exit(0)
 
     print("timeout sending attached tmux key sequence")
