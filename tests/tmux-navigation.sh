@@ -475,6 +475,10 @@ assert_contains "Shift-Delete root binding guards unset HOME" "$shift_delete_bin
 assert_contains "Shift-Delete root binding shell-quotes current command" "$shift_delete_binding" '#{q:pane_current_command}'
 assert_contains "Shift-Delete root binding shell-quotes pane tty" "$shift_delete_binding" '#{q:pane_tty}'
 assert_contains "Shift-Delete root binding avoids raw shell input fallback" "$shift_delete_binding" "display-message"
+assert_contains \
+  "Shift-Delete root binding points plain panes at copy mode" \
+  "$shift_delete_binding" \
+  "Shift-Delete: use copy mode or a pane-aware app to cut"
 
 rm -f "$fake_home/.local/bin/tmux-paste-helper"
 path_paste_path="$tmp/path-paste-path"
