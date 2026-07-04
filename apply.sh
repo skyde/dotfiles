@@ -14,14 +14,15 @@ for arg in "$@"; do
     esac
 done
 
+apply_dotfiles_local() {
+    if [ -x "$HOME/dotfiles-local/apply.sh" ]; then
+        echo "🔗 Found dotfiles-local, applying..."
+        "$HOME/dotfiles-local/apply.sh" "${ARGS[@]}"
+    fi
+}
+
 # Install stow if needed
 if ! command -v stow >/dev/null; then
-# Check for dotfiles-local and run its apply script if present
-if [ -x "$HOME/dotfiles-local/apply.sh" ]; then
-    echo "🔗 Found dotfiles-local, applying..."
-    "$HOME/dotfiles-local/apply.sh" "${ARGS[@]}"
-fi
-
     if $DRY_RUN; then
         echo "[DRY RUN] Would install stow"
     else
@@ -75,12 +76,6 @@ stow_package() {
     stow --target="$HOME" --verbose=1 "${STOW_ARGS[@]}" "$pkg"
 
     # Skip verification in dry-run mode
-# Check for dotfiles-local and run its apply script if present
-if [ -x "$HOME/dotfiles-local/apply.sh" ]; then
-    echo "🔗 Found dotfiles-local, applying..."
-    "$HOME/dotfiles-local/apply.sh" "${ARGS[@]}"
-fi
-
     if $DRY_RUN; then
         echo "  [DRY RUN] Skipping verification"
         return 0
@@ -142,11 +137,7 @@ case "$(uname)" in
         ;;
 esac
 
-# Check for dotfiles-local and run its apply script if present
-if [ -x "$HOME/dotfiles-local/apply.sh" ]; then
-    echo "🔗 Found dotfiles-local, applying..."
-    "$HOME/dotfiles-local/apply.sh" "${ARGS[@]}"
-fi
+apply_dotfiles_local
 
 if $DRY_RUN; then
     echo "✅ Dry run completed - no changes were made"

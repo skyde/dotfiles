@@ -31,6 +31,7 @@ lua_paths=(
 )
 
 shell_files=(
+  tests/apply-sh.sh
   tests/bashrc-custom.sh
   tests/copy-clipboard-wrappers.sh
   tests/copy-download-command.sh
@@ -91,10 +92,12 @@ shell_files=(
   common/.local/bin/st-rg
   common/.local/bin/st-zoekt
   common/.local/bin/yazi
+  apply.sh
   test-all-platforms.sh
 )
 
 test_scripts=(
+  tests/apply-sh.sh
   tests/bashrc-custom.sh
   tests/copy-clipboard-wrappers.sh
   tests/copy-download-command.sh
