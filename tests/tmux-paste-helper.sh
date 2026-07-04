@@ -1248,6 +1248,7 @@ PY
       rm -rf "$real_home"
       mkdir -p "$real_home/.local/bin"
       ln -s "$root/common/.local/bin/tmux-paste-helper" "$real_home/.local/bin/tmux-paste-helper"
+      ln -s "$root/common/.local/bin/tmux-pane-should-passthrough" "$real_home/.local/bin/tmux-pane-should-passthrough"
       ln -s "$root/common/.local/bin/osc-paste" "$real_home/.local/bin/osc-paste"
       printf 'real host paste alpha\nreal host paste beta\n' >"$real_clipboard"
       pbcopy <"$real_clipboard"
@@ -1273,6 +1274,104 @@ PY
       assert_files_equal "live tmux paste helper reads host clipboard through real osc-paste" \
         "$real_clipboard" \
         "$real_output"
+
+      if real_python_path="$(command -v python3 2>/dev/null)"; then
+        real_binding_clipboard="$tmp/live-real-shift-insert-binding-clipboard.txt"
+        real_binding_output="$tmp/live-real-shift-insert-binding-output.txt"
+        printf 'real host shift insert alpha\nreal host shift insert beta\n' >"$real_binding_clipboard"
+        pbcopy <"$real_binding_clipboard"
+        printf 'stale real host shift insert buffer\n' |
+          HOME="$real_home" "$real_tmux" -L "$live_socket" load-buffer -
+        printf -v real_binding_cat_command 'cat > %q' "$real_binding_output"
+        real_binding_window="$(
+          HOME="$real_home" "$real_tmux" -L "$live_socket" new-window -d -n real-shift-insert -P -F '#{window_id}' "$real_binding_cat_command"
+        )"
+        real_binding_pane="$(
+          HOME="$real_home" "$real_tmux" -L "$live_socket" list-panes -t "$real_binding_window" -F '#{pane_id}' |
+            awk 'NR == 1 { print; exit }'
+        )"
+        HOME="$real_home" "$real_tmux" -L "$live_socket" set-environment -g HOME "$real_home"
+        HOME="$real_home" "$real_tmux" -L "$live_socket" set-environment -g PATH \
+          "$real_home/.local/bin:$real_tmux_dir:/usr/bin:/bin:/usr/sbin:/sbin"
+        HOME="$real_home" "$real_tmux" -L "$live_socket" set-environment -gu OSC_PASTE_SOURCE >/dev/null 2>&1 || true
+        HOME="$real_home" "$real_tmux" -L "$live_socket" set-environment -gu SSH_CLIENT >/dev/null 2>&1 || true
+        HOME="$real_home" "$real_tmux" -L "$live_socket" set-environment -gu SSH_TTY >/dev/null 2>&1 || true
+        HOME="$real_home" "$real_tmux" -L "$live_socket" set-environment -gu SSH_CONNECTION >/dev/null 2>&1 || true
+        HOME="$real_home" "$real_tmux" -L "$live_socket" source-file "$root/common/.tmux.conf"
+        HOME="$real_home" "$real_tmux" -L "$live_socket" select-window -t "$real_binding_window"
+
+        if ! TERM=xterm-256color TERM_PROGRAM=vscode HOME="$real_home" "$real_python_path" - \
+          "$real_tmux" \
+          "$live_socket" \
+          "$real_session" \
+          "$real_binding_output" <<'PY'
+import os
+import pty
+import select
+import subprocess
+import sys
+import time
+
+tmux_path, socket_name, session_name, output_path = sys.argv[1:]
+env = os.environ.copy()
+env.update({
+    "TERM": "xterm-256color",
+    "TERM_PROGRAM": "vscode",
+})
+
+master, slave = pty.openpty()
+try:
+    proc = subprocess.Popen(
+        [tmux_path, "-L", socket_name, "attach-session", "-t", session_name],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        env=env,
+        close_fds=True,
+    )
+finally:
+    os.close(slave)
+
+try:
+    deadline = time.time() + 5
+    sent = False
+    while time.time() < deadline:
+        ready, _, _ = select.select([master], [], [], 0.05)
+        if ready:
+            try:
+                os.read(master, 4096)
+            except OSError:
+                break
+
+        if not sent and time.time() > deadline - 4.5:
+            os.write(master, b"\x1b[2;2~")
+            sent = True
+
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            sys.exit(0)
+
+    print("timeout waiting for real host Shift-Insert paste binding output")
+    sys.exit(1)
+finally:
+    proc.terminate()
+    try:
+        proc.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+    os.close(master)
+PY
+        then
+          printf 'not ok - live tmux Shift-Insert binding reads real host clipboard\n' >&2
+          exit 1
+        fi
+        wait_for_file "$real_binding_output"
+        HOME="$real_home" "$real_tmux" -L "$live_socket" send-keys -t "$real_binding_pane" C-d
+        assert_files_equal "live tmux Shift-Insert binding reads real host clipboard" \
+          "$real_binding_clipboard" \
+          "$real_binding_output"
+      else
+        printf 'skip - live tmux Shift-Insert binding real host clipboard (python3 unavailable)\n'
+      fi
 
       "$real_tmux" -L "$live_socket" kill-server >/dev/null 2>&1 || true
       live_socket=""
