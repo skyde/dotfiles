@@ -55,6 +55,9 @@ assert_contains "VS Code docs describe terminal Insert clipboard keys" \
 assert_contains "VS Code docs describe terminal-mode copy and cut" \
   "$vscode_docs" \
   "terminal-mode copy/cut of the visible terminal line"
+assert_contains "VS Code docs describe insert-mode copy and cut" \
+  "$vscode_docs" \
+  "insert-mode line copy/cut"
 assert_contains "VS Code docs describe terminal-mode paste" \
   "$vscode_docs" \
   "terminal-normal, terminal-visual, and terminal-mode"
