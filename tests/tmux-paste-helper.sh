@@ -754,6 +754,7 @@ cat "${OSC_PASTE_SOURCE:?}"
 SH
   chmod +x "$live_home/.local/bin/osc-paste"
   ln -s "$root/common/.local/bin/tmux-paste-helper" "$live_home/.local/bin/tmux-paste-helper"
+  ln -s "$root/common/.local/bin/tmux-pane-should-passthrough" "$live_home/.local/bin/tmux-pane-should-passthrough"
   printf 'live paste alpha\nlive paste beta\n' >"$live_clipboard"
 
   printf -v live_cat_command 'cat > %q' "$live_output"
@@ -793,6 +794,95 @@ SH
   assert_files_equal "live tmux paste binding pastes clipboard bytes through helper" \
     "$live_binding_clipboard" \
     "$live_binding_output"
+
+  if python3_path="$(command -v python3 2>/dev/null)"; then
+    shift_insert_binding_clipboard="$tmp/live-shift-insert-binding-clipboard.txt"
+    shift_insert_binding_output="$tmp/live-shift-insert-binding-pane-output.txt"
+    printf 'shift insert binding alpha\nshift insert binding beta\n' >"$shift_insert_binding_clipboard"
+    printf -v shift_insert_binding_cat_command 'cat > %q' "$shift_insert_binding_output"
+    shift_insert_binding_window="$(
+      HOME="$live_home" "$real_tmux" -L "$live_socket" new-window -d -n shift-insert-binding -P -F '#{window_id}' "$shift_insert_binding_cat_command"
+    )"
+    shift_insert_binding_pane="$(
+      HOME="$live_home" "$real_tmux" -L "$live_socket" list-panes -t "$shift_insert_binding_window" -F '#{pane_id}' |
+        awk 'NR == 1 { print; exit }'
+    )"
+    HOME="$live_home" "$real_tmux" -L "$live_socket" set-environment -g OSC_PASTE_SOURCE "$shift_insert_binding_clipboard"
+    HOME="$live_home" "$real_tmux" -L "$live_socket" set-environment -g PATH "$live_home/.local/bin:$real_tmux_dir:/usr/bin:/bin:/usr/sbin:/sbin"
+    HOME="$live_home" "$real_tmux" -L "$live_socket" source-file "$root/common/.tmux.conf"
+    HOME="$live_home" "$real_tmux" -L "$live_socket" select-window -t "$shift_insert_binding_window"
+    if ! TERM=xterm-256color TERM_PROGRAM=vscode HOME="$live_home" "$python3_path" - \
+      "$real_tmux" \
+      "$live_socket" \
+      "$live_session" \
+      "$shift_insert_binding_output" <<'PY'
+import os
+import pty
+import select
+import subprocess
+import sys
+import time
+
+tmux_path, socket_name, session_name, output_path = sys.argv[1:]
+env = os.environ.copy()
+env.update({
+    "TERM": "xterm-256color",
+    "TERM_PROGRAM": "vscode",
+})
+
+master, slave = pty.openpty()
+try:
+    proc = subprocess.Popen(
+        [tmux_path, "-L", socket_name, "attach-session", "-t", session_name],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        env=env,
+        close_fds=True,
+    )
+finally:
+    os.close(slave)
+
+try:
+    deadline = time.time() + 5
+    sent = False
+    while time.time() < deadline:
+        ready, _, _ = select.select([master], [], [], 0.05)
+        if ready:
+            try:
+                os.read(master, 4096)
+            except OSError:
+                break
+
+        if not sent and time.time() > deadline - 4.5:
+            os.write(master, b"\x1b[2;2~")
+            sent = True
+
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            sys.exit(0)
+
+    print("timeout waiting for Shift-Insert paste binding output")
+    sys.exit(1)
+finally:
+    proc.terminate()
+    try:
+        proc.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+    os.close(master)
+PY
+    then
+      printf 'not ok - live tmux Shift-Insert paste binding writes clipboard bytes through helper\n' >&2
+      exit 1
+    fi
+    wait_for_file "$shift_insert_binding_output"
+    HOME="$live_home" "$real_tmux" -L "$live_socket" send-keys -t "$shift_insert_binding_pane" C-d
+    assert_files_equal "live tmux Shift-Insert paste binding writes clipboard bytes through helper" \
+      "$shift_insert_binding_clipboard" \
+      "$shift_insert_binding_output"
+  else
+    printf 'skip - live tmux Shift-Insert paste binding (python3 unavailable)\n'
+  fi
 
   path_binding_bin="$tmp/live-path-binding-bin"
   path_binding_clipboard="$tmp/live-path-binding-clipboard.txt"

@@ -132,6 +132,18 @@ def has_mapping(mappings, before, command, args=None):
     return False
 
 
+def has_keybinding(keybindings, key, command, args=None, when=None):
+    for binding in keybindings:
+        if binding.get("key") != key or binding.get("command") != command:
+            continue
+        if args is not None and binding.get("args") != args:
+            continue
+        if when is not None and binding.get("when") != when:
+            continue
+        return True
+    return False
+
+
 def mappings_for(mappings, before):
     return [mapping for mapping in mappings if mapping.get("before") == before]
 
@@ -161,6 +173,28 @@ assert settings.get("terminal.integrated.copyOnSelection") is False, (
 assert settings.get("terminal.integrated.commandsToSkipShell") == ["-workbench.action.files.save"], (
     f"{settings_file}: keep VS Code terminal defaults while forwarding Cmd/Ctrl+S to terminal Neovim"
 )
+
+assert has_keybinding(
+    keybindings,
+    "ctrl+insert",
+    "workbench.action.terminal.sendSequence",
+    {"text": "\x1b[2;5~"},
+    "terminalFocus",
+), f"{keybindings_file}: Ctrl+Insert must reach terminal Neovim/tmux copy-mode"
+assert has_keybinding(
+    keybindings,
+    "shift+insert",
+    "workbench.action.terminal.sendSequence",
+    {"text": "\x1b[2;2~"},
+    "terminalFocus",
+), f"{keybindings_file}: Shift+Insert must reach terminal Neovim/tmux paste handling"
+assert has_keybinding(
+    keybindings,
+    "shift+delete",
+    "workbench.action.terminal.sendSequence",
+    {"text": "\x1b[3;2~"},
+    "terminalFocus",
+), f"{keybindings_file}: Shift+Delete must reach terminal Neovim cut handling"
 
 assert has_mapping(normal_mappings, ["<leader>", "f", "t"], "workbench.action.tasks.runTask", "StandardTerminal"), settings_file
 assert has_mapping(normal_mappings, ["<leader>", "a"], "workbench.action.tasks.runTask", "Tmux: Switch to AI"), settings_file

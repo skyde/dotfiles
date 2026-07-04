@@ -76,6 +76,13 @@ assert_failure "direct slash UNC Windows path ssh tunnel does not pass through w
 assert_failure "direct ssh stdio forwarding command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -W db:5432 bastion" ""
 assert_failure "direct ssh no-pty command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -T git@github.com" ""
 assert_failure "direct ssh control command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -O check devbox" ""
+assert_success "paste key direct nvim command passes through" "$helper" --paste-key nvim /dev/ttys001
+assert_success "paste key direct vim command passes through" "$helper" --paste-key vim /dev/ttys001
+assert_success "paste key direct nested tmux command passes through" "$helper" --paste-key tmux /dev/ttys001
+assert_failure "paste key direct ssh command uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key ssh ""
+assert_failure "paste key direct ssh remote shell uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "ssh devbox" ""
+assert_failure "paste key direct kitten ssh uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "kitten ssh devbox" ""
+assert_failure "paste key direct mosh client uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key mosh-client ""
 assert_success "direct mosh client command passes through without ps" env PATH=/usr/bin:/bin "$helper" mosh-client ""
 assert_success "direct autossh command passes through without ps" env PATH=/usr/bin:/bin "$helper" autossh ""
 assert_success "direct autossh remote shell command passes through without ps" env PATH=/usr/bin:/bin "$helper" "autossh -M 0 devbox" ""
@@ -508,10 +515,16 @@ assert_failure "plain shell without child TUI does not pass through" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT='S+ /bin/zsh' "$helper" zsh /dev/ttys001
 assert_success "shell with foreground nvim child passes through" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/nvim' "$helper" zsh /dev/ttys001
+assert_success "paste key shell with foreground nvim child passes through" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/nvim' "$helper" --paste-key zsh /dev/ttys001
 assert_success "shell with foreground Windows ssh.exe child passes through" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ C:\\tools\\ssh.exe C:\\tools\\ssh.exe devbox' "$helper" zsh /dev/ttys001
+assert_failure "paste key shell with foreground Windows ssh.exe child uses tmux paste" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ C:\\tools\\ssh.exe C:\\tools\\ssh.exe devbox' "$helper" --paste-key zsh /dev/ttys001
 assert_success "foreground env ssh command line passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/env /usr/bin/env TERM=xterm-256color ssh devbox' "$helper" zsh /dev/ttys001
+assert_failure "paste key foreground env ssh command line uses tmux paste" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/env /usr/bin/env TERM=xterm-256color ssh devbox' "$helper" --paste-key zsh /dev/ttys001
 assert_failure "foreground env split-string echoing ssh does not pass through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/env /usr/bin/env -S '\''echo ssh'\'' ssh devbox' "$helper" zsh /dev/ttys001
 assert_success "foreground arch nvim command line passes through behind shell" \

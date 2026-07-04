@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+mode="navigation"
+if [[ "${1:-}" == "--paste-key" ]]; then
+  mode="paste-key"
+  shift
+fi
+
 current_command="${1:-}"
 pane_tty="${2:-}"
-passthrough_pattern='^(vi|view|vim|vimdiff|vim\.basic|vim\.tiny|nvim|nvimdiff|hx|helix|less|more|most|man|fzf|fzf-tmux|sk|lazygit|gitui|tig|tmux|screen|zellij|lazydocker|k9s|btop|htop|yazi|lf|ranger|nnn|bpython|ipython|ptpython|pdb|ipdb|pudb|irb|pry|rdbg|gdb|lldb|rr|ghci|iex|erl|utop|jshell|radian|phpdbg|codex|opencode|gemini|claude|aider|autossh|ssh|mosh|mosh-client)$'
+navigation_passthrough_pattern='^(vi|view|vim|vimdiff|vim\.basic|vim\.tiny|nvim|nvimdiff|hx|helix|less|more|most|man|fzf|fzf-tmux|sk|lazygit|gitui|tig|tmux|screen|zellij|lazydocker|k9s|btop|htop|yazi|lf|ranger|nnn|bpython|ipython|ptpython|pdb|ipdb|pudb|irb|pry|rdbg|gdb|lldb|rr|ghci|iex|erl|utop|jshell|radian|phpdbg|codex|opencode|gemini|claude|aider|autossh|ssh|mosh|mosh-client)$'
+paste_key_passthrough_pattern='^(vi|view|vim|vimdiff|vim\.basic|vim\.tiny|nvim|nvimdiff|hx|helix|tmux|screen|zellij)$'
+passthrough_pattern="$navigation_passthrough_pattern"
+if [[ "$mode" == "paste-key" ]]; then
+  passthrough_pattern="$paste_key_passthrough_pattern"
+fi
 
 command_name() {
   local command="$1"
@@ -2330,12 +2341,21 @@ command_words_match() {
       language_repl_command_matches "$index" "$name"
       return $?
     elif [[ "$name" == "kitten" ]]; then
+      [[ "$mode" == "paste-key" ]] && {
+        command_matches "$name"
+        return $?
+      }
       kitten_ssh_matches "$((index + 1))" || command_matches "$name"
       return $?
     elif [[ "$name" == "kitty" && "${split_result[$((index + 1))]:-}" == "+kitten" ]]; then
+      [[ "$mode" == "paste-key" ]] && {
+        command_matches "$name"
+        return $?
+      }
       kitten_ssh_matches "$((index + 2))" || command_matches "$name"
       return $?
     elif is_ssh_command "$name"; then
+      [[ "$mode" == "paste-key" ]] && return 1
       ssh_command_matches "$index" "$name"
       return $?
     elif [[ "$name" == "script" ]]; then
@@ -2502,7 +2522,7 @@ for index in "${!commands[@]}"; do
   if command_line_matches "${command_lines[$index]}"; then
     exit 0
   fi
-  if is_ssh_command "$(command_name "${commands[$index]}")"; then
+  if [[ "$mode" != "paste-key" ]] && is_ssh_command "$(command_name "${commands[$index]}")"; then
     continue
   fi
   if command_matches "${commands[$index]}"; then

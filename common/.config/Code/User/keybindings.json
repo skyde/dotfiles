@@ -694,6 +694,24 @@
     "when": "terminalFocus"
   },
   {
+    "key": "ctrl+insert",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[2;5~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+insert",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[2;2~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+delete",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[3;2~" },
+    "when": "terminalFocus"
+  },
+  {
     "key": "shift+f1",
     "command": "workbench.action.terminal.sendSequence",
     "args": { "text": "\u001B[1;2P" },

@@ -273,6 +273,82 @@ shift_insert_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line(
 wait_for_file "$shift_insert_result"
 assert_eq "tmux passes Shift-Insert bytes to insert Neovim paste" "shift-insert paste via tmux" "$(cat "$shift_insert_result")"
 
+if python3_path="$(command -v python3 2>/dev/null)"; then
+  attached_shift_insert_result="$tmp/attached-shift-insert-paste.log"
+  attached_shift_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached shift-insert '}); vim.g.dotfiles_tmux_paste = 'paste via attached tmux'; vim.cmd('startinsert!')"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_shift_insert_command" Enter
+  if ! TERM=xterm-256color TERM_PROGRAM=vscode "$python3_path" - "$tmux_bin" "$socket_name" "nvim-keys" "$attached_shift_insert_result" <<'PY'
+import os
+import pty
+import select
+import subprocess
+import sys
+import time
+
+tmux_path, socket_name, session_name, result_path = sys.argv[1:]
+env = os.environ.copy()
+env.update({
+    "TERM": "xterm-256color",
+    "TERM_PROGRAM": "vscode",
+})
+
+master, slave = pty.openpty()
+try:
+    proc = subprocess.Popen(
+        [tmux_path, "-L", socket_name, "attach-session", "-t", session_name],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        env=env,
+        close_fds=True,
+    )
+finally:
+    os.close(slave)
+
+try:
+    deadline = time.time() + 5
+    sent = False
+    wrote = False
+    while time.time() < deadline:
+        ready, _, _ = select.select([master], [], [], 0.05)
+        if ready:
+            try:
+                os.read(master, 4096)
+            except OSError:
+                break
+
+        if not sent and time.time() > deadline - 4.5:
+            os.write(master, b"\x1b[2;2~")
+            sent = True
+        elif sent and not wrote and time.time() > deadline - 4.0:
+            os.write(master, b"\x1b:lua vim.fn.writefile({vim.api.nvim_get_current_line()}, " + repr(result_path).encode("utf-8") + b")\r")
+            wrote = True
+
+        if os.path.exists(result_path):
+            sys.exit(0)
+
+    print("timeout waiting for attached Shift-Insert Neovim paste result")
+    sys.exit(1)
+finally:
+    proc.terminate()
+    try:
+        proc.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+    os.close(master)
+PY
+  then
+    printf 'not ok - tmux attached client passes Shift-Insert bytes through to Neovim paste\n' >&2
+    exit 1
+  fi
+  wait_for_file "$attached_shift_insert_result"
+  assert_eq "tmux attached client passes Shift-Insert bytes through to Neovim paste" \
+    "attached shift-insert paste via attached tmux" \
+    "$(cat "$attached_shift_insert_result")"
+else
+  skip "tmux attached client Shift-Insert Neovim paste (python3 unavailable)"
+fi
+
 visual_save_expected="$(printf 'visual shift-f5 save\nline 2')"
 visual_save_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'visual shift-f5 save', 'line 2'}); vim.cmd('normal! gg')"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$visual_save_command" Enter

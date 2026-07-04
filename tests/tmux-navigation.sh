@@ -383,6 +383,19 @@ assert_contains "paste binding displays missing helper" "$paste_binding" "displa
 assert_contains "paste binding reports missing helper to stderr" "$paste_binding" ">&2; exit 127"
 assert_contains "paste binding exits non-zero without helper" "$paste_binding" "exit 127"
 
+shift_insert_paste_binding="$("$real_tmux" -L "$socket_name" list-keys -T root S-IC)"
+assert_contains "Shift-Insert paste binding checks passthrough helper" "$shift_insert_paste_binding" "tmux-pane-should-passthrough"
+assert_contains "Shift-Insert paste binding uses paste-key mode" "$shift_insert_paste_binding" "--paste-key"
+assert_contains "Shift-Insert paste binding sends key to pane-aware TUIs" "$shift_insert_paste_binding" "send-keys S-Insert"
+assert_contains "Shift-Insert paste binding falls back to paste helper" "$shift_insert_paste_binding" "tmux-paste-helper"
+assert_contains "Shift-Insert paste binding uses explicit home" "$shift_insert_paste_binding" "$home_marker"
+assert_contains "Shift-Insert paste binding has repo fallback" "$shift_insert_paste_binding" "$repo_marker"
+assert_contains "Shift-Insert paste binding has PATH fallback" "$shift_insert_paste_binding" "command -v tmux-paste-helper"
+assert_contains "Shift-Insert paste binding guards unset HOME" "$shift_insert_paste_binding" "$home_guard"
+assert_contains "Shift-Insert paste binding targets current pane" "$shift_insert_paste_binding" '#{pane_id}'
+assert_contains "Shift-Insert paste binding shell-quotes current command" "$shift_insert_paste_binding" '#{q:pane_current_command}'
+assert_contains "Shift-Insert paste binding shell-quotes pane tty" "$shift_insert_paste_binding" '#{q:pane_tty}'
+
 paste_binding_log="$fake_home/paste-binding.log"
 cat >"$fake_home/.local/bin/tmux-paste-helper" <<'SH'
 #!/usr/bin/env bash
