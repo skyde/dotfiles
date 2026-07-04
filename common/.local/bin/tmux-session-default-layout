@@ -65,7 +65,7 @@ command_name() {
       ;;
   esac
 
-  printf '%s\n' "$command"
+  printf '%s\n' "$command" | LC_ALL=C tr '[:upper:]' '[:lower:]'
 }
 
 default_agent_cli() {

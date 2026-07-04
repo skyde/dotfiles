@@ -644,7 +644,9 @@ assert_eq \
 
 make_fake_agent_cli codex
 make_fake_agent_cli codex.exe
+make_fake_agent_cli CODEX.EXE
 make_fake_agent_cli opencode.cmd
+make_fake_agent_cli OPENCODE.CMD
 make_fake_agent_cli opencode
 make_fake_agent_cli gemini
 make_fake_agent_cli claude
@@ -670,6 +672,17 @@ assert_eq \
   "default layout uses codex.exe resume command" \
   "$(printf 'codex.exe\ncodex.exe resume --last')" \
   "$(LC_ALL=C sort "$codex_exe_agent_log")"
+
+uppercase_codex_exe_agent_log="$tmp/uppercase-codex-exe-agent.log"
+tmux_test tmux set-environment -g TMUX_SESSION_AGENT_LOG "$uppercase_codex_exe_agent_log"
+tmux_test env \
+  TMUX_SESSION_AGENT_CLI=CODEX.EXE \
+  tmux-session "${session}-uppercase-codex-exe-agent" --start-dir "$tmp/work" --no-attach
+wait_for_log_lines "default layout recognizes uppercase CODEX.EXE agent cli" "$uppercase_codex_exe_agent_log" 2
+assert_eq \
+  "default layout uses uppercase CODEX.EXE resume command" \
+  "$(printf 'CODEX.EXE\nCODEX.EXE resume --last')" \
+  "$(LC_ALL=C sort "$uppercase_codex_exe_agent_log")"
 
 gemini_agent_log="$tmp/gemini-agent.log"
 tmux_test tmux set-environment -g TMUX_SESSION_AGENT_LOG "$gemini_agent_log"
@@ -703,6 +716,17 @@ assert_eq \
   "default layout uses opencode.cmd resume command" \
   "$(printf 'opencode.cmd\nopencode.cmd --continue')" \
   "$(LC_ALL=C sort "$opencode_cmd_agent_log")"
+
+uppercase_opencode_cmd_agent_log="$tmp/uppercase-opencode-cmd-agent.log"
+tmux_test tmux set-environment -g TMUX_SESSION_AGENT_LOG "$uppercase_opencode_cmd_agent_log"
+tmux_test env \
+  TMUX_SESSION_AGENT_CLI=OPENCODE.CMD \
+  tmux-session "${session}-uppercase-opencode-cmd-agent" --start-dir "$tmp/work" --no-attach
+wait_for_log_lines "default layout recognizes uppercase OPENCODE.CMD agent cli" "$uppercase_opencode_cmd_agent_log" 2
+assert_eq \
+  "default layout uses uppercase OPENCODE.CMD resume command" \
+  "$(printf 'OPENCODE.CMD\nOPENCODE.CMD --continue')" \
+  "$(LC_ALL=C sort "$uppercase_opencode_cmd_agent_log")"
 
 claude_agent_log="$tmp/claude-agent.log"
 tmux_test tmux set-environment -g TMUX_SESSION_AGENT_LOG "$claude_agent_log"
