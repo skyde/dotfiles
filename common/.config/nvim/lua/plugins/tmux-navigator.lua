@@ -2184,6 +2184,77 @@ local function ssh_passthrough_command(words, index, command)
   return command
 end
 
+local function is_mosh_command(command)
+  return command == "mosh"
+end
+
+local mosh_options_with_value = {
+  ["-p"] = true,
+  ["--bind-server"] = true,
+  ["--client"] = true,
+  ["--experimental-remote-ip"] = true,
+  ["--family"] = true,
+  ["--port"] = true,
+  ["--predict"] = true,
+  ["--server"] = true,
+  ["--ssh"] = true,
+}
+
+local function mosh_option_key(word)
+  if word:match("^%-p.") then
+    return "-p"
+  end
+
+  return option_without_value(word)
+end
+
+local function mosh_passthrough_command(words, index)
+  local has_args = false
+
+  index = index + 1
+  while words[index] do
+    has_args = true
+    local word = words[index]
+
+    if word == "--" then
+      index = index + 1
+      break
+    elseif not word:match("^%-") then
+      break
+    end
+
+    local key = mosh_option_key(word)
+    index = index + 1
+    if mosh_options_with_value[key] and word == key then
+      index = index + 1
+    end
+  end
+
+  if not has_args then
+    return "mosh"
+  end
+
+  if not words[index] then
+    return nil
+  end
+
+  index = index + 1
+  if not words[index] then
+    return "mosh"
+  end
+
+  local remote_words = {}
+  for remote_index = index, #words do
+    table.insert(remote_words, words[remote_index])
+  end
+
+  if command_should_passthrough_class(command_from_words(remote_words)) then
+    return "mosh"
+  end
+
+  return nil
+end
+
 local python_interactive_modules = {
   bpython = true,
   ipdb = true,
@@ -3086,6 +3157,8 @@ command_from_words = function(words)
       return kitten_ssh_command(words, index + 2) or command
     elseif is_ssh_command(command) then
       return ssh_passthrough_command(words, index, command) or ""
+    elseif is_mosh_command(command) then
+      return mosh_passthrough_command(words, index) or ""
     elseif command == "script" then
       local script_index = script_command_index(words, index)
       if not script_index then

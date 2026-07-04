@@ -106,6 +106,7 @@ assert_failure "paste key direct ssh command uses tmux paste" env PATH=/usr/bin:
 assert_failure "paste key direct ssh remote shell uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "ssh devbox" ""
 assert_failure "paste key direct kitten ssh uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "kitten ssh devbox" ""
 assert_failure "paste key direct mosh client uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key mosh-client ""
+assert_failure "paste key direct mosh remote nvim uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "mosh devbox nvim README.md" ""
 assert_failure "paste key direct delta pager uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key delta ""
 assert_success "paste key direct docker exec nvim passes through" env PATH=/usr/bin:/bin "$helper" --paste-key "docker exec -it app nvim README.md" ""
 assert_failure "paste key direct docker exec ssh uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "docker exec -it app ssh devbox" ""
@@ -116,6 +117,21 @@ assert_success "paste key direct kubectl exec nvim passes through" env PATH=/usr
 assert_failure "paste key direct kubectl exec ssh uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "kubectl exec -it pod/app -- ssh devbox" ""
 assert_failure "paste key direct kubectl attach uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "kubectl attach -it pod/app -c api" ""
 assert_success "direct mosh client command passes through without ps" env PATH=/usr/bin:/bin "$helper" mosh-client ""
+assert_success "direct mosh command passes through without ps" env PATH=/usr/bin:/bin "$helper" mosh ""
+assert_success "direct mosh remote shell command passes through without ps" env PATH=/usr/bin:/bin "$helper" "mosh devbox" ""
+assert_success "direct mosh remote nvim command passes through without ps" env PATH=/usr/bin:/bin "$helper" "mosh devbox nvim README.md" ""
+assert_success "direct mosh option separator remote nvim command passes through without ps" env PATH=/usr/bin:/bin "$helper" "mosh -- devbox nvim README.md" ""
+assert_failure "direct mosh remote one-shot command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "mosh devbox echo nvim" ""
+assert_failure "direct mosh option separator remote one-shot command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "mosh -- devbox echo nvim" ""
+assert_success "direct mosh ssh option remote nvim passes through without ps" env PATH=/usr/bin:/bin "$helper" "mosh --ssh='ssh -p 2222' devbox nvim README.md" ""
+assert_failure "direct mosh server option one-shot command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "mosh --server=/usr/bin/mosh-server devbox echo nvim" ""
+assert_failure "direct mosh predict option one-shot command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "mosh --predict=never devbox echo nvim" ""
+assert_success "direct mosh port option remote nvim passes through without ps" env PATH=/usr/bin:/bin "$helper" "mosh -p 60000 devbox nvim README.md" ""
+assert_failure "direct mosh compact port option one-shot command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "mosh -p60000 devbox echo nvim" ""
+assert_success "bare mosh current command with remote shell ps args passes through" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /usr/bin/mosh /usr/bin/mosh devbox' "$helper" mosh /dev/ttys001
+assert_failure "bare mosh current command with one-shot ps args does not pass through" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /usr/bin/mosh /usr/bin/mosh devbox echo nvim' "$helper" mosh /dev/ttys001
 assert_success "direct autossh command passes through without ps" env PATH=/usr/bin:/bin "$helper" autossh ""
 assert_success "direct autossh remote shell command passes through without ps" env PATH=/usr/bin:/bin "$helper" "autossh -M 0 devbox" ""
 assert_failure "direct autossh tunnel command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "autossh -M 0 -N -L 8080:localhost:80 devbox" ""
@@ -641,6 +657,18 @@ assert_success "foreground codex child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/codex' "$helper" zsh /dev/ttys001
 assert_success "foreground mosh client child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/mosh-client' "$helper" zsh /dev/ttys001
+assert_success "foreground mosh remote shell child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/mosh /usr/bin/mosh devbox' "$helper" zsh /dev/ttys001
+assert_success "foreground mosh remote nvim child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/mosh /usr/bin/mosh devbox nvim README.md' "$helper" zsh /dev/ttys001
+assert_success "foreground mosh option separator remote nvim child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/mosh /usr/bin/mosh -- devbox nvim README.md' "$helper" zsh /dev/ttys001
+assert_failure "foreground mosh remote one-shot child does not pass through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/mosh /usr/bin/mosh devbox echo nvim' "$helper" zsh /dev/ttys001
+assert_success "foreground mosh ssh option remote nvim child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/mosh /usr/bin/mosh --ssh=\'ssh -p 2222\' devbox nvim README.md' "$helper" zsh /dev/ttys001
+assert_failure "foreground mosh predict option one-shot child does not pass through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/mosh /usr/bin/mosh --predict=never devbox echo nvim' "$helper" zsh /dev/ttys001
 assert_success "foreground ghci child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/ghci /opt/homebrew/bin/ghci Main.hs' "$helper" zsh /dev/ttys001
 assert_success "foreground iex child passes through behind shell" \

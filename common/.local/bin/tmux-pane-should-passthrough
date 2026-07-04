@@ -2429,6 +2429,62 @@ ssh_command_matches() {
   return $?
 }
 
+is_mosh_command() {
+  [[ "$1" == "mosh" ]]
+}
+
+mosh_option_takes_value() {
+  case "$1" in
+    -p | --bind-server | --client | --experimental-remote-ip | --family | --port | --predict | --server | --ssh)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+mosh_option_key() {
+  local word="$1"
+
+  if [[ "$word" == -p?* ]]; then
+    printf '%s\n' "-p"
+    return
+  fi
+
+  option_without_value "$word"
+}
+
+mosh_command_matches() {
+  local index="$1" word key has_args=0
+
+  ((index++))
+  while [[ -n "${split_result[$index]:-}" ]]; do
+    has_args=1
+    word="${split_result[$index]}"
+
+    if [[ "$word" == "--" ]]; then
+      ((index++))
+      break
+    fi
+    [[ "$word" == -* ]] || break
+
+    key="$(mosh_option_key "$word")"
+    ((index++))
+    if mosh_option_takes_value "$key" && [[ "$word" == "$key" ]]; then
+      ((index++))
+    fi
+  done
+
+  [[ "$has_args" == "0" ]] && return 0
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+
+  ((index++))
+  [[ -n "${split_result[$index]:-}" ]] || return 0
+
+  command_words_match_from "$index"
+}
+
 command_words_match() {
   local index=0 word name option split_string saved_words split_words_result wrapper_index container_index entrypoint_word
 
@@ -2507,6 +2563,10 @@ command_words_match() {
     elif is_ssh_command "$name"; then
       [[ "$mode" == "paste-key" ]] && return 1
       ssh_command_matches "$index" "$name"
+      return $?
+    elif is_mosh_command "$name"; then
+      [[ "$mode" == "paste-key" ]] && return 1
+      mosh_command_matches "$index"
       return $?
     elif [[ "$name" == "script" ]]; then
       if wrapper_index="$(script_command_index "$index")"; then
@@ -2622,7 +2682,7 @@ current_command_is_bare_option_sensitive() {
   [[ "${#split_result[@]}" -eq 1 ]] || return 1
 
   name="$(command_name "${split_result[0]}")"
-  is_ssh_command "$name" || is_python_command "$name" || is_node_command "$name" || is_deno_command "$name" || is_database_shell_command "$name" || is_language_repl_command "$name"
+  is_ssh_command "$name" || is_mosh_command "$name" || is_python_command "$name" || is_node_command "$name" || is_deno_command "$name" || is_database_shell_command "$name" || is_language_repl_command "$name"
 }
 
 state_is_active() {
@@ -2673,7 +2733,7 @@ for index in "${!commands[@]}"; do
   if command_line_matches "${command_lines[$index]}"; then
     exit 0
   fi
-  if [[ "$mode" != "paste-key" ]] && is_ssh_command "$(command_name "${commands[$index]}")"; then
+  if [[ "$mode" != "paste-key" ]] && { is_ssh_command "$(command_name "${commands[$index]}")" || is_mosh_command "$(command_name "${commands[$index]}")"; }; then
     continue
   fi
   if command_matches "${commands[$index]}"; then

@@ -4085,6 +4085,35 @@ set_terminal_name("term://~/repo//129:/opt/homebrew/bin/mosh devbox")
 vim.bo.filetype = ""
 assert(terminal_left() == "<C-h>")
 vim.cmd("enew!")
+set_terminal_name("term://~/repo//129:/opt/homebrew/bin/mosh devbox nvim README.md")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-h>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//129:/opt/homebrew/bin/mosh -- devbox nvim README.md")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-h>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//129:/opt/homebrew/bin/mosh devbox echo nvim")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//129:/opt/homebrew/bin/mosh -- devbox echo nvim")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//129:/opt/homebrew/bin/mosh --ssh='ssh -p 2222' devbox nvim README.md")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-h>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//129:/opt/homebrew/bin/mosh --server=/usr/bin/mosh-server devbox echo nvim")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//129:/opt/homebrew/bin/mosh --predict=never devbox echo nvim")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+print("nvim-terminal-mosh-remote-command-routing-ok")
+vim.cmd("enew!")
 set_terminal_name("term://~/repo//129:/opt/homebrew/bin/mosh-client")
 vim.bo.filetype = ""
 assert(terminal_left() == "<C-h>")
