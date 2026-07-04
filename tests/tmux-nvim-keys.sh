@@ -488,6 +488,18 @@ PY
     "$(printf 'attached ctrl-insert copy|\nV\nattached ctrl-insert copy|line 2')" \
     "$(cat "$attached_ctrl_insert_result")"
 
+  attached_visual_ctrl_insert_result="$tmp/attached-visual-ctrl-insert-copy.log"
+  attached_visual_ctrl_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached visual ctrl-insert copy', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0')"
+  attached_visual_ctrl_insert_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$attached_visual_ctrl_insert_result"))"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_ctrl_insert_command" Enter
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'v8l'
+  send_attached_client_key "tmux attached client sends Ctrl-Insert bytes to visual Neovim" "$ctrl_insert_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_ctrl_insert_write_command" Enter
+  wait_for_file "$attached_visual_ctrl_insert_result"
+  assert_eq "tmux attached client passes Ctrl-Insert bytes through to visual Neovim copy" \
+    "$(printf 'attached \nv\nattached visual ctrl-insert copy|line 2')" \
+    "$(cat "$attached_visual_ctrl_insert_result")"
+
   attached_shift_delete_result="$tmp/attached-shift-delete-cut.log"
   attached_shift_delete_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached shift-delete cut', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg')"
   attached_shift_delete_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$attached_shift_delete_result"))"
@@ -498,6 +510,18 @@ PY
   assert_eq "tmux attached client passes Shift-Delete bytes through to Neovim cut" \
     "$(printf 'attached shift-delete cut|\nV\nline 2')" \
     "$(cat "$attached_shift_delete_result")"
+
+  attached_visual_shift_delete_result="$tmp/attached-visual-shift-delete-cut.log"
+  attached_visual_shift_delete_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached visual shift-delete cut', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0')"
+  attached_visual_shift_delete_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$attached_visual_shift_delete_result"))"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_shift_delete_command" Enter
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'v8l'
+  send_attached_client_key "tmux attached client sends Shift-Delete bytes to visual Neovim" "$shift_delete_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_shift_delete_write_command" Enter
+  wait_for_file "$attached_visual_shift_delete_result"
+  assert_eq "tmux attached client passes Shift-Delete bytes through to visual Neovim cut" \
+    "$(printf 'attached \nv\nvisual shift-delete cut|line 2')" \
+    "$(cat "$attached_visual_shift_delete_result")"
 else
   skip "tmux attached client Insert/Delete Neovim copy-paste keys (python3 unavailable)"
 fi
