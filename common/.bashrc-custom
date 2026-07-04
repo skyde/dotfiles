@@ -52,6 +52,7 @@ set -o emacs
 if (( _dotfiles_bash_interactive )); then
   bind '"\e[1;5C": forward-word'
   bind '"\e[1;5D": backward-word'
+  bind '"\e[3;5~": kill-word'
 fi
 
 # -------- prompt (Starship)

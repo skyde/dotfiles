@@ -77,6 +77,15 @@ fi
 "$bash_path" -n "$root/common/.bashrc-custom"
 pass "bashrc-custom syntax"
 
+bash_ctrl_delete_binding="$(
+  DOTFILES_BASHRC="$root/common/.bashrc-custom" \
+    HOME="$tmp/min-home" \
+    PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM=xterm-256color \
+    "$bash_path" --noprofile --norc -ic 'source "$DOTFILES_BASHRC"; bind -p | grep "\\\\e\\[3;5~"' 2>/dev/null
+)"
+assert_contains "bashrc-custom maps Ctrl-Delete to kill-word" "$bash_ctrl_delete_binding" '"\e[3;5~": kill-word'
+
 mkdir -p \
   "$tmp/home/.local/bin" \
   "$tmp/min-home/.local/bin" \

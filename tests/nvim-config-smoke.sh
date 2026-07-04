@@ -580,6 +580,8 @@ assert(rhs_for("<F24>", "i") == "<cmd>bnext<CR>")
 assert(rhs_for("<D-s>") == "<cmd>w<CR>")
 assert(rhs_for("<D-s>", "i") == "<cmd>w<CR>")
 assert(rhs_for("<D-s>", "v") == "<cmd>w<CR>")
+assert(type(vim.fn.maparg("<C-Del>", "n", false, true).callback) == "function")
+assert(type(vim.fn.maparg("<C-Del>", "i", false, true).callback) == "function")
 _G.dotfiles_smoke_normal_copy_callback = vim.fn.maparg("<D-c>", "n", false, true).callback
 assert(type(_G.dotfiles_smoke_normal_copy_callback) == "function")
 _G.dotfiles_smoke_visual_copy_callback = vim.fn.maparg("<D-c>", "v", false, true).callback
@@ -745,6 +747,15 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   assert(table.concat(stored_lines, "|") == "ctrl insert copy|", table.concat(stored_lines, "|"))
   assert(stored_type == "V", stored_type)
   assert(lines_text() == "ctrl insert copy|normal keep", lines_text())
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "normal ctrl delete alpha beta gamma" })
+  feed("gg04w")
+  feed("<C-Del>")
+  assert(lines_text() == "normal ctrl delete alpha gamma", lines_text())
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "insert ctrl delete alpha beta gamma" })
+  feed("gg04wi<C-Del>Z<Esc>")
+  assert(lines_text() == "insert ctrl delete alpha Zgamma", lines_text())
 
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { "insert cmd copy", "insert keep" })
   feed("ggA")

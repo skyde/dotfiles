@@ -35,6 +35,9 @@ vim_docs="$(<"$root/docs/vim-bindings.md")"
 vscode_docs="$(<"$root/docs/vscode-keybindings.md")"
 nvim_keymaps="$(<"$root/common/.config/nvim/lua/config/keymaps.lua")"
 tmux_conf="$(<"$root/common/.tmux.conf")"
+zshrc="$(<"$root/common/.zshrc")"
+bashrc_custom="$(<"$root/common/.bashrc-custom")"
+kitty_conf="$(<"$root/common/.config/kitty/kitty.conf")"
 
 assert_contains "vim docs keep Shift-F9 search toggle" "$vim_docs" "toggle search   – Shift+F9"
 assert_contains "vim docs reserve Shift-F10 for tmux prefix" "$vim_docs" "tmux prefix     – Shift+F10"
@@ -61,13 +64,28 @@ assert_contains "VS Code docs describe insert-mode copy and cut" \
 assert_contains "VS Code docs describe terminal-mode paste" \
   "$vscode_docs" \
   "terminal-normal, terminal-visual, and terminal-mode"
+assert_contains "VS Code docs describe word delete keys" \
+  "$vscode_docs" \
+  "Ctrl+Backspace\` / \`Ctrl+Delete"
 
 assert_contains "Neovim config documents Shift-F10 reservation" \
   "$nvim_keymaps" \
   "Shift+F10 is reserved by tmux"
+assert_contains "Neovim config maps Ctrl-Delete" \
+  "$nvim_keymaps" \
+  'map({ "n", "i" }, "<C-Del>", delete_next_word'
 assert_not_contains "Neovim keymaps avoid stale remap TODO" \
   "$nvim_keymaps" \
   "TODO: Use the vim.keymap.set style remap"
+assert_contains "zshrc maps Ctrl-Delete forward word delete" \
+  "$zshrc" \
+  "bindkey '^[[3;5~' kill-word"
+assert_contains "bashrc maps Ctrl-Delete forward word delete" \
+  "$bashrc_custom" \
+  "bind '\"\\e[3;5~\": kill-word'"
+assert_contains "kitty maps Ctrl-Delete to xterm sequence" \
+  "$kitty_conf" \
+  "map ctrl+delete send_text all \\x1b[3;5~"
 assert_contains "vim docs describe Ctrl-u as movement" "$vim_docs" "<C-u>\` – move up 16 lines"
 assert_contains "VS Code docs describe Vim Ctrl-u as movement" "$vscode_docs" "<C-u>\` – move up 16 lines (\`16k\`)"
 assert_not_contains "VS Code keybindings avoid workaround typo" "$(<"$root/common/.config/Code/User/keybindings.json")" "workround"
@@ -75,5 +93,8 @@ assert_not_contains "VS Code keybindings avoid exactly typo" "$(<"$root/common/.
 assert_contains "tmux config binds Shift-F10 as prefix table" \
   "$tmux_conf" \
   "bind-key -n S-F10 switch-client -T prefix"
+assert_contains "tmux config passes Ctrl-Delete to panes" \
+  "$tmux_conf" \
+  "bind-key -n C-Delete send-keys C-Delete"
 assert_not_contains "tmux config avoids vague escape-time typo" "$tmux_conf" "vsmall"
 assert_not_contains "tmux config avoids stale Ctrl-s issue comment" "$tmux_conf" "some issue here"

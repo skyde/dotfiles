@@ -8,8 +8,9 @@ tasks_files=(
 )
 settings_file="$root/common/.config/Code/User/settings.json"
 keybindings_file="$root/common/.config/Code/User/keybindings.json"
+mac_keybindings_file="$root/mac/Library/Application Support/Code/User/keybindings.json"
 
-python3 - "$settings_file" "$keybindings_file" "${tasks_files[@]}" <<'PY'
+python3 - "$settings_file" "$keybindings_file" "$mac_keybindings_file" "${tasks_files[@]}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -159,10 +160,12 @@ def command_sequence(mappings, before):
 
 settings_file = sys.argv[1]
 keybindings_file = sys.argv[2]
-task_files = sys.argv[3:]
+mac_keybindings_file = sys.argv[3]
+task_files = sys.argv[4:]
 
 settings = load_jsonc(settings_file)
 keybindings = load_jsonc(keybindings_file)
+mac_keybindings = load_jsonc(mac_keybindings_file)
 normal_mappings = settings["vim.normalModeKeyBindingsNonRecursive"]
 settings_text = Path(settings_file).read_text(encoding="utf-8")
 
@@ -195,6 +198,20 @@ assert has_keybinding(
     {"text": "\x1b[3;2~"},
     "terminalFocus",
 ), f"{keybindings_file}: Shift+Delete must reach terminal Neovim cut handling"
+for path, bindings in ((keybindings_file, keybindings), (mac_keybindings_file, mac_keybindings)):
+    assert has_keybinding(
+        bindings,
+        "ctrl+delete",
+        "deleteWordRight",
+        when="textInputFocus && !terminalFocus",
+    ), f"{path}: Ctrl+Delete must delete the next editor word"
+    assert has_keybinding(
+        bindings,
+        "ctrl+delete",
+        "workbench.action.terminal.sendSequence",
+        {"text": "\x1b[3;5~"},
+        "terminalFocus",
+    ), f"{path}: Ctrl+Delete must reach shells, tmux, and terminal Neovim"
 
 assert has_mapping(normal_mappings, ["<leader>", "f", "t"], "workbench.action.tasks.runTask", "StandardTerminal"), settings_file
 assert has_mapping(normal_mappings, ["<leader>", "a"], "workbench.action.tasks.runTask", "Tmux: Switch to AI"), settings_file

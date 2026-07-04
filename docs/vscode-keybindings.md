@@ -14,12 +14,14 @@ This document lists the custom shortcuts I use in VS Code. The same keybindings 
 ## Editing
 - `Alt+Up` – disabled to prevent moving the current line.
 - `Alt+Down` – disabled to prevent moving the current line.
+- `Ctrl+Backspace` / `Ctrl+Delete` – delete the previous or next word outside the integrated terminal.
 
 ## Terminal
 - `Ctrl+/` – toggle the integrated terminal.
 - `Ctrl+T` – toggle the terminal visibility and exit fullscreen if needed.
 - `Cmd+S` – when a terminal is focused, send Shift+F5 to the terminal (mapped in Neovim to save the file).
 - `Cmd+C` / `Cmd+V` – use VS Code's standard terminal copy/paste path; terminal auto-copy-on-selection is disabled so tmux and Neovim copy helpers do not lose ownership of the clipboard.
+- `Ctrl+Backspace` / `Ctrl+Delete` – delete the previous or next word in shells, tmux panes, and terminal Neovim.
 - `Ctrl+Insert` / `Shift+Insert` / `Shift+Delete` – send standard terminal copy, paste, and cut keys. Neovim handles them mode-aware, including insert-mode line copy/cut, terminal-mode copy/cut of the visible terminal line, and paste into terminal buffers from terminal-normal, terminal-visual, and terminal-mode; terminal cut copies output without trying to modify scrollback. tmux uses `Ctrl+Insert` in copy mode, passes copy/cut through to pane-aware apps, and uses `Shift+Insert` to paste into plain panes.
 - `Ctrl+O` / `Ctrl+I` – passed through to terminal apps such as tmux and Neovim.
 - `Shift+F1` / `Shift+F12` – passed through to terminal apps when the terminal is focused.

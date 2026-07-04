@@ -21,6 +21,14 @@ vim.keymap.set("n", "<leader>v", "<C-v>", { noremap = true, desc = "Block Visual
 -- Redo with Shift+U, matching redo keybindings from other editors
 map("n", "U", "<C-r>", { desc = "Redo" })
 
+-- Delete the next word with the same Ctrl+Delete convention used by shells
+-- and GUI editors.
+local function delete_next_word()
+  vim.cmd("normal! dw")
+end
+
+map({ "n", "i" }, "<C-Del>", delete_next_word, { desc = "Delete next word" })
+
 -- disable horizontal scroll with mouse/trackpad
 for _, mode in ipairs({ "n", "i", "v", "o", "t" }) do
   map(mode, "<ScrollWheelLeft>", "<Nop>", { silent = true, desc = "Disable ← scroll" })
