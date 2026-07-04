@@ -808,10 +808,15 @@ SH
     local live_session="copy-helper-real-host"
     local expected="real host copy beta"
     local ctrl_insert_expected="real host copy alpha"
+    local shift_delete_expected="real host copy gamma"
     local ctrl_insert_client_pid
     local ctrl_insert_client_ready="$tmp/real-host-ctrl-insert-client.ready"
     local ctrl_insert_client_trigger="$tmp/real-host-ctrl-insert-client.trigger"
     local ctrl_insert_sequence
+    local shift_delete_client_pid
+    local shift_delete_client_ready="$tmp/real-host-shift-delete-client.ready"
+    local shift_delete_client_trigger="$tmp/real-host-shift-delete-client.trigger"
+    local shift_delete_sequence
 
     if ! command -v pbcopy >/dev/null 2>&1 || ! command -v pbpaste >/dev/null 2>&1; then
       printf 'skip - live tmux copy binding real host clipboard (pbcopy/pbpaste unavailable)\n'
@@ -875,8 +880,31 @@ SH
       assert_eq "live tmux copy-mode Ctrl-Insert attached-client writes real host clipboard" \
         "$ctrl_insert_expected" \
         "$(pbpaste)"
+
+      printf 'old shift-delete pasteboard value\n' | pbcopy
+      shift_delete_sequence="$(printf '\033[3;2~')"
+      send_attached_tmux_key_sequence \
+        "live tmux copy-mode Shift-Delete attached-client key" \
+        "$real_tmux" \
+        "$live_socket" \
+        "$live_session" \
+        "$shift_delete_sequence" \
+        "$live_home" \
+        "$shift_delete_client_ready" \
+        "$shift_delete_client_trigger" &
+      shift_delete_client_pid="$!"
+      wait_for_nonempty_file "$shift_delete_client_ready"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" copy-mode -t "$live_pane"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" send-keys -X -t "$live_pane" search-backward "$shift_delete_expected"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" send-keys -X -t "$live_pane" select-line
+      : >"$shift_delete_client_trigger"
+      wait "$shift_delete_client_pid"
+      wait_for_pbpaste_value "$shift_delete_expected"
+      assert_eq "live tmux copy-mode Shift-Delete attached-client writes real host clipboard" \
+        "$shift_delete_expected" \
+        "$(pbpaste)"
     else
-      printf 'skip - live tmux copy-mode Ctrl-Insert attached-client key (python3 unavailable)\n'
+      printf 'skip - live tmux copy-mode Ctrl-Insert/Shift-Delete attached-client keys (python3 unavailable)\n'
     fi
 
     "$real_tmux" -L "$live_socket" kill-server >/dev/null 2>&1 || true
@@ -891,10 +919,15 @@ SH
     local live_session="copy-helper-mock-ssh"
     local expected="mock ssh copy beta"
     local ctrl_insert_expected="mock ssh copy alpha"
+    local shift_delete_expected="mock ssh copy gamma"
     local ctrl_insert_client_pid
     local ctrl_insert_client_ready="$tmp/mock-ssh-ctrl-insert-client.ready"
     local ctrl_insert_client_trigger="$tmp/mock-ssh-ctrl-insert-client.trigger"
     local ctrl_insert_sequence
+    local shift_delete_client_pid
+    local shift_delete_client_ready="$tmp/mock-ssh-shift-delete-client.ready"
+    local shift_delete_client_trigger="$tmp/mock-ssh-shift-delete-client.trigger"
+    local shift_delete_sequence
     local actual=""
     local pbcopy_log="$tmp/mock-ssh-pbcopy.log"
 
@@ -961,8 +994,34 @@ SH
       done
       assert_eq "live mock ssh tmux copy-mode Ctrl-Insert writes tmux buffer" "$ctrl_insert_expected" "$actual"
       assert_file_absent "live mock ssh tmux copy-mode Ctrl-Insert skips host pbcopy" "$pbcopy_log"
+
+      shift_delete_sequence="$(printf '\033[3;2~')"
+      send_attached_tmux_key_sequence \
+        "live mock ssh tmux copy-mode Shift-Delete attached-client key" \
+        "$real_tmux" \
+        "$live_socket" \
+        "$live_session" \
+        "$shift_delete_sequence" \
+        "$live_home" \
+        "$shift_delete_client_ready" \
+        "$shift_delete_client_trigger" &
+      shift_delete_client_pid="$!"
+      wait_for_nonempty_file "$shift_delete_client_ready"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" copy-mode -t "$live_pane"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" send-keys -X -t "$live_pane" search-backward "$shift_delete_expected"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" send-keys -X -t "$live_pane" select-line
+      rm -f "$pbcopy_log"
+      : >"$shift_delete_client_trigger"
+      wait "$shift_delete_client_pid"
+      for _ in 1 2 3 4 5 6 7 8 9 10; do
+        actual="$(HOME="$live_home" "$real_tmux" -L "$live_socket" save-buffer - 2>/dev/null || true)"
+        [[ "$actual" == "$shift_delete_expected" ]] && break
+        sleep 0.1
+      done
+      assert_eq "live mock ssh tmux copy-mode Shift-Delete writes tmux buffer" "$shift_delete_expected" "$actual"
+      assert_file_absent "live mock ssh tmux copy-mode Shift-Delete skips host pbcopy" "$pbcopy_log"
     else
-      printf 'skip - live mock ssh tmux copy-mode Ctrl-Insert attached-client key (python3 unavailable)\n'
+      printf 'skip - live mock ssh tmux copy-mode Ctrl-Insert/Shift-Delete attached-client keys (python3 unavailable)\n'
     fi
     "$real_tmux" -L "$live_socket" kill-server >/dev/null 2>&1 || true
     live_socket=""
@@ -1137,12 +1196,14 @@ SH
   run_live_copy_binding vi Enter "copy-mode beta" "vi-enter"
   run_live_copy_binding vi y "copy-mode gamma" "vi-y"
   run_live_copy_binding vi C-IC "copy-mode alpha" "vi-ctrl-insert"
+  run_live_copy_binding vi S-Delete "copy-mode beta" "vi-shift-delete"
   run_live_copy_binding vi MouseDragEnd1Pane "copy-mode beta" "vi-mouse-drag"
   run_live_copy_binding vi DoubleClick1Pane "beta" "vi-double-click" cursor
   run_live_copy_binding vi TripleClick1Pane "copy-mode gamma" "vi-triple-click" cursor
   run_live_copy_binding emacs Enter "copy-mode beta" "emacs-enter"
   run_live_copy_binding emacs y "copy-mode gamma" "emacs-y"
   run_live_copy_binding emacs C-IC "copy-mode alpha" "emacs-ctrl-insert"
+  run_live_copy_binding emacs S-Delete "copy-mode beta" "emacs-shift-delete"
   run_live_copy_binding emacs MouseDragEnd1Pane "copy-mode beta" "emacs-mouse-drag"
   run_live_copy_binding emacs DoubleClick1Pane "beta" "emacs-double-click" cursor
   run_live_copy_binding emacs TripleClick1Pane "copy-mode gamma" "emacs-triple-click" cursor
