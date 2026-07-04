@@ -141,6 +141,12 @@ assert_contains "tmux config maps VS Code Shift-F4 bytes for copy-mode" \
 assert_contains "tmux config maps VS Code Shift-F6 bytes for copy-mode" \
   "$tmux_conf" \
   "set-option -sq 'user-keys[91]' \"\\033[17;2~\""
+assert_contains "tmux root table passes VS Code Shift-F4 bytes to panes" \
+  "$tmux_conf" \
+  "bind-key -T root User90 send-keys -H 1b 5b 31 3b 32 53"
+assert_contains "tmux root table passes VS Code Shift-F6 bytes to panes" \
+  "$tmux_conf" \
+  "bind-key -T root User91 send-keys -H 1b 5b 31 37 3b 32 7e"
 assert_contains "tmux copy-mode scrolls up on VS Code Shift-F4 bytes" \
   "$tmux_conf" \
   "bind-key -T copy-mode-vi User90 send-keys -X -N 16 scroll-up"

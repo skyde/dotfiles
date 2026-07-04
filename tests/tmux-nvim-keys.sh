@@ -1027,6 +1027,62 @@ PY
     "$(printf 'attached \nv\nvisual shift-delete cut|line 2')" \
     "$(cat "$attached_visual_shift_delete_result")"
 
+  attached_visual_shift_f4_result="$tmp/attached-visual-shift-f4.log"
+  attached_visual_shift_f4_setup="lua local lines = {'attached visual shift-f line 1'}; for i = 2, 32 do lines[i] = 'attached visual shift-f line ' .. i end; vim.api.nvim_buf_set_lines(0, 0, -1, false, lines); vim.cmd('normal! gg')"
+  attached_visual_shift_f4_write="lua local lines=vim.fn.getreg('\"', 1, true); vim.fn.writefile({lines[1] or '', lines[#lines] or '', tostring(#lines), vim.fn.getregtype('\"')}, $(lua_string "$attached_visual_shift_f4_result"))"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_shift_f4_setup" Enter
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l '20G0V'
+  send_attached_client_key "tmux attached client sends VS Code Shift-F4 bytes to visual Neovim" "$shift_f4_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" y
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_shift_f4_write" Enter
+  wait_for_file "$attached_visual_shift_f4_result"
+  assert_eq "tmux attached client passes VS Code Shift-F4 bytes through to visual Neovim" \
+    "$(printf 'attached visual shift-f line 4\nattached visual shift-f line 20\n17\nV')" \
+    "$(cat "$attached_visual_shift_f4_result")"
+
+  attached_visual_shift_f6_result="$tmp/attached-visual-shift-f6.log"
+  attached_visual_shift_f6_setup="lua local lines = {'attached visual shift-f line 1'}; for i = 2, 32 do lines[i] = 'attached visual shift-f line ' .. i end; vim.api.nvim_buf_set_lines(0, 0, -1, false, lines); vim.cmd('normal! gg')"
+  attached_visual_shift_f6_write="lua local lines=vim.fn.getreg('\"', 1, true); vim.fn.writefile({lines[1] or '', lines[#lines] or '', tostring(#lines), vim.fn.getregtype('\"')}, $(lua_string "$attached_visual_shift_f6_result"))"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_shift_f6_setup" Enter
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l '12G0V'
+  send_attached_client_key "tmux attached client sends VS Code Shift-F6 bytes to visual Neovim" "$shift_f6_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" y
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_visual_shift_f6_write" Enter
+  wait_for_file "$attached_visual_shift_f6_result"
+  assert_eq "tmux attached client passes VS Code Shift-F6 bytes through to visual Neovim" \
+    "$(printf 'attached visual shift-f line 12\nattached visual shift-f line 28\n17\nV')" \
+    "$(cat "$attached_visual_shift_f6_result")"
+
+  root_user_key_output="$tmp/root-user-key-output.bin"
+  root_user_key_window="root-user-keys"
+  root_user_key_reader='import sys,termios,tty; fd=sys.stdin.fileno(); old=termios.tcgetattr(fd); tty.setraw(fd); data=sys.stdin.buffer.read(13); termios.tcsetattr(fd, termios.TCSADRAIN, old); open(sys.argv[1], "wb").write(data)'
+  printf -v root_user_key_command '%q -c %q %q' "$python3_path" "$root_user_key_reader" "$root_user_key_output"
+  "$tmux_bin" -L "$socket_name" new-window -d -t "nvim-keys:" -n "$root_user_key_window" "$root_user_key_command"
+  root_user_key_pane="$("$tmux_bin" -L "$socket_name" list-panes -t "nvim-keys:$root_user_key_window" -F '#{pane_id}')"
+  root_user_key_current_command=""
+  for _ in $(seq 1 50); do
+    root_user_key_current_command="$("$tmux_bin" -L "$socket_name" display-message -p -t "$root_user_key_pane" '#{pane_current_command}')"
+    case "$root_user_key_current_command" in
+      Python | python3) break ;;
+    esac
+    sleep 0.1
+  done
+  case "$root_user_key_current_command" in
+    Python | python3) ;;
+    *)
+      printf 'timed out waiting for root user-key pane Python reader, got %s\n' "$root_user_key_current_command" >&2
+      exit 1
+      ;;
+  esac
+  "$tmux_bin" -L "$socket_name" select-window -t "nvim-keys:$root_user_key_window"
+  send_attached_client_key "tmux attached client sends VS Code Shift-F4/F6 bytes to a root pane" "$shift_f4_sequence$shift_f6_sequence"
+  wait_for_file "$root_user_key_output"
+  assert_eq "tmux root table passes VS Code Shift-F4/F6 bytes through to panes" \
+    "1b5b313b32531b5b31373b327e" \
+    "$(od -An -tx1 -v "$root_user_key_output" | tr -d ' \n')"
+  "$tmux_bin" -L "$socket_name" kill-window -t "nvim-keys:$root_user_key_window" >/dev/null 2>&1 || true
+  "$tmux_bin" -L "$socket_name" select-pane -t "$pane_id"
+
   copy_scroll_window="copy-scroll"
   # shellcheck disable=SC2016
   copy_scroll_command='for i in $(seq 1 100); do printf "copy scroll line %03d\n" "$i"; done; exec sleep 60'
