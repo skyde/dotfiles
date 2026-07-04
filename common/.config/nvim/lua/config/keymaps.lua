@@ -155,7 +155,7 @@ end
 -- Delete the next word with the same Ctrl+Delete convention used by shells
 -- and GUI editors.
 local function delete_next_word()
-  vim.cmd("normal! dw")
+  vim.cmd([[normal! "_dw]])
 end
 
 for _, lhs in ipairs({ "<C-Del>", "\27[3;5~" }) do

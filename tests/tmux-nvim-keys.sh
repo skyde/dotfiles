@@ -329,15 +329,15 @@ assert_eq "tmux passes Ctrl-Right bytes to insert Neovim next-word motion" \
   "$(cat "$insert_ctrl_right_result")"
 
 insert_ctrl_delete_result="$tmp/insert-ctrl-delete-word.log"
-insert_ctrl_delete_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'insert ctrl delete alpha beta gamma'}); vim.cmd('normal! gg04w'); vim.cmd('startinsert')"
-insert_ctrl_delete_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line()}, $(lua_string "$insert_ctrl_delete_result"))"
+insert_ctrl_delete_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'insert ctrl delete alpha beta gamma'}); vim.fn.setreg('\"', 'KEEP-TMUX-INSERT-CTRL-DELETE', 'v'); vim.cmd('normal! gg04w'); vim.cmd('startinsert')"
+insert_ctrl_delete_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line(), vim.fn.getreg('\"')}, $(lua_string "$insert_ctrl_delete_result"))"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$insert_ctrl_delete_command" Enter
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$ctrl_delete_sequence"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "Z"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$insert_ctrl_delete_write_command" Enter
 wait_for_file "$insert_ctrl_delete_result"
 assert_eq "tmux passes Ctrl-Delete bytes to insert Neovim delete-next-word" \
-  "insert ctrl delete alpha Zgamma" \
+  "$(printf 'insert ctrl delete alpha Zgamma\nKEEP-TMUX-INSERT-CTRL-DELETE')" \
   "$(cat "$insert_ctrl_delete_result")"
 
 normal_copy_result="$tmp/normal-ctrl-insert-copy.log"
@@ -387,14 +387,14 @@ assert_eq "tmux passes Ctrl-Right bytes to normal Neovim next-word motion" \
   "$(cat "$normal_ctrl_right_result")"
 
 normal_ctrl_delete_result="$tmp/normal-ctrl-delete-word.log"
-normal_ctrl_delete_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'normal ctrl delete alpha beta gamma'}); vim.cmd('normal! gg04w')"
-normal_ctrl_delete_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line()}, $(lua_string "$normal_ctrl_delete_result"))"
+normal_ctrl_delete_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'normal ctrl delete alpha beta gamma'}); vim.fn.setreg('\"', 'KEEP-TMUX-NORMAL-CTRL-DELETE', 'v'); vim.cmd('normal! gg04w')"
+normal_ctrl_delete_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line(), vim.fn.getreg('\"')}, $(lua_string "$normal_ctrl_delete_result"))"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$normal_ctrl_delete_command" Enter
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$ctrl_delete_sequence"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$normal_ctrl_delete_write_command" Enter
 wait_for_file "$normal_ctrl_delete_result"
 assert_eq "tmux passes Ctrl-Delete bytes to normal Neovim delete-next-word" \
-  "normal ctrl delete alpha gamma" \
+  "$(printf 'normal ctrl delete alpha gamma\nKEEP-TMUX-NORMAL-CTRL-DELETE')" \
   "$(cat "$normal_ctrl_delete_result")"
 
 visual_copy_result="$tmp/visual-ctrl-insert-copy.log"
