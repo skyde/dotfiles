@@ -106,11 +106,19 @@ package.path = root
 require("config.keymaps")
 
 vim.g.dotfiles_tmux_paste = ""
+vim.g.dotfiles_tmux_copy_lines = {}
+vim.g.dotfiles_tmux_copy_type = ""
 vim.g.clipboard = {
   name = "tmux-nvim-keys",
   copy = {
-    ["+"] = function() end,
-    ["*"] = function() end,
+    ["+"] = function(lines, regtype)
+      vim.g.dotfiles_tmux_copy_lines = lines
+      vim.g.dotfiles_tmux_copy_type = regtype
+    end,
+    ["*"] = function(lines, regtype)
+      vim.g.dotfiles_tmux_copy_lines = lines
+      vim.g.dotfiles_tmux_copy_type = regtype
+    end,
   },
   paste = {
     ["+"] = function()
@@ -193,7 +201,9 @@ wait_for_file "$insert_previous_buffer_result"
 assert_eq "tmux passes VS Code Shift-F1 bytes to insert Neovim previous buffer" "search.txt" "$(cat "$insert_previous_buffer_result")"
 
 shift_f5_sequence="$(printf '\033[15;2~')"
+ctrl_insert_sequence="$(printf '\033[2;5~')"
 shift_insert_sequence="$(printf '\033[2;2~')"
+shift_delete_sequence="$(printf '\033[3;2~')"
 normal_save_expected="$(printf 'normal shift-f5 save\nline 2')"
 normal_save_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'normal shift-f5 save', 'line 2'}); vim.cmd('normal! gg')"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$normal_save_command" Enter
@@ -207,6 +217,52 @@ insert_save_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'insert sh
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_f5_sequence"
 wait_for_file_content "$tmp/search.txt" "$insert_save_expected"
 assert_eq "tmux passes VS Code Shift-F5 bytes to insert Neovim save" "$insert_save_expected" "$(cat "$tmp/search.txt")"
+
+normal_copy_result="$tmp/normal-ctrl-insert-copy.log"
+normal_copy_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'ctrl-insert copy', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg')"
+normal_copy_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$normal_copy_result"))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$normal_copy_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$ctrl_insert_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$normal_copy_write_command" Enter
+wait_for_file "$normal_copy_result"
+assert_eq "tmux passes Ctrl-Insert bytes to normal Neovim copy" \
+  "$(printf 'ctrl-insert copy|\nV\nctrl-insert copy|line 2')" \
+  "$(cat "$normal_copy_result")"
+
+visual_copy_result="$tmp/visual-ctrl-insert-copy.log"
+visual_copy_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'copy selection', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0')"
+visual_copy_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$visual_copy_result"))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$visual_copy_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'v4l'
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$ctrl_insert_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$visual_copy_write_command" Enter
+wait_for_file "$visual_copy_result"
+assert_eq "tmux passes Ctrl-Insert bytes to visual Neovim copy" \
+  "$(printf 'copy \nv\ncopy selection|line 2')" \
+  "$(cat "$visual_copy_result")"
+
+normal_cut_result="$tmp/normal-shift-delete-cut.log"
+normal_cut_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'shift-delete cut', 'line 2', 'line 3'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg')"
+normal_cut_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$normal_cut_result"))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$normal_cut_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_delete_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$normal_cut_write_command" Enter
+wait_for_file "$normal_cut_result"
+assert_eq "tmux passes Shift-Delete bytes to normal Neovim cut" \
+  "$(printf 'shift-delete cut|\nV\nline 2|line 3')" \
+  "$(cat "$normal_cut_result")"
+
+visual_cut_result="$tmp/visual-shift-delete-cut.log"
+visual_cut_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'delete selection', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg0')"
+visual_cut_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$visual_cut_result"))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$visual_cut_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'v5l'
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_delete_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$visual_cut_write_command" Enter
+wait_for_file "$visual_cut_result"
+assert_eq "tmux passes Shift-Delete bytes to visual Neovim cut" \
+  "$(printf 'delete\nv\n selection|line 2')" \
+  "$(cat "$visual_cut_result")"
 
 shift_insert_result="$tmp/shift-insert-paste.log"
 shift_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'shift-insert '}); vim.g.dotfiles_tmux_paste = 'paste via tmux'; vim.cmd('startinsert!')"
