@@ -33,6 +33,7 @@ assert_not_contains() {
 
 vim_docs="$(<"$root/docs/vim-bindings.md")"
 vscode_docs="$(<"$root/docs/vscode-keybindings.md")"
+readme="$(<"$root/README.md")"
 nvim_keymaps="$(<"$root/common/.config/nvim/lua/config/keymaps.lua")"
 tmux_conf="$(<"$root/common/.tmux.conf")"
 zshrc="$(<"$root/common/.zshrc")"
@@ -42,6 +43,8 @@ kitty_conf="$(<"$root/common/.config/kitty/kitty.conf")"
 assert_contains "vim docs keep Shift-F9 search toggle" "$vim_docs" "toggle search   – Shift+F9"
 assert_contains "vim docs reserve Shift-F10 for tmux prefix" "$vim_docs" "tmux prefix     – Shift+F10"
 assert_not_contains "vim docs do not document stale Shift-F10 eye toggle" "$vim_docs" "toggle eye      – Shift+F10"
+assert_contains "README documents Shift-F10 as tmux prefix" "$readme" "tmux prefix - Shift F10"
+assert_not_contains "README does not document stale Shift-F10 eye toggle" "$readme" "toggle eye mouse - Shift F10"
 
 assert_contains "VS Code docs pass Shift-F9 to terminal Neovim" \
   "$vscode_docs" \
