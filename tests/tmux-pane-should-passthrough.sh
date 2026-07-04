@@ -83,6 +83,14 @@ assert_failure "paste key direct ssh command uses tmux paste" env PATH=/usr/bin:
 assert_failure "paste key direct ssh remote shell uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "ssh devbox" ""
 assert_failure "paste key direct kitten ssh uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "kitten ssh devbox" ""
 assert_failure "paste key direct mosh client uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key mosh-client ""
+assert_success "paste key direct docker exec nvim passes through" env PATH=/usr/bin:/bin "$helper" --paste-key "docker exec -it app nvim README.md" ""
+assert_failure "paste key direct docker exec ssh uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "docker exec -it app ssh devbox" ""
+assert_failure "paste key direct docker attach uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "docker attach app" ""
+assert_failure "paste key direct docker start attach uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "docker start -ai app" ""
+assert_failure "paste key direct podman attach uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "podman attach app" ""
+assert_success "paste key direct kubectl exec nvim passes through" env PATH=/usr/bin:/bin "$helper" --paste-key "kubectl exec -it pod/app -- nvim README.md" ""
+assert_failure "paste key direct kubectl exec ssh uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "kubectl exec -it pod/app -- ssh devbox" ""
+assert_failure "paste key direct kubectl attach uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "kubectl attach -it pod/app -c api" ""
 assert_success "direct mosh client command passes through without ps" env PATH=/usr/bin:/bin "$helper" mosh-client ""
 assert_success "direct autossh command passes through without ps" env PATH=/usr/bin:/bin "$helper" autossh ""
 assert_success "direct autossh remote shell command passes through without ps" env PATH=/usr/bin:/bin "$helper" "autossh -M 0 devbox" ""
@@ -619,12 +627,18 @@ assert_success "foreground docker global context exec nvim child passes through 
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/local/bin/docker /usr/local/bin/docker --context prod exec app nvim README.md' "$helper" zsh /dev/ttys001
 assert_success "foreground docker attach child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/local/bin/docker /usr/local/bin/docker attach app' "$helper" zsh /dev/ttys001
+assert_failure "paste key foreground docker attach child uses tmux paste" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/local/bin/docker /usr/local/bin/docker attach app' "$helper" --paste-key zsh /dev/ttys001
 assert_success "foreground docker attach explicit stdin child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/local/bin/docker /usr/local/bin/docker attach --no-stdin=false app' "$helper" zsh /dev/ttys001
 assert_success "foreground docker start attach interactive child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/local/bin/docker /usr/local/bin/docker start -ai app' "$helper" zsh /dev/ttys001
+assert_failure "paste key foreground docker start attach child uses tmux paste" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/local/bin/docker /usr/local/bin/docker start -ai app' "$helper" --paste-key zsh /dev/ttys001
 assert_success "foreground docker run nvim child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/local/bin/docker /usr/local/bin/docker run --rm -it ubuntu nvim README.md' "$helper" zsh /dev/ttys001
+assert_success "paste key foreground docker run nvim child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/local/bin/docker /usr/local/bin/docker run --rm -it ubuntu nvim README.md' "$helper" --paste-key zsh /dev/ttys001
 assert_success "foreground docker run nvim entrypoint child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/local/bin/docker /usr/local/bin/docker run --rm --entrypoint nvim ubuntu README.md' "$helper" zsh /dev/ttys001
 assert_success "foreground docker compose exec nvim child passes through behind shell" \
@@ -651,8 +665,12 @@ assert_success "foreground kubectl global basic auth exec ssh child passes throu
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /opt/homebrew/bin/kubectl /opt/homebrew/bin/kubectl --username alice --password example exec pod/app -- ssh devbox' "$helper" zsh /dev/ttys001
 assert_success "foreground kubectl attach stdin child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /opt/homebrew/bin/kubectl /opt/homebrew/bin/kubectl attach -it pod/app -c api' "$helper" zsh /dev/ttys001
+assert_failure "paste key foreground kubectl attach stdin child uses tmux paste" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /opt/homebrew/bin/kubectl /opt/homebrew/bin/kubectl attach -it pod/app -c api' "$helper" --paste-key zsh /dev/ttys001
 assert_success "foreground oc attach stdin child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /opt/homebrew/bin/oc /opt/homebrew/bin/oc attach --stdin pod/app -c api' "$helper" zsh /dev/ttys001
+assert_failure "paste key foreground oc attach stdin child uses tmux paste" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /opt/homebrew/bin/oc /opt/homebrew/bin/oc attach --stdin pod/app -c api' "$helper" --paste-key zsh /dev/ttys001
 assert_success "foreground npx nvim child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /opt/homebrew/bin/npx /opt/homebrew/bin/npx --yes nvim README.md' "$helper" zsh /dev/ttys001
 assert_success "foreground pnpm exec ssh child passes through behind shell" \

@@ -2376,6 +2376,7 @@ command_words_match() {
       fi
     elif container_index="$(container_exec_command_index "$index" "$name")"; then
       if [[ "$container_index" == "passthrough" ]]; then
+        [[ "$mode" == "paste-key" ]] && return 1
         return 0
       fi
       if [[ "$container_index" == entrypoint$'\n'* ]]; then
