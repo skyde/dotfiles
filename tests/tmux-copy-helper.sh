@@ -1197,6 +1197,8 @@ SH
   run_live_copy_binding vi y "copy-mode gamma" "vi-y"
   run_live_copy_binding vi C-IC "copy-mode alpha" "vi-ctrl-insert"
   run_live_copy_binding vi S-Delete "copy-mode beta" "vi-shift-delete"
+  run_live_copy_binding vi D "copy-mode beta" "vi-copy-end-of-line" cursor
+  run_live_copy_binding vi C-j "copy-mode gamma" "vi-ctrl-j"
   run_live_copy_binding vi MouseDragEnd1Pane "copy-mode beta" "vi-mouse-drag"
   run_live_copy_binding vi DoubleClick1Pane "beta" "vi-double-click" cursor
   run_live_copy_binding vi TripleClick1Pane "copy-mode gamma" "vi-triple-click" cursor
@@ -1204,6 +1206,9 @@ SH
   run_live_copy_binding emacs y "copy-mode gamma" "emacs-y"
   run_live_copy_binding emacs C-IC "copy-mode alpha" "emacs-ctrl-insert"
   run_live_copy_binding emacs S-Delete "copy-mode beta" "emacs-shift-delete"
+  run_live_copy_binding emacs M-w "copy-mode gamma" "emacs-meta-w"
+  run_live_copy_binding emacs C-w "copy-mode alpha" "emacs-ctrl-w"
+  run_live_copy_binding emacs C-k "copy-mode beta" "emacs-ctrl-k" cursor
   run_live_copy_binding emacs MouseDragEnd1Pane "copy-mode beta" "emacs-mouse-drag"
   run_live_copy_binding emacs DoubleClick1Pane "beta" "emacs-double-click" cursor
   run_live_copy_binding emacs TripleClick1Pane "copy-mode gamma" "emacs-triple-click" cursor

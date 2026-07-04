@@ -547,16 +547,32 @@ assert_contains \
   "tmux display-message tmux-paste-helper unavailable"
 HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g HOME "$fake_home"
 
+assert_copy_binding_uses_helper() {
+  local copy_table="$1"
+  local copy_key="$2"
+  local copy_binding
+
+  copy_binding="$("$real_tmux" -L "$socket_name" list-keys -T "$copy_table" "$copy_key")"
+  assert_contains "$copy_table $copy_key uses copy helper" "$copy_binding" "tmux-copy-helper"
+  assert_contains "$copy_table $copy_key uses explicit home" "$copy_binding" "$home_marker"
+  assert_contains "$copy_table $copy_key has repo fallback" "$copy_binding" "$repo_marker"
+  assert_contains "$copy_table $copy_key has PATH fallback" "$copy_binding" "command -v tmux-copy-helper"
+  assert_contains "$copy_table $copy_key guards unset HOME" "$copy_binding" "$home_guard"
+  assert_contains "$copy_table $copy_key displays missing helper" "$copy_binding" "display-message"
+}
+
 for copy_table in copy-mode-vi copy-mode; do
   for copy_key in Enter y C-IC S-DC MouseDragEnd1Pane DoubleClick1Pane TripleClick1Pane; do
-    copy_binding="$("$real_tmux" -L "$socket_name" list-keys -T "$copy_table" "$copy_key")"
-    assert_contains "$copy_table $copy_key uses copy helper" "$copy_binding" "tmux-copy-helper"
-    assert_contains "$copy_table $copy_key uses explicit home" "$copy_binding" "$home_marker"
-    assert_contains "$copy_table $copy_key has repo fallback" "$copy_binding" "$repo_marker"
-    assert_contains "$copy_table $copy_key has PATH fallback" "$copy_binding" "command -v tmux-copy-helper"
-    assert_contains "$copy_table $copy_key guards unset HOME" "$copy_binding" "$home_guard"
-    assert_contains "$copy_table $copy_key displays missing helper" "$copy_binding" "display-message"
+    assert_copy_binding_uses_helper "$copy_table" "$copy_key"
   done
+done
+
+for copy_key in D C-j; do
+  assert_copy_binding_uses_helper copy-mode-vi "$copy_key"
+done
+
+for copy_key in M-w C-w C-k; do
+  assert_copy_binding_uses_helper copy-mode "$copy_key"
 done
 
 session_picker_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix s)"
