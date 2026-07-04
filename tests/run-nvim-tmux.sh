@@ -38,6 +38,7 @@ shell_files=(
   tests/dotfiles-run.sh
   tests/kill-tmux.sh
   tests/keybinding-docs.sh
+  tests/lazygit-clipboard.sh
   tests/nvim-clipboard-provider.sh
   tests/nvim-config-smoke.sh
   tests/osc-clipboard.sh
@@ -105,6 +106,7 @@ test_scripts=(
   tests/dotfiles-run.sh
   tests/kill-tmux.sh
   tests/keybinding-docs.sh
+  tests/lazygit-clipboard.sh
   tests/nvim-clipboard-provider.sh
   tests/nvim-config-smoke.sh
   tests/osc-clipboard.sh
