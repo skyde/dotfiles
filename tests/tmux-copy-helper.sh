@@ -805,7 +805,13 @@ SH
     local live_pane
     local live_window
     local real_tmux_dir="${real_tmux%/*}"
+    local live_session="copy-helper-real-host"
     local expected="real host copy beta"
+    local ctrl_insert_expected="real host copy alpha"
+    local ctrl_insert_client_pid
+    local ctrl_insert_client_ready="$tmp/real-host-ctrl-insert-client.ready"
+    local ctrl_insert_client_trigger="$tmp/real-host-ctrl-insert-client.trigger"
+    local ctrl_insert_sequence
 
     if ! command -v pbcopy >/dev/null 2>&1 || ! command -v pbpaste >/dev/null 2>&1; then
       printf 'skip - live tmux copy binding real host clipboard (pbcopy/pbpaste unavailable)\n'
@@ -827,7 +833,7 @@ SH
 
     "$real_tmux" -L "$live_socket" kill-server >/dev/null 2>&1 || true
     HOME="$live_home" "$real_tmux" -L "$live_socket" -f "$root/common/.tmux.conf" \
-      new-session -d -s "copy-helper-real-host" "printf 'real host copy alpha\\nreal host copy beta\\nreal host copy gamma\\n'; sleep 60"
+      new-session -d -s "$live_session" "printf 'real host copy alpha\\nreal host copy beta\\nreal host copy gamma\\n'; sleep 60"
     HOME="$live_home" "$real_tmux" -L "$live_socket" set-environment -g PATH \
       "$live_home/.local/bin:$real_tmux_dir:/usr/bin:/bin:/usr/sbin:/sbin"
     HOME="$live_home" "$real_tmux" -L "$live_socket" set-environment -gu SSH_CLIENT >/dev/null 2>&1 || true
@@ -845,6 +851,34 @@ SH
     HOME="$live_home" "$real_tmux" -L "$live_socket" send-keys -t "$live_pane" y
     wait_for_pbpaste_value "$expected"
     assert_eq "live tmux copy binding writes real host clipboard" "$expected" "$(pbpaste)"
+
+    if command -v python3 >/dev/null 2>&1; then
+      printf 'old attached pasteboard value\n' | pbcopy
+      ctrl_insert_sequence="$(printf '\033[2;5~')"
+      send_attached_tmux_key_sequence \
+        "live tmux copy-mode Ctrl-Insert attached-client key" \
+        "$real_tmux" \
+        "$live_socket" \
+        "$live_session" \
+        "$ctrl_insert_sequence" \
+        "$live_home" \
+        "$ctrl_insert_client_ready" \
+        "$ctrl_insert_client_trigger" &
+      ctrl_insert_client_pid="$!"
+      wait_for_nonempty_file "$ctrl_insert_client_ready"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" copy-mode -t "$live_pane"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" send-keys -X -t "$live_pane" search-backward "$ctrl_insert_expected"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" send-keys -X -t "$live_pane" select-line
+      : >"$ctrl_insert_client_trigger"
+      wait "$ctrl_insert_client_pid"
+      wait_for_pbpaste_value "$ctrl_insert_expected"
+      assert_eq "live tmux copy-mode Ctrl-Insert attached-client writes real host clipboard" \
+        "$ctrl_insert_expected" \
+        "$(pbpaste)"
+    else
+      printf 'skip - live tmux copy-mode Ctrl-Insert attached-client key (python3 unavailable)\n'
+    fi
+
     "$real_tmux" -L "$live_socket" kill-server >/dev/null 2>&1 || true
     live_socket=""
   }
