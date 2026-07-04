@@ -413,7 +413,7 @@ try:
         [
             zsh_path,
             "-fic",
-            'source "$DOTFILES_ZSHRC"; print -r -- "FZF_CTRL_R_OPTS=${FZF_CTRL_R_OPTS-}"',
+            'source "$DOTFILES_ZSHRC"; print -r -- "FZF_CTRL_R_OPTS=${FZF_CTRL_R_OPTS-}"; exit',
         ],
         stdin=slave,
         stdout=slave,
