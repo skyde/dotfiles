@@ -749,6 +749,7 @@ weird_pane="$(
     awk -F $'\t' '$1 == "weird" { print $2; exit }'
 )"
 actual_weird_dir="$("$real_tmux" -L "$socket_name" display-message -p -t "$weird_pane" '#{pane_current_path}')"
+expected_weird_dir="${actual_weird_dir//\\\$/\$}"
 printf -v popup_helper_command '%q' "$fake_home/.local/bin/tmux-popup-tool"
 
 # shellcheck disable=SC2016
@@ -756,7 +757,7 @@ HOME="$fake_home" "$real_tmux" -L "$socket_name" run-shell -b -t "$weird_pane" "
 wait_for_file "$fake_home/popup.log"
 assert_eq \
   "quoted run-shell start-dir preserves metacharacter path" \
-  "$(printf 'argc=6\narg=--start-dir\narg=%s\narg=--title\narg=git\narg=lazygit\narg=gitui\n---' "$actual_weird_dir")" \
+  "$(printf 'argc=6\narg=--start-dir\narg=%s\narg=--title\narg=git\narg=lazygit\narg=gitui\n---' "$expected_weird_dir")" \
   "$(cat "$fake_home/popup.log")"
 assert_file_absent "quoted run-shell start-dir does not run command substitution" "$tmp/INJECTED"
 
@@ -778,7 +779,7 @@ HOME="$fake_home" "$real_tmux" -L "$socket_name" run-shell -b -t "$weird_pane" '
 wait_for_file "$fake_home/popup.log"
 assert_eq \
   "quoted run-shell start-dir works through repo fallback" \
-  "$(printf 'argc=6\narg=--start-dir\narg=%s\narg=--title\narg=git\narg=lazygit\narg=gitui\n---' "$actual_weird_dir")" \
+  "$(printf 'argc=6\narg=--start-dir\narg=%s\narg=--title\narg=git\narg=lazygit\narg=gitui\n---' "$expected_weird_dir")" \
   "$(cat "$fake_home/popup.log")"
 assert_file_absent "repo fallback start-dir does not run command substitution" "$tmp/INJECTED"
 
