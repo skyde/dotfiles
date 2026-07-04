@@ -6,6 +6,15 @@ pane_id="${2:-}"
 current_command="${3:-}"
 pane_tty="${4:-}"
 
+usage() {
+  echo "usage: tmux-pane-key-router <action> <pane-id> <current-command> <pane-tty>" >&2
+  exit 64
+}
+
+if [[ -z "$action" || -z "$pane_id" || -z "$pane_tty" ]]; then
+  usage
+fi
+
 script_source="${BASH_SOURCE[0]}"
 script_dir="."
 if [[ "$script_source" == */* ]]; then
@@ -142,7 +151,6 @@ case "$action" in
     fi
     ;;
   *)
-    echo "usage: tmux-pane-key-router <action> <pane-id> <current-command> <pane-tty>" >&2
-    exit 64
+    usage
     ;;
 esac

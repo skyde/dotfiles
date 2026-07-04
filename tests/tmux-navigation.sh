@@ -384,6 +384,9 @@ cat >"$container_router_path/tmux" <<'SH'
   printf ' %s' "$@"
   printf '\n'
 } >>"${TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG:?}"
+if [[ "${1:-}" == "display-message" && "${2:-}" == "-p" ]]; then
+  printf '%s\n' "${TMUX_NAV_CONTAINER_ROUTER_WINDOW_ID:-@container-window}"
+fi
 SH
 chmod +x "$container_router_path/tmux"
 cat >"$fake_home/.local/bin/tmux-paste-helper" <<'SH'
@@ -391,6 +394,50 @@ cat >"$fake_home/.local/bin/tmux-paste-helper" <<'SH'
 printf 'args=%s\n' "$*" >"${TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG:?}"
 SH
 chmod +x "$fake_home/.local/bin/tmux-paste-helper"
+
+router_missing_pane_stderr="$tmp/router-missing-pane.stderr"
+router_missing_tty_stderr="$tmp/router-missing-tty.stderr"
+rm -f "$container_router_ps_log" "$container_router_paste_log" "$container_router_tmux_log"
+if env \
+  HOME="$fake_home" \
+  PATH="$container_router_path:/usr/bin:/bin" \
+  TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$container_router_paste_log" \
+  TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
+  TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$container_router_tmux_log" \
+  "$root/common/.local/bin/tmux-pane-key-router" nav-left "" sh /dev/ttys001 2>"$router_missing_pane_stderr"; then
+  printf 'not ok - key router exits non-zero when pane id is missing\n' >&2
+  exit 1
+else
+  router_missing_pane_status=$?
+fi
+assert_eq "key router returns usage status when pane id is missing" "64" "$router_missing_pane_status"
+assert_contains \
+  "key router reports usage when pane id is missing" \
+  "$(cat "$router_missing_pane_stderr")" \
+  "usage: tmux-pane-key-router <action> <pane-id> <current-command> <pane-tty>"
+assert_file_absent "key router missing pane id does not call tmux" "$container_router_tmux_log"
+assert_file_absent "key router missing pane id does not call paste helper" "$container_router_paste_log"
+
+rm -f "$container_router_ps_log" "$container_router_paste_log" "$container_router_tmux_log"
+if env \
+  HOME="$fake_home" \
+  PATH="$container_router_path:/usr/bin:/bin" \
+  TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$container_router_paste_log" \
+  TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
+  TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$container_router_tmux_log" \
+  "$root/common/.local/bin/tmux-pane-key-router" nav-left %missing-tty sh 2>"$router_missing_tty_stderr"; then
+  printf 'not ok - key router exits non-zero when pane tty is missing\n' >&2
+  exit 1
+else
+  router_missing_tty_status=$?
+fi
+assert_eq "key router returns usage status when pane tty is missing" "64" "$router_missing_tty_status"
+assert_contains \
+  "key router reports usage when pane tty is missing" \
+  "$(cat "$router_missing_tty_stderr")" \
+  "usage: tmux-pane-key-router <action> <pane-id> <current-command> <pane-tty>"
+assert_file_absent "key router missing pane tty does not call tmux" "$container_router_tmux_log"
+assert_file_absent "key router missing pane tty does not call paste helper" "$container_router_paste_log"
 
 env \
   HOME="$fake_home" \
@@ -429,6 +476,46 @@ assert_contains \
 assert_file_absent \
   "navigation router does not use paste helper for foreground docker attach" \
   "$container_router_paste_log"
+
+rm -f "$container_router_ps_log" "$container_router_paste_log" "$container_router_tmux_log"
+env \
+  HOME="$fake_home" \
+  PATH="$container_router_path:/usr/bin:/bin" \
+  TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$container_router_paste_log" \
+  TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
+  TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$container_router_tmux_log" \
+  "$root/common/.local/bin/tmux-pane-key-router" nav-last %last-nvim nvim /dev/ttys001
+wait_for_file "$container_router_tmux_log"
+assert_contains \
+  "last-pane router passes C-backslash through to direct nvim" \
+  "$(cat "$container_router_tmux_log")" \
+  "tmux send-keys -t %last-nvim C-\\"
+assert_not_contains \
+  "last-pane router avoids tmux last-pane for direct nvim" \
+  "$(cat "$container_router_tmux_log")" \
+  "last-pane"
+
+rm -f "$container_router_ps_log" "$container_router_paste_log" "$container_router_tmux_log"
+last_router_path="$tmp/last-router-path"
+mkdir -p "$last_router_path"
+ln -s "$container_router_path/tmux" "$last_router_path/tmux"
+env \
+  HOME="$fake_home" \
+  PATH="$last_router_path:/usr/bin:/bin" \
+  TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$container_router_paste_log" \
+  TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
+  TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$container_router_tmux_log" \
+  TMUX_NAV_CONTAINER_ROUTER_WINDOW_ID="@last-window" \
+  "$root/common/.local/bin/tmux-pane-key-router" nav-last %last-plain cat /dev/ttys999
+wait_for_file "$container_router_tmux_log"
+assert_contains \
+  "last-pane router resolves pane window before fallback" \
+  "$(cat "$container_router_tmux_log")" \
+  "tmux display-message -p -t %last-plain #{window_id}"
+assert_contains \
+  "last-pane router targets resolved window for plain panes" \
+  "$(cat "$container_router_tmux_log")" \
+  "tmux last-pane -t @last-window"
 
 assert_direct_router_conservative_paste() {
   local label="$1" command="$2" pane_id="%direct-$1"
