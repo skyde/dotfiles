@@ -880,6 +880,82 @@ PY
     assert_files_equal "live tmux Shift-Insert paste binding writes clipboard bytes through helper" \
       "$shift_insert_binding_clipboard" \
       "$shift_insert_binding_output"
+
+    guarded_copy_cut_output="$tmp/live-guarded-copy-cut-pane-output.txt"
+    printf -v guarded_copy_cut_cat_command 'cat > %q' "$guarded_copy_cut_output"
+    guarded_copy_cut_window="$(
+      HOME="$live_home" "$real_tmux" -L "$live_socket" new-window -d -n guarded-copy-cut -P -F '#{window_id}' "$guarded_copy_cut_cat_command"
+    )"
+    HOME="$live_home" "$real_tmux" -L "$live_socket" source-file "$root/common/.tmux.conf"
+    HOME="$live_home" "$real_tmux" -L "$live_socket" select-window -t "$guarded_copy_cut_window"
+    if ! TERM=xterm-256color TERM_PROGRAM=vscode HOME="$live_home" "$python3_path" - \
+      "$real_tmux" \
+      "$live_socket" \
+      "$live_session" \
+      "$guarded_copy_cut_output" <<'PY'
+import os
+import pty
+import select
+import subprocess
+import sys
+import time
+
+tmux_path, socket_name, session_name, output_path = sys.argv[1:]
+env = os.environ.copy()
+env.update({
+    "TERM": "xterm-256color",
+    "TERM_PROGRAM": "vscode",
+})
+
+master, slave = pty.openpty()
+try:
+    proc = subprocess.Popen(
+        [tmux_path, "-L", socket_name, "attach-session", "-t", session_name],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        env=env,
+        close_fds=True,
+    )
+finally:
+    os.close(slave)
+
+try:
+    deadline = time.time() + 5
+    sent = False
+    while time.time() < deadline:
+        ready, _, _ = select.select([master], [], [], 0.05)
+        if ready:
+            try:
+                os.read(master, 4096)
+            except OSError:
+                break
+
+        if not sent and time.time() > deadline - 4.5:
+            os.write(master, b"\x1b[2;5~\x1b[3;2~guarded copy cut ok\n\x04")
+            sent = True
+
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            sys.exit(0)
+
+    print("timeout waiting for guarded copy/cut pane output")
+    sys.exit(1)
+finally:
+    proc.terminate()
+    try:
+        proc.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+    os.close(master)
+PY
+    then
+      printf 'not ok - live tmux guarded copy/cut bindings avoid raw plain-pane bytes\n' >&2
+      exit 1
+    fi
+    wait_for_file "$guarded_copy_cut_output"
+    assert_files_equal "live tmux guarded copy/cut bindings avoid raw plain-pane bytes" \
+      <(printf 'guarded copy cut ok\n') \
+      "$guarded_copy_cut_output"
   else
     printf 'skip - live tmux Shift-Insert paste binding (python3 unavailable)\n'
   fi

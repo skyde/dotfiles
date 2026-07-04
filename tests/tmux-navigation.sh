@@ -418,6 +418,30 @@ assert_eq \
   "args=$paste_binding_pane" \
   "$(cat "$paste_binding_log")"
 
+ctrl_insert_binding="$("$real_tmux" -L "$socket_name" list-keys -T root C-IC)"
+assert_contains "Ctrl-Insert root binding checks passthrough helper" "$ctrl_insert_binding" "tmux-pane-should-passthrough"
+assert_not_contains "Ctrl-Insert root binding does not use paste-key mode" "$ctrl_insert_binding" "--paste-key"
+assert_contains "Ctrl-Insert root binding sends key to pane-aware TUIs" "$ctrl_insert_binding" "send-keys C-Insert"
+assert_contains "Ctrl-Insert root binding uses explicit home" "$ctrl_insert_binding" "$home_marker"
+assert_contains "Ctrl-Insert root binding has repo fallback" "$ctrl_insert_binding" "$repo_marker"
+assert_contains "Ctrl-Insert root binding has PATH fallback" "$ctrl_insert_binding" "command -v tmux-pane-should-passthrough"
+assert_contains "Ctrl-Insert root binding guards unset HOME" "$ctrl_insert_binding" "$home_guard"
+assert_contains "Ctrl-Insert root binding shell-quotes current command" "$ctrl_insert_binding" '#{q:pane_current_command}'
+assert_contains "Ctrl-Insert root binding shell-quotes pane tty" "$ctrl_insert_binding" '#{q:pane_tty}'
+assert_contains "Ctrl-Insert root binding avoids raw shell input fallback" "$ctrl_insert_binding" "display-message"
+
+shift_delete_binding="$("$real_tmux" -L "$socket_name" list-keys -T root S-DC)"
+assert_contains "Shift-Delete root binding checks passthrough helper" "$shift_delete_binding" "tmux-pane-should-passthrough"
+assert_not_contains "Shift-Delete root binding does not use paste-key mode" "$shift_delete_binding" "--paste-key"
+assert_contains "Shift-Delete root binding sends key to pane-aware TUIs" "$shift_delete_binding" "send-keys S-Delete"
+assert_contains "Shift-Delete root binding uses explicit home" "$shift_delete_binding" "$home_marker"
+assert_contains "Shift-Delete root binding has repo fallback" "$shift_delete_binding" "$repo_marker"
+assert_contains "Shift-Delete root binding has PATH fallback" "$shift_delete_binding" "command -v tmux-pane-should-passthrough"
+assert_contains "Shift-Delete root binding guards unset HOME" "$shift_delete_binding" "$home_guard"
+assert_contains "Shift-Delete root binding shell-quotes current command" "$shift_delete_binding" '#{q:pane_current_command}'
+assert_contains "Shift-Delete root binding shell-quotes pane tty" "$shift_delete_binding" '#{q:pane_tty}'
+assert_contains "Shift-Delete root binding avoids raw shell input fallback" "$shift_delete_binding" "display-message"
+
 rm -f "$fake_home/.local/bin/tmux-paste-helper"
 path_paste_path="$tmp/path-paste-path"
 path_paste_log="$tmp/path-paste.log"

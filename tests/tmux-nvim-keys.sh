@@ -274,10 +274,11 @@ wait_for_file "$shift_insert_result"
 assert_eq "tmux passes Shift-Insert bytes to insert Neovim paste" "shift-insert paste via tmux" "$(cat "$shift_insert_result")"
 
 if python3_path="$(command -v python3 2>/dev/null)"; then
-  attached_shift_insert_result="$tmp/attached-shift-insert-paste.log"
-  attached_shift_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached shift-insert '}); vim.g.dotfiles_tmux_paste = 'paste via attached tmux'; vim.cmd('startinsert!')"
-  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_shift_insert_command" Enter
-  if ! TERM=xterm-256color TERM_PROGRAM=vscode "$python3_path" - "$tmux_bin" "$socket_name" "nvim-keys" "$attached_shift_insert_result" <<'PY'
+  send_attached_client_key() {
+    local name="$1"
+    local sequence="$2"
+
+    if ! TERM=xterm-256color TERM_PROGRAM=vscode "$python3_path" - "$tmux_bin" "$socket_name" "nvim-keys" "$sequence" <<'PY'
 import os
 import pty
 import select
@@ -285,12 +286,13 @@ import subprocess
 import sys
 import time
 
-tmux_path, socket_name, session_name, result_path = sys.argv[1:]
+tmux_path, socket_name, session_name, sequence = sys.argv[1:]
 env = os.environ.copy()
 env.update({
     "TERM": "xterm-256color",
     "TERM_PROGRAM": "vscode",
 })
+sequence_bytes = sequence.encode("utf-8")
 
 master, slave = pty.openpty()
 try:
@@ -308,7 +310,6 @@ finally:
 try:
     deadline = time.time() + 5
     sent = False
-    wrote = False
     while time.time() < deadline:
         ready, _, _ = select.select([master], [], [], 0.05)
         if ready:
@@ -318,16 +319,11 @@ try:
                 break
 
         if not sent and time.time() > deadline - 4.5:
-            os.write(master, b"\x1b[2;2~")
-            sent = True
-        elif sent and not wrote and time.time() > deadline - 4.0:
-            os.write(master, b"\x1b:lua vim.fn.writefile({vim.api.nvim_get_current_line()}, " + repr(result_path).encode("utf-8") + b")\r")
-            wrote = True
-
-        if os.path.exists(result_path):
+            os.write(master, sequence_bytes)
+            time.sleep(0.3)
             sys.exit(0)
 
-    print("timeout waiting for attached Shift-Insert Neovim paste result")
+    print("timeout sending attached tmux key sequence")
     sys.exit(1)
 finally:
     proc.terminate()
@@ -337,16 +333,46 @@ finally:
         proc.kill()
     os.close(master)
 PY
-  then
-    printf 'not ok - tmux attached client passes Shift-Insert bytes through to Neovim paste\n' >&2
-    exit 1
-  fi
+    then
+      printf 'not ok - %s\n' "$name" >&2
+      exit 1
+    fi
+  }
+
+  attached_shift_insert_result="$tmp/attached-shift-insert-paste.log"
+  attached_shift_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached shift-insert '}); vim.g.dotfiles_tmux_paste = 'paste via attached tmux'; vim.cmd('startinsert!')"
+  attached_shift_insert_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line()}, $(lua_string "$attached_shift_insert_result"))"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_shift_insert_command" Enter
+  send_attached_client_key "tmux attached client sends Shift-Insert bytes" "$shift_insert_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_shift_insert_write_command" Enter
   wait_for_file "$attached_shift_insert_result"
   assert_eq "tmux attached client passes Shift-Insert bytes through to Neovim paste" \
     "attached shift-insert paste via attached tmux" \
     "$(cat "$attached_shift_insert_result")"
+
+  attached_ctrl_insert_result="$tmp/attached-ctrl-insert-copy.log"
+  attached_ctrl_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached ctrl-insert copy', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg')"
+  attached_ctrl_insert_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$attached_ctrl_insert_result"))"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_ctrl_insert_command" Enter
+  send_attached_client_key "tmux attached client sends Ctrl-Insert bytes" "$ctrl_insert_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_ctrl_insert_write_command" Enter
+  wait_for_file "$attached_ctrl_insert_result"
+  assert_eq "tmux attached client passes Ctrl-Insert bytes through to Neovim copy" \
+    "$(printf 'attached ctrl-insert copy|\nV\nattached ctrl-insert copy|line 2')" \
+    "$(cat "$attached_ctrl_insert_result")"
+
+  attached_shift_delete_result="$tmp/attached-shift-delete-cut.log"
+  attached_shift_delete_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached shift-delete cut', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg')"
+  attached_shift_delete_write_command="lua vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '|')}, $(lua_string "$attached_shift_delete_result"))"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_shift_delete_command" Enter
+  send_attached_client_key "tmux attached client sends Shift-Delete bytes" "$shift_delete_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_shift_delete_write_command" Enter
+  wait_for_file "$attached_shift_delete_result"
+  assert_eq "tmux attached client passes Shift-Delete bytes through to Neovim cut" \
+    "$(printf 'attached shift-delete cut|\nV\nline 2')" \
+    "$(cat "$attached_shift_delete_result")"
 else
-  skip "tmux attached client Shift-Insert Neovim paste (python3 unavailable)"
+  skip "tmux attached client Insert/Delete Neovim copy-paste keys (python3 unavailable)"
 fi
 
 visual_save_expected="$(printf 'visual shift-f5 save\nline 2')"
