@@ -35,8 +35,9 @@ should_passthrough() {
 display_message() {
   local message="$1"
 
-  command -v tmux >/dev/null 2>&1 &&
+  if command -v tmux >/dev/null 2>&1; then
     tmux display-message -t "$pane_id" "$message" 2>/dev/null || true
+  fi
 }
 
 send_hex() {
