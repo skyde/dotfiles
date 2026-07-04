@@ -265,6 +265,40 @@ assert_eq "tmux passes Shift-Delete bytes to visual Neovim cut" \
   "$(printf 'delete\nv\n selection|line 2')" \
   "$(cat "$visual_cut_result")"
 
+terminal_normal_copy_result="$tmp/terminal-normal-ctrl-insert-copy.log"
+terminal_normal_copy_command="lua vim.cmd('enew'); vim.g.dotfiles_tmux_terminal_copy_job = vim.fn.termopen({'sh', '-c', 'printf \"terminal normal copy via tmux\\\\nsecond line\\\\n\"; cat >/dev/null'}); assert(type(vim.g.dotfiles_tmux_terminal_copy_job) == 'number' and vim.g.dotfiles_tmux_terminal_copy_job > 0); assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('second line', 1, true) ~= nil end)); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''"
+terminal_normal_copy_write_command="lua local lines = vim.api.nvim_buf_get_lines(0, 0, 2, false); vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(lines, '|')}, $(lua_string "$terminal_normal_copy_result"))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_normal_copy_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$ctrl_insert_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_normal_copy_write_command" Enter
+wait_for_file "$terminal_normal_copy_result"
+assert_eq "tmux passes Ctrl-Insert bytes to terminal-normal Neovim copy" \
+  "$(printf 'terminal normal copy via tmux|\nV\nterminal normal copy via tmux|second line')" \
+  "$(cat "$terminal_normal_copy_result")"
+terminal_normal_copy_cleanup="$tmp/terminal-normal-ctrl-insert-copy-cleanup.log"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' \
+  "lua vim.fn.chanclose(vim.g.dotfiles_tmux_terminal_copy_job, 'stdin'); vim.cmd('enew!'); vim.fn.writefile({'ok'}, $(lua_string "$terminal_normal_copy_cleanup"))" Enter
+wait_for_file "$terminal_normal_copy_cleanup"
+
+terminal_visual_copy_result="$tmp/terminal-visual-ctrl-insert-copy.log"
+terminal_visual_copy_ready="$tmp/terminal-visual-ctrl-insert-copy-ready.log"
+terminal_visual_copy_command="lua vim.cmd('enew'); vim.g.dotfiles_tmux_terminal_visual_copy_job = vim.fn.termopen({'sh', '-c', 'printf \"terminal visual copy via tmux\\\\nsecond line\\\\n\"; cat >/dev/null'}); assert(type(vim.g.dotfiles_tmux_terminal_visual_copy_job) == 'number' and vim.g.dotfiles_tmux_terminal_visual_copy_job > 0); assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('second line', 1, true) ~= nil end)); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''"
+terminal_visual_copy_wait_command="lua assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('second line', 1, true) ~= nil end)); vim.fn.writefile({'ok'}, $(lua_string "$terminal_visual_copy_ready"))"
+terminal_visual_copy_write_command="lua local lines = vim.api.nvim_buf_get_lines(0, 0, 2, false); vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(lines, '|')}, $(lua_string "$terminal_visual_copy_result"))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_visual_copy_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_visual_copy_wait_command" Enter
+wait_for_file "$terminal_visual_copy_ready"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'gg0v$'
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$ctrl_insert_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$nvim_terminal_normal_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_visual_copy_write_command" Enter
+wait_for_file "$terminal_visual_copy_result"
+assert_eq "tmux passes Ctrl-Insert bytes to terminal-visual Neovim copy" \
+  "$(printf 'terminal visual copy via tmux|\nv\nterminal visual copy via tmux|second line')" \
+  "$(cat "$terminal_visual_copy_result")"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' \
+  "lua vim.fn.chanclose(vim.g.dotfiles_tmux_terminal_visual_copy_job, 'stdin'); vim.cmd('enew!')" Enter
+
 terminal_normal_cut_result="$tmp/terminal-normal-shift-delete-cut.log"
 terminal_normal_cut_command="lua vim.cmd('enew'); vim.g.dotfiles_tmux_terminal_cut_job = vim.fn.termopen({'sh', '-c', 'printf \"terminal normal cut via tmux\\\\nsecond line\\\\n\"; cat >/dev/null'}); assert(type(vim.g.dotfiles_tmux_terminal_cut_job) == 'number' and vim.g.dotfiles_tmux_terminal_cut_job > 0); assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('second line', 1, true) ~= nil end)); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''"
 terminal_normal_cut_write_command="lua local lines = vim.api.nvim_buf_get_lines(0, 0, 2, false); vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(lines, '|')}, $(lua_string "$terminal_normal_cut_result"))"
@@ -476,6 +510,40 @@ PY
   "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' \
     "lua vim.fn.chanclose(vim.g.dotfiles_tmux_attached_terminal_mode_paste_job, 'stdin'); vim.cmd('enew!'); vim.fn.writefile({'ok'}, $(lua_string "$attached_terminal_mode_shift_insert_cleanup"))" Enter
   wait_for_file "$attached_terminal_mode_shift_insert_cleanup"
+
+  attached_terminal_ctrl_insert_result="$tmp/attached-terminal-ctrl-insert-copy.log"
+  attached_terminal_ctrl_insert_command="lua vim.cmd('enew'); vim.g.dotfiles_tmux_attached_terminal_copy_job = vim.fn.termopen({'sh', '-c', 'printf \"attached terminal ctrl-insert copy via tmux\\\\nsecond line\\\\n\"; cat >/dev/null'}); assert(type(vim.g.dotfiles_tmux_attached_terminal_copy_job) == 'number' and vim.g.dotfiles_tmux_attached_terminal_copy_job > 0); assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('second line', 1, true) ~= nil end)); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''"
+  attached_terminal_ctrl_insert_write_command="lua local lines = vim.api.nvim_buf_get_lines(0, 0, 2, false); vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(lines, '|')}, $(lua_string "$attached_terminal_ctrl_insert_result"))"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_terminal_ctrl_insert_command" Enter
+  send_attached_client_key "tmux attached client sends Ctrl-Insert bytes to terminal-normal Neovim" "$ctrl_insert_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_terminal_ctrl_insert_write_command" Enter
+  wait_for_file "$attached_terminal_ctrl_insert_result"
+  assert_eq "tmux attached client passes Ctrl-Insert bytes through to terminal-normal Neovim copy" \
+    "$(printf 'attached terminal ctrl-insert copy via tmux|\nV\nattached terminal ctrl-insert copy via tmux|second line')" \
+    "$(cat "$attached_terminal_ctrl_insert_result")"
+  attached_terminal_ctrl_insert_cleanup="$tmp/attached-terminal-ctrl-insert-copy-cleanup.log"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' \
+    "lua vim.fn.chanclose(vim.g.dotfiles_tmux_attached_terminal_copy_job, 'stdin'); vim.cmd('enew!'); vim.fn.writefile({'ok'}, $(lua_string "$attached_terminal_ctrl_insert_cleanup"))" Enter
+  wait_for_file "$attached_terminal_ctrl_insert_cleanup"
+
+  attached_terminal_visual_ctrl_insert_result="$tmp/attached-terminal-visual-ctrl-insert-copy.log"
+  attached_terminal_visual_ctrl_insert_ready="$tmp/attached-terminal-visual-ctrl-insert-copy-ready.log"
+  attached_terminal_visual_ctrl_insert_command="lua vim.cmd('enew'); vim.g.dotfiles_tmux_attached_terminal_visual_copy_job = vim.fn.termopen({'sh', '-c', 'printf \"attached terminal visual ctrl-insert copy via tmux\\\\nsecond line\\\\n\"; cat >/dev/null'}); assert(type(vim.g.dotfiles_tmux_attached_terminal_visual_copy_job) == 'number' and vim.g.dotfiles_tmux_attached_terminal_visual_copy_job > 0); assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('second line', 1, true) ~= nil end)); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''"
+  attached_terminal_visual_ctrl_insert_wait_command="lua assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('second line', 1, true) ~= nil end)); vim.fn.writefile({'ok'}, $(lua_string "$attached_terminal_visual_ctrl_insert_ready"))"
+  attached_terminal_visual_ctrl_insert_write_command="lua local lines = vim.api.nvim_buf_get_lines(0, 0, 2, false); vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(lines, '|')}, $(lua_string "$attached_terminal_visual_ctrl_insert_result"))"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_terminal_visual_ctrl_insert_command" Enter
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_terminal_visual_ctrl_insert_wait_command" Enter
+  wait_for_file "$attached_terminal_visual_ctrl_insert_ready"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'gg0v$'
+  send_attached_client_key "tmux attached client sends Ctrl-Insert bytes to terminal-visual Neovim" "$ctrl_insert_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$nvim_terminal_normal_sequence"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_terminal_visual_ctrl_insert_write_command" Enter
+  wait_for_file "$attached_terminal_visual_ctrl_insert_result"
+  assert_eq "tmux attached client passes Ctrl-Insert bytes through to terminal-visual Neovim copy" \
+    "$(printf 'attached terminal visual ctrl-insert copy via tmux|\nv\nattached terminal visual ctrl-insert copy via tmux|second line')" \
+    "$(cat "$attached_terminal_visual_ctrl_insert_result")"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' \
+    "lua vim.fn.chanclose(vim.g.dotfiles_tmux_attached_terminal_visual_copy_job, 'stdin'); vim.cmd('enew!')" Enter
 
   attached_ctrl_insert_result="$tmp/attached-ctrl-insert-copy.log"
   attached_ctrl_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'attached ctrl-insert copy', 'line 2'}); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('normal! gg')"
