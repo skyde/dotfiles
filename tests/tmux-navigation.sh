@@ -56,6 +56,21 @@ assert_contains() {
   printf 'ok - %s\n' "$name"
 }
 
+assert_contains_home_guard() {
+  local name="$1"
+  local haystack="$2"
+
+  if [[ "$haystack" == *"$home_guard"* || "$haystack" == *"$home_guard_tmux34"* ]]; then
+    printf 'ok - %s\n' "$name"
+    return 0
+  fi
+
+  printf 'not ok - %s\n' "$name" >&2
+  printf 'missing one of:\n%s\n%s\n' "$home_guard" "$home_guard_tmux34" >&2
+  printf 'actual:\n%s\n' "$haystack" >&2
+  return 1
+}
+
 assert_eq() {
   local name="$1"
   local expected="$2"
@@ -201,6 +216,7 @@ HOME="$fake_home" "$real_tmux" -L "$socket_name" -f "$root/common/.tmux.conf" ne
 home_marker="\$HOME/.local/bin"
 repo_marker="\$HOME/dotfiles/common/.local/bin"
 home_guard="[ -n \\\"\\\${HOME:-}\\\" ]"
+home_guard_tmux34="[ -n \\\"\\\\\${HOME:-}\\\" ]"
 # shellcheck disable=SC2016
 home_guard_raw='[ -n "${HOME:-}" ]'
 
@@ -217,7 +233,7 @@ for key in C-h C-j C-k C-l "C-\\"; do
   assert_contains "navigation passthrough uses explicit router home for $key" "$binding" "$home_marker"
   assert_contains "navigation passthrough has router repo fallback for $key" "$binding" "$repo_marker"
   assert_contains "navigation passthrough has router PATH fallback for $key" "$binding" "command -v tmux-pane-key-router"
-  assert_contains "navigation passthrough guards unset HOME for $key" "$binding" "$home_guard"
+  assert_contains_home_guard "navigation passthrough guards unset HOME for $key" "$binding"
   assert_contains "navigation passthrough passes router action for $key" "$binding" "$router_action"
   assert_contains "navigation passthrough passes current pane for $key" "$binding" '#{pane_id}'
   assert_contains "navigation passthrough shell-quotes current command for $key" "$binding" '#{q:pane_current_command}'
@@ -420,7 +436,7 @@ assert_contains "paste binding uses helper" "$paste_binding" "tmux-paste-helper"
 assert_contains "paste binding uses explicit home" "$paste_binding" "$home_marker"
 assert_contains "paste binding has repo fallback" "$paste_binding" "$repo_marker"
 assert_contains "paste binding has PATH fallback" "$paste_binding" "command -v tmux-paste-helper"
-assert_contains "paste binding guards unset HOME" "$paste_binding" "$home_guard"
+assert_contains_home_guard "paste binding guards unset HOME" "$paste_binding"
 assert_contains "paste binding targets current pane" "$paste_binding" '#{pane_id}'
 assert_contains "paste binding displays missing helper" "$paste_binding" "display-message"
 assert_contains "paste binding reports missing helper to stderr" "$paste_binding" ">&2; exit 127"
@@ -432,7 +448,7 @@ assert_contains "Shift-Insert paste binding passes router action" "$shift_insert
 assert_contains "Shift-Insert paste binding uses explicit home" "$shift_insert_paste_binding" "$home_marker"
 assert_contains "Shift-Insert paste binding has repo fallback" "$shift_insert_paste_binding" "$repo_marker"
 assert_contains "Shift-Insert paste binding has PATH fallback" "$shift_insert_paste_binding" "command -v tmux-pane-key-router"
-assert_contains "Shift-Insert paste binding guards unset HOME" "$shift_insert_paste_binding" "$home_guard"
+assert_contains_home_guard "Shift-Insert paste binding guards unset HOME" "$shift_insert_paste_binding"
 assert_contains "Shift-Insert paste binding targets current pane" "$shift_insert_paste_binding" '#{pane_id}'
 assert_contains "Shift-Insert paste binding uses async router" "$shift_insert_paste_binding" 'run-shell -b'
 assert_contains "Shift-Insert paste binding shell-quotes current command" "$shift_insert_paste_binding" '#{q:pane_current_command}'
@@ -467,7 +483,7 @@ assert_not_contains "Ctrl-Insert root binding does not use paste-key mode" "$ctr
 assert_contains "Ctrl-Insert root binding uses explicit home" "$ctrl_insert_binding" "$home_marker"
 assert_contains "Ctrl-Insert root binding has repo fallback" "$ctrl_insert_binding" "$repo_marker"
 assert_contains "Ctrl-Insert root binding has PATH fallback" "$ctrl_insert_binding" "command -v tmux-pane-key-router"
-assert_contains "Ctrl-Insert root binding guards unset HOME" "$ctrl_insert_binding" "$home_guard"
+assert_contains_home_guard "Ctrl-Insert root binding guards unset HOME" "$ctrl_insert_binding"
 assert_contains "Ctrl-Insert root binding uses async router" "$ctrl_insert_binding" 'run-shell -b'
 assert_contains "Ctrl-Insert root binding shell-quotes current command" "$ctrl_insert_binding" '#{q:pane_current_command}'
 assert_contains "Ctrl-Insert root binding shell-quotes pane tty" "$ctrl_insert_binding" '#{q:pane_tty}'
@@ -480,7 +496,7 @@ assert_not_contains "Shift-Delete root binding does not use paste-key mode" "$sh
 assert_contains "Shift-Delete root binding uses explicit home" "$shift_delete_binding" "$home_marker"
 assert_contains "Shift-Delete root binding has repo fallback" "$shift_delete_binding" "$repo_marker"
 assert_contains "Shift-Delete root binding has PATH fallback" "$shift_delete_binding" "command -v tmux-pane-key-router"
-assert_contains "Shift-Delete root binding guards unset HOME" "$shift_delete_binding" "$home_guard"
+assert_contains_home_guard "Shift-Delete root binding guards unset HOME" "$shift_delete_binding"
 assert_contains "Shift-Delete root binding uses async router" "$shift_delete_binding" 'run-shell -b'
 assert_contains "Shift-Delete root binding shell-quotes current command" "$shift_delete_binding" '#{q:pane_current_command}'
 assert_contains "Shift-Delete root binding shell-quotes pane tty" "$shift_delete_binding" '#{q:pane_tty}'
@@ -572,7 +588,7 @@ assert_copy_binding_uses_helper() {
   assert_contains "$copy_table $copy_key uses explicit home" "$copy_binding" "$home_marker"
   assert_contains "$copy_table $copy_key has repo fallback" "$copy_binding" "$repo_marker"
   assert_contains "$copy_table $copy_key has PATH fallback" "$copy_binding" "command -v tmux-copy-helper"
-  assert_contains "$copy_table $copy_key guards unset HOME" "$copy_binding" "$home_guard"
+  assert_contains_home_guard "$copy_table $copy_key guards unset HOME" "$copy_binding"
   assert_contains "$copy_table $copy_key displays missing helper" "$copy_binding" "display-message"
 }
 
@@ -595,14 +611,14 @@ assert_contains "session picker uses helper" "$session_picker_binding" "tmux-fzf
 assert_contains "session picker uses explicit home" "$session_picker_binding" "$home_marker"
 assert_contains "session picker has repo fallback" "$session_picker_binding" "$repo_marker"
 assert_contains "session picker has PATH fallback" "$session_picker_binding" "command -v tmux-fzf-switch-session"
-assert_contains "session picker guards unset HOME" "$session_picker_binding" "$home_guard"
+assert_contains_home_guard "session picker guards unset HOME" "$session_picker_binding"
 
 git_popup_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix g)"
 assert_contains "git popup uses helper" "$git_popup_binding" "tmux-popup-tool"
 assert_contains "git popup uses explicit home" "$git_popup_binding" "$home_marker"
 assert_contains "git popup has repo fallback" "$git_popup_binding" "$repo_marker"
 assert_contains "git popup has PATH fallback" "$git_popup_binding" "command -v tmux-popup-tool"
-assert_contains "git popup guards unset HOME" "$git_popup_binding" "$home_guard"
+assert_contains_home_guard "git popup guards unset HOME" "$git_popup_binding"
 assert_contains "git popup shell-quotes current pane path" "$git_popup_binding" '#{q:pane_current_path}'
 assert_contains "git popup prefers lazygit" "$git_popup_binding" "lazygit"
 assert_contains "git popup falls back to gitui" "$git_popup_binding" "gitui"
@@ -612,7 +628,7 @@ assert_contains "file popup uses helper" "$file_popup_binding" "tmux-popup-tool"
 assert_contains "file popup uses explicit home" "$file_popup_binding" "$home_marker"
 assert_contains "file popup has repo fallback" "$file_popup_binding" "$repo_marker"
 assert_contains "file popup has PATH fallback" "$file_popup_binding" "command -v tmux-popup-tool"
-assert_contains "file popup guards unset HOME" "$file_popup_binding" "$home_guard"
+assert_contains_home_guard "file popup guards unset HOME" "$file_popup_binding"
 assert_contains "file popup shell-quotes current pane path" "$file_popup_binding" '#{q:pane_current_path}'
 assert_contains "file popup prefers yazi" "$file_popup_binding" "yazi"
 assert_contains "file popup falls back to lf" "$file_popup_binding" "lf"
@@ -624,14 +640,14 @@ assert_contains "url picker uses helper" "$url_picker_binding" "tmux-fzf-url.sh"
 assert_contains "url picker uses explicit home" "$url_picker_binding" "$home_marker"
 assert_contains "url picker has repo fallback" "$url_picker_binding" "$repo_marker"
 assert_contains "url picker has PATH fallback" "$url_picker_binding" "command -v tmux-fzf-url.sh"
-assert_contains "url picker guards unset HOME" "$url_picker_binding" "$home_guard"
+assert_contains_home_guard "url picker guards unset HOME" "$url_picker_binding"
 
 deep_url_picker_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix C-u)"
 assert_contains "deep url picker uses helper" "$deep_url_picker_binding" "tmux-fzf-url.sh"
 assert_contains "deep url picker uses explicit home" "$deep_url_picker_binding" "$home_marker"
 assert_contains "deep url picker has repo fallback" "$deep_url_picker_binding" "$repo_marker"
 assert_contains "deep url picker has PATH fallback" "$deep_url_picker_binding" "command -v tmux-fzf-url.sh"
-assert_contains "deep url picker guards unset HOME" "$deep_url_picker_binding" "$home_guard"
+assert_contains_home_guard "deep url picker guards unset HOME" "$deep_url_picker_binding"
 assert_contains "deep url picker increases history" "$deep_url_picker_binding" "TMUX_FZF_URL_HISTORY_LINES=10000"
 assert_not_contains "deep url picker avoids env launcher" "$deep_url_picker_binding" "exec env "
 
@@ -657,7 +673,7 @@ assert_contains "project session binding passes start dir" "$project_session_bin
 assert_contains "project session binding uses explicit home" "$project_session_binding" "$home_marker"
 assert_contains "project session binding has repo fallback" "$project_session_binding" "$repo_marker"
 assert_contains "project session binding has PATH fallback" "$project_session_binding" "command -v tmux-session-notify"
-assert_contains "project session binding guards unset HOME" "$project_session_binding" "$home_guard"
+assert_contains_home_guard "project session binding guards unset HOME" "$project_session_binding"
 assert_contains "project session binding shell-quotes current pane path" "$project_session_binding" '#{q:pane_current_path}'
 
 project_resume_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix R)"
@@ -666,7 +682,7 @@ assert_contains "project resume binding passes window" "$project_resume_binding"
 assert_contains "project resume binding uses explicit home" "$project_resume_binding" "$home_marker"
 assert_contains "project resume binding has repo fallback" "$project_resume_binding" "$repo_marker"
 assert_contains "project resume binding has PATH fallback" "$project_resume_binding" "command -v tmux-session-notify"
-assert_contains "project resume binding guards unset HOME" "$project_resume_binding" "$home_guard"
+assert_contains_home_guard "project resume binding guards unset HOME" "$project_resume_binding"
 assert_contains "project resume binding shell-quotes current pane path" "$project_resume_binding" '#{q:pane_current_path}'
 
 project_ai_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix A)"
@@ -675,7 +691,7 @@ assert_contains "project ai binding passes window" "$project_ai_binding" "--wind
 assert_contains "project ai binding uses explicit home" "$project_ai_binding" "$home_marker"
 assert_contains "project ai binding has repo fallback" "$project_ai_binding" "$repo_marker"
 assert_contains "project ai binding has PATH fallback" "$project_ai_binding" "command -v tmux-session-notify"
-assert_contains "project ai binding guards unset HOME" "$project_ai_binding" "$home_guard"
+assert_contains_home_guard "project ai binding guards unset HOME" "$project_ai_binding"
 assert_contains "project ai binding shell-quotes current pane path" "$project_ai_binding" '#{q:pane_current_path}'
 
 project_terminal_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix T)"
@@ -684,7 +700,7 @@ assert_contains "project terminal binding passes window" "$project_terminal_bind
 assert_contains "project terminal binding uses explicit home" "$project_terminal_binding" "$home_marker"
 assert_contains "project terminal binding has repo fallback" "$project_terminal_binding" "$repo_marker"
 assert_contains "project terminal binding has PATH fallback" "$project_terminal_binding" "command -v tmux-session-notify"
-assert_contains "project terminal binding guards unset HOME" "$project_terminal_binding" "$home_guard"
+assert_contains_home_guard "project terminal binding guards unset HOME" "$project_terminal_binding"
 assert_contains "project terminal binding shell-quotes current pane path" "$project_terminal_binding" '#{q:pane_current_path}'
 
 automatic_rename_format="$("$real_tmux" -L "$socket_name" show-window-options -gv automatic-rename-format)"
