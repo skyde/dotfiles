@@ -403,6 +403,95 @@ wait_for_pbpaste_file() {
   return 1
 }
 
+send_attached_tmux_key_sequence() {
+  local name="$1"
+  local tmux_path="$2"
+  local socket_name="$3"
+  local session_name="$4"
+  local sequence="$5"
+  local home_path="$6"
+  local ready_path="${7:-}"
+  local trigger_path="${8:-}"
+  local python3_path
+
+  if ! python3_path="$(command -v python3 2>/dev/null)"; then
+    printf 'skip - %s (python3 unavailable)\n' "$name"
+    return 2
+  fi
+
+  if ! TERM=xterm-256color TERM_PROGRAM=vscode HOME="$home_path" "$python3_path" - \
+    "$tmux_path" \
+    "$socket_name" \
+    "$session_name" \
+    "$sequence" \
+    "$ready_path" \
+    "$trigger_path" <<'PY'
+import os
+import pty
+import select
+import subprocess
+import sys
+import time
+
+tmux_path, socket_name, session_name, sequence, ready_path, trigger_path = sys.argv[1:]
+env = os.environ.copy()
+env.update({
+    "TERM": "xterm-256color",
+    "TERM_PROGRAM": "vscode",
+})
+
+master, slave = pty.openpty()
+try:
+    proc = subprocess.Popen(
+        [tmux_path, "-L", socket_name, "attach-session", "-t", session_name],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        env=env,
+        close_fds=True,
+    )
+finally:
+    os.close(slave)
+
+try:
+    deadline = time.time() + 5
+    sent = False
+    if ready_path:
+        with open(ready_path, "w", encoding="utf-8") as ready_file:
+            ready_file.write("ready\n")
+
+    while time.time() < deadline:
+        ready, _, _ = select.select([master], [], [], 0.05)
+        if ready:
+            try:
+                os.read(master, 4096)
+            except OSError:
+                break
+
+        if trigger_path and not os.path.exists(trigger_path):
+            continue
+
+        if not sent and (trigger_path or time.time() > deadline - 4.5):
+            os.write(master, sequence.encode())
+            time.sleep(0.3)
+            sys.exit(0)
+
+    print("timeout sending attached tmux key sequence")
+    sys.exit(1)
+finally:
+    proc.terminate()
+    try:
+        proc.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+    os.close(master)
+PY
+  then
+    printf 'not ok - %s\n' "$name" >&2
+    exit 1
+  fi
+}
+
 if real_tmux="$(command -v tmux 2>/dev/null)"; then
   run_live_copy_binding() {
     local mode_keys="$1"
@@ -765,7 +854,13 @@ SH
     local live_pane
     local live_window
     local real_tmux_dir="${real_tmux%/*}"
+    local live_session="copy-helper-mock-ssh"
     local expected="mock ssh copy beta"
+    local ctrl_insert_expected="mock ssh copy alpha"
+    local ctrl_insert_client_pid
+    local ctrl_insert_client_ready="$tmp/mock-ssh-ctrl-insert-client.ready"
+    local ctrl_insert_client_trigger="$tmp/mock-ssh-ctrl-insert-client.trigger"
+    local ctrl_insert_sequence
     local actual=""
     local pbcopy_log="$tmp/mock-ssh-pbcopy.log"
 
@@ -782,7 +877,7 @@ SH
 
     "$real_tmux" -L "$live_socket" kill-server >/dev/null 2>&1 || true
     HOME="$live_home" "$real_tmux" -L "$live_socket" -f "$root/common/.tmux.conf" \
-      new-session -d -s "copy-helper-mock-ssh" "printf 'mock ssh copy alpha\\nmock ssh copy beta\\nmock ssh copy gamma\\n'; sleep 60"
+      new-session -d -s "$live_session" "printf 'mock ssh copy alpha\\nmock ssh copy beta\\nmock ssh copy gamma\\n'; sleep 60"
     HOME="$live_home" "$real_tmux" -L "$live_socket" set-environment -g PATH \
       "$live_home/.local/bin:$real_tmux_dir:/usr/bin:/bin:/usr/sbin:/sbin"
     HOME="$live_home" "$real_tmux" -L "$live_socket" set-environment -g SSH_CLIENT "127.0.0.1 1000 22"
@@ -805,6 +900,36 @@ SH
     done
     assert_eq "live mock ssh tmux copy binding writes tmux buffer" "$expected" "$actual"
     assert_file_absent "live mock ssh tmux copy binding skips host pbcopy" "$pbcopy_log"
+
+    if command -v python3 >/dev/null 2>&1; then
+      ctrl_insert_sequence="$(printf '\033[2;5~')"
+      send_attached_tmux_key_sequence \
+        "live mock ssh tmux copy-mode Ctrl-Insert attached-client key" \
+        "$real_tmux" \
+        "$live_socket" \
+        "$live_session" \
+        "$ctrl_insert_sequence" \
+        "$live_home" \
+        "$ctrl_insert_client_ready" \
+        "$ctrl_insert_client_trigger" &
+      ctrl_insert_client_pid="$!"
+      wait_for_nonempty_file "$ctrl_insert_client_ready"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" copy-mode -t "$live_pane"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" send-keys -X -t "$live_pane" search-backward "$ctrl_insert_expected"
+      HOME="$live_home" "$real_tmux" -L "$live_socket" send-keys -X -t "$live_pane" select-line
+      rm -f "$pbcopy_log"
+      : >"$ctrl_insert_client_trigger"
+      wait "$ctrl_insert_client_pid"
+      for _ in 1 2 3 4 5 6 7 8 9 10; do
+        actual="$(HOME="$live_home" "$real_tmux" -L "$live_socket" save-buffer - 2>/dev/null || true)"
+        [[ "$actual" == "$ctrl_insert_expected" ]] && break
+        sleep 0.1
+      done
+      assert_eq "live mock ssh tmux copy-mode Ctrl-Insert writes tmux buffer" "$ctrl_insert_expected" "$actual"
+      assert_file_absent "live mock ssh tmux copy-mode Ctrl-Insert skips host pbcopy" "$pbcopy_log"
+    else
+      printf 'skip - live mock ssh tmux copy-mode Ctrl-Insert attached-client key (python3 unavailable)\n'
+    fi
     "$real_tmux" -L "$live_socket" kill-server >/dev/null 2>&1 || true
     live_socket=""
   }
