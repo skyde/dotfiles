@@ -419,6 +419,50 @@ HOME="$tmp/home" \
 assert_files_equal "osc-copy falls back to plain tmux load-buffer" "$expected" "$tmux_plain_log"
 assert_files_equal "osc-copy plain tmux fallback also updates host clipboard" "$expected" "$tmux_plain_host_log"
 
+tmux_plain_ssh_log="$tmp/tmux-buffer-plain-ssh.txt"
+tmux_plain_ssh_osc52_expected="$tmp/tmux-buffer-plain-ssh-osc52.expected"
+tmux_plain_ssh_osc52_actual="$tmp/tmux-buffer-plain-ssh-osc52.actual"
+tmux_plain_ssh_pbcopy_log="$tmp/tmux-buffer-plain-ssh-pbcopy-should-not-run.txt"
+printf '\033Ptmux;\033\033]52;c;%s\a\033%s' "$encoded" "\\" >"$tmux_plain_ssh_osc52_expected"
+HOME="$tmp/home" \
+  TMUX=fake \
+  SSH_CLIENT="127.0.0.1 1000 22" \
+  OSC_COPY_TMUX_WRITE_LOG="$tmp/failed-tmux-write-buffer-plain-ssh.txt" \
+  OSC_COPY_TMUX_WRITE_STATUS=1 \
+  OSC_COPY_TMUX_LOG="$tmux_plain_ssh_log" \
+  OSC_COPY_PBCOPY_LOG="$tmux_plain_ssh_pbcopy_log" \
+  OSC_TTY="$tmux_plain_ssh_osc52_actual" \
+  PATH="$tmp/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  "$root/common/.local/bin/osc-copy" <"$expected"
+assert_files_equal "osc-copy SSH plain tmux fallback still writes tmux buffer" \
+  "$expected" \
+  "$tmux_plain_ssh_log"
+assert_files_equal "osc-copy SSH plain tmux fallback also emits wrapped OSC52" \
+  "$tmux_plain_ssh_osc52_expected" \
+  "$tmux_plain_ssh_osc52_actual"
+assert_file_absent "osc-copy SSH plain tmux fallback skips host pbcopy" "$tmux_plain_ssh_pbcopy_log"
+
+tmux_plain_ssh_no_tty_log="$tmp/tmux-buffer-plain-ssh-no-tty.txt"
+tmux_plain_ssh_no_tty_pbcopy_log="$tmp/tmux-buffer-plain-ssh-no-tty-pbcopy-should-not-run.txt"
+tmux_plain_ssh_no_tty_err="$tmp/tmux-buffer-plain-ssh-no-tty.err"
+HOME="$tmp/home" \
+  TMUX=fake \
+  SSH_CLIENT="127.0.0.1 1000 22" \
+  OSC_COPY_TMUX_WRITE_LOG="$tmp/failed-tmux-write-buffer-plain-ssh-no-tty.txt" \
+  OSC_COPY_TMUX_WRITE_STATUS=1 \
+  OSC_COPY_TMUX_LOG="$tmux_plain_ssh_no_tty_log" \
+  OSC_COPY_PBCOPY_LOG="$tmux_plain_ssh_no_tty_pbcopy_log" \
+  PATH="$tmp/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  "$root/common/.local/bin/osc-copy" <"$expected" 2>"$tmux_plain_ssh_no_tty_err"
+assert_files_equal "osc-copy SSH plain tmux fallback without tty still writes tmux buffer" \
+  "$expected" \
+  "$tmux_plain_ssh_no_tty_log"
+assert_files_equal "osc-copy SSH plain tmux fallback without tty stays quiet" \
+  /dev/null \
+  "$tmux_plain_ssh_no_tty_err"
+assert_file_absent "osc-copy SSH plain tmux fallback without tty skips host pbcopy" \
+  "$tmux_plain_ssh_no_tty_pbcopy_log"
+
 ssh_tmux_log="$tmp/ssh-tmux-buffer.txt"
 ssh_tmux_pbcopy_log="$tmp/ssh-tmux-pbcopy-should-not-run.txt"
 HOME="$tmp/home" \

@@ -101,6 +101,22 @@ try_host_clipboard() {
   return 1
 }
 
+emit_osc52() {
+  local encoded osc_sequence
+
+  encoded="$(encode_content_file)" || return 1
+
+  trap '' SIGTTOU
+
+  if [[ "$TMUX_CLIENT_LIVE" == "1" ]]; then
+    osc_sequence="$(printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$encoded")"
+  else
+    osc_sequence="$(printf "\033]52;c;%s\a" "$encoded")"
+  fi
+
+  printf '%s' "$osc_sequence" 2>/dev/null >"${OSC_TTY:-/dev/tty}"
+}
+
 content_file="$(make_temp_file)" || {
   echo "No copy method available." >&2
   exit 1
@@ -120,7 +136,7 @@ if [[ "$TMUX_CLIENT_LIVE" == "1" ]]; then
   fi
 
   if tmux load-buffer - <"$content_file" 2>/dev/null; then
-    try_host_clipboard || true
+    try_host_clipboard || emit_osc52 || true
     exit 0
   fi
 fi
@@ -129,20 +145,7 @@ if try_host_clipboard; then
   exit 0
 fi
 
-if ! encoded="$(encode_content_file)"; then
-  echo "No copy method available." >&2
-  exit 1
-fi
-
-trap '' SIGTTOU
-
-if [[ "$TMUX_CLIENT_LIVE" == "1" ]]; then
-  osc_sequence="$(printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$encoded")"
-else
-  osc_sequence="$(printf "\033]52;c;%s\a" "$encoded")"
-fi
-
-if printf '%s' "$osc_sequence" >"${OSC_TTY:-/dev/tty}" 2>/dev/null; then
+if emit_osc52; then
   exit 0
 fi
 
