@@ -182,8 +182,13 @@ else
 fi
 
 echo "Building bat cache for custom theme..."
-# Build bat cache for custom theme
-bat cache --build
+if command -v bat >/dev/null 2>&1; then
+  bat cache --build || echo "Warning: bat cache build failed; continuing"
+elif command -v batcat >/dev/null 2>&1; then
+  batcat cache --build || echo "Warning: batcat cache build failed; continuing"
+else
+  echo "bat not found, skipping bat cache build"
+fi
 
 # Run local dotfiles initialization if it exists
 LOCAL_INIT_SCRIPT="$HOME/dotfiles-local/init.sh"

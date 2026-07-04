@@ -140,14 +140,25 @@ jobs:
             brew install stow
             echo "✅ macOS dependencies installed"
           elif [ "${{ matrix.platform }}" = "windows" ]; then
-            # Install stow via winget (check if available first)
+            # Install stow via winget with Chocolatey as a fallback.
             if command -v winget >/dev/null 2>&1; then
               winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements || echo "winget install failed, trying alternative"
-            else
-              echo "winget not available, using chocolatey fallback"
+            fi
+            if ! command -v stow >/dev/null 2>&1 && command -v choco >/dev/null 2>&1; then
               choco install stow -y || echo "choco install failed"
             fi
             echo "✅ Windows dependencies installation attempted"
+          fi
+
+          if command -v stow >/dev/null 2>&1; then
+            echo "STOW_AVAILABLE=true" >> "$GITHUB_ENV"
+            stow --version
+          elif [ "${{ matrix.platform }}" = "windows" ]; then
+            echo "STOW_AVAILABLE=false" >> "$GITHUB_ENV"
+            echo "::warning::GNU Stow is unavailable on this Windows runner; skipping stow-dependent Windows checks"
+          else
+            echo "❌ GNU Stow is unavailable after dependency installation"
+            exit 1
           fi
         shell: bash
 
@@ -159,10 +170,14 @@ jobs:
           ls -la
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
+            if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+              echo "GNU Stow unavailable; skipping Windows stow dry run"
+              exit 0
+            fi
             echo "Testing PowerShell scripts..."
             echo "Script path: ${{ matrix.apply_script }}"
             if [ -f "${{ matrix.apply_script }}" ]; then
-              pwsh -Command "& './${{ matrix.apply_script }}' --no" || echo "PowerShell script test failed"
+              pwsh -Command "& './${{ matrix.apply_script }}' --no"
               echo "✅ PowerShell apply script dry run completed"
             else
               echo "❌ PowerShell script not found"
@@ -190,10 +205,14 @@ jobs:
           ls -la
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
+            if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+              echo "GNU Stow unavailable; skipping Windows full installation"
+              exit 0
+            fi
             echo "Running Windows installation..."
             echo "Script path: ${{ matrix.init_script }}"
             if [ -f "${{ matrix.init_script }}" ]; then
-              pwsh -Command '$env:AUTO_INSTALL = "0"; & "./${{ matrix.init_script }}"' || echo "Windows installation failed"
+              pwsh -Command '$env:AUTO_INSTALL = "0"; & "./${{ matrix.init_script }}"'
             else
               echo "❌ Windows init script not found"
               exit 1
@@ -217,8 +236,13 @@ jobs:
         run: |
           echo "🔗 Verifying package-based symlinks..."
 
+          if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+            echo "GNU Stow unavailable; skipping symlink verification"
+            exit 0
+          fi
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
@@ -253,8 +277,13 @@ jobs:
         run: |
           echo "📄 Testing configuration file access..."
 
+          if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+            echo "GNU Stow unavailable; skipping installed configuration access checks"
+            exit 0
+          fi
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
@@ -283,7 +312,7 @@ jobs:
           echo "🎯 Testing platform-specific configurations..."
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
             # Test Windows-specific packages if they exist
             echo "Checking for Windows-specific packages..."
             if test -d "$home_dir/Documents"; then
@@ -323,8 +352,13 @@ jobs:
         run: |
           echo "⚡ Testing configuration loading..."
 
+          if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+            echo "GNU Stow unavailable; skipping installed configuration loading checks"
+            exit 0
+          fi
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
@@ -351,8 +385,12 @@ jobs:
           echo "🔄 Testing package management operations..."
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
+            if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+              echo "GNU Stow unavailable; skipping Windows restow operation"
+              exit 0
+            fi
             echo "Testing PowerShell package management..."
-            pwsh -Command '& "./${{ matrix.apply_script }}" --restow' || echo "PowerShell restow failed"
+            pwsh -Command '& "./${{ matrix.apply_script }}" --restow'
             echo "✅ PowerShell restow operation completed"
           else
             echo "Testing shell package management..."
