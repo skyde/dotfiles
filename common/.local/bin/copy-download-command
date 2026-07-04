@@ -5,10 +5,10 @@ bin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
   cat <<'EOF'
-Usage: copy-download-command [source_dir] [destination_base]
+Usage: copy-download-command [source_path] [destination_base]
 
 Builds an rsync download command for the current host and copies it to the clipboard.
-- source_dir defaults to the current working directory
+- source_path defaults to the current working directory (can be a file or directory)
 - destination_base defaults to ~/Downloads
 EOF
 }
@@ -46,21 +46,36 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   exit 0
 fi
 
-src_dir="${1:-$(pwd)}"
+src_path="${1:-$(pwd)}"
 dest_base="${2:-~/Downloads}"
 
-src_dir="${src_dir%/}"
-if [[ ! -d "$src_dir" ]]; then
-  echo "Directory does not exist: $src_dir" >&2
+if [[ ! -e "$src_path" ]]; then
+  echo "Path does not exist: $src_path" >&2
   exit 1
 fi
 
 remote_host="${SSH_RSYNC_HOST:-$(hostname)}"
 timestamp="$(date +%Y-%m-%d-%H%M%S)"
-dir_name="$(basename "$src_dir")"
-dest_dir="${dest_base%/}/${dir_name}-${timestamp}"
 
-printf -v download_cmd 'rsync -avz %q:%q/ %q/' "$remote_host" "$src_dir" "$dest_dir"
+if [[ -d "$src_path" ]]; then
+  src_path="${src_path%/}"
+  dir_name="$(basename "$src_path")"
+  dest_dir="${dest_base%/}/${dir_name}-${timestamp}"
+
+  printf -v download_cmd 'rsync -avz %q:%q/ %q/' "$remote_host" "$src_path" "$dest_dir"
+else
+  file_name="$(basename "$src_path")"
+  if [[ "$file_name" == *.* && "$file_name" != .* ]]; then
+    stem="${file_name%.*}"
+    ext="${file_name##*.}"
+    dest_file="${dest_base%/}/${stem}-${timestamp}.${ext}"
+  else
+    dest_file="${dest_base%/}/${file_name}-${timestamp}"
+  fi
+
+  printf -v download_cmd 'rsync -avz %q:%q %q' "$remote_host" "$src_path" "$dest_file"
+fi
+
 download_cmd="${download_cmd//\\~/\~}"
 if ! copy_helper="$(resolve_copy_helper)"; then
   printf 'copy-download-command: osc-copy not found\n' >&2

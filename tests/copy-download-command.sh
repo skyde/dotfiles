@@ -38,6 +38,7 @@ assert_not_contains() {
 }
 
 mkdir -p "$tmp/bin" "$tmp/home" "$tmp/main-helper" "$tmp/source dir" "$tmp/downloads"
+printf 'artifact\n' >"$tmp/source dir/report final.txt"
 main_helper="$tmp/main-helper/copy-download-command"
 ln -s "$helper" "$main_helper"
 
@@ -81,6 +82,26 @@ expected_command() {
   printf '%s\n' "$download_cmd"
 }
 
+expected_file_command() {
+  local host="$1"
+  local src_file="$2"
+  local dest_base="${3%/}"
+  local file_name stem ext dest_file download_cmd
+
+  file_name="$(basename "$src_file")"
+  if [[ "$file_name" == *.* && "$file_name" != .* ]]; then
+    stem="${file_name%.*}"
+    ext="${file_name##*.}"
+    dest_file="$dest_base/$stem-2026-07-01-123456.$ext"
+  else
+    dest_file="$dest_base/$file_name-2026-07-01-123456"
+  fi
+
+  printf -v download_cmd 'rsync -avz %q:%q %q' "$host" "$src_file" "$dest_file"
+  download_cmd="${download_cmd//\\~/\~}"
+  printf '%s\n' "$download_cmd"
+}
+
 copy_log="$tmp/copy.log"
 expected="$(expected_command "remote.example" "$tmp/source dir" "$tmp/downloads")"
 actual="$(
@@ -92,6 +113,17 @@ actual="$(
 )"
 assert_eq "download command quotes spaced source and destination" "$expected" "$actual"
 assert_eq "download command is copied" "$expected" "$(cat "$copy_log")"
+
+file_expected="$(expected_file_command "remote.example" "$tmp/source dir/report final.txt" "$tmp/downloads")"
+file_actual="$(
+  COPY_DOWNLOAD_TEST_COPY_LOG="$copy_log" \
+    HOME="$tmp/home" \
+    PATH="$tmp/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+    SSH_RSYNC_HOST="remote.example" \
+    "$main_helper" "$tmp/source dir/report final.txt" "$tmp/downloads/"
+)"
+assert_eq "download command quotes hovered file source and destination" "$file_expected" "$file_actual"
+assert_eq "download command copies hovered file command" "$file_expected" "$(cat "$copy_log")"
 
 isolated_helper_dir="$tmp/isolated-helper"
 isolated_path="$tmp/isolated-path"
