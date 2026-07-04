@@ -210,6 +210,10 @@ if ! command -v delta >/dev/null 2>&1 || ! command -v code >/dev/null 2>&1; then
   }
 fi
 
+# Keep inherited pager settings from overriding the git wrapper's fallback
+# `-c core.pager=less` when delta is unavailable.
+unset GIT_PAGER
+
 # -------- VS Code Remote SSH: pick a live IPC socket before delegating to code
 code() {
   local socket socket_dir found=0

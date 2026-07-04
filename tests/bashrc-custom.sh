@@ -306,6 +306,26 @@ path_output="$(
 )"
 assert_eq "bashrc-custom keeps HOME local bin ahead of Homebrew" "fzf=$tmp/home/.local/bin/fzf" "$path_output"
 
+git_home="$tmp/git-home"
+mkdir -p "$git_home/.local/bin"
+cat >"$git_home/.local/bin/git" <<'SH'
+#!/usr/bin/env sh
+printf 'pager=%s\n' "${GIT_PAGER-<unset>}"
+printf 'args=%s\n' "$*"
+SH
+chmod +x "$git_home/.local/bin/git"
+
+git_pager_output="$(
+  DOTFILES_BASHRC="$root/common/.bashrc-custom" \
+    GIT_PAGER=cat \
+    HOME="$git_home" \
+    PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM=xterm-256color \
+    "$bash_path" --noprofile --norc -c 'command() { if [[ "${1:-}" == -v && ( "${2:-}" == delta || "${2:-}" == code ) ]]; then return 1; fi; builtin command "$@"; }; source "$DOTFILES_BASHRC"; git log' 2>&1
+)"
+assert_contains "bashrc-custom clears inherited GIT_PAGER for git fallback" "$git_pager_output" "pager=<unset>"
+assert_contains "bashrc-custom git wrapper applies fallback pager config" "$git_pager_output" "core.pager=less"
+
 code_output="$(
   CODE_TEST_LOG="$tmp/code.log" \
     run_bash "$tmp/code-home" "/bin:/usr/sbin:/sbin" \
