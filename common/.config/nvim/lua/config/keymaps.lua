@@ -384,6 +384,17 @@ local function paste_clipboard_to_terminal()
   )
 end
 
+local function paste_clipboard_normal()
+  if vim.bo.buftype == "terminal" then
+    paste_clipboard_to_terminal()
+    return
+  end
+
+  for _ = 1, vim.v.count1 do
+    vim.cmd([[normal! "+p]])
+  end
+end
+
 map("n", "<D-c>", '"+yy', { desc = "Copy line" })
 map("v", "<D-c>", '"+y', { desc = "Copy selection" })
 map("n", "<D-x>", '"+dd', { desc = "Cut line" })
@@ -392,13 +403,13 @@ map("n", "<C-Insert>", '"+yy', { desc = "Copy line" })
 map("v", "<C-Insert>", '"+y', { desc = "Copy selection" })
 map("n", "<S-Del>", '"+dd', { desc = "Cut line" })
 map("v", "<S-Del>", '"+d', { desc = "Cut selection" })
-map("n", "<D-v>", '"+p', { desc = "Paste" })
+map("n", "<D-v>", paste_clipboard_normal, { desc = "Paste" })
 -- Visual P replaces the selection without clobbering the unnamed register.
 map("v", "<D-v>", '"+P', { desc = "Paste over selection" })
 map("i", "<D-v>", "<C-r>+", { desc = "Paste" })
 map("c", "<D-v>", "<C-r>+", { desc = "Paste" })
 map("t", "<D-v>", paste_clipboard_to_terminal, { desc = "Paste" })
-map("n", "<S-Insert>", '"+p', { desc = "Paste" })
+map("n", "<S-Insert>", paste_clipboard_normal, { desc = "Paste" })
 map("v", "<S-Insert>", '"+P', { desc = "Paste over selection" })
 map("i", "<S-Insert>", "<C-r>+", { desc = "Paste" })
 map("c", "<S-Insert>", "<C-r>+", { desc = "Paste" })

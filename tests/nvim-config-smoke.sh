@@ -588,13 +588,15 @@ assert(rhs_for("<C-Insert>") == '"+yy')
 assert(rhs_for("<C-Insert>", "v") == '"+y')
 assert(rhs_for("<S-Del>") == '"+dd')
 assert(rhs_for("<S-Del>", "v") == '"+d')
-assert(rhs_for("<D-v>") == '"+p')
+_G.dotfiles_smoke_normal_paste_callback = vim.fn.maparg("<D-v>", "n", false, true).callback
+assert(type(_G.dotfiles_smoke_normal_paste_callback) == "function")
 assert(rhs_for("<D-v>", "v") == '"+P')
 assert(rhs_for("<D-v>", "i") == "<C-r>+")
 assert(rhs_for("<D-v>", "c") == "<C-r>+")
 _G.dotfiles_smoke_terminal_paste_callback = vim.fn.maparg("<D-v>", "t", false, true).callback
 assert(type(_G.dotfiles_smoke_terminal_paste_callback) == "function")
-assert(rhs_for("<S-Insert>") == '"+p')
+_G.dotfiles_smoke_shift_insert_normal_paste_callback = vim.fn.maparg("<S-Insert>", "n", false, true).callback
+assert(_G.dotfiles_smoke_shift_insert_normal_paste_callback == _G.dotfiles_smoke_normal_paste_callback)
 assert(rhs_for("<S-Insert>", "v") == '"+P')
 assert(rhs_for("<S-Insert>", "i") == "<C-r>+")
 assert(rhs_for("<S-Insert>", "c") == "<C-r>+")
@@ -883,6 +885,40 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   end
   vim.fn.delete(terminal_output)
 
+  local terminal_normal_output = vim.fn.tempname()
+  vim.cmd("enew")
+  local terminal_normal_buf = vim.api.nvim_get_current_buf()
+  local terminal_normal_job = vim.fn.termopen({ "sh", "-c", 'cat > "$1"', "sh", terminal_normal_output })
+  assert(type(terminal_normal_job) == "number" and terminal_normal_job > 0, "terminal-normal job did not start")
+  stored_lines = { "terminal normal command-v", "" }
+  stored_type = "V"
+  feed("<D-v>")
+  local terminal_normal_paste_output = ""
+  assert(vim.wait(1000, function()
+    if vim.fn.getfsize(terminal_normal_output) <= 0 then
+      return false
+    end
+    terminal_normal_paste_output = table.concat(vim.fn.readfile(terminal_normal_output), "|")
+    return terminal_normal_paste_output == "terminal normal command-v"
+  end), terminal_normal_paste_output)
+  stored_lines = { "terminal normal shift-insert", "" }
+  stored_type = "V"
+  feed("<S-Insert>")
+  assert(vim.wait(1000, function()
+    terminal_normal_paste_output = table.concat(vim.fn.readfile(terminal_normal_output), "|")
+    return terminal_normal_paste_output == "terminal normal command-v|terminal normal shift-insert"
+  end), terminal_normal_paste_output)
+  print("nvim-terminal-normal-mode-paste-ok")
+  vim.fn.chanclose(terminal_normal_job, "stdin")
+  vim.fn.jobwait({ terminal_normal_job }, 1000)
+  if vim.api.nvim_buf_is_valid(original_buf) then
+    vim.api.nvim_set_current_buf(original_buf)
+  end
+  if vim.api.nvim_buf_is_valid(terminal_normal_buf) then
+    vim.api.nvim_buf_delete(terminal_normal_buf, { force = true })
+  end
+  vim.fn.delete(terminal_normal_output)
+
   local shellish_output = vim.fn.tempname()
   vim.cmd("enew")
   local shellish_buf = vim.api.nvim_get_current_buf()
@@ -1080,6 +1116,44 @@ finally:
     end), bracketed_hex)
     vim.fn.jobwait({ bracketed_job }, 1000)
 
+    local normal_bracketed_output = vim.fn.tempname()
+    local normal_bracketed_ready = vim.fn.tempname()
+    vim.cmd("enew")
+    local normal_bracketed_buf = vim.api.nvim_get_current_buf()
+    local normal_bracketed_command = "OUT="
+      .. vim.fn.shellescape(normal_bracketed_output)
+      .. " READY="
+      .. vim.fn.shellescape(normal_bracketed_ready)
+      .. " python3 "
+      .. vim.fn.shellescape(bracketed_script)
+    local normal_bracketed_job = vim.fn.termopen(normal_bracketed_command)
+    assert(
+      type(normal_bracketed_job) == "number" and normal_bracketed_job > 0,
+      "terminal-normal bracketed job did not start"
+    )
+    assert(vim.wait(1000, function()
+      return vim.fn.filereadable(normal_bracketed_ready) == 1
+    end), "terminal-normal bracketed terminal did not become ready")
+    stored_lines = { "normal bracketed terminal", "" }
+    stored_type = "V"
+    feed("<S-Insert>")
+    local normal_bracketed_hex = ""
+    local expected_normal_bracketed_hex = ("\027[200~normal bracketed terminal\n\027[201~"):gsub(
+      ".",
+      function(char)
+        return string.format("%02x", string.byte(char))
+      end
+    )
+    assert(vim.wait(1000, function()
+      if vim.fn.getfsize(normal_bracketed_output) <= 0 then
+        return false
+      end
+      normal_bracketed_hex = table.concat(vim.fn.readfile(normal_bracketed_output), "")
+      return normal_bracketed_hex == expected_normal_bracketed_hex
+    end), normal_bracketed_hex)
+    print("nvim-terminal-normal-bracketed-paste-ok")
+    vim.fn.jobwait({ normal_bracketed_job }, 1000)
+
     local bracketed_crlf_output = vim.fn.tempname()
     local bracketed_crlf_ready = vim.fn.tempname()
     vim.cmd("enew")
@@ -1206,6 +1280,9 @@ finally:
     if vim.api.nvim_buf_is_valid(bracketed_buf) then
       vim.api.nvim_buf_delete(bracketed_buf, { force = true })
     end
+    if vim.api.nvim_buf_is_valid(normal_bracketed_buf) then
+      vim.api.nvim_buf_delete(normal_bracketed_buf, { force = true })
+    end
     if vim.api.nvim_buf_is_valid(bracketed_crlf_buf) then
       vim.api.nvim_buf_delete(bracketed_crlf_buf, { force = true })
     end
@@ -1218,6 +1295,8 @@ finally:
     vim.fn.delete(bracketed_script)
     vim.fn.delete(bracketed_output)
     vim.fn.delete(bracketed_ready)
+    vim.fn.delete(normal_bracketed_output)
+    vim.fn.delete(normal_bracketed_ready)
     vim.fn.delete(bracketed_crlf_output)
     vim.fn.delete(bracketed_crlf_ready)
     vim.fn.delete(bracketed_unicode_output)
