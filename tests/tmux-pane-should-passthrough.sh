@@ -71,7 +71,11 @@ assert_success "direct aider command passes through" "$helper" /opt/homebrew/bin
 assert_success "direct ssh command passes through without ps" env PATH=/usr/bin:/bin "$helper" ssh ""
 assert_success "direct ssh remote shell command passes through without ps" env PATH=/usr/bin:/bin "$helper" "ssh devbox" ""
 assert_success "direct ssh forced tty remote nvim passes through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -t devbox nvim README.md" ""
+assert_success "direct ssh RequestTTY remote nvim passes through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -oRequestTTY=yes devbox nvim README.md" ""
 assert_success "direct ssh proxy command option still passes through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -o ProxyCommand='ssh -W %h:%p bastion' devbox" ""
+assert_failure "direct ssh remote one-shot command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh devbox echo nvim" ""
+assert_failure "direct ssh RequestTTY remote one-shot command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -oRequestTTY=yes devbox echo nvim" ""
+assert_failure "direct ssh RequestTTY auto remote nvim does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -oRequestTTY=auto devbox nvim README.md" ""
 assert_failure "direct ssh tunnel command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -N -L 8080:localhost:80 devbox" ""
 assert_failure "direct slash UNC Windows path ssh tunnel does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "//server/share/ssh.exe -N -L 8080:localhost:80 devbox" ""
 assert_failure "direct ssh stdio forwarding command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -W db:5432 bastion" ""
@@ -547,6 +551,14 @@ assert_failure "foreground shell echoing ssh does not pass through behind shell"
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /bin/bash /bin/bash -lc '\''echo ssh devbox'\''' "$helper" zsh /dev/ttys001
 assert_success "foreground ssh forced tty remote nvim child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -t devbox nvim README.md' "$helper" zsh /dev/ttys001
+assert_success "foreground ssh RequestTTY remote nvim child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -oRequestTTY=yes devbox nvim README.md' "$helper" zsh /dev/ttys001
+assert_failure "foreground ssh remote one-shot child does not pass through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh devbox echo nvim' "$helper" zsh /dev/ttys001
+assert_failure "foreground ssh RequestTTY remote one-shot child does not pass through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -oRequestTTY=yes devbox echo nvim' "$helper" zsh /dev/ttys001
+assert_failure "foreground ssh RequestTTY auto remote nvim child does not pass through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -oRequestTTY=auto devbox nvim README.md' "$helper" zsh /dev/ttys001
 assert_failure "foreground ssh tunnel child does not pass through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -N -L 8080:localhost:80 devbox' "$helper" zsh /dev/ttys001
 assert_failure "foreground ssh no-pty child does not pass through behind shell" \

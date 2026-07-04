@@ -4835,6 +4835,27 @@ set_terminal_name("term://~/repo//152:/bin/bash -lc 'ssh devbox'")
 vim.bo.filetype = ""
 assert(terminal_left() == "<C-h>")
 vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh devbox echo nvim")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -t devbox nvim README.md")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-h>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -oRequestTTY=yes devbox nvim README.md")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-h>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -oRequestTTY=yes devbox echo nvim")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -oRequestTTY=auto devbox nvim README.md")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+print("nvim-terminal-ssh-remote-command-routing-ok")
+vim.cmd("enew!")
 set_terminal_name("term://~/repo//152:/bin/bash -lc 'time ssh devbox'")
 vim.bo.filetype = ""
 assert(terminal_left() == "<C-h>")

@@ -1300,7 +1300,7 @@ script_command_index() {
           command_string="${split_result[$index]:-}"
           ((index++))
         fi
-        command_string_result "$index" "$command_string"
+        command_string_result "${#split_result[@]}" "$command_string"
         return $?
         ;;
       -B | --log-io | -I | --log-in | --log-incoming | -O | --log-out | --log-output | -T | --log-timing | -t | --timing | --logging-format)
@@ -2253,14 +2253,75 @@ ssh_noninteractive_option_matches() {
   return 1
 }
 
+ssh_option_key() {
+  local word="$1"
+
+  if [[ "$word" == -o?* ]]; then
+    printf '%s\n' "-o"
+    return
+  fi
+
+  option_without_value "$word"
+}
+
+ssh_option_value() {
+  local word="$1"
+
+  if [[ "$word" == -o?* ]]; then
+    printf '%s\n' "${word#-o}"
+    return
+  fi
+
+  option_value "$word"
+}
+
+ssh_request_tty_value_matches() {
+  local value
+
+  value="$(ascii_lower "$1")"
+  case "$value" in
+    requesttty=yes | requesttty=force | requesttty\ yes | requesttty\ force)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+ssh_option_requests_tty() {
+  local word="$1" key="$2" next_word="${3:-}" value
+
+  ssh_short_word_has_flag "$word" "t" && return 0
+
+  [[ "$key" == "-o" ]] || return 1
+  value="$(ssh_option_value "$word")"
+  if [[ -z "$value" && "$word" == "$key" ]]; then
+    value="$next_word"
+  fi
+
+  [[ -n "$value" ]] && ssh_request_tty_value_matches "$value"
+}
+
+command_words_match_from() {
+  local index="$1" status
+  local saved_words=("${split_result[@]}")
+
+  split_result=("${saved_words[@]:index}")
+  command_words_match
+  status=$?
+  split_result=("${saved_words[@]}")
+  return "$status"
+}
+
 ssh_command_matches() {
-  local index="$1" command="$2" word key has_args=0
+  local index="$1" command="$2" word key has_args=0 requests_tty=0
 
   ((index++))
   while [[ -n "${split_result[$index]:-}" ]]; do
     has_args=1
     word="${split_result[$index]}"
-    key="$(option_without_value "$word")"
+    key="$(ssh_option_key "$word")"
 
     if [[ "$word" == "--" ]]; then
       ((index++))
@@ -2269,6 +2330,7 @@ ssh_command_matches() {
     [[ "$word" == -* ]] || break
 
     ssh_noninteractive_option_matches "$word" "$key" && return 1
+    ssh_option_requests_tty "$word" "$key" "${split_result[$((index + 1))]:-}" && requests_tty=1
 
     ((index++))
     if ssh_option_takes_value "$command" "$key" && [[ "$word" == "$key" ]]; then
@@ -2276,7 +2338,13 @@ ssh_command_matches() {
     fi
   done
 
-  [[ "$has_args" == "0" || -n "${split_result[$index]:-}" ]]
+  [[ "$has_args" == "0" ]] && return 0
+  [[ -n "${split_result[$index]:-}" ]] || return 1
+
+  ((index++))
+  [[ -n "${split_result[$index]:-}" ]] || return 0
+  [[ "$requests_tty" == "1" ]] || return 1
+  command_words_match_from "$index"
 }
 
 command_words_match() {

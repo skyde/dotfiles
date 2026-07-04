@@ -61,6 +61,22 @@ local passthrough_commands = {
   zellij = true,
 }
 
+local command_from_words
+
+local function command_should_passthrough_class(command)
+  return command == "python"
+    or command == "node"
+    or command == "deno"
+    or command == "bun-repl"
+    or command == "php-repl"
+    or command == "ruby-repl"
+    or command == "rails-console"
+    or command == "database-shell"
+    or command == "language-repl"
+    or command == "passthrough"
+    or passthrough_commands[command] == true
+end
+
 local wrapper_commands = {
   arch = true,
   command = true,
@@ -1862,8 +1878,9 @@ local function script_command_index(words, index)
         index = index + 1
       end
       if command_string and command_string ~= "" then
-        insert_words(words, index, split_words(command_string))
-        return index
+        local command_index = #words + 1
+        insert_words(words, command_index, split_words(command_string))
+        return command_index
       end
       return nil
     elseif script_options_with_value[key] and option == key then
@@ -1973,14 +1990,56 @@ local function ssh_noninteractive_option_matches(word, key)
   return false
 end
 
+local function ssh_option_key(word)
+  if word:match("^%-o.") then
+    return "-o"
+  end
+
+  return option_without_value(word)
+end
+
+local function ssh_option_value(word)
+  if word:match("^%-o.") then
+    return word:sub(3)
+  end
+
+  return option_value(word)
+end
+
+local function ssh_request_tty_value_matches(value)
+  value = value:lower()
+  return value == "requesttty=yes"
+    or value == "requesttty=force"
+    or value == "requesttty yes"
+    or value == "requesttty force"
+end
+
+local function ssh_option_requests_tty(word, key, next_word)
+  if ssh_short_word_has_flag(word, "t") then
+    return true
+  end
+
+  if key ~= "-o" then
+    return false
+  end
+
+  local value = ssh_option_value(word)
+  if (not value or value == "") and word == key then
+    value = next_word
+  end
+
+  return value ~= nil and value ~= "" and ssh_request_tty_value_matches(value)
+end
+
 local function ssh_passthrough_command(words, index, command)
   local has_args = false
+  local requests_tty = false
 
   index = index + 1
   while words[index] do
     has_args = true
     local word = words[index]
-    local key = option_without_value(word)
+    local key = ssh_option_key(word)
 
     if word == "--" then
       index = index + 1
@@ -1991,13 +2050,39 @@ local function ssh_passthrough_command(words, index, command)
       return nil
     end
 
+    if ssh_option_requests_tty(word, key, words[index + 1]) then
+      requests_tty = true
+    end
+
     index = index + 1
     if ssh_option_takes_value(command, key) and word == key then
       index = index + 1
     end
   end
 
-  if not has_args or words[index] then
+  if not has_args then
+    return command
+  end
+
+  if not words[index] then
+    return nil
+  end
+
+  index = index + 1
+  if not words[index] then
+    return command
+  end
+
+  if not requests_tty then
+    return nil
+  end
+
+  local remote_words = {}
+  for remote_index = index, #words do
+    table.insert(remote_words, words[remote_index])
+  end
+
+  if command_should_passthrough_class(command_from_words(remote_words)) then
     return command
   end
 
@@ -2860,8 +2945,7 @@ local function windows_cmd_command_index(words, index)
   return nil
 end
 
-local function command_from_line(commandline)
-  local words = split_words(commandline)
+command_from_words = function(words)
   local index = 1
 
   while index <= #words do
@@ -2967,6 +3051,10 @@ local function command_from_line(commandline)
   return ""
 end
 
+local function command_from_line(commandline)
+  return command_from_words(split_words(commandline))
+end
+
 local function terminal_command()
   local name = vim.api.nvim_buf_get_name(0)
   local commandline = name:match("^term://.-//%d+:%s*(.+)$")
@@ -2978,17 +3066,7 @@ local function terminal_command()
 end
 
 local function command_should_passthrough(command)
-  return command == "python"
-    or command == "node"
-    or command == "deno"
-    or command == "bun-repl"
-    or command == "php-repl"
-    or command == "ruby-repl"
-    or command == "rails-console"
-    or command == "database-shell"
-    or command == "language-repl"
-    or command == "passthrough"
-    or passthrough_commands[command] == true
+  return command_should_passthrough_class(command)
 end
 
 local function terminal_job_pid()
