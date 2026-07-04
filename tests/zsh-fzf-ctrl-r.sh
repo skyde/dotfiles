@@ -390,9 +390,11 @@ import pty
 import select
 import subprocess
 import sys
+import time
 
 zsh_path, root, bin_dir, home, cache, call_log, display_status, tmux_env, tmux_version = sys.argv[1:]
 env = {
+    "DOTFILES_TEST_SKIP_FZF_SHELL_DIRS": "1",
     "DOTFILES_ZSHRC": os.path.join(root, "common/.zshrc"),
     "HOME": home,
     "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
@@ -423,8 +425,15 @@ finally:
     os.close(slave)
 
 chunks = []
+deadline = time.monotonic() + 10
+timed_out = False
 while True:
-    ready, _, _ = select.select([master], [], [], 0.2)
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        timed_out = True
+        proc.kill()
+        break
+    ready, _, _ = select.select([master], [], [], min(0.2, remaining))
     if ready:
         try:
             chunk = os.read(master, 4096)
@@ -442,6 +451,9 @@ rc = proc.wait()
 os.close(master)
 output = b"".join(chunks).decode("utf-8", "replace")
 sys.stdout.write(output)
+if timed_out:
+    sys.stderr.write("timeout waiting for zsh fzf Ctrl-R fixture\n")
+    sys.exit(124)
 if rc != 0:
     sys.exit(rc)
 PY

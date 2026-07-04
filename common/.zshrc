@@ -123,20 +123,22 @@ if [[ -o interactive && -t 0 ]] && (( $+commands[fzf] )); then
     _fzf_restore_alt_c=1
   fi
 
-  for _fzf_shell_dir in \
-    "/opt/homebrew/opt/fzf/shell" \
-    "/usr/local/opt/fzf/shell" \
-    "/usr/share/fzf" \
-    "/usr/share/doc/fzf/examples" \
-    "$HOME/.fzf/shell" \
-    "$HOME/.fzf"
-  do
-    if [[ -r "$_fzf_shell_dir/key-bindings.zsh" ]]; then
-      source "$_fzf_shell_dir/key-bindings.zsh"
-      _fzf_loaded=1
-      break
-    fi
-  done
+  if [[ "${DOTFILES_TEST_SKIP_FZF_SHELL_DIRS:-0}" != 1 ]]; then
+    for _fzf_shell_dir in \
+      "/opt/homebrew/opt/fzf/shell" \
+      "/usr/local/opt/fzf/shell" \
+      "/usr/share/fzf" \
+      "/usr/share/doc/fzf/examples" \
+      "$HOME/.fzf/shell" \
+      "$HOME/.fzf"
+    do
+      if [[ -r "$_fzf_shell_dir/key-bindings.zsh" ]]; then
+        source "$_fzf_shell_dir/key-bindings.zsh"
+        _fzf_loaded=1
+        break
+      fi
+    done
+  fi
 
   if (( ! _fzf_loaded )); then
     _fzf_zsh_integration="$(fzf --zsh 2>/dev/null)"
