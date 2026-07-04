@@ -465,6 +465,7 @@ assert_contains "session popup failure is visible" \
   "Unable to open tmux session popup"
 
 mkdir -p "$tmp/no-fzf-bin"
+ln -s "$(command -v bash)" "$tmp/no-fzf-bin/bash"
 ln -s "$tmp/bin/tmux" "$tmp/no-fzf-bin/tmux"
 
 choose_tree_log="$tmp/choose-tree.log"
@@ -473,7 +474,7 @@ TMUX="$tmp/fake-client,1,0" \
   TMUX_TEST_CHOOSE_TREE_LOG="$choose_tree_log" \
   TMUX_TEST_DISPLAY_LOG="$choose_tree_display_log" \
   HOME="$tmp/home" \
-  PATH="$tmp/no-fzf-bin:$root/common/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  PATH="$tmp/no-fzf-bin:$root/common/.local/bin" \
   TMUX_TEST_REAL_TMUX="$real_tmux" \
   TMUX_TEST_SOCKET="$socket_name" \
   "$picker"
@@ -492,7 +493,7 @@ if TMUX="$tmp/fake-client,1,0" \
   TMUX_TEST_CHOOSE_TREE_STATUS=77 \
   TMUX_TEST_DISPLAY_LOG="$choose_tree_fail_display_log" \
   HOME="$tmp/home" \
-  PATH="$tmp/no-fzf-bin:$root/common/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  PATH="$tmp/no-fzf-bin:$root/common/.local/bin" \
   TMUX_TEST_REAL_TMUX="$real_tmux" \
   TMUX_TEST_SOCKET="$socket_name" \
   "$picker"; then
