@@ -590,6 +590,12 @@ assert(rhs_for("<D-v>", "i") == "<C-r>+")
 assert(rhs_for("<D-v>", "c") == "<C-r>+")
 _G.dotfiles_smoke_terminal_paste_callback = vim.fn.maparg("<D-v>", "t", false, true).callback
 assert(type(_G.dotfiles_smoke_terminal_paste_callback) == "function")
+assert(rhs_for("<S-Insert>") == '"+p')
+assert(rhs_for("<S-Insert>", "v") == '"+P')
+assert(rhs_for("<S-Insert>", "i") == "<C-r>+")
+assert(rhs_for("<S-Insert>", "c") == "<C-r>+")
+_G.dotfiles_smoke_shift_insert_terminal_paste_callback = vim.fn.maparg("<S-Insert>", "t", false, true).callback
+assert(_G.dotfiles_smoke_shift_insert_terminal_paste_callback == _G.dotfiles_smoke_terminal_paste_callback)
 assert(rhs_for("<D-a>") == "ggVG")
 assert(rhs_for("<D-a>", "v") == "ggVG")
 assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
@@ -726,6 +732,13 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   feed("<D-v>")
   assert(lines_text() == "aPASTEb", lines_text())
 
+  stored_lines = { "SHIFT" }
+  stored_type = "v"
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "ab" })
+  feed("gg0")
+  feed("<S-Insert>")
+  assert(lines_text() == "aSHIFTb", lines_text())
+
   stored_lines = { "VISUAL" }
   stored_type = "v"
   vim.fn.setreg('"', "KEEP", "v")
@@ -735,6 +748,15 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   assert(lines_text() == "VISUALgreen", lines_text())
   assert(table.concat(stored_lines, "|") == "VISUAL", table.concat(stored_lines, "|"))
   assert(vim.fn.getreg('"') == "KEEP", "visual paste clobbered unnamed register: " .. vim.fn.getreg('"'))
+
+  stored_lines = { "SHIFT VISUAL" }
+  stored_type = "v"
+  vim.fn.setreg('"', "KEEP", "v")
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "orange", "blue" })
+  feed("gg0v$")
+  feed("<S-Insert>")
+  assert(lines_text() == "SHIFT VISUALblue", lines_text())
+  assert(vim.fn.getreg('"') == "KEEP", "Shift+Insert visual paste clobbered unnamed register: " .. vim.fn.getreg('"'))
 
   stored_lines = { "LINE A", "LINE B", "" }
   stored_type = "V"
@@ -763,12 +785,27 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   feed("<Esc>")
   assert(lines_text() == "insert MODE", lines_text())
 
+  stored_lines = { "SHIFT MODE" }
+  stored_type = "v"
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "insert " })
+  feed("A")
+  feed("<S-Insert>")
+  feed("<Esc>")
+  assert(lines_text() == "insert SHIFT MODE", lines_text())
+
   stored_lines = { "cmdline pasted" }
   stored_type = "v"
   vim.g.dotfiles_cmdline_paste = nil
   feed(":let g:dotfiles_cmdline_paste = '<D-v>'<CR>")
   assert(vim.g.dotfiles_cmdline_paste == "cmdline pasted", tostring(vim.g.dotfiles_cmdline_paste))
   assert(table.concat(stored_lines, "|") == "cmdline pasted", table.concat(stored_lines, "|"))
+
+  stored_lines = { "shift insert cmdline" }
+  stored_type = "v"
+  vim.g.dotfiles_cmdline_paste = nil
+  feed(":let g:dotfiles_cmdline_paste = '<S-Insert>'<CR>")
+  assert(vim.g.dotfiles_cmdline_paste == "shift insert cmdline", tostring(vim.g.dotfiles_cmdline_paste))
+  assert(table.concat(stored_lines, "|") == "shift insert cmdline", table.concat(stored_lines, "|"))
 
   do
     local notices = {}

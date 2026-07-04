@@ -105,6 +105,24 @@ package.path = root
 
 require("config.keymaps")
 
+vim.g.dotfiles_tmux_paste = ""
+vim.g.clipboard = {
+  name = "tmux-nvim-keys",
+  copy = {
+    ["+"] = function() end,
+    ["*"] = function() end,
+  },
+  paste = {
+    ["+"] = function()
+      return { vim.g.dotfiles_tmux_paste }, "v"
+    end,
+    ["*"] = function()
+      return { vim.g.dotfiles_tmux_paste }, "v"
+    end,
+  },
+  cache_enabled = 0,
+}
+
 vim.o.hlsearch = true
 vim.fn.setreg("/", "manual")
 LUA
@@ -175,6 +193,7 @@ wait_for_file "$insert_previous_buffer_result"
 assert_eq "tmux passes VS Code Shift-F1 bytes to insert Neovim previous buffer" "search.txt" "$(cat "$insert_previous_buffer_result")"
 
 shift_f5_sequence="$(printf '\033[15;2~')"
+shift_insert_sequence="$(printf '\033[2;2~')"
 normal_save_expected="$(printf 'normal shift-f5 save\nline 2')"
 normal_save_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'normal shift-f5 save', 'line 2'}); vim.cmd('normal! gg')"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$normal_save_command" Enter
@@ -188,6 +207,15 @@ insert_save_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'insert sh
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_f5_sequence"
 wait_for_file_content "$tmp/search.txt" "$insert_save_expected"
 assert_eq "tmux passes VS Code Shift-F5 bytes to insert Neovim save" "$insert_save_expected" "$(cat "$tmp/search.txt")"
+
+shift_insert_result="$tmp/shift-insert-paste.log"
+shift_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'shift-insert '}); vim.g.dotfiles_tmux_paste = 'paste via tmux'; vim.cmd('startinsert!')"
+shift_insert_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line()}, $(lua_string "$shift_insert_result"))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$shift_insert_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_insert_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$shift_insert_write_command" Enter
+wait_for_file "$shift_insert_result"
+assert_eq "tmux passes Shift-Insert bytes to insert Neovim paste" "shift-insert paste via tmux" "$(cat "$shift_insert_result")"
 
 visual_save_expected="$(printf 'visual shift-f5 save\nline 2')"
 visual_save_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'visual shift-f5 save', 'line 2'}); vim.cmd('normal! gg')"
