@@ -4843,7 +4843,23 @@ set_terminal_name("term://~/repo//152:/usr/bin/ssh -t devbox nvim README.md")
 vim.bo.filetype = ""
 assert(terminal_left() == "<C-h>")
 vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -Tt devbox nvim README.md")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-h>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -tT devbox nvim README.md")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+vim.cmd("enew!")
 set_terminal_name("term://~/repo//152:/usr/bin/ssh -oRequestTTY=yes devbox nvim README.md")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-h>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -oRequestTTY=no devbox")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -oRequestTTY=auto devbox")
 vim.bo.filetype = ""
 assert(terminal_left() == "<C-h>")
 vim.cmd("enew!")

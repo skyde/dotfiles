@@ -1973,7 +1973,6 @@ local function ssh_noninteractive_option_matches(word, key)
     or key == "-n"
     or key == "-O"
     or key == "-Q"
-    or key == "-T"
     or key == "-V"
     or key == "-W"
     or key == "-h"
@@ -1981,7 +1980,7 @@ local function ssh_noninteractive_option_matches(word, key)
     return true
   end
 
-  for _, flag in ipairs({ "f", "G", "N", "n", "O", "Q", "T", "V", "W" }) do
+  for _, flag in ipairs({ "f", "G", "N", "n", "O", "Q", "V", "W" }) do
     if ssh_short_word_has_flag(word, flag) then
       return true
     end
@@ -2006,21 +2005,49 @@ local function ssh_option_value(word)
   return option_value(word)
 end
 
-local function ssh_request_tty_value_matches(value)
+local function ssh_short_word_tty_state(word)
+  if not word:match("^%-[^-]") then
+    return nil
+  end
+
+  local state = nil
+  local flags = word:sub(2)
+  for index = 1, #flags do
+    local character = flags:sub(index, index)
+    if character == "t" then
+      state = "yes"
+    elseif character == "T" then
+      state = "no"
+    end
+    if ssh_option_takes_value("ssh", "-" .. character) then
+      break
+    end
+  end
+
+  return state
+end
+
+local function ssh_request_tty_value_state(value)
   value = value:lower()
-  return value == "requesttty=yes"
+  if
+    value == "requesttty=yes"
     or value == "requesttty=force"
     or value == "requesttty yes"
     or value == "requesttty force"
-end
-
-local function ssh_option_requests_tty(word, key, next_word)
-  if ssh_short_word_has_flag(word, "t") then
-    return true
+  then
+    return "yes"
+  elseif value == "requesttty=no" or value == "requesttty no" then
+    return "no"
+  elseif value == "requesttty=auto" or value == "requesttty auto" then
+    return "auto"
   end
 
+  return nil
+end
+
+local function ssh_option_request_tty_state(word, key, next_word)
   if key ~= "-o" then
-    return false
+    return nil
   end
 
   local value = ssh_option_value(word)
@@ -2028,12 +2055,17 @@ local function ssh_option_requests_tty(word, key, next_word)
     value = next_word
   end
 
-  return value ~= nil and value ~= "" and ssh_request_tty_value_matches(value)
+  if value == nil or value == "" then
+    return nil
+  end
+
+  return ssh_request_tty_value_state(value)
 end
 
 local function ssh_passthrough_command(words, index, command)
   local has_args = false
-  local requests_tty = false
+  local request_tty_state = nil
+  local tty_flag_state = nil
 
   index = index + 1
   while words[index] do
@@ -2050,8 +2082,13 @@ local function ssh_passthrough_command(words, index, command)
       return nil
     end
 
-    if ssh_option_requests_tty(word, key, words[index + 1]) then
-      requests_tty = true
+    local current_tty_state = ssh_short_word_tty_state(word)
+    if current_tty_state then
+      tty_flag_state = current_tty_state
+    end
+
+    if not request_tty_state then
+      request_tty_state = ssh_option_request_tty_state(word, key, words[index + 1])
     end
 
     index = index + 1
@@ -2068,12 +2105,17 @@ local function ssh_passthrough_command(words, index, command)
     return nil
   end
 
+  local final_tty_state = tty_flag_state or request_tty_state
+
   index = index + 1
   if not words[index] then
+    if final_tty_state == "no" then
+      return nil
+    end
     return command
   end
 
-  if not requests_tty then
+  if final_tty_state ~= "yes" then
     return nil
   end
 
