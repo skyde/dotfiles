@@ -2860,13 +2860,7 @@ local function windows_cmd_command_index(words, index)
   return nil
 end
 
-local function terminal_command()
-  local name = vim.api.nvim_buf_get_name(0)
-  local commandline = name:match("^term://.-//%d+:%s*(.+)$")
-  if not commandline then
-    return ""
-  end
-
+local function command_from_line(commandline)
   local words = split_words(commandline)
   local index = 1
 
@@ -2973,13 +2967,17 @@ local function terminal_command()
   return ""
 end
 
-local function terminal_should_passthrough()
-  local filetype = vim.bo.filetype
-  if filetype:match("^fzf") or filetype == "lazygit" then
-    return true
+local function terminal_command()
+  local name = vim.api.nvim_buf_get_name(0)
+  local commandline = name:match("^term://.-//%d+:%s*(.+)$")
+  if not commandline then
+    return ""
   end
 
-  local command = terminal_command()
+  return command_from_line(commandline)
+end
+
+local function command_should_passthrough(command)
   return command == "python"
     or command == "node"
     or command == "deno"
@@ -2991,6 +2989,115 @@ local function terminal_should_passthrough()
     or command == "language-repl"
     or command == "passthrough"
     or passthrough_commands[command] == true
+end
+
+local function terminal_job_pid()
+  if type(vim.b.terminal_job_pid) == "number" and vim.b.terminal_job_pid > 0 then
+    return vim.b.terminal_job_pid
+  end
+
+  if type(vim.b.terminal_job_id) == "number" and vim.b.terminal_job_id > 0 then
+    local ok, pid = pcall(vim.fn.jobpid, vim.b.terminal_job_id)
+    if ok and type(pid) == "number" and pid > 0 then
+      return pid
+    end
+  end
+
+  return nil
+end
+
+local function process_table_output()
+  if vim.env.DOTFILES_NVIM_TEST_PS_OUTPUT and vim.env.DOTFILES_NVIM_TEST_PS_OUTPUT ~= "" then
+    return vim.env.DOTFILES_NVIM_TEST_PS_OUTPUT
+  end
+
+  if vim.fn.executable("ps") ~= 1 then
+    return ""
+  end
+
+  local ok, output = pcall(vim.fn.system, { "ps", "-axo", "pid=,ppid=,state=,command=" })
+  if not ok or type(output) ~= "string" then
+    return ""
+  end
+
+  return output
+end
+
+local function active_process_state(state)
+  return state ~= nil and state ~= "" and state:match("[TXZ]") == nil
+end
+
+local function terminal_foreground_command()
+  local root_pid = terminal_job_pid()
+  if not root_pid then
+    return ""
+  end
+
+  local children = {}
+  for line in process_table_output():gmatch("[^\r\n]+") do
+    local pid, ppid, state, commandline = line:match("^%s*(%d+)%s+(%d+)%s+(%S+)%s+(.+)$")
+    pid = tonumber(pid)
+    ppid = tonumber(ppid)
+    if pid and ppid and commandline and active_process_state(state) then
+      local process = {
+        pid = pid,
+        ppid = ppid,
+        state = state,
+        commandline = commandline,
+      }
+      children[ppid] = children[ppid] or {}
+      table.insert(children[ppid], process)
+    end
+  end
+
+  local descendants = {}
+  local function visit(parent_pid, depth)
+    for _, child in ipairs(children[parent_pid] or {}) do
+      child.depth = depth
+      table.insert(descendants, child)
+      visit(child.pid, depth + 1)
+    end
+  end
+  visit(root_pid, 1)
+
+  if #descendants == 0 then
+    return ""
+  end
+
+  local has_foreground = false
+  for _, process in ipairs(descendants) do
+    if process.state:find("+", 1, true) then
+      has_foreground = true
+      break
+    end
+  end
+
+  table.sort(descendants, function(left, right)
+    if left.depth == right.depth then
+      return left.pid > right.pid
+    end
+    return left.depth > right.depth
+  end)
+
+  for _, process in ipairs(descendants) do
+    if (not has_foreground or process.state:find("+", 1, true)) and process.pid ~= root_pid then
+      local command = command_from_line(process.commandline)
+      if command_should_passthrough(command) then
+        return command
+      end
+    end
+  end
+
+  return ""
+end
+
+local function terminal_should_passthrough()
+  local filetype = vim.bo.filetype
+  if filetype:match("^fzf") or filetype == "lazygit" then
+    return true
+  end
+
+  return command_should_passthrough(terminal_command()) or command_should_passthrough(terminal_foreground_command())
 end
 
 local function terminal_nav(command, passthrough)

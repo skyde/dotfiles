@@ -3882,6 +3882,16 @@ local function set_terminal_name(name)
   assert(ok, tostring(err))
 end
 
+function _G.dotfiles_smoke_set_terminal_process_table(root_pid, lines)
+  vim.b.terminal_job_pid = root_pid
+  vim.env.DOTFILES_NVIM_TEST_PS_OUTPUT = table.concat(lines, "\n")
+end
+
+function _G.dotfiles_smoke_clear_terminal_process_table()
+  vim.b.terminal_job_pid = nil
+  vim.env.DOTFILES_NVIM_TEST_PS_OUTPUT = nil
+end
+
 vim.bo.filetype = ""
 assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
 vim.bo.filetype = "fzf"
@@ -3918,6 +3928,61 @@ vim.cmd("enew!")
 set_terminal_name("term://~/repo//123:/usr/bin/htop")
 vim.bo.filetype = ""
 assert(terminal_left() == "<C-h>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//124:/bin/zsh")
+vim.bo.filetype = ""
+dotfiles_smoke_set_terminal_process_table(124, {
+  "124 1 S+ /bin/zsh",
+  "125 124 S+ /usr/bin/less README.md",
+})
+assert(terminal_left() == "<C-h>")
+dotfiles_smoke_clear_terminal_process_table()
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//124:/bin/zsh")
+vim.bo.filetype = ""
+dotfiles_smoke_set_terminal_process_table(124, {
+  "124 1 S+ /bin/zsh",
+  "125 124 S+ /opt/homebrew/bin/delta README.md",
+})
+assert(terminal_left() == "<C-h>")
+dotfiles_smoke_clear_terminal_process_table()
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//124:/bin/zsh")
+vim.bo.filetype = ""
+dotfiles_smoke_set_terminal_process_table(124, {
+  "124 1 S+ /bin/zsh",
+  "125 124 S+ /usr/bin/ssh devbox",
+})
+assert(terminal_left() == "<C-h>")
+dotfiles_smoke_clear_terminal_process_table()
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//124:/bin/zsh")
+vim.bo.filetype = ""
+dotfiles_smoke_set_terminal_process_table(124, {
+  "124 1 S+ /bin/zsh",
+  "125 124 S+ /usr/bin/ssh -N -L 8080:localhost:80 devbox",
+})
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+dotfiles_smoke_clear_terminal_process_table()
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//124:/bin/zsh")
+vim.bo.filetype = ""
+dotfiles_smoke_set_terminal_process_table(124, {
+  "124 1 S+ /bin/zsh",
+  "125 124 T+ /opt/homebrew/bin/nvim README.md",
+})
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+dotfiles_smoke_clear_terminal_process_table()
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//124:/bin/zsh")
+vim.bo.filetype = ""
+dotfiles_smoke_set_terminal_process_table(124, {
+  "124 1 S+ /bin/zsh",
+  "125 124 S /usr/bin/ssh devbox",
+  "126 124 S+ /bin/echo done",
+})
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+dotfiles_smoke_clear_terminal_process_table()
 vim.cmd("enew!")
 set_terminal_name("term://~/repo//124:/usr/bin/fzf --multi")
 vim.bo.filetype = ""
