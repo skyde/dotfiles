@@ -17,6 +17,7 @@ package.path = root
 
 dofile(root .. "/common/.config/nvim/lua/config/options.lua")
 assert(vim.o.signcolumn == "auto:1")
+assert(vim.o.termpastefilter == "BS,ESC,DEL")
 
 require("config.keymaps")
 
@@ -548,14 +549,20 @@ assert(rhs_for("<S-F4>") == "16k")
 assert(rhs_for("<F16>") == "16k")
 assert(rhs_for("<S-F4>", "i") == "<C-o>16k")
 assert(rhs_for("<F16>", "i") == "<C-o>16k")
+assert(rhs_for("<S-F4>", "v") == "16k")
+assert(rhs_for("<F16>", "v") == "16k")
 assert(rhs_for("<S-F5>") == "<cmd>w<CR>")
 assert(rhs_for("<F17>") == "<cmd>w<CR>")
 assert(rhs_for("<S-F5>", "i") == "<cmd>w<CR>")
 assert(rhs_for("<F17>", "i") == "<cmd>w<CR>")
+assert(rhs_for("<S-F5>", "v") == "<cmd>w<CR>")
+assert(rhs_for("<F17>", "v") == "<cmd>w<CR>")
 assert(rhs_for("<S-F6>") == "16j")
 assert(rhs_for("<F18>") == "16j")
 assert(rhs_for("<S-F6>", "i") == "<C-o>16j")
 assert(rhs_for("<F18>", "i") == "<C-o>16j")
+assert(rhs_for("<S-F6>", "v") == "16j")
+assert(rhs_for("<F18>", "v") == "16j")
 assert(type(vim.fn.maparg("<S-F9>", "n", false, true).callback) == "function")
 assert(type(vim.fn.maparg("<F21>", "n", false, true).callback) == "function")
 assert(type(vim.fn.maparg("<S-F9>", "i", false, true).callback) == "function")
@@ -570,6 +577,591 @@ assert(rhs_for("<S-F12>") == "<cmd>bnext<CR>")
 assert(rhs_for("<F24>") == "<cmd>bnext<CR>")
 assert(rhs_for("<S-F12>", "i") == "<cmd>bnext<CR>")
 assert(rhs_for("<F24>", "i") == "<cmd>bnext<CR>")
+assert(rhs_for("<D-s>") == "<cmd>w<CR>")
+assert(rhs_for("<D-s>", "i") == "<cmd>w<CR>")
+assert(rhs_for("<D-s>", "v") == "<cmd>w<CR>")
+assert(rhs_for("<D-c>") == '"+yy')
+assert(rhs_for("<D-c>", "v") == '"+y')
+assert(rhs_for("<D-x>") == '"+dd')
+assert(rhs_for("<D-x>", "v") == '"+d')
+assert(rhs_for("<D-v>") == '"+p')
+assert(rhs_for("<D-v>", "v") == '"+P')
+assert(rhs_for("<D-v>", "i") == "<C-r>+")
+assert(rhs_for("<D-v>", "c") == "<C-r>+")
+_G.dotfiles_smoke_terminal_paste_callback = vim.fn.maparg("<D-v>", "t", false, true).callback
+assert(type(_G.dotfiles_smoke_terminal_paste_callback) == "function")
+assert(rhs_for("<D-a>") == "ggVG")
+assert(rhs_for("<D-a>", "v") == "ggVG")
+assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
+
+;(function()
+  local original_clipboard = vim.g.clipboard
+  local original_notify = vim.notify
+  local original_report = vim.o.report
+  local original_showmode = vim.o.showmode
+  local stored_lines = {}
+  local stored_type = "v"
+
+  vim.o.report = 9999
+  vim.o.showmode = false
+  vim.g.clipboard = {
+    name = "test-clipboard",
+    copy = {
+      ["+"] = function(lines, regtype)
+        stored_lines = vim.deepcopy(lines)
+        stored_type = regtype
+      end,
+      ["*"] = function(lines, regtype)
+        stored_lines = vim.deepcopy(lines)
+        stored_type = regtype
+      end,
+    },
+    paste = {
+      ["+"] = function()
+        return stored_lines, stored_type
+      end,
+      ["*"] = function()
+        return stored_lines, stored_type
+      end,
+    },
+    cache_enabled = 0,
+  }
+
+  local function feed(keys)
+    vim.api.nvim_feedkeys(vim.keycode(keys), "xt", false)
+  end
+
+  local function lines_text()
+    return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "|")
+  end
+
+  local function assert_visual_save(keys, label)
+    local save_file = vim.fn.tempname() .. ".txt"
+    local expected = label .. " visual save|" .. label .. " second line"
+    vim.fn.writefile({ "old" }, save_file)
+    vim.cmd("edit " .. vim.fn.fnameescape(save_file))
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { label .. " visual save", label .. " second line" })
+    feed("gg0ve")
+    feed(keys)
+    assert(vim.wait(1000, function()
+      return table.concat(vim.fn.readfile(save_file), "|") == expected
+    end), table.concat(vim.fn.readfile(save_file), "|"))
+    feed("<Esc>")
+    vim.cmd("enew!")
+    vim.fn.delete(save_file)
+  end
+
+  assert_visual_save("<D-s>", "cmd")
+  assert_visual_save("<S-F5>", "shift-f5")
+
+  local visual_scroll_lines = {}
+  for i = 1, 32 do
+    visual_scroll_lines[i] = "line " .. i
+  end
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, visual_scroll_lines)
+  feed("20G0V")
+  feed("<S-F4>")
+  feed("<D-c>")
+  feed("<Esc>")
+  assert(stored_lines[1] == "line 4", stored_lines[1])
+  assert(stored_lines[#stored_lines - 1] == "line 20", stored_lines[#stored_lines - 1])
+  assert(stored_type == "V", stored_type)
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, visual_scroll_lines)
+  feed("12G0V")
+  feed("<S-F6>")
+  feed("<D-c>")
+  feed("<Esc>")
+  assert(stored_lines[1] == "line 12", stored_lines[1])
+  assert(stored_lines[#stored_lines - 1] == "line 28", stored_lines[#stored_lines - 1])
+  assert(stored_type == "V", stored_type)
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "one", "two", "three" })
+  feed("<D-a>")
+  feed("<D-c>")
+  feed("<Esc>")
+  assert(table.concat(stored_lines, "|") == "one|two|three|", table.concat(stored_lines, "|"))
+  assert(stored_type == "V", stored_type)
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "visual select all", "visual second", "visual third" })
+  feed("gg0ve")
+  feed("<D-a>")
+  feed("<D-c>")
+  assert(table.concat(stored_lines, "|") == "visual select all|visual second|visual third|", table.concat(stored_lines, "|"))
+  assert(stored_type == "V", stored_type)
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "insert select all", "insert second", "insert third" })
+  feed("A")
+  feed("<D-a>")
+  feed("<D-c>")
+  assert(table.concat(stored_lines, "|") == "insert select all|insert second|insert third|", table.concat(stored_lines, "|"))
+  assert(stored_type == "V", stored_type)
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "normal copy", "normal keep" })
+  feed("gg")
+  feed("<D-c>")
+  assert(table.concat(stored_lines, "|") == "normal copy|", table.concat(stored_lines, "|"))
+  assert(stored_type == "V", stored_type)
+  assert(lines_text() == "normal copy|normal keep", lines_text())
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "normal cut", "normal keep", "normal tail" })
+  feed("gg")
+  feed("<D-x>")
+  assert(table.concat(stored_lines, "|") == "normal cut|", table.concat(stored_lines, "|"))
+  assert(stored_type == "V", stored_type)
+  assert(lines_text() == "normal keep|normal tail", lines_text())
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "cut me", "keep" })
+  feed("gg0ve")
+  feed("<D-x>")
+  feed("<Esc>")
+  assert(table.concat(stored_lines, "|") == "cut", table.concat(stored_lines, "|"))
+  assert(lines_text() == " me|keep", lines_text())
+
+  stored_lines = { "PASTE" }
+  stored_type = "v"
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "ab" })
+  feed("gg0")
+  feed("<D-v>")
+  assert(lines_text() == "aPASTEb", lines_text())
+
+  stored_lines = { "VISUAL" }
+  stored_type = "v"
+  vim.fn.setreg('"', "KEEP", "v")
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "red", "green" })
+  feed("gg0v$")
+  feed("<D-v>")
+  assert(lines_text() == "VISUALgreen", lines_text())
+  assert(table.concat(stored_lines, "|") == "VISUAL", table.concat(stored_lines, "|"))
+  assert(vim.fn.getreg('"') == "KEEP", "visual paste clobbered unnamed register: " .. vim.fn.getreg('"'))
+
+  stored_lines = { "LINE A", "LINE B", "" }
+  stored_type = "V"
+  vim.fn.setreg('"', "KEEP", "v")
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "old one", "old two", "tail" })
+  feed("ggVj")
+  feed("<D-v>")
+  assert(lines_text() == "LINE A|LINE B|tail", lines_text())
+  assert(vim.fn.getreg('"') == "KEEP", "linewise visual paste clobbered unnamed register: " .. vim.fn.getreg('"'))
+
+  stored_lines = { "BLOCK" }
+  stored_type = "v"
+  vim.fn.setreg('"', "KEEP", "v")
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "abcd", "efgh", "ijkl" })
+  feed("gg0l<C-v>jl")
+  feed("<D-v>")
+  assert(lines_text() == "aBLOCKd|eBLOCKh|ijkl", lines_text())
+  assert(table.concat(stored_lines, "|") == "BLOCK", table.concat(stored_lines, "|"))
+  assert(vim.fn.getreg('"') == "KEEP", "blockwise visual paste clobbered unnamed register: " .. vim.fn.getreg('"'))
+
+  stored_lines = { "MODE" }
+  stored_type = "v"
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "insert " })
+  feed("A")
+  feed("<D-v>")
+  feed("<Esc>")
+  assert(lines_text() == "insert MODE", lines_text())
+
+  stored_lines = { "cmdline pasted" }
+  stored_type = "v"
+  vim.g.dotfiles_cmdline_paste = nil
+  feed(":let g:dotfiles_cmdline_paste = '<D-v>'<CR>")
+  assert(vim.g.dotfiles_cmdline_paste == "cmdline pasted", tostring(vim.g.dotfiles_cmdline_paste))
+  assert(table.concat(stored_lines, "|") == "cmdline pasted", table.concat(stored_lines, "|"))
+
+  do
+    local notices = {}
+    vim.notify = function(message, level)
+      table.insert(notices, { message = message, level = level })
+    end
+    vim.cmd("enew")
+    stored_lines = { "no terminal job" }
+    stored_type = "v"
+    _G.dotfiles_smoke_terminal_paste_callback()
+    assert(#notices == 1, "expected one missing-terminal notice, got " .. #notices)
+    assert(notices[1].message:find("no terminal job", 1, true), notices[1].message)
+    assert(notices[1].level == vim.log.levels.WARN, tostring(notices[1].level))
+    vim.notify = original_notify
+  end
+
+  local original_buf = vim.api.nvim_get_current_buf()
+  local terminal_output = vim.fn.tempname()
+  vim.cmd("enew")
+  local terminal_buf = vim.api.nvim_get_current_buf()
+  local terminal_job = vim.fn.termopen({ "sh", "-c", 'cat > "$1"', "sh", terminal_output })
+  assert(type(terminal_job) == "number" and terminal_job > 0, "terminal job did not start")
+  stored_lines = { "terminal paste", "second line", "" }
+  stored_type = "V"
+  vim.cmd("startinsert")
+  _G.dotfiles_smoke_terminal_paste_callback()
+  local terminal_paste_output = ""
+  assert(vim.wait(1000, function()
+    if vim.fn.getfsize(terminal_output) <= 0 then
+      return false
+    end
+    terminal_paste_output = table.concat(vim.fn.readfile(terminal_output), "|")
+    return terminal_paste_output == "terminal paste|second line"
+  end), terminal_paste_output)
+  vim.fn.chanclose(terminal_job, "stdin")
+  vim.fn.jobwait({ terminal_job }, 1000)
+  if vim.api.nvim_buf_is_valid(original_buf) then
+    vim.api.nvim_set_current_buf(original_buf)
+  end
+  if vim.api.nvim_buf_is_valid(terminal_buf) then
+    vim.api.nvim_buf_delete(terminal_buf, { force = true })
+  end
+  vim.fn.delete(terminal_output)
+
+  local shellish_output = vim.fn.tempname()
+  vim.cmd("enew")
+  local shellish_buf = vim.api.nvim_get_current_buf()
+  local shellish_job = vim.fn.termopen({ "sh", "-c", 'cat > "$1"', "sh", shellish_output })
+  assert(type(shellish_job) == "number" and shellish_job > 0, "shell-looking terminal job did not start")
+  stored_lines = {
+    [=[--literal-flag $HOME]=],
+    [=[cmd $(echo no) ; rm -rf /]=],
+    [=[quote ' " backslash \]=],
+    "",
+  }
+  stored_type = "V"
+  vim.cmd("startinsert")
+  _G.dotfiles_smoke_terminal_paste_callback()
+  local shellish_paste_output = ""
+  assert(vim.wait(1000, function()
+    if vim.fn.getfsize(shellish_output) <= 0 then
+      return false
+    end
+    shellish_paste_output = table.concat(vim.fn.readfile(shellish_output), "|")
+    return shellish_paste_output == [=[--literal-flag $HOME|cmd $(echo no) ; rm -rf /|quote ' " backslash \]=]
+  end), shellish_paste_output)
+  print("nvim-terminal-shell-looking-paste-ok")
+  vim.fn.chanclose(shellish_job, "stdin")
+  vim.fn.jobwait({ shellish_job }, 1000)
+  if vim.api.nvim_buf_is_valid(original_buf) then
+    vim.api.nvim_set_current_buf(original_buf)
+  end
+  if vim.api.nvim_buf_is_valid(shellish_buf) then
+    vim.api.nvim_buf_delete(shellish_buf, { force = true })
+  end
+  vim.fn.delete(shellish_output)
+
+  local fallback_output = vim.fn.tempname()
+  vim.cmd("enew")
+  local fallback_buf = vim.api.nvim_get_current_buf()
+  local fallback_job = vim.fn.termopen({ "sh", "-c", 'cat > "$1"', "sh", fallback_output })
+  assert(type(fallback_job) == "number" and fallback_job > 0, "fallback terminal job did not start")
+  stored_lines = { "fallback terminal paste", "" }
+  stored_type = "V"
+  local original_nvim_paste = vim.api.nvim_paste
+  local fallback_paste_calls = 0
+  vim.api.nvim_paste = function()
+    fallback_paste_calls = fallback_paste_calls + 1
+    return false
+  end
+  vim.cmd("startinsert")
+  _G.dotfiles_smoke_terminal_paste_callback()
+  vim.api.nvim_paste = original_nvim_paste
+  assert(fallback_paste_calls == 1, "fallback paste calls " .. fallback_paste_calls)
+  vim.fn.chanclose(fallback_job, "stdin")
+  vim.fn.jobwait({ fallback_job }, 1000)
+  local fallback_paste_output = table.concat(vim.fn.readfile(fallback_output), "|")
+  assert(fallback_paste_output == "fallback terminal paste", fallback_paste_output)
+  if vim.api.nvim_buf_is_valid(original_buf) then
+    vim.api.nvim_set_current_buf(original_buf)
+  end
+  if vim.api.nvim_buf_is_valid(fallback_buf) then
+    vim.api.nvim_buf_delete(fallback_buf, { force = true })
+  end
+  vim.fn.delete(fallback_output)
+
+  local empty_output = vim.fn.tempname()
+  vim.cmd("enew")
+  local empty_buf = vim.api.nvim_get_current_buf()
+  local empty_job = vim.fn.termopen({ "sh", "-c", 'cat > "$1"', "sh", empty_output })
+  assert(type(empty_job) == "number" and empty_job > 0, "empty terminal job did not start")
+  stored_lines = { "" }
+  stored_type = "v"
+  vim.cmd("startinsert")
+  _G.dotfiles_smoke_terminal_paste_callback()
+  vim.fn.chanclose(empty_job, "stdin")
+  vim.fn.jobwait({ empty_job }, 1000)
+  assert(vim.fn.getfsize(empty_output) == 0, "empty paste wrote bytes")
+  if vim.api.nvim_buf_is_valid(original_buf) then
+    vim.api.nvim_set_current_buf(original_buf)
+  end
+  if vim.api.nvim_buf_is_valid(empty_buf) then
+    vim.api.nvim_buf_delete(empty_buf, { force = true })
+  end
+  vim.fn.delete(empty_output)
+
+  local failed_output = vim.fn.tempname()
+  vim.cmd("enew")
+  local failed_buf = vim.api.nvim_get_current_buf()
+  local failed_job = vim.fn.termopen({ "sh", "-c", 'cat > "$1"', "sh", failed_output })
+  assert(type(failed_job) == "number" and failed_job > 0, "failed terminal job did not start")
+  local failure_notices = {}
+  local original_chan_send = vim.api.nvim_chan_send
+  vim.notify = function(message, level)
+    table.insert(failure_notices, { message = message, level = level })
+  end
+  vim.api.nvim_paste = function()
+    return false
+  end
+  vim.api.nvim_chan_send = function()
+    error("forced channel failure")
+  end
+  stored_lines = { "terminal failure" }
+  stored_type = "v"
+  vim.cmd("startinsert")
+  _G.dotfiles_smoke_terminal_paste_callback()
+  vim.api.nvim_paste = original_nvim_paste
+  vim.api.nvim_chan_send = original_chan_send
+  vim.notify = original_notify
+  assert(#failure_notices == 1, "expected one terminal paste failure notice, got " .. #failure_notices)
+  assert(failure_notices[1].message:find("channel send failed", 1, true), failure_notices[1].message)
+  assert(failure_notices[1].level == vim.log.levels.WARN, tostring(failure_notices[1].level))
+  vim.fn.chanclose(failed_job, "stdin")
+  vim.fn.jobwait({ failed_job }, 1000)
+  assert(vim.fn.getfsize(failed_output) == 0, "failed paste wrote bytes")
+  if vim.api.nvim_buf_is_valid(original_buf) then
+    vim.api.nvim_set_current_buf(original_buf)
+  end
+  if vim.api.nvim_buf_is_valid(failed_buf) then
+    vim.api.nvim_buf_delete(failed_buf, { force = true })
+  end
+  vim.fn.delete(failed_output)
+
+  if vim.fn.executable("python3") == 1 then
+    local bracketed_script = vim.fn.tempname() .. ".py"
+    local bracketed_output = vim.fn.tempname()
+    local bracketed_ready = vim.fn.tempname()
+    vim.fn.writefile(
+      vim.split(
+        [[
+import os
+import select
+import sys
+import termios
+import time
+
+fd = sys.stdin.fileno()
+old = termios.tcgetattr(fd)
+try:
+    new = termios.tcgetattr(fd)
+    new[3] &= ~(termios.ECHO | termios.ICANON | termios.ISIG)
+    new[6][termios.VMIN] = 0
+    new[6][termios.VTIME] = 1
+    termios.tcsetattr(fd, termios.TCSANOW, new)
+    sys.stdout.write("\x1b[?2004h")
+    sys.stdout.flush()
+    with open(os.environ["READY"], "w", encoding="utf-8") as ready:
+        ready.write("ready\n")
+    data = bytearray()
+    deadline = time.time() + 3
+    while time.time() < deadline:
+        readable, _, _ = select.select([fd], [], [], 0.1)
+        if not readable:
+            continue
+        chunk = os.read(fd, 4096)
+        if not chunk:
+            continue
+        data.extend(chunk)
+        if b"\x1b[201~" in data:
+            break
+    with open(os.environ["OUT"], "w", encoding="utf-8") as output:
+        output.write(data.hex())
+finally:
+    termios.tcsetattr(fd, termios.TCSANOW, old)
+]],
+        "\n",
+        { plain = true }
+      ),
+      bracketed_script
+    )
+
+    vim.cmd("enew")
+    local bracketed_buf = vim.api.nvim_get_current_buf()
+    local bracketed_command = "OUT="
+      .. vim.fn.shellescape(bracketed_output)
+      .. " READY="
+      .. vim.fn.shellescape(bracketed_ready)
+      .. " python3 "
+      .. vim.fn.shellescape(bracketed_script)
+    local bracketed_job = vim.fn.termopen(bracketed_command)
+    assert(type(bracketed_job) == "number" and bracketed_job > 0, "bracketed terminal job did not start")
+    assert(vim.wait(1000, function()
+      return vim.fn.filereadable(bracketed_ready) == 1
+    end), "bracketed terminal did not become ready")
+    stored_lines = { "bracket terminal", "second line", "" }
+    stored_type = "V"
+    vim.cmd("startinsert")
+    _G.dotfiles_smoke_terminal_paste_callback()
+    local bracketed_hex = ""
+    local expected_bracketed_hex = ("\027[200~bracket terminal\nsecond line\n\027[201~"):gsub(".", function(char)
+      return string.format("%02x", string.byte(char))
+    end)
+    assert(vim.wait(1000, function()
+      if vim.fn.getfsize(bracketed_output) <= 0 then
+        return false
+      end
+      bracketed_hex = table.concat(vim.fn.readfile(bracketed_output), "")
+      return bracketed_hex == expected_bracketed_hex
+    end), bracketed_hex)
+    vim.fn.jobwait({ bracketed_job }, 1000)
+
+    local bracketed_crlf_output = vim.fn.tempname()
+    local bracketed_crlf_ready = vim.fn.tempname()
+    vim.cmd("enew")
+    local bracketed_crlf_buf = vim.api.nvim_get_current_buf()
+    local bracketed_crlf_command = "OUT="
+      .. vim.fn.shellescape(bracketed_crlf_output)
+      .. " READY="
+      .. vim.fn.shellescape(bracketed_crlf_ready)
+      .. " python3 "
+      .. vim.fn.shellescape(bracketed_script)
+    local bracketed_crlf_job = vim.fn.termopen(bracketed_crlf_command)
+    assert(type(bracketed_crlf_job) == "number" and bracketed_crlf_job > 0, "CRLF bracketed terminal job did not start")
+    assert(vim.wait(1000, function()
+      return vim.fn.filereadable(bracketed_crlf_ready) == 1
+    end), "CRLF bracketed terminal did not become ready")
+    stored_lines = { "crlf terminal\rinside", "second line" }
+    stored_type = "v"
+    vim.cmd("startinsert")
+    _G.dotfiles_smoke_terminal_paste_callback()
+    local bracketed_crlf_hex = ""
+    -- Neovim registers normalize carriage returns to line breaks before paste.
+    local expected_bracketed_crlf_hex = ("\027[200~crlf terminal\ninside\nsecond line\027[201~"):gsub(
+      ".",
+      function(char)
+        return string.format("%02x", string.byte(char))
+      end
+    )
+    assert(vim.wait(1000, function()
+      if vim.fn.getfsize(bracketed_crlf_output) <= 0 then
+        return false
+      end
+      bracketed_crlf_hex = table.concat(vim.fn.readfile(bracketed_crlf_output), "")
+      return bracketed_crlf_hex == expected_bracketed_crlf_hex
+    end), bracketed_crlf_hex)
+    print("nvim-terminal-cr-normalized-bracketed-paste-ok")
+    vim.fn.jobwait({ bracketed_crlf_job }, 1000)
+
+    local bracketed_unicode_output = vim.fn.tempname()
+    local bracketed_unicode_ready = vim.fn.tempname()
+    vim.cmd("enew")
+    local bracketed_unicode_buf = vim.api.nvim_get_current_buf()
+    local bracketed_unicode_command = "OUT="
+      .. vim.fn.shellescape(bracketed_unicode_output)
+      .. " READY="
+      .. vim.fn.shellescape(bracketed_unicode_ready)
+      .. " python3 "
+      .. vim.fn.shellescape(bracketed_script)
+    local bracketed_unicode_job = vim.fn.termopen(bracketed_unicode_command)
+    assert(
+      type(bracketed_unicode_job) == "number" and bracketed_unicode_job > 0,
+      "UTF-8 bracketed terminal job did not start"
+    )
+    assert(vim.wait(1000, function()
+      return vim.fn.filereadable(bracketed_unicode_ready) == 1
+    end), "UTF-8 bracketed terminal did not become ready")
+    local e_acute = string.char(0xc3, 0xa9)
+    local lambda = string.char(0xce, 0xbb)
+    local euro = string.char(0xe2, 0x82, 0xac)
+    stored_lines = { "unicode caf" .. e_acute, "lambda " .. lambda, "euro " .. euro }
+    stored_type = "v"
+    vim.cmd("startinsert")
+    _G.dotfiles_smoke_terminal_paste_callback()
+    local bracketed_unicode_hex = ""
+    local expected_bracketed_unicode_hex = ("\027[200~" .. table.concat(stored_lines, "\n") .. "\027[201~"):gsub(
+      ".",
+      function(char)
+        return string.format("%02x", string.byte(char))
+      end
+    )
+    assert(vim.wait(1000, function()
+      if vim.fn.getfsize(bracketed_unicode_output) <= 0 then
+        return false
+      end
+      bracketed_unicode_hex = table.concat(vim.fn.readfile(bracketed_unicode_output), "")
+      return bracketed_unicode_hex == expected_bracketed_unicode_hex
+    end), bracketed_unicode_hex)
+    print("nvim-terminal-utf8-bracketed-paste-ok")
+    vim.fn.jobwait({ bracketed_unicode_job }, 1000)
+
+    local bracketed_large_output = vim.fn.tempname()
+    local bracketed_large_ready = vim.fn.tempname()
+    vim.cmd("enew")
+    local bracketed_large_buf = vim.api.nvim_get_current_buf()
+    local bracketed_large_command = "OUT="
+      .. vim.fn.shellescape(bracketed_large_output)
+      .. " READY="
+      .. vim.fn.shellescape(bracketed_large_ready)
+      .. " python3 "
+      .. vim.fn.shellescape(bracketed_script)
+    local bracketed_large_job = vim.fn.termopen(bracketed_large_command)
+    assert(
+      type(bracketed_large_job) == "number" and bracketed_large_job > 0,
+      "large bracketed terminal job did not start"
+    )
+    assert(vim.wait(1000, function()
+      return vim.fn.filereadable(bracketed_large_ready) == 1
+    end), "large bracketed terminal did not become ready")
+    local large_lines = {}
+    for i = 1, 512 do
+      large_lines[i] = string.format("large terminal %04d\ttrail   ", i)
+    end
+    large_lines[#large_lines + 1] = "large terminal final\ttrail   "
+    stored_lines = large_lines
+    stored_type = "v"
+    vim.cmd("startinsert")
+    _G.dotfiles_smoke_terminal_paste_callback()
+    local bracketed_large_hex = ""
+    local large_text = table.concat(large_lines, "\n")
+    local expected_bracketed_large_hex = ("\027[200~" .. large_text .. "\027[201~"):gsub(".", function(char)
+      return string.format("%02x", string.byte(char))
+    end)
+    assert(vim.wait(2000, function()
+      if vim.fn.getfsize(bracketed_large_output) <= 0 then
+        return false
+      end
+      bracketed_large_hex = table.concat(vim.fn.readfile(bracketed_large_output), "")
+      return bracketed_large_hex == expected_bracketed_large_hex
+    end), bracketed_large_hex)
+    print("nvim-terminal-large-bracketed-paste-ok")
+    vim.fn.jobwait({ bracketed_large_job }, 1000)
+    if vim.api.nvim_buf_is_valid(original_buf) then
+      vim.api.nvim_set_current_buf(original_buf)
+    end
+    if vim.api.nvim_buf_is_valid(bracketed_buf) then
+      vim.api.nvim_buf_delete(bracketed_buf, { force = true })
+    end
+    if vim.api.nvim_buf_is_valid(bracketed_crlf_buf) then
+      vim.api.nvim_buf_delete(bracketed_crlf_buf, { force = true })
+    end
+    if vim.api.nvim_buf_is_valid(bracketed_unicode_buf) then
+      vim.api.nvim_buf_delete(bracketed_unicode_buf, { force = true })
+    end
+    if vim.api.nvim_buf_is_valid(bracketed_large_buf) then
+      vim.api.nvim_buf_delete(bracketed_large_buf, { force = true })
+    end
+    vim.fn.delete(bracketed_script)
+    vim.fn.delete(bracketed_output)
+    vim.fn.delete(bracketed_ready)
+    vim.fn.delete(bracketed_crlf_output)
+    vim.fn.delete(bracketed_crlf_ready)
+    vim.fn.delete(bracketed_unicode_output)
+    vim.fn.delete(bracketed_unicode_ready)
+    vim.fn.delete(bracketed_large_output)
+    vim.fn.delete(bracketed_large_ready)
+  end
+
+  vim.g.clipboard = original_clipboard
+  vim.notify = original_notify
+  vim.o.report = original_report
+  vim.o.showmode = original_showmode
+end)()
+_G.dotfiles_smoke_terminal_paste_callback = nil
 
 ;(function()
   local build_fixture = vim.fn.tempname()
@@ -1571,6 +2163,43 @@ end, "Unable to start tmux-session:")
 assert_tmux_jobstart_guard("tmux project session invalid job id", function()
   return "not-a-job-id"
 end, "Unable to start tmux-session")
+
+;(function()
+  local function assert_tmux_handoff_avoids_home_probe(name, home_value)
+    local old_executable = vim.fn.executable
+    local probed_home_helper
+    local ok, err = pcall(function()
+      vim.fn.executable = function(command)
+        local command_text = tostring(command)
+        if command_text:find("tmux-session", 1, true) then
+          local old_home = vim.g.dotfiles_smoke_old_home_env
+          if
+            command_text:sub(1, 1) == "~"
+            or command_text:find("^/%.local/bin/")
+            or (old_home and old_home ~= "" and command_text:sub(1, #old_home) == old_home)
+          then
+            probed_home_helper = command_text
+          end
+        end
+        return old_executable(command)
+      end
+      vim.env.HOME = home_value
+      assert_tmux_handoff_args(name, tmux_project_session, {
+        "helper=notify",
+        "--start-dir",
+        expected_tmux_handoff_project,
+        "---",
+      }, "Tmux project session: " .. expected_tmux_handoff_project)
+    end)
+    vim.fn.executable = old_executable
+    vim.env.HOME = tmux_fake_home
+    assert(ok, err)
+    assert(probed_home_helper == nil, name .. " probed " .. tostring(probed_home_helper))
+  end
+
+  assert_tmux_handoff_avoids_home_probe("tmux project session falls back to PATH when HOME is unset", nil)
+  assert_tmux_handoff_avoids_home_probe("tmux project session falls back to PATH when HOME is empty", "")
+end)()
 
 vim.fn.mkdir(tmux_fake_home .. "/.local/bin", "p")
 local tmux_home_local_notify = tmux_fake_home .. "/.local/bin/tmux-session-notify"

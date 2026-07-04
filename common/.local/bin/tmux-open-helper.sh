@@ -238,6 +238,36 @@ replace_browser_placeholder() {
   printf '%s\n' "$output$rest"
 }
 
+launch_detached() {
+  local settle="${TMUX_OPEN_HELPER_LAUNCH_SETTLE:-1}"
+  local grace="${TMUX_OPEN_HELPER_LAUNCH_GRACE:-1}"
+  local launch_status=0
+
+  if [[ ! "$settle" =~ ^[0-9]+$ ]]; then
+    settle="1"
+  fi
+  if [[ ! "$grace" =~ ^[0-9]+$ ]]; then
+    grace="1"
+  fi
+
+  exec 9< <(
+    set +e
+    "$@" >/dev/null 2>&1 &
+    wait "$!"
+    printf '%s\n' "$?"
+  )
+
+  if IFS= read -r -t "$settle" launch_status <&9 ||
+    IFS= read -r -t "$grace" launch_status <&9; then
+    exec 9<&-
+    [[ "$launch_status" =~ ^[0-9]+$ ]] || launch_status=1
+    return "$launch_status"
+  fi
+
+  exec 9<&-
+  return 0
+}
+
 open_with_browser() {
   local target="$1"
   local arg replaced=0
@@ -254,9 +284,9 @@ open_with_browser() {
   done
 
   if [[ "$replaced" == "1" ]]; then
-    "${command[@]}" >/dev/null 2>&1 &
+    launch_detached "${command[@]}"
   else
-    "${command[@]}" "$target" >/dev/null 2>&1 &
+    launch_detached "${command[@]}" "$target"
   fi
 }
 
@@ -521,6 +551,7 @@ resolve_vscode_browser() {
   browser_is_available && return
   local candidate helper="" server_root
 
+  [[ -n "${HOME:-}" ]] || return 0
   server_root="$HOME/.vscode-server/cli/servers"
   [[ -d "$server_root" ]] || return 0
   while IFS= read -r candidate; do
@@ -530,16 +561,46 @@ resolve_vscode_browser() {
   return 0
 }
 
+copy_with_host_clipboard() {
+  local value="$1"
+  local attempted=0 os_name=""
+
+  os_name="$(uname -s 2>/dev/null || true)"
+
+  if [[ "$os_name" == "Darwin" ]] && command -v pbcopy >/dev/null 2>&1; then
+    attempted=1
+    printf '%s' "$value" | pbcopy && return 0
+  fi
+
+  if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
+    attempted=1
+    printf '%s' "$value" | wl-copy && return 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1; then
+    attempted=1
+    printf '%s' "$value" | xclip -selection clipboard && return 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1; then
+    attempted=1
+    printf '%s' "$value" | xsel --clipboard --input && return 0
+  fi
+
+  [[ "$attempted" == "1" ]] && return 2
+  return 1
+}
+
 copy_or_fail() {
   local value="$1" label="$2"
-  local helper=""
+  local helper="" status=0
 
   if [[ -x "$bin_dir/osc-copy" ]]; then
     helper="$bin_dir/osc-copy"
-  elif [[ -x "${HOME:-}/.local/bin/osc-copy" ]]; then
-    helper="${HOME:-}/.local/bin/osc-copy"
-  elif [[ -x "${HOME:-}/dotfiles/common/.local/bin/osc-copy" ]]; then
-    helper="${HOME:-}/dotfiles/common/.local/bin/osc-copy"
+  elif [[ -n "${HOME:-}" && -x "$HOME/.local/bin/osc-copy" ]]; then
+    helper="$HOME/.local/bin/osc-copy"
+  elif [[ -n "${HOME:-}" && -x "$HOME/dotfiles/common/.local/bin/osc-copy" ]]; then
+    helper="$HOME/dotfiles/common/.local/bin/osc-copy"
   elif helper="$(command -v -- osc-copy 2>/dev/null)"; then
     :
   fi
@@ -550,22 +611,17 @@ copy_or_fail() {
       display_tmux_message "Unable to copy $label to clipboard"
       exit 1
     fi
-  elif ! is_ssh_session && [[ "$(uname -s)" == "Darwin" ]] && command -v pbcopy >/dev/null 2>&1; then
-    if ! printf '%s' "$value" | pbcopy; then
-      echo "Error: failed to copy $label to clipboard" >&2
-      display_tmux_message "Unable to copy $label to clipboard"
-      exit 1
-    fi
-  elif ! is_ssh_session && command -v wl-copy >/dev/null 2>&1; then
-    if ! printf '%s' "$value" | wl-copy; then
-      echo "Error: failed to copy $label to clipboard" >&2
-      display_tmux_message "Unable to copy $label to clipboard"
-      exit 1
-    fi
-  elif ! is_ssh_session && command -v xclip >/dev/null 2>&1; then
-    if ! printf '%s' "$value" | xclip -selection clipboard; then
-      echo "Error: failed to copy $label to clipboard" >&2
-      display_tmux_message "Unable to copy $label to clipboard"
+  elif ! is_ssh_session; then
+    if copy_with_host_clipboard "$value"; then
+      :
+    else
+      status=$?
+      if [[ "$status" == "2" ]]; then
+        echo "Error: failed to copy $label to clipboard" >&2
+        display_tmux_message "Unable to copy $label to clipboard"
+      else
+        echo "Error: cannot open $label and no clipboard helper is available" >&2
+      fi
       exit 1
     fi
   else
@@ -647,8 +703,8 @@ normalize_path() {
   local raw="$1" base_dir dir base path
 
   case "$raw" in
-    "~") raw="$HOME" ;;
-    \~/*) raw="$HOME/${raw#\~/}" ;;
+    "~") raw="${HOME:-~}" ;;
+    \~/*) raw="${HOME:-~}/${raw#\~/}" ;;
   esac
 
   if [[ "$raw" =~ ^[A-Za-z]:[\\/] ]]; then
@@ -737,9 +793,9 @@ if is_external_uri "$target"; then
   if open_with_browser "$target"; then
     :
   elif ! is_ssh_session && [[ "$(uname -s)" == "Darwin" ]] && command -v open >/dev/null 2>&1; then
-    open "$target" >/dev/null 2>&1 &
+    launch_detached open "$target" || copy_or_fail "$target" link
   elif ! is_ssh_session && command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$target" >/dev/null 2>&1 &
+    launch_detached xdg-open "$target" || copy_or_fail "$target" link
   else
     copy_or_fail "$target" link
   fi

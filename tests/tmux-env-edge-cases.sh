@@ -3,12 +3,14 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 real_tmux="$(command -v tmux)"
+python3_path="$(command -v python3 || true)"
 tmp="$(mktemp -d)"
 kitty_program_socket="dotfiles-env-kitty-program-$$"
 kitty_missing_terminfo_socket="dotfiles-env-kitty-missing-terminfo-$$"
 kitty_term_socket="dotfiles-env-kitty-term-$$"
 kitty_id_socket="dotfiles-env-kitty-id-$$"
 vscode_socket="dotfiles-env-vscode-$$"
+vscode_prefix_socket="dotfiles-env-vscode-prefix-$$"
 apple_socket="dotfiles-env-apple-$$"
 generic_socket="dotfiles-env-generic-$$"
 ssh_socket="dotfiles-env-ssh-$$"
@@ -20,6 +22,7 @@ cleanup() {
   "$real_tmux" -L "$kitty_term_socket" kill-server >/dev/null 2>&1 || true
   "$real_tmux" -L "$kitty_id_socket" kill-server >/dev/null 2>&1 || true
   "$real_tmux" -L "$vscode_socket" kill-server >/dev/null 2>&1 || true
+  "$real_tmux" -L "$vscode_prefix_socket" kill-server >/dev/null 2>&1 || true
   "$real_tmux" -L "$apple_socket" kill-server >/dev/null 2>&1 || true
   "$real_tmux" -L "$generic_socket" kill-server >/dev/null 2>&1 || true
   "$real_tmux" -L "$ssh_socket" kill-server >/dev/null 2>&1 || true
@@ -94,6 +97,7 @@ assert_contains "extended keys option is quiet for old tmux" "$tmux_conf" "set-o
 assert_contains "kitty extkeys feature is quiet for old tmux" "$tmux_conf" "set-option -gq terminal-features 'xterm-kitty:extkeys'"
 assert_contains "clipboard option is quiet for old tmux" "$tmux_conf" "set-option -gq set-clipboard on"
 assert_contains "clipboard terminal feature append is quiet for old tmux" "$tmux_conf" "set-option -asq terminal-features ',xterm*:clipboard'"
+assert_contains "copy-command option is quiet for old tmux" "$tmux_conf" "set-option -gq copy-command"
 assert_contains "RGB terminal override append is quiet for old tmux" "$tmux_conf" "set-option -agq terminal-overrides"
 assert_contains "RGB terminal feature append is quiet for old tmux" "$tmux_conf" "set-option -asq terminal-features ',xterm-kitty:RGB"
 assert_contains "allow passthrough option is quiet for old tmux" "$tmux_conf" "set-option -gq allow-passthrough on"
@@ -131,6 +135,91 @@ vscode_terminal="$("$real_tmux" -L "$vscode_socket" show-options -gqv default-te
 assert_eq "VS Code tmux uses xterm-256color" "xterm-256color" "$vscode_terminal"
 vscode_features="$("$real_tmux" -L "$vscode_socket" show-options -gqv terminal-features)"
 assert_contains "VS Code tmux advertises xterm RGB" "$vscode_features" "xterm-256color:RGB"
+
+if [[ -n "$python3_path" ]]; then
+  TERM_PROGRAM=vscode TERM=xterm-256color "$real_tmux" -L "$vscode_prefix_socket" -f "$root/common/.tmux.conf" \
+    new-session -d -s vscode-prefix-env 'sleep 60'
+  if prefix_output="$("$python3_path" - "$real_tmux" "$vscode_prefix_socket" <<'PY'
+import os
+import pty
+import select
+import subprocess
+import sys
+import time
+
+tmux_path, socket_name = sys.argv[1:]
+env = os.environ.copy()
+env.update({
+    "TERM": "xterm-256color",
+    "TERM_PROGRAM": "vscode",
+})
+
+master, slave = pty.openpty()
+try:
+    proc = subprocess.Popen(
+        [tmux_path, "-L", socket_name, "attach-session", "-t", "vscode-prefix-env"],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        env=env,
+        close_fds=True,
+    )
+finally:
+    os.close(slave)
+
+try:
+    deadline = time.time() + 5
+    sent = False
+    while time.time() < deadline:
+        ready, _, _ = select.select([master], [], [], 0.05)
+        if ready:
+            try:
+                os.read(master, 4096)
+            except OSError:
+                break
+
+        if not sent and time.time() > deadline - 4.5:
+            os.write(master, b"\x1b[21;2~c")
+            sent = True
+
+        output = subprocess.check_output(
+            [tmux_path, "-L", socket_name, "list-windows", "-F", "#{window_index}:#{window_name}"],
+            env=env,
+            text=True,
+        )
+        windows = [line for line in output.splitlines() if line]
+        if len(windows) >= 2:
+            print("window_count=%d" % len(windows))
+            print(output, end="")
+            sys.exit(0)
+
+    print("timeout waiting for Shift-F10 prefix window")
+    print(
+        subprocess.check_output(
+            [tmux_path, "-L", socket_name, "list-windows", "-F", "#{window_index}:#{window_name}"],
+            env=env,
+            text=True,
+        ),
+        end="",
+    )
+    sys.exit(1)
+finally:
+    proc.terminate()
+    try:
+        proc.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+    os.close(master)
+PY
+  )"; then
+    assert_contains "VS Code Shift-F10 raw bytes enter tmux prefix table" "$prefix_output" "window_count=2"
+  else
+    printf 'not ok - VS Code Shift-F10 raw bytes enter tmux prefix table\n%s\n' "$prefix_output" >&2
+    exit 1
+  fi
+else
+  skip "VS Code Shift-F10 attached-client path (python3 unavailable)"
+fi
 
 TERM_PROGRAM=Apple_Terminal TERM=xterm-256color "$real_tmux" -L "$apple_socket" -f "$root/common/.tmux.conf" new-session -d -s apple-env 'sleep 60'
 apple_terminal="$("$real_tmux" -L "$apple_socket" show-options -gqv default-terminal)"

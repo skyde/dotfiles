@@ -19,6 +19,7 @@ This document lists the custom shortcuts I use in VS Code. The same keybindings 
 - `Ctrl+/` – toggle the integrated terminal.
 - `Ctrl+T` – toggle the terminal visibility and exit fullscreen if needed.
 - `Cmd+S` – when a terminal is focused, send Shift+F5 to the terminal (mapped in Neovim to save the file).
+- `Cmd+C` / `Cmd+V` – use VS Code's standard terminal copy/paste path; terminal auto-copy-on-selection is disabled so tmux and Neovim copy helpers do not lose ownership of the clipboard.
 - `Ctrl+O` / `Ctrl+I` – passed through to terminal apps such as tmux and Neovim.
 - `Shift+F1` / `Shift+F12` – passed through to terminal apps when the terminal is focused.
 - `Shift+F2` / `Shift+F3` / `Shift+F7` – passed through to terminal apps when the terminal is focused.

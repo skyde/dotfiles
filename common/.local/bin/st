@@ -7,12 +7,20 @@ resolve_helper() {
   local name="$1"
   local candidate
 
-  for candidate in "$script_dir/$name" "${HOME:-}/.local/bin/$name" "${HOME:-}/dotfiles/common/.local/bin/$name"; do
-    if [[ -x "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
+  candidate="$script_dir/$name"
+  if [[ -x "$candidate" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  if [[ -n "${HOME:-}" ]]; then
+    for candidate in "$HOME/.local/bin/$name" "$HOME/dotfiles/common/.local/bin/$name"; do
+      if [[ -x "$candidate" ]]; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    done
+  fi
 
   command -v -- "$name" 2>/dev/null
 }

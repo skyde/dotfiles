@@ -174,6 +174,18 @@ assert_line_count() {
 
 picker="$root/common/.local/bin/tmux-fzf-switch-session"
 
+no_tmux_bin="$tmp/no-tmux-bin"
+mkdir -p "$no_tmux_bin"
+ln -s "$(command -v bash)" "$no_tmux_bin/bash"
+if HOME="$tmp/home" PATH="$no_tmux_bin" "$picker" >"$tmp/no-tmux.out" 2>"$tmp/no-tmux.err"; then
+  printf 'not ok - session picker exits non-zero when tmux is missing\n' >&2
+  exit 1
+fi
+assert_contains \
+  "session picker reports missing tmux" \
+  "$(cat "$tmp/no-tmux.err")" \
+  "tmux is required for tmux session switching"
+
 tmux_test tmux -f "$root/common/.tmux.conf" new-session -d -s alpha -n editor -c "$tmp/alpha"
 tmux_test tmux new-window -d -t =alpha: -n shell -c "$tmp/alpha"
 tmux_test tmux new-session -d -s beta -n logs -c "$tmp/beta"

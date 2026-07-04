@@ -52,14 +52,17 @@ local use_osc52 = env_nonempty("SSH_CLIENT")
   or inside_tmux_client()
 
 local function executable_path(name)
-  for _, candidate in ipairs({
-    "~/.local/bin/" .. name,
-    "~/dotfiles/common/.local/bin/" .. name,
-  }) do
-    local path = vim.fn.expand(candidate)
-    local executable_ok, executable = pcall(vim.fn.executable, path)
-    if executable_ok and executable == 1 then
-      return path
+  local home = vim.env.HOME
+
+  if home and home ~= "" then
+    for _, path in ipairs({
+      home .. "/.local/bin/" .. name,
+      home .. "/dotfiles/common/.local/bin/" .. name,
+    }) do
+      local executable_ok, executable = pcall(vim.fn.executable, path)
+      if executable_ok and executable == 1 then
+        return path
+      end
     end
   end
 
@@ -88,42 +91,43 @@ if is_windows and win32yank_available then
 elseif use_osc52 then
   local copy_helper = executable_path("osc-copy")
   local paste_helper = executable_path("osc-paste")
+  local osc52_ok, osc52 = pcall(require, "vim.ui.clipboard.osc52")
+  local copy_provider = copy_helper and { copy_helper } or (osc52_ok and osc52.copy("+") or nil)
+  local copy_provider_star = copy_helper and { copy_helper } or (osc52_ok and osc52.copy("*") or nil)
+  local paste_provider = paste_helper and { paste_helper } or (osc52_ok and osc52.paste("+") or nil)
+  local paste_provider_star = paste_helper and { paste_helper } or (osc52_ok and osc52.paste("*") or nil)
 
+  local provider_name = "OSC 52"
   if copy_helper and paste_helper then
+    provider_name = "osc-copy/osc-paste"
+  elseif copy_helper then
+    provider_name = "osc-copy/OSC 52"
+  elseif paste_helper then
+    provider_name = "OSC 52/osc-paste"
+  end
+
+  if copy_provider and copy_provider_star and paste_provider and paste_provider_star then
     vim.g.clipboard = {
-      name = "osc-copy/osc-paste",
+      name = provider_name,
       copy = {
-        ["+"] = { copy_helper },
-        ["*"] = { copy_helper },
+        ["+"] = copy_provider,
+        ["*"] = copy_provider_star,
       },
       paste = {
-        ["+"] = { paste_helper },
-        ["*"] = { paste_helper },
+        ["+"] = paste_provider,
+        ["*"] = paste_provider_star,
       },
-      cache_enabled = 0,
+      cache_enabled = (copy_helper or paste_helper) and 0 or nil,
     }
-  else
-    local ok, osc52 = pcall(require, "vim.ui.clipboard.osc52")
-
-    if ok then
-      vim.g.clipboard = {
-        name = "OSC 52",
-        copy = {
-          ["+"] = osc52.copy("+"),
-          ["*"] = osc52.copy("*"),
-        },
-        paste = {
-          ["+"] = osc52.paste("+"),
-          ["*"] = osc52.paste("*"),
-        },
-      }
-    end
   end
 end
 
 vim.opt.clipboard:append("unnamedplus")
 
 vim.diagnostic.config({ underline = false })
+
+-- Preserve literal tabs when pasting into terminal buffers.
+vim.opt.termpastefilter = "BS,ESC,DEL"
 
 -- Do not highlight the current line
 vim.opt.cursorline = false

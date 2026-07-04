@@ -8,11 +8,35 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/tmux-navigation.XXXXXX")"
 fake_home="$tmp/home"
 mock_ssh_server_pids=()
 
-cleanup() {
-  for mock_ssh_server_pid in "${mock_ssh_server_pids[@]}"; do
-    kill "$mock_ssh_server_pid" >/dev/null 2>&1 || true
+wait_for_pid_exit() {
+  local pid="$1"
+
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    kill -0 "$pid" >/dev/null 2>&1 || return 0
+    sleep 0.1
   done
+}
+
+kill_tmp_processes() {
+  local pid command
+
+  while read -r pid command; do
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    [[ "$pid" != "$$" ]] || continue
+    [[ "$command" == *"$tmp"* ]] || continue
+    kill "$pid" >/dev/null 2>&1 || true
+    wait_for_pid_exit "$pid"
+  done < <(ps -axo pid=,command= 2>/dev/null || true)
+}
+
+cleanup() {
   "$real_tmux" -L "$socket_name" kill-server >/dev/null 2>&1 || true
+  for mock_ssh_server_pid in "${mock_ssh_server_pids[@]+"${mock_ssh_server_pids[@]}"}"; do
+    kill "$mock_ssh_server_pid" >/dev/null 2>&1 || true
+    wait "$mock_ssh_server_pid" 2>/dev/null || true
+    wait_for_pid_exit "$mock_ssh_server_pid"
+  done
+  kill_tmp_processes
   rm -rf "$tmp"
 }
 trap cleanup EXIT
@@ -100,10 +124,11 @@ PY
 
 start_mock_ssh_server() {
   local ready_path="$1"
-  local port
+  local port actual_pid
 
   port="$(free_tcp_port)"
   python3 - "$port" "$ready_path" >/dev/null 2>&1 <<'PY' &
+import os
 import socket
 import sys
 import time
@@ -114,6 +139,8 @@ server = socket.socket()
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind(("127.0.0.1", port))
 server.listen(1)
+with open(ready_path + ".pid", "w", encoding="utf-8") as pid_file:
+    pid_file.write(str(os.getpid()) + "\n")
 with open(ready_path, "w", encoding="utf-8") as ready_file:
     ready_file.write("ready\n")
 
@@ -124,6 +151,10 @@ with connection:
 PY
   mock_ssh_server_pids+=("$!")
   wait_for_file "$ready_path"
+  if [[ -s "$ready_path.pid" ]]; then
+    actual_pid="$(cat "$ready_path.pid")"
+    [[ -n "$actual_pid" ]] && mock_ssh_server_pids+=("$actual_pid")
+  fi
   printf '%s\n' "$port"
 }
 
@@ -169,18 +200,23 @@ cd "$tmp"
 HOME="$fake_home" "$real_tmux" -L "$socket_name" -f "$root/common/.tmux.conf" new-session -d -s nav-test 'sleep 60'
 home_marker="\$HOME/.local/bin"
 repo_marker="\$HOME/dotfiles/common/.local/bin"
+home_guard="[ -n \\\"\\\${HOME:-}\\\" ]"
+# shellcheck disable=SC2016
+home_guard_raw='[ -n "${HOME:-}" ]'
 
 for key in C-h C-j C-k C-l "C-\\"; do
   binding="$("$real_tmux" -L "$socket_name" list-keys -T root "$key")"
   assert_contains "navigation passthrough uses helper for $key" "$binding" "tmux-pane-should-passthrough"
   assert_contains "navigation passthrough uses explicit home for $key" "$binding" "$home_marker"
   assert_contains "navigation passthrough has repo fallback for $key" "$binding" "$repo_marker"
+  assert_contains "navigation passthrough has PATH fallback for $key" "$binding" "command -v tmux-pane-should-passthrough"
+  assert_contains "navigation passthrough guards unset HOME for $key" "$binding" "$home_guard"
   assert_contains "navigation passthrough shell-quotes current command for $key" "$binding" '#{q:pane_current_command}'
   assert_contains "navigation passthrough shell-quotes pane tty for $key" "$binding" '#{q:pane_tty}'
 done
 
 # shellcheck disable=SC2016
-HOME="$fake_home" "$real_tmux" -L "$socket_name" if-shell 'for helper in "$HOME/.local/bin/tmux-pane-should-passthrough" "$HOME/dotfiles/common/.local/bin/tmux-pane-should-passthrough"; do [ -x "$helper" ] && exec "$helper" #{q:pane_current_command} #{q:pane_tty}; done; exit 1' \
+HOME="$fake_home" "$real_tmux" -L "$socket_name" if-shell 'if [ -n "${HOME:-}" ]; then for helper in "$HOME/.local/bin/tmux-pane-should-passthrough" "$HOME/dotfiles/common/.local/bin/tmux-pane-should-passthrough"; do [ -x "$helper" ] && exec "$helper" #{q:pane_current_command} #{q:pane_tty}; done; fi; helper="$(command -v tmux-pane-should-passthrough 2>/dev/null)" && exec "$helper" #{q:pane_current_command} #{q:pane_tty}; exit 1' \
   'display-message helper-yes' \
   'display-message helper-no'
 sleep 0.2
@@ -190,17 +226,40 @@ assert_contains "navigation helper receives pane tty" "$helper_invocation" "|/de
 
 rm -f "$fake_home/.local/bin/tmux-pane-should-passthrough"
 # shellcheck disable=SC2016
-HOME="$fake_home" "$real_tmux" -L "$socket_name" if-shell 'for helper in "$HOME/.local/bin/tmux-pane-should-passthrough" "$HOME/dotfiles/common/.local/bin/tmux-pane-should-passthrough"; do [ -x "$helper" ] && exec "$helper" #{q:pane_current_command} #{q:pane_tty}; done; exit 1' \
+HOME="$fake_home" "$real_tmux" -L "$socket_name" if-shell 'if [ -n "${HOME:-}" ]; then for helper in "$HOME/.local/bin/tmux-pane-should-passthrough" "$HOME/dotfiles/common/.local/bin/tmux-pane-should-passthrough"; do [ -x "$helper" ] && exec "$helper" #{q:pane_current_command} #{q:pane_tty}; done; fi; helper="$(command -v tmux-pane-should-passthrough 2>/dev/null)" && exec "$helper" #{q:pane_current_command} #{q:pane_tty}; exit 1' \
   'display-message helper-yes' \
   'display-message helper-no'
 sleep 0.2
 helper_invocation="$(cat "$fake_home/helper.log")"
 assert_contains "navigation helper falls back to repo copy" "$helper_invocation" "repo:sleep|"
 
+rm -f "$fake_home/dotfiles/common/.local/bin/tmux-pane-should-passthrough" "$fake_home/helper.log"
+nav_path_bin="$tmp/nav-path-bin"
+nav_path_log="$tmp/nav-path.log"
+mkdir -p "$nav_path_bin"
+cat >"$nav_path_bin/tmux-pane-should-passthrough" <<'SH'
+#!/usr/bin/env bash
+printf 'path:%s|%s\n' "${1:-}" "${2:-}" >>"${TMUX_NAV_PATH_LOG:?}"
+exit 0
+SH
+chmod +x "$nav_path_bin/tmux-pane-should-passthrough"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g PATH "$nav_path_bin:/usr/bin:/bin:/usr/sbin:/sbin"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g TMUX_NAV_PATH_LOG "$nav_path_log"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -gu HOME
+# shellcheck disable=SC2016
+HOME="$fake_home" "$real_tmux" -L "$socket_name" if-shell 'if [ -n "${HOME:-}" ]; then for helper in "$HOME/.local/bin/tmux-pane-should-passthrough" "$HOME/dotfiles/common/.local/bin/tmux-pane-should-passthrough"; do [ -x "$helper" ] && exec "$helper" #{q:pane_current_command} #{q:pane_tty}; done; fi; helper="$(command -v tmux-pane-should-passthrough 2>/dev/null)" && exec "$helper" #{q:pane_current_command} #{q:pane_tty}; exit 1' \
+  'display-message helper-yes' \
+  'display-message helper-no'
+wait_for_file "$nav_path_log"
+assert_contains "navigation helper falls back to PATH when HOME is unset" "$(cat "$nav_path_log")" "path:sleep|"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g HOME "$fake_home"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g PATH "$PATH"
+rm -f "$nav_path_bin/tmux-pane-should-passthrough"
+
 rm -f "$fake_home/.local/bin/tmux-pane-should-passthrough" "$fake_home/helper.log"
 ln -s "$root/common/.local/bin/tmux-pane-should-passthrough" "$fake_home/.local/bin/tmux-pane-should-passthrough"
 # shellcheck disable=SC2016
-nav_if_shell='for helper in "$HOME/.local/bin/tmux-pane-should-passthrough" "$HOME/dotfiles/common/.local/bin/tmux-pane-should-passthrough"; do [ -x "$helper" ] && exec "$helper" #{q:pane_current_command} #{q:pane_tty}; done; exit 1'
+nav_if_shell='if [ -n "${HOME:-}" ]; then for helper in "$HOME/.local/bin/tmux-pane-should-passthrough" "$HOME/dotfiles/common/.local/bin/tmux-pane-should-passthrough"; do [ -x "$helper" ] && exec "$helper" #{q:pane_current_command} #{q:pane_tty}; done; fi; helper="$(command -v tmux-pane-should-passthrough 2>/dev/null)" && exec "$helper" #{q:pane_current_command} #{q:pane_tty}; exit 1'
 
 HOME="$fake_home" "$real_tmux" -L "$socket_name" new-window -d -t =nav-test -n plain-nav 'sleep 60'
 plain_left_pane="$(HOME="$fake_home" "$real_tmux" -L "$socket_name" list-panes -t =plain-nav -F '#{pane_id}')"
@@ -317,14 +376,111 @@ paste_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix p)"
 assert_contains "paste binding uses helper" "$paste_binding" "tmux-paste-helper"
 assert_contains "paste binding uses explicit home" "$paste_binding" "$home_marker"
 assert_contains "paste binding has repo fallback" "$paste_binding" "$repo_marker"
+assert_contains "paste binding has PATH fallback" "$paste_binding" "command -v tmux-paste-helper"
+assert_contains "paste binding guards unset HOME" "$paste_binding" "$home_guard"
 assert_contains "paste binding targets current pane" "$paste_binding" '#{pane_id}'
+assert_contains "paste binding displays missing helper" "$paste_binding" "display-message"
+assert_contains "paste binding reports missing helper to stderr" "$paste_binding" ">&2; exit 127"
+assert_contains "paste binding exits non-zero without helper" "$paste_binding" "exit 127"
+
+paste_binding_log="$fake_home/paste-binding.log"
+cat >"$fake_home/.local/bin/tmux-paste-helper" <<'SH'
+#!/usr/bin/env bash
+printf 'args=%s\n' "$*" >"$HOME/paste-binding.log"
+SH
+chmod +x "$fake_home/.local/bin/tmux-paste-helper"
+paste_binding_window="$(
+  HOME="$fake_home" "$real_tmux" -L "$socket_name" new-window -d -t =nav-test -n paste-binding -P -F '#{window_id}' 'sleep 60'
+)"
+paste_binding_pane="$(
+  HOME="$fake_home" "$real_tmux" -L "$socket_name" list-panes -t "$paste_binding_window" -F '#{pane_id}' |
+    awk 'NR == 1 { print; exit }'
+)"
+# shellcheck disable=SC2016
+paste_binding_run_shell='if [ -n "${HOME:-}" ]; then for helper in "$HOME/.local/bin/tmux-paste-helper" "$HOME/dotfiles/common/.local/bin/tmux-paste-helper"; do [ -x "$helper" ] && exec "$helper" "#{pane_id}"; done; fi; helper="$(command -v tmux-paste-helper 2>/dev/null)" && exec "$helper" "#{pane_id}"; command -v tmux >/dev/null 2>&1 && tmux display-message "tmux-paste-helper unavailable" 2>/dev/null; echo "tmux-paste-helper unavailable" >&2; exit 127'
+HOME="$fake_home" "$real_tmux" -L "$socket_name" run-shell -b -t "$paste_binding_pane" "$paste_binding_run_shell"
+wait_for_file "$paste_binding_log"
+assert_eq \
+  "paste binding live command passes current pane id to helper" \
+  "args=$paste_binding_pane" \
+  "$(cat "$paste_binding_log")"
+
+rm -f "$fake_home/.local/bin/tmux-paste-helper"
+path_paste_path="$tmp/path-paste-path"
+path_paste_log="$tmp/path-paste.log"
+mkdir -p "$path_paste_path"
+cat >"$path_paste_path/tmux-paste-helper" <<'SH'
+#!/usr/bin/env bash
+printf 'args=%s\n' "$*" >"${TMUX_NAV_PATH_PASTE_LOG:?}"
+SH
+chmod +x "$path_paste_path/tmux-paste-helper"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g PATH "$path_paste_path:/usr/bin:/bin:/usr/sbin:/sbin"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g TMUX_NAV_PATH_PASTE_LOG "$path_paste_log"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -gu HOME
+HOME="$fake_home" "$real_tmux" -L "$socket_name" run-shell -b -t "$paste_binding_pane" "$paste_binding_run_shell"
+wait_for_file "$path_paste_log"
+assert_eq \
+  "paste binding falls back to PATH when HOME is unset" \
+  "args=$paste_binding_pane" \
+  "$(cat "$path_paste_log")"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g HOME "$fake_home"
+
+missing_paste_path="$tmp/missing-paste-path"
+missing_paste_display_log="$tmp/missing-paste-display.log"
+missing_paste_trace_log="$tmp/missing-paste-trace.log"
+mkdir -p "$missing_paste_path"
+ln -s "$(command -v bash)" "$missing_paste_path/bash"
+cat >"$missing_paste_path/tmux" <<'SH'
+#!/usr/bin/env bash
+printf 'tmux %s\n' "$*" >>"${TMUX_NAV_MISSING_PASTE_TRACE_LOG:?}"
+if [[ "${1:-}" == "display-message" ]]; then
+  shift
+  printf '%s\n' "$*" >"${TMUX_NAV_MISSING_PASTE_DISPLAY_LOG:?}"
+  exit 0
+fi
+exit 2
+SH
+chmod +x "$missing_paste_path/tmux"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g PATH "$missing_paste_path"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g TMUX_NAV_MISSING_PASTE_DISPLAY_LOG "$missing_paste_display_log"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g TMUX_NAV_MISSING_PASTE_TRACE_LOG "$missing_paste_trace_log"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" run-shell -b -t "$paste_binding_pane" "$paste_binding_run_shell"
+wait_for_file "$missing_paste_display_log"
+assert_eq \
+  "paste binding missing helper displays tmux message" \
+  "tmux-paste-helper unavailable" \
+  "$(cat "$missing_paste_display_log")"
+assert_contains \
+  "paste binding missing helper calls tmux display-message" \
+  "$(cat "$missing_paste_trace_log")" \
+  "tmux display-message tmux-paste-helper unavailable"
+
+unset_home_paste_display_log="$tmp/unset-home-paste-display.log"
+unset_home_paste_trace_log="$tmp/unset-home-paste-trace.log"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g TMUX_NAV_MISSING_PASTE_DISPLAY_LOG "$unset_home_paste_display_log"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g TMUX_NAV_MISSING_PASTE_TRACE_LOG "$unset_home_paste_trace_log"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -gu HOME
+HOME="$fake_home" "$real_tmux" -L "$socket_name" run-shell -b -t "$paste_binding_pane" "$paste_binding_run_shell"
+wait_for_file "$unset_home_paste_display_log"
+assert_eq \
+  "paste binding with unset HOME displays missing helper" \
+  "tmux-paste-helper unavailable" \
+  "$(cat "$unset_home_paste_display_log")"
+assert_contains \
+  "paste binding with unset HOME calls tmux display-message" \
+  "$(cat "$unset_home_paste_trace_log")" \
+  "tmux display-message tmux-paste-helper unavailable"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g HOME "$fake_home"
 
 for copy_table in copy-mode-vi copy-mode; do
-  for copy_key in MouseDragEnd1Pane DoubleClick1Pane TripleClick1Pane; do
+  for copy_key in Enter y MouseDragEnd1Pane DoubleClick1Pane TripleClick1Pane; do
     copy_binding="$("$real_tmux" -L "$socket_name" list-keys -T "$copy_table" "$copy_key")"
-    assert_contains "$copy_table $copy_key uses osc-copy" "$copy_binding" "osc-copy"
+    assert_contains "$copy_table $copy_key uses copy helper" "$copy_binding" "tmux-copy-helper"
     assert_contains "$copy_table $copy_key uses explicit home" "$copy_binding" "$home_marker"
     assert_contains "$copy_table $copy_key has repo fallback" "$copy_binding" "$repo_marker"
+    assert_contains "$copy_table $copy_key has PATH fallback" "$copy_binding" "command -v tmux-copy-helper"
+    assert_contains "$copy_table $copy_key guards unset HOME" "$copy_binding" "$home_guard"
+    assert_contains "$copy_table $copy_key displays missing helper" "$copy_binding" "display-message"
   done
 done
 
@@ -332,11 +488,15 @@ session_picker_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix s)"
 assert_contains "session picker uses helper" "$session_picker_binding" "tmux-fzf-switch-session"
 assert_contains "session picker uses explicit home" "$session_picker_binding" "$home_marker"
 assert_contains "session picker has repo fallback" "$session_picker_binding" "$repo_marker"
+assert_contains "session picker has PATH fallback" "$session_picker_binding" "command -v tmux-fzf-switch-session"
+assert_contains "session picker guards unset HOME" "$session_picker_binding" "$home_guard"
 
 git_popup_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix g)"
 assert_contains "git popup uses helper" "$git_popup_binding" "tmux-popup-tool"
 assert_contains "git popup uses explicit home" "$git_popup_binding" "$home_marker"
 assert_contains "git popup has repo fallback" "$git_popup_binding" "$repo_marker"
+assert_contains "git popup has PATH fallback" "$git_popup_binding" "command -v tmux-popup-tool"
+assert_contains "git popup guards unset HOME" "$git_popup_binding" "$home_guard"
 assert_contains "git popup shell-quotes current pane path" "$git_popup_binding" '#{q:pane_current_path}'
 assert_contains "git popup prefers lazygit" "$git_popup_binding" "lazygit"
 assert_contains "git popup falls back to gitui" "$git_popup_binding" "gitui"
@@ -345,6 +505,8 @@ file_popup_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix e)"
 assert_contains "file popup uses helper" "$file_popup_binding" "tmux-popup-tool"
 assert_contains "file popup uses explicit home" "$file_popup_binding" "$home_marker"
 assert_contains "file popup has repo fallback" "$file_popup_binding" "$repo_marker"
+assert_contains "file popup has PATH fallback" "$file_popup_binding" "command -v tmux-popup-tool"
+assert_contains "file popup guards unset HOME" "$file_popup_binding" "$home_guard"
 assert_contains "file popup shell-quotes current pane path" "$file_popup_binding" '#{q:pane_current_path}'
 assert_contains "file popup prefers yazi" "$file_popup_binding" "yazi"
 assert_contains "file popup falls back to lf" "$file_popup_binding" "lf"
@@ -355,11 +517,15 @@ url_picker_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix u)"
 assert_contains "url picker uses helper" "$url_picker_binding" "tmux-fzf-url.sh"
 assert_contains "url picker uses explicit home" "$url_picker_binding" "$home_marker"
 assert_contains "url picker has repo fallback" "$url_picker_binding" "$repo_marker"
+assert_contains "url picker has PATH fallback" "$url_picker_binding" "command -v tmux-fzf-url.sh"
+assert_contains "url picker guards unset HOME" "$url_picker_binding" "$home_guard"
 
 deep_url_picker_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix C-u)"
 assert_contains "deep url picker uses helper" "$deep_url_picker_binding" "tmux-fzf-url.sh"
 assert_contains "deep url picker uses explicit home" "$deep_url_picker_binding" "$home_marker"
 assert_contains "deep url picker has repo fallback" "$deep_url_picker_binding" "$repo_marker"
+assert_contains "deep url picker has PATH fallback" "$deep_url_picker_binding" "command -v tmux-fzf-url.sh"
+assert_contains "deep url picker guards unset HOME" "$deep_url_picker_binding" "$home_guard"
 assert_contains "deep url picker increases history" "$deep_url_picker_binding" "TMUX_FZF_URL_HISTORY_LINES=10000"
 assert_not_contains "deep url picker avoids env launcher" "$deep_url_picker_binding" "exec env "
 
@@ -373,7 +539,7 @@ SH
 chmod +x "$fake_home/.local/bin/tmux-fzf-url.sh"
 "$real_tmux" -L "$socket_name" set-environment -g PATH "$no_env_path"
 # shellcheck disable=SC2016
-deep_url_run_shell='for helper in "$HOME/.local/bin/tmux-fzf-url.sh" "$HOME/dotfiles/common/.local/bin/tmux-fzf-url.sh"; do [ -x "$helper" ] && TMUX_FZF_URL_HISTORY_LINES=10000 exec "$helper"; done; tmux display-message "tmux-fzf-url unavailable"'
+deep_url_run_shell='if [ -n "${HOME:-}" ]; then for helper in "$HOME/.local/bin/tmux-fzf-url.sh" "$HOME/dotfiles/common/.local/bin/tmux-fzf-url.sh"; do [ -x "$helper" ] && TMUX_FZF_URL_HISTORY_LINES=10000 exec "$helper"; done; fi; helper="$(command -v tmux-fzf-url.sh 2>/dev/null)" && TMUX_FZF_URL_HISTORY_LINES=10000 exec "$helper"; tmux display-message "tmux-fzf-url unavailable"'
 "$real_tmux" -L "$socket_name" run-shell -b "$deep_url_run_shell"
 wait_for_file "$deep_url_log"
 assert_eq "deep url picker runs without env in PATH" "history=10000" "$(cat "$deep_url_log")"
@@ -384,6 +550,8 @@ assert_contains "project session binding uses tmux-session notify" "$project_ses
 assert_contains "project session binding passes start dir" "$project_session_binding" "--start-dir"
 assert_contains "project session binding uses explicit home" "$project_session_binding" "$home_marker"
 assert_contains "project session binding has repo fallback" "$project_session_binding" "$repo_marker"
+assert_contains "project session binding has PATH fallback" "$project_session_binding" "command -v tmux-session-notify"
+assert_contains "project session binding guards unset HOME" "$project_session_binding" "$home_guard"
 assert_contains "project session binding shell-quotes current pane path" "$project_session_binding" '#{q:pane_current_path}'
 
 project_resume_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix R)"
@@ -391,6 +559,8 @@ assert_contains "project resume binding uses tmux-session notify" "$project_resu
 assert_contains "project resume binding passes window" "$project_resume_binding" "--window resume"
 assert_contains "project resume binding uses explicit home" "$project_resume_binding" "$home_marker"
 assert_contains "project resume binding has repo fallback" "$project_resume_binding" "$repo_marker"
+assert_contains "project resume binding has PATH fallback" "$project_resume_binding" "command -v tmux-session-notify"
+assert_contains "project resume binding guards unset HOME" "$project_resume_binding" "$home_guard"
 assert_contains "project resume binding shell-quotes current pane path" "$project_resume_binding" '#{q:pane_current_path}'
 
 project_ai_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix A)"
@@ -398,6 +568,8 @@ assert_contains "project ai binding uses tmux-session notify" "$project_ai_bindi
 assert_contains "project ai binding passes window" "$project_ai_binding" "--window agent"
 assert_contains "project ai binding uses explicit home" "$project_ai_binding" "$home_marker"
 assert_contains "project ai binding has repo fallback" "$project_ai_binding" "$repo_marker"
+assert_contains "project ai binding has PATH fallback" "$project_ai_binding" "command -v tmux-session-notify"
+assert_contains "project ai binding guards unset HOME" "$project_ai_binding" "$home_guard"
 assert_contains "project ai binding shell-quotes current pane path" "$project_ai_binding" '#{q:pane_current_path}'
 
 project_terminal_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix T)"
@@ -405,12 +577,16 @@ assert_contains "project terminal binding uses tmux-session notify" "$project_te
 assert_contains "project terminal binding passes window" "$project_terminal_binding" "--window terminal"
 assert_contains "project terminal binding uses explicit home" "$project_terminal_binding" "$home_marker"
 assert_contains "project terminal binding has repo fallback" "$project_terminal_binding" "$repo_marker"
+assert_contains "project terminal binding has PATH fallback" "$project_terminal_binding" "command -v tmux-session-notify"
+assert_contains "project terminal binding guards unset HOME" "$project_terminal_binding" "$home_guard"
 assert_contains "project terminal binding shell-quotes current pane path" "$project_terminal_binding" '#{q:pane_current_path}'
 
 automatic_rename_format="$("$real_tmux" -L "$socket_name" show-window-options -gv automatic-rename-format)"
 assert_contains "automatic rename uses tmux-status helper" "$automatic_rename_format" "tmux-status-name.sh"
 assert_contains "automatic rename uses explicit home" "$automatic_rename_format" "$home_marker"
 assert_contains "automatic rename has repo fallback" "$automatic_rename_format" "$repo_marker"
+assert_contains "automatic rename has PATH fallback" "$automatic_rename_format" "command -v tmux-status-name.sh"
+assert_contains "automatic rename guards unset HOME" "$automatic_rename_format" "$home_guard_raw"
 assert_contains "automatic rename shell-quotes current pane path" "$automatic_rename_format" '#{q:pane_current_path}'
 assert_contains "automatic rename shell-quotes current command" "$automatic_rename_format" '#{q:pane_current_command}'
 
@@ -459,7 +635,7 @@ SH
 chmod +x "$fake_home/dotfiles/common/.local/bin/tmux-popup-tool"
 
 # shellcheck disable=SC2016
-HOME="$fake_home" "$real_tmux" -L "$socket_name" run-shell -b -t "$weird_pane" 'for helper in "$HOME/.local/bin/tmux-popup-tool" "$HOME/dotfiles/common/.local/bin/tmux-popup-tool"; do [ -x "$helper" ] && exec "$helper" --start-dir #{q:pane_current_path} --title git lazygit gitui; done; tmux display-message "tmux-popup-tool unavailable"'
+HOME="$fake_home" "$real_tmux" -L "$socket_name" run-shell -b -t "$weird_pane" 'if [ -n "${HOME:-}" ]; then for helper in "$HOME/.local/bin/tmux-popup-tool" "$HOME/dotfiles/common/.local/bin/tmux-popup-tool"; do [ -x "$helper" ] && exec "$helper" --start-dir #{q:pane_current_path} --title git lazygit gitui; done; fi; helper="$(command -v tmux-popup-tool 2>/dev/null)" && exec "$helper" --start-dir #{q:pane_current_path} --title git lazygit gitui; tmux display-message "tmux-popup-tool unavailable"'
 wait_for_file "$fake_home/popup.log"
 assert_eq \
   "quoted run-shell start-dir works through repo fallback" \

@@ -201,9 +201,9 @@ map_shift_f(2, run_default_build, { mode = { "n", "i" }, desc = "Run Build" })
 map_shift_f(3, find_type_symbol, { mode = { "n", "i" }, desc = "Find Type Symbol" })
 
 -- Move up/down 16 lines.
-map_shift_f(4, "16k", { desc = "Move Up 16 lines", noremap = true })
+map_shift_f(4, "16k", { mode = { "n", "v" }, desc = "Move Up 16 lines", noremap = true })
 map_shift_f(4, "<C-o>16k", { mode = "i", desc = "Move Up 16 lines", noremap = true })
-map_shift_f(6, "16j", { desc = "Move Down 16 lines", noremap = true })
+map_shift_f(6, "16j", { mode = { "n", "v" }, desc = "Move Down 16 lines", noremap = true })
 map_shift_f(6, "<C-o>16j", { mode = "i", desc = "Move Down 16 lines", noremap = true })
 
 -- Stop current build
@@ -327,11 +327,11 @@ map("n", "<leader>cO", list_open("lopen", "No location list"), { desc = "Open lo
 -- Map normal shortcut (used by macros to NVim) -----------------------------------------------------
 --------------------------------------------------------------------------
 
--- Save file with Ctrl+S in normal and insert mode
-map({ "n", "i" }, "<D-s>", "<cmd>w<CR>", { desc = "Save file" })
+-- Save file with Cmd+S in normal, insert, and visual mode.
+map({ "n", "i", "v" }, "<D-s>", "<cmd>w<CR>", { desc = "Save file" })
 
 -- Same action via Shift+F5 (sent by kitty Cmd+S)
-map_shift_f(5, "<cmd>w<CR>", { mode = { "n", "i" }, desc = "Save file" })
+map_shift_f(5, "<cmd>w<CR>", { mode = { "n", "i", "v" }, desc = "Save file" })
 
 -- Toggle between source and header files (requires clangd)
 map("n", "<A-o>", switch_source_header, { desc = "Switch header/source" })
@@ -341,12 +341,61 @@ map("n", "<D-Left>", "<C-o>", { desc = "Jump backward" })
 map("n", "<D-Right>", "<C-i>", { desc = "Jump forward" })
 
 -- macOS clipboard shortcuts
+local function paste_clipboard_to_terminal()
+  local ok, job_id = pcall(vim.api.nvim_buf_get_var, 0, "terminal_job_id")
+  if not ok or type(job_id) ~= "number" then
+    vim.notify("Unable to paste: no terminal job", vim.log.levels.WARN)
+    return
+  end
+
+  local get_ok, lines = pcall(vim.fn.getreg, "+", 1, true)
+  if not get_ok then
+    vim.notify("Unable to paste: + register failed (" .. tostring(lines) .. ")", vim.log.levels.WARN)
+    return
+  end
+
+  local text = type(lines) == "table" and table.concat(lines, "\n") or tostring(lines)
+  if text == "" then
+    return
+  end
+
+  local type_ok, regtype = pcall(vim.fn.getregtype, "+")
+  if type_ok and type(regtype) == "string" and regtype:sub(1, 1) == "V" then
+    text = text .. "\n"
+  end
+
+  local paste_ok, paste_result = pcall(vim.api.nvim_paste, text, false, -1)
+  if paste_ok and paste_result ~= false then
+    return
+  end
+
+  local chan_ok, chan_err = pcall(vim.api.nvim_chan_send, job_id, text)
+  if chan_ok then
+    return
+  end
+
+  vim.notify(
+    "Unable to paste into terminal: paste failed ("
+      .. tostring(paste_result)
+      .. "); channel send failed ("
+      .. tostring(chan_err)
+      .. ")",
+    vim.log.levels.WARN
+  )
+end
+
+map("n", "<D-c>", '"+yy', { desc = "Copy line" })
 map("v", "<D-c>", '"+y', { desc = "Copy selection" })
+map("n", "<D-x>", '"+dd', { desc = "Cut line" })
 map("v", "<D-x>", '"+d', { desc = "Cut selection" })
 map("n", "<D-v>", '"+p', { desc = "Paste" })
-map("v", "<D-v>", '"+p', { desc = "Paste over selection" })
+-- Visual P replaces the selection without clobbering the unnamed register.
+map("v", "<D-v>", '"+P', { desc = "Paste over selection" })
 map("i", "<D-v>", "<C-r>+", { desc = "Paste" })
-map("n", "<D-a>", "ggVG", { desc = "Select all" })
+map("c", "<D-v>", "<C-r>+", { desc = "Paste" })
+map("t", "<D-v>", paste_clipboard_to_terminal, { desc = "Paste" })
+map({ "n", "v" }, "<D-a>", "ggVG", { desc = "Select all" })
+map("i", "<D-a>", "<Esc>ggVG", { desc = "Select all" })
 
 pcall(vim.keymap.del, "n", "<S-h>")
 pcall(vim.keymap.del, "n", "<S-l>")
@@ -662,13 +711,15 @@ local function tmux_session_command()
   end
 
   for _, name in ipairs({ "tmux-session-notify", "tmux-session" }) do
-    for _, path in ipairs({
-      "~/.local/bin/" .. name,
-      "~/dotfiles/common/.local/bin/" .. name,
-    }) do
-      local home_command = vim.fn.expand(path)
-      if is_executable(home_command) then
-        return home_command
+    local home = vim.env.HOME
+    if home and home ~= "" then
+      for _, home_command in ipairs({
+        home .. "/.local/bin/" .. name,
+        home .. "/dotfiles/common/.local/bin/" .. name,
+      }) do
+        if is_executable(home_command) then
+          return home_command
+        end
       end
     end
 

@@ -12,17 +12,23 @@ tmux_client_is_live() {
 }
 
 make_temp_file() {
-  local template="${TMPDIR:-/tmp}/osc-copy.XXXXXX"
-  local path attempt
+  local dir="${TMPDIR:-/tmp}"
+  local template path attempt
+
+  if [[ ! -d "$dir" || ! -w "$dir" || ! -x "$dir" ]]; then
+    dir="/tmp"
+  fi
+  template="$dir/osc-copy.XXXXXX"
 
   if command -v mktemp >/dev/null 2>&1; then
-    mktemp "$template"
-    return
+    if mktemp "$template" 2>/dev/null; then
+      return
+    fi
   fi
 
   attempt=0
   while ((attempt < 100)); do
-    path="${TMPDIR:-/tmp}/osc-copy.$$.$attempt"
+    path="$dir/osc-copy.$$.$attempt"
     if (set -C; : >"$path") 2>/dev/null; then
       printf '%s\n' "$path"
       return 0
@@ -47,6 +53,54 @@ try_copy_command() {
   "$@" <"$content_file" 2>/dev/null
 }
 
+content_is_valid_utf8() {
+  if command -v iconv >/dev/null 2>&1; then
+    iconv -f UTF-8 -t UTF-8 <"$content_file" >/dev/null 2>&1
+    return
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$content_file" >/dev/null 2>&1 <<'PY'
+import pathlib
+import sys
+
+try:
+    pathlib.Path(sys.argv[1]).read_bytes().decode("utf-8")
+except UnicodeDecodeError:
+    sys.exit(1)
+PY
+    return
+  fi
+
+  return 0
+}
+
+try_host_clipboard() {
+  in_ssh_session && return 1
+
+  if content_is_valid_utf8 && command -v pbcopy >/dev/null 2>&1 &&
+    try_copy_command pbcopy; then
+    return 0
+  fi
+
+  if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1 &&
+    try_copy_command wl-copy; then
+    return 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1 &&
+    try_copy_command xclip -selection clipboard; then
+    return 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1 &&
+    try_copy_command xsel --clipboard --input; then
+    return 0
+  fi
+
+  return 1
+}
+
 content_file="$(make_temp_file)" || {
   echo "No copy method available." >&2
   exit 1
@@ -61,33 +115,18 @@ fi
 
 if [[ "$TMUX_CLIENT_LIVE" == "1" ]]; then
   if tmux load-buffer -w - <"$content_file" 2>/dev/null; then
+    try_host_clipboard || true
     exit 0
   fi
 
   if tmux load-buffer - <"$content_file" 2>/dev/null; then
+    try_host_clipboard || true
     exit 0
   fi
 fi
 
-if ! in_ssh_session; then
-  if command -v pbcopy >/dev/null 2>&1 && try_copy_command pbcopy; then
-    exit 0
-  fi
-
-  if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1 &&
-    try_copy_command wl-copy; then
-    exit 0
-  fi
-
-  if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1 &&
-    try_copy_command xclip -selection clipboard; then
-    exit 0
-  fi
-
-  if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1 &&
-    try_copy_command xsel --clipboard --input; then
-    exit 0
-  fi
+if try_host_clipboard; then
+  exit 0
 fi
 
 if ! encoded="$(encode_content_file)"; then

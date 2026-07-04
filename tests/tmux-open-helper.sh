@@ -5,12 +5,37 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 helper="$root/common/.local/bin/tmux-open-helper.sh"
 tmp="$(mktemp -d)"
 socket_server_pids=""
+open_helper_source="$(<"$helper")"
+dollar='$'
+
+if [[ "$open_helper_source" == *"${dollar}{HOME:-}/.local/bin/osc-copy"* ]]; then
+  printf 'not ok - open helper does not probe root-local copy helper fallback\n' >&2
+  exit 1
+fi
+printf 'ok - open helper does not probe root-local copy helper fallback\n'
+
+if [[ "$open_helper_source" == *"${dollar}{HOME:-}/dotfiles/common/.local/bin/osc-copy"* ]]; then
+  printf 'not ok - open helper does not probe root dotfiles copy helper fallback\n' >&2
+  exit 1
+fi
+printf 'ok - open helper does not probe root dotfiles copy helper fallback\n'
+
+wait_for_pid_exit() {
+  local pid="$1"
+
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    kill -0 "$pid" >/dev/null 2>&1 || return 0
+    sleep 0.1
+  done
+}
 
 cleanup() {
   local pid
 
   for pid in $socket_server_pids; do
     kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+    wait_for_pid_exit "$pid"
   done
   rm -rf "$tmp"
 }
@@ -155,7 +180,7 @@ wait_for_log() {
 }
 
 start_unix_socket() {
-  local socket_path="$1" pid
+  local socket_path="$1" pid actual_pid
 
   python3 - "$socket_path" <<'PY' &
 import os
@@ -169,6 +194,9 @@ try:
 except FileNotFoundError:
     pass
 
+with open(path + ".pid", "w", encoding="utf-8") as pid_file:
+    pid_file.write(str(os.getpid()) + "\n")
+
 server = socket.socket(socket.AF_UNIX)
 server.bind(path)
 server.listen(1)
@@ -178,7 +206,13 @@ PY
   socket_server_pids="${socket_server_pids}${socket_server_pids:+ }$pid"
 
   for _ in 1 2 3 4 5 6 7 8 9 10; do
-    [[ -S "$socket_path" ]] && return 0
+    if [[ -S "$socket_path" ]]; then
+      if [[ -s "$socket_path.pid" ]]; then
+        actual_pid="$(cat "$socket_path.pid")"
+        socket_server_pids="${socket_server_pids}${socket_server_pids:+ }$actual_pid"
+      fi
+      return 0
+    fi
     sleep 0.1
   done
 
@@ -873,6 +907,215 @@ assert_log \
   "$browser_log" \
   "$(printf 'argc=1\narg=mailto:ops@example.com\n---')"
 
+: >"$browser_log"
+set +e
+HOME="$tmp/home" PATH="$tmp/bin:$PATH" BROWSER="$tmp/bin/browser" TMUX_OPEN_HELPER_LAUNCH_SETTLE=invalid "$helper" "https://example.test/invalid-settle"
+invalid_settle_status=$?
+set -e
+wait_for_log "$browser_log"
+assert_log "invalid launch settle does not fail successful browser launch" <(printf '%s\n' "$invalid_settle_status") "0"
+assert_log \
+  "invalid launch settle still opens with configured browser" \
+  "$browser_log" \
+  "$(printf 'argc=1\narg=https://example.test/invalid-settle\n---')"
+
+failing_browser_helper_dir="$tmp/failing-browser-helper"
+failing_browser_bin="$tmp/failing-browser-bin"
+failing_browser_home="$tmp/failing-browser-home"
+failing_browser_copy_log="$tmp/failing-browser-copy.log"
+failing_browser_launch_log="$tmp/failing-browser-launch.log"
+mkdir -p "$failing_browser_helper_dir" "$failing_browser_bin" "$failing_browser_home"
+ln -s "$helper" "$failing_browser_helper_dir/tmux-open-helper.sh"
+ln -s "$(command -v bash)" "$failing_browser_bin/bash"
+ln -s "$(command -v sleep)" "$failing_browser_bin/sleep"
+cat >"$failing_browser_bin/uname" <<'SH'
+#!/usr/bin/env bash
+printf 'Linux\n'
+SH
+chmod +x "$failing_browser_bin/uname"
+cat >"$failing_browser_bin/failing-browser" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$TMUX_OPEN_HELPER_BROWSER_LOG"
+exit 23
+SH
+chmod +x "$failing_browser_bin/failing-browser"
+cat >"$failing_browser_helper_dir/osc-copy" <<'SH'
+#!/usr/bin/env bash
+/bin/cat >>"$TMUX_OPEN_HELPER_COPY_LOG"
+SH
+chmod +x "$failing_browser_helper_dir/osc-copy"
+
+: >"$failing_browser_copy_log"
+set +e
+TMUX_OPEN_HELPER_COPY_LOG="$failing_browser_copy_log" \
+  TMUX_OPEN_HELPER_BROWSER_LOG="$failing_browser_launch_log" \
+  TMUX_OPEN_HELPER_LAUNCH_SETTLE=0.2 \
+  HOME="$failing_browser_home" \
+  PATH="$failing_browser_bin" \
+  BROWSER=failing-browser \
+  "$failing_browser_helper_dir/tmux-open-helper.sh" "https://example.test/failing-browser" \
+  >"$tmp/failing-browser.out" 2>"$tmp/failing-browser.err"
+failing_browser_status=$?
+set -e
+assert_log "failed browser launch still exits after clipboard fallback" <(printf '%s\n' "$failing_browser_status") "0"
+assert_log \
+  "failed browser launch is attempted" \
+  "$failing_browser_launch_log" \
+  "https://example.test/failing-browser"
+assert_log \
+  "failed browser launch falls back to clipboard" \
+  "$failing_browser_copy_log" \
+  "https://example.test/failing-browser"
+
+failing_open_helper_dir="$tmp/failing-open-helper"
+failing_open_bin="$tmp/failing-open-bin"
+failing_open_home="$tmp/failing-open-home"
+failing_open_copy_log="$tmp/failing-open-copy.log"
+failing_open_launch_log="$tmp/failing-open-launch.log"
+mkdir -p "$failing_open_helper_dir" "$failing_open_bin" "$failing_open_home"
+ln -s "$helper" "$failing_open_helper_dir/tmux-open-helper.sh"
+ln -s "$(command -v bash)" "$failing_open_bin/bash"
+ln -s "$(command -v sleep)" "$failing_open_bin/sleep"
+cat >"$failing_open_bin/uname" <<'SH'
+#!/usr/bin/env bash
+printf 'Darwin\n'
+SH
+chmod +x "$failing_open_bin/uname"
+cat >"$failing_open_bin/open" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$TMUX_OPEN_HELPER_OPEN_LOG"
+exit 64
+SH
+chmod +x "$failing_open_bin/open"
+cat >"$failing_open_helper_dir/osc-copy" <<'SH'
+#!/usr/bin/env bash
+/bin/cat >>"$TMUX_OPEN_HELPER_COPY_LOG"
+SH
+chmod +x "$failing_open_helper_dir/osc-copy"
+
+: >"$failing_open_copy_log"
+set +e
+TMUX_OPEN_HELPER_COPY_LOG="$failing_open_copy_log" \
+  TMUX_OPEN_HELPER_OPEN_LOG="$failing_open_launch_log" \
+  TMUX_OPEN_HELPER_LAUNCH_SETTLE=0.2 \
+  HOME="$failing_open_home" \
+  PATH="$failing_open_bin" \
+  "$failing_open_helper_dir/tmux-open-helper.sh" "https://example.test/failing-open" \
+  >"$tmp/failing-open.out" 2>"$tmp/failing-open.err"
+failing_open_status=$?
+set -e
+assert_log "failed macOS open still exits after clipboard fallback" <(printf '%s\n' "$failing_open_status") "0"
+assert_log \
+  "failed macOS open is attempted" \
+  "$failing_open_launch_log" \
+  "https://example.test/failing-open"
+assert_log \
+  "failed macOS open falls back to clipboard" \
+  "$failing_open_copy_log" \
+  "https://example.test/failing-open"
+
+failing_xdg_helper_dir="$tmp/failing-xdg-helper"
+failing_xdg_bin="$tmp/failing-xdg-bin"
+failing_xdg_home="$tmp/failing-xdg-home"
+failing_xdg_copy_log="$tmp/failing-xdg-copy.log"
+failing_xdg_launch_log="$tmp/failing-xdg-launch.log"
+mkdir -p "$failing_xdg_helper_dir" "$failing_xdg_bin" "$failing_xdg_home"
+ln -s "$helper" "$failing_xdg_helper_dir/tmux-open-helper.sh"
+ln -s "$(command -v bash)" "$failing_xdg_bin/bash"
+ln -s "$(command -v sleep)" "$failing_xdg_bin/sleep"
+cat >"$failing_xdg_bin/uname" <<'SH'
+#!/usr/bin/env bash
+printf 'Linux\n'
+SH
+chmod +x "$failing_xdg_bin/uname"
+cat >"$failing_xdg_bin/xdg-open" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$TMUX_OPEN_HELPER_OPEN_LOG"
+exit 65
+SH
+chmod +x "$failing_xdg_bin/xdg-open"
+cat >"$failing_xdg_helper_dir/osc-copy" <<'SH'
+#!/usr/bin/env bash
+/bin/cat >>"$TMUX_OPEN_HELPER_COPY_LOG"
+SH
+chmod +x "$failing_xdg_helper_dir/osc-copy"
+
+: >"$failing_xdg_copy_log"
+set +e
+TMUX_OPEN_HELPER_COPY_LOG="$failing_xdg_copy_log" \
+  TMUX_OPEN_HELPER_OPEN_LOG="$failing_xdg_launch_log" \
+  TMUX_OPEN_HELPER_LAUNCH_SETTLE=0.2 \
+  HOME="$failing_xdg_home" \
+  PATH="$failing_xdg_bin" \
+  "$failing_xdg_helper_dir/tmux-open-helper.sh" "https://example.test/failing-xdg-open" \
+  >"$tmp/failing-xdg-open.out" 2>"$tmp/failing-xdg-open.err"
+failing_xdg_status=$?
+set -e
+assert_log "failed xdg-open still exits after clipboard fallback" <(printf '%s\n' "$failing_xdg_status") "0"
+assert_log \
+  "failed xdg-open is attempted" \
+  "$failing_xdg_launch_log" \
+  "https://example.test/failing-xdg-open"
+assert_log \
+  "failed xdg-open falls back to clipboard" \
+  "$failing_xdg_copy_log" \
+  "https://example.test/failing-xdg-open"
+
+if [[ -x /bin/bash ]]; then
+  system_bash_helper_dir="$tmp/system-bash-helper"
+  system_bash_bin="$tmp/system-bash-bin"
+  system_bash_home="$tmp/system-bash-home"
+  system_bash_copy_log="$tmp/system-bash-copy.log"
+  system_bash_launch_log="$tmp/system-bash-launch.log"
+  mkdir -p "$system_bash_helper_dir" "$system_bash_bin" "$system_bash_home"
+  ln -s "$helper" "$system_bash_helper_dir/tmux-open-helper.sh"
+  ln -s /bin/bash "$system_bash_bin/bash"
+  cat >"$system_bash_bin/uname" <<'SH'
+#!/usr/bin/env bash
+printf 'Linux\n'
+SH
+  chmod +x "$system_bash_bin/uname"
+  cat >"$system_bash_bin/failing-browser" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$TMUX_OPEN_HELPER_BROWSER_LOG"
+exit 23
+SH
+  chmod +x "$system_bash_bin/failing-browser"
+  cat >"$system_bash_helper_dir/osc-copy" <<'SH'
+#!/usr/bin/env bash
+/bin/cat >>"$TMUX_OPEN_HELPER_COPY_LOG"
+SH
+  chmod +x "$system_bash_helper_dir/osc-copy"
+
+  : >"$system_bash_copy_log"
+  set +e
+  TMUX_OPEN_HELPER_COPY_LOG="$system_bash_copy_log" \
+    TMUX_OPEN_HELPER_BROWSER_LOG="$system_bash_launch_log" \
+    TMUX_OPEN_HELPER_LAUNCH_SETTLE=0.2 \
+    HOME="$system_bash_home" \
+    PATH="$system_bash_bin" \
+    BROWSER=failing-browser \
+    /bin/bash "$system_bash_helper_dir/tmux-open-helper.sh" "https://example.test/system-bash-failing-browser" \
+    >"$tmp/system-bash.out" 2>"$tmp/system-bash.err"
+  system_bash_status=$?
+  set -e
+  assert_log "system bash fractional launch settle still exits after clipboard fallback" \
+    <(printf '%s\n' "$system_bash_status") \
+    "0"
+  assert_log \
+    "system bash fractional launch settle attempts failing browser" \
+    "$system_bash_launch_log" \
+    "https://example.test/system-bash-failing-browser"
+  assert_log \
+    "system bash fractional launch settle falls back to clipboard" \
+    "$system_bash_copy_log" \
+    "https://example.test/system-bash-failing-browser"
+  assert_log \
+    "system bash fractional launch settle avoids read timeout error" \
+    "$tmp/system-bash.err" \
+    "Copied link to clipboard"
+fi
+
 isolated_helper_dir="$tmp/isolated-helper"
 isolated_path_bin="$tmp/isolated-path"
 isolated_home="$tmp/isolated-home"
@@ -967,6 +1210,133 @@ assert_log \
   "$isolated_copy_log" \
   "https://example.test/fallback"
 
+rm -f "$isolated_home/dotfiles/common/.local/bin/osc-copy" "$isolated_path_bin/osc-copy"
+cat >"$isolated_path_bin/osc-copy" <<'SH'
+#!/usr/bin/env bash
+cat >>"$TMUX_OPEN_HELPER_COPY_LOG"
+SH
+chmod +x "$isolated_path_bin/osc-copy"
+: >"$isolated_copy_log"
+env -u HOME \
+  TMUX_OPEN_HELPER_COPY_LOG="$isolated_copy_log" \
+  PATH="$isolated_path_bin:/bin:/usr/bin:/usr/sbin:/sbin" \
+  "$isolated_helper_dir/tmux-open-helper.sh" "https://example.test/unset-home-fallback" \
+  >"$tmp/isolated-unset-home-copy.out" 2>"$tmp/isolated-unset-home-copy.err"
+assert_log \
+  "external uri copies via PATH osc-copy when HOME is unset" \
+  "$isolated_copy_log" \
+  "https://example.test/unset-home-fallback"
+
+: >"$isolated_copy_log"
+TMUX_OPEN_HELPER_COPY_LOG="$isolated_copy_log" \
+  HOME="" \
+  PATH="$isolated_path_bin:/bin:/usr/bin:/usr/sbin:/sbin" \
+  "$isolated_helper_dir/tmux-open-helper.sh" "https://example.test/empty-home-fallback" \
+  >"$tmp/isolated-empty-home-copy.out" 2>"$tmp/isolated-empty-home-copy.err"
+assert_log \
+  "external uri copies via PATH osc-copy when HOME is empty" \
+  "$isolated_copy_log" \
+  "https://example.test/empty-home-fallback"
+
+rm -f "$isolated_path_bin/osc-copy"
+cat >"$isolated_path_bin/wl-copy" <<'SH'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 42
+SH
+chmod +x "$isolated_path_bin/wl-copy"
+cat >"$isolated_path_bin/xclip" <<'SH'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 42
+SH
+chmod +x "$isolated_path_bin/xclip"
+cat >"$isolated_path_bin/xsel" <<'SH'
+#!/usr/bin/env bash
+if [[ "$*" != "--clipboard --input" ]]; then
+  printf 'unexpected xsel args: %s\n' "$*" >&2
+  exit 2
+fi
+cat >>"$TMUX_OPEN_HELPER_COPY_LOG"
+SH
+chmod +x "$isolated_path_bin/xsel"
+
+: >"$isolated_copy_log"
+TMUX_OPEN_HELPER_COPY_LOG="$isolated_copy_log" \
+  HOME="$isolated_home" \
+  PATH="$isolated_path_bin:/bin:/usr/bin:/usr/sbin:/sbin" \
+  DISPLAY=":99" \
+  WAYLAND_DISPLAY="wayland-test" \
+  "$isolated_helper_dir/tmux-open-helper.sh" "https://example.test/xsel-fallback" \
+  >"$tmp/isolated-xsel-copy.out" 2>"$tmp/isolated-xsel-copy.err"
+assert_log \
+  "external uri copies via xsel after failed xclip" \
+  "$isolated_copy_log" \
+  "https://example.test/xsel-fallback"
+
+headless_copy_log="$tmp/headless-copy.log"
+headless_wlcopy_log="$tmp/headless-copy.wl-copy"
+headless_xclip_log="$tmp/headless-copy.xclip"
+headless_xsel_log="$tmp/headless-copy.xsel"
+headless_xdg_log="$tmp/headless-copy.xdg-open"
+cat >"$isolated_path_bin/wl-copy" <<'SH'
+#!/usr/bin/env bash
+printf 'wl-copy invoked\n' >"${TMUX_OPEN_HELPER_WLCOPY_LOG:?}"
+while IFS= read -r _; do :; done
+exit 42
+SH
+chmod +x "$isolated_path_bin/wl-copy"
+cat >"$isolated_path_bin/xclip" <<'SH'
+#!/usr/bin/env bash
+printf 'xclip invoked\n' >"${TMUX_OPEN_HELPER_XCLIP_LOG:?}"
+while IFS= read -r _; do :; done
+exit 42
+SH
+chmod +x "$isolated_path_bin/xclip"
+cat >"$isolated_path_bin/xsel" <<'SH'
+#!/usr/bin/env bash
+printf 'xsel invoked\n' >"${TMUX_OPEN_HELPER_XSEL_LOG:?}"
+while IFS= read -r _; do :; done
+exit 42
+SH
+chmod +x "$isolated_path_bin/xsel"
+cat >"$isolated_path_bin/xdg-open" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"${TMUX_OPEN_HELPER_XDG_OPEN_LOG:?}"
+exit 42
+SH
+chmod +x "$isolated_path_bin/xdg-open"
+
+rm -f "$headless_copy_log" "$headless_wlcopy_log" "$headless_xclip_log" "$headless_xsel_log" "$headless_xdg_log"
+set +e
+env -u DISPLAY -u WAYLAND_DISPLAY \
+  TMUX_OPEN_HELPER_COPY_LOG="$headless_copy_log" \
+  TMUX_OPEN_HELPER_WLCOPY_LOG="$headless_wlcopy_log" \
+  TMUX_OPEN_HELPER_XCLIP_LOG="$headless_xclip_log" \
+  TMUX_OPEN_HELPER_XSEL_LOG="$headless_xsel_log" \
+  TMUX_OPEN_HELPER_XDG_OPEN_LOG="$headless_xdg_log" \
+  HOME="$isolated_home" \
+  PATH="$isolated_path_bin:/bin:/usr/bin:/usr/sbin:/sbin" \
+  "$isolated_helper_dir/tmux-open-helper.sh" "https://example.test/headless" \
+  >"$tmp/headless-copy.out" 2>"$tmp/headless-copy.err"
+headless_copy_status=$?
+set -e
+assert_log "headless Linux external uri without clipboard helper exits non-zero" \
+  <(printf '%s\n' "$headless_copy_status") \
+  "1"
+assert_log \
+  "headless Linux external uri attempts xdg-open before clipboard fallback" \
+  "$headless_xdg_log" \
+  "https://example.test/headless"
+assert_file_absent "headless Linux external uri skips wl-copy without display" "$headless_wlcopy_log"
+assert_file_absent "headless Linux external uri skips xclip without display" "$headless_xclip_log"
+assert_file_absent "headless Linux external uri skips xsel without display" "$headless_xsel_log"
+assert_file_absent "headless Linux external uri does not copy without helper" "$headless_copy_log"
+assert_log \
+  "headless Linux external uri reports missing clipboard helper" \
+  "$tmp/headless-copy.err" \
+  "Error: cannot open link and no clipboard helper is available"
+
 stale_helper_dir="$tmp/stale-helper"
 stale_path_bin="$tmp/stale-path"
 stale_home="$tmp/stale-home"
@@ -1025,6 +1395,7 @@ ssh_no_clipboard_open_log="$tmp/ssh-no-clipboard.open"
 ssh_no_clipboard_pbcopy_log="$tmp/ssh-no-clipboard.pbcopy"
 ssh_no_clipboard_wlcopy_log="$tmp/ssh-no-clipboard.wl-copy"
 ssh_no_clipboard_xclip_log="$tmp/ssh-no-clipboard.xclip"
+ssh_no_clipboard_xsel_log="$tmp/ssh-no-clipboard.xsel"
 mkdir -p "$ssh_no_clipboard_bin" "$ssh_no_clipboard_helper_dir" "$ssh_no_clipboard_home"
 ln -s "$helper" "$ssh_no_clipboard_helper_dir/tmux-open-helper.sh"
 ln -s "$(command -v bash)" "$ssh_no_clipboard_bin/bash"
@@ -1056,8 +1427,14 @@ printf 'xclip invoked\n' >"$TMUX_OPEN_HELPER_XCLIP_LOG"
 while IFS= read -r _; do :; done
 SH
 chmod +x "$ssh_no_clipboard_bin/xclip"
+cat >"$ssh_no_clipboard_bin/xsel" <<'SH'
+#!/usr/bin/env bash
+printf 'xsel invoked\n' >"$TMUX_OPEN_HELPER_XSEL_LOG"
+while IFS= read -r _; do :; done
+SH
+chmod +x "$ssh_no_clipboard_bin/xsel"
 
-rm -f "$ssh_no_clipboard_open_log" "$ssh_no_clipboard_pbcopy_log" "$ssh_no_clipboard_wlcopy_log" "$ssh_no_clipboard_xclip_log"
+rm -f "$ssh_no_clipboard_open_log" "$ssh_no_clipboard_pbcopy_log" "$ssh_no_clipboard_wlcopy_log" "$ssh_no_clipboard_xclip_log" "$ssh_no_clipboard_xsel_log"
 set +e
 SSH_CLIENT="127.0.0.1 1000 22" \
   HOME="$ssh_no_clipboard_home" \
@@ -1066,6 +1443,9 @@ SSH_CLIENT="127.0.0.1 1000 22" \
   TMUX_OPEN_HELPER_PBCOPY_LOG="$ssh_no_clipboard_pbcopy_log" \
   TMUX_OPEN_HELPER_WLCOPY_LOG="$ssh_no_clipboard_wlcopy_log" \
   TMUX_OPEN_HELPER_XCLIP_LOG="$ssh_no_clipboard_xclip_log" \
+  TMUX_OPEN_HELPER_XSEL_LOG="$ssh_no_clipboard_xsel_log" \
+  DISPLAY=":99" \
+  WAYLAND_DISPLAY="wayland-test" \
   "$ssh_no_clipboard_helper_dir/tmux-open-helper.sh" "https://example.test/ssh-no-local-open" \
   >"$tmp/ssh-no-clipboard-link.out" 2>"$tmp/ssh-no-clipboard-link.err"
 ssh_no_clipboard_status=$?
@@ -1075,12 +1455,13 @@ assert_file_absent "ssh external uri skips host open without helper" "$ssh_no_cl
 assert_file_absent "ssh external uri skips host pbcopy without helper" "$ssh_no_clipboard_pbcopy_log"
 assert_file_absent "ssh external uri skips host wl-copy without helper" "$ssh_no_clipboard_wlcopy_log"
 assert_file_absent "ssh external uri skips host xclip without helper" "$ssh_no_clipboard_xclip_log"
+assert_file_absent "ssh external uri skips host xsel without helper" "$ssh_no_clipboard_xsel_log"
 assert_log \
   "ssh external uri reports missing clipboard helper" \
   "$tmp/ssh-no-clipboard-link.err" \
   "Error: cannot open link and no clipboard helper is available"
 
-rm -f "$ssh_no_clipboard_open_log" "$ssh_no_clipboard_pbcopy_log" "$ssh_no_clipboard_wlcopy_log" "$ssh_no_clipboard_xclip_log"
+rm -f "$ssh_no_clipboard_open_log" "$ssh_no_clipboard_pbcopy_log" "$ssh_no_clipboard_wlcopy_log" "$ssh_no_clipboard_xclip_log" "$ssh_no_clipboard_xsel_log"
 set +e
 SSH_CLIENT="127.0.0.1 1000 22" \
   HOME="$ssh_no_clipboard_home" \
@@ -1089,6 +1470,9 @@ SSH_CLIENT="127.0.0.1 1000 22" \
   TMUX_OPEN_HELPER_PBCOPY_LOG="$ssh_no_clipboard_pbcopy_log" \
   TMUX_OPEN_HELPER_WLCOPY_LOG="$ssh_no_clipboard_wlcopy_log" \
   TMUX_OPEN_HELPER_XCLIP_LOG="$ssh_no_clipboard_xclip_log" \
+  TMUX_OPEN_HELPER_XSEL_LOG="$ssh_no_clipboard_xsel_log" \
+  DISPLAY=":99" \
+  WAYLAND_DISPLAY="wayland-test" \
   "$ssh_no_clipboard_helper_dir/tmux-open-helper.sh" "$tmp/work/src/app.py" \
   >"$tmp/ssh-no-clipboard-path.out" 2>"$tmp/ssh-no-clipboard-path.err"
 ssh_no_clipboard_path_status=$?
@@ -1098,6 +1482,7 @@ assert_file_absent "ssh path skips host open without helper" "$ssh_no_clipboard_
 assert_file_absent "ssh path skips host pbcopy without helper" "$ssh_no_clipboard_pbcopy_log"
 assert_file_absent "ssh path skips host wl-copy without helper" "$ssh_no_clipboard_wlcopy_log"
 assert_file_absent "ssh path skips host xclip without helper" "$ssh_no_clipboard_xclip_log"
+assert_file_absent "ssh path skips host xsel without helper" "$ssh_no_clipboard_xsel_log"
 assert_log \
   "ssh path reports missing clipboard helper" \
   "$tmp/ssh-no-clipboard-path.err" \

@@ -16,16 +16,22 @@ EOF
 resolve_copy_helper() {
   local helper=""
 
-  for helper in \
-    "$bin_dir/osc-copy" \
-    "${HOME:-}/.local/bin/osc-copy" \
-    "${HOME:-}/dotfiles/common/.local/bin/osc-copy"
-  do
-    if [[ -x "$helper" ]]; then
-      printf '%s\n' "$helper"
-      return 0
-    fi
-  done
+  if [[ -x "$bin_dir/osc-copy" ]]; then
+    printf '%s\n' "$bin_dir/osc-copy"
+    return 0
+  fi
+
+  if [[ -n "${HOME:-}" ]]; then
+    for helper in \
+      "$HOME/.local/bin/osc-copy" \
+      "$HOME/dotfiles/common/.local/bin/osc-copy"
+    do
+      if [[ -x "$helper" ]]; then
+        printf '%s\n' "$helper"
+        return 0
+      fi
+    done
+  fi
 
   if helper="$(command -v -- osc-copy 2>/dev/null)"; then
     printf '%s\n' "$helper"

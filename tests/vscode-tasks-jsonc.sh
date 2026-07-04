@@ -155,6 +155,12 @@ normal_mappings = settings["vim.normalModeKeyBindingsNonRecursive"]
 settings_text = Path(settings_file).read_text(encoding="utf-8")
 
 assert settings.get("terminal.integrated.cwd") == "${fileDirname}", settings_file
+assert settings.get("terminal.integrated.copyOnSelection") is False, (
+    f"{settings_file}: terminal selection must not overwrite the clipboard before tmux/Neovim copy helpers run"
+)
+assert settings.get("terminal.integrated.commandsToSkipShell") == ["-workbench.action.files.save"], (
+    f"{settings_file}: keep VS Code terminal defaults while forwarding Cmd/Ctrl+S to terminal Neovim"
+)
 
 assert has_mapping(normal_mappings, ["<leader>", "f", "t"], "workbench.action.tasks.runTask", "StandardTerminal"), settings_file
 assert has_mapping(normal_mappings, ["<leader>", "a"], "workbench.action.tasks.runTask", "Tmux: Switch to AI"), settings_file

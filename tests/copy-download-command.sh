@@ -24,9 +24,31 @@ assert_eq() {
   pass "$description"
 }
 
+assert_not_contains() {
+  local description="$1"
+  local haystack="$2"
+  local needle="$3"
+
+  if [[ "$haystack" == *"$needle"* ]]; then
+    printf 'not ok - %s\nunexpected:\n%s\nactual:\n%s\n' "$description" "$needle" "$haystack" >&2
+    exit 1
+  fi
+
+  pass "$description"
+}
+
 mkdir -p "$tmp/bin" "$tmp/home" "$tmp/main-helper" "$tmp/source dir" "$tmp/downloads"
 main_helper="$tmp/main-helper/copy-download-command"
 ln -s "$helper" "$main_helper"
+
+dollar='$'
+helper_source="$(<"$helper")"
+assert_not_contains "download command does not probe root-local copy helper fallback" \
+  "$helper_source" \
+  "${dollar}{HOME:-}/.local/bin/osc-copy"
+assert_not_contains "download command does not probe root dotfiles copy helper fallback" \
+  "$helper_source" \
+  "${dollar}{HOME:-}/dotfiles/common/.local/bin/osc-copy"
 
 cat >"$tmp/bin/date" <<'SH'
 #!/usr/bin/env sh
@@ -131,6 +153,35 @@ fallback_actual="$(
 )"
 assert_eq "download command uses hostname default through home fallback" "$fallback_expected" "$fallback_actual"
 assert_eq "download command copies via home dotfiles osc-copy fallback before PATH shadow" "$fallback_expected" "$(cat "$fallback_copy_log")"
+
+rm -f "$isolated_home/dotfiles/common/.local/bin/osc-copy" "$fallback_copy_log"
+cat >"$isolated_path/osc-copy" <<'SH'
+#!/usr/bin/env sh
+cat >"${COPY_DOWNLOAD_TEST_COPY_LOG:?}"
+SH
+chmod +x "$isolated_path/osc-copy"
+path_fallback_actual="$(
+  env -u HOME \
+    COPY_DOWNLOAD_TEST_COPY_LOG="$fallback_copy_log" \
+    PATH="$isolated_path:/usr/bin:/bin:/usr/sbin:/sbin" \
+    "$isolated_helper_dir/copy-download-command" "$tmp/source dir"
+)"
+assert_eq "download command uses hostname default when HOME is unset" "$fallback_expected" "$path_fallback_actual"
+assert_eq "download command copies via PATH osc-copy when HOME is unset" "$fallback_expected" "$(cat "$fallback_copy_log")"
+
+rm -f "$fallback_copy_log"
+empty_home_path_fallback_actual="$(
+  COPY_DOWNLOAD_TEST_COPY_LOG="$fallback_copy_log" \
+    HOME="" \
+    PATH="$isolated_path:/usr/bin:/bin:/usr/sbin:/sbin" \
+    "$isolated_helper_dir/copy-download-command" "$tmp/source dir"
+)"
+assert_eq "download command uses hostname default when HOME is empty" \
+  "$fallback_expected" \
+  "$empty_home_path_fallback_actual"
+assert_eq "download command copies via PATH osc-copy when HOME is empty" \
+  "$fallback_expected" \
+  "$(cat "$fallback_copy_log")"
 
 missing_helper_dir="$tmp/missing-helper"
 missing_home="$tmp/missing-home"

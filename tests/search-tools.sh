@@ -107,6 +107,51 @@ cat >"$tmp/bin/fzf" <<'SH'
 SH
 chmod +x "$tmp/bin/fzf"
 
+st_source="$(<"$root/common/.local/bin/st")"
+dollar='$'
+assert_not_contains \
+  "st does not probe root-local helper fallback" \
+  "$st_source" \
+  "${dollar}{HOME:-}/.local/bin/"
+assert_not_contains \
+  "st does not probe root dotfiles helper fallback" \
+  "$st_source" \
+  "${dollar}{HOME:-}/dotfiles/common/.local/bin/"
+
+isolated_st_dir="$tmp/isolated st"
+isolated_st_path="$tmp/isolated st path"
+isolated_st_root="$tmp/isolated st root"
+mkdir -p "$isolated_st_dir" "$isolated_st_path" "$isolated_st_root"
+ln -s "$root/common/.local/bin/st" "$isolated_st_dir/st"
+cat >"$isolated_st_path/st-rg" <<'SH'
+#!/usr/bin/env bash
+{
+  printf 'helper=st-rg\n'
+  for arg in "$@"; do
+    printf 'arg=%s\n' "$arg"
+  done
+} >"${SEARCH_TOOLS_ST_HELPER_LOG:?}"
+SH
+chmod +x "$isolated_st_path/st-rg"
+
+env -u HOME \
+  SEARCH_TOOLS_ST_HELPER_LOG="$tmp/st-path-unset-home.log" \
+  PATH="$isolated_st_path:/usr/bin:/bin:/usr/sbin:/sbin" \
+  "$isolated_st_dir/st" "$isolated_st_root"
+assert_contains \
+  "st falls back to PATH helper when HOME is unset" \
+  "$(cat "$tmp/st-path-unset-home.log")" \
+  "arg=$isolated_st_root"
+
+HOME="" \
+  SEARCH_TOOLS_ST_HELPER_LOG="$tmp/st-path-empty-home.log" \
+  PATH="$isolated_st_path:/usr/bin:/bin:/usr/sbin:/sbin" \
+  "$isolated_st_dir/st" "$isolated_st_root"
+assert_contains \
+  "st falls back to PATH helper when HOME is empty" \
+  "$(cat "$tmp/st-path-empty-home.log")" \
+  "arg=$isolated_st_root"
+
 rg_root="$tmp/search root's dir"
 mkdir -p "$rg_root/src"
 rg_log="$tmp/st-rg.log"

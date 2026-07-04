@@ -132,20 +132,21 @@ resolve_default_loader() {
         fi
     done
 
-    for loader in tmux-session-default-layout-local tmux-session-default-layout; do
-        home_helper="${HOME:-}/.local/bin/$loader"
-        if [[ -x "$home_helper" ]]; then
-            printf '%s\n' "$home_helper"
-            return 0
-        fi
+    if [[ -n "${HOME:-}" ]]; then
+        for loader in tmux-session-default-layout-local tmux-session-default-layout; do
+            home_helper="$HOME/.local/bin/$loader"
+            if [[ -x "$home_helper" ]]; then
+                printf '%s\n' "$home_helper"
+                return 0
+            fi
 
-        home_helper="${HOME:-}/dotfiles/common/.local/bin/$loader"
-        if [[ -x "$home_helper" ]]; then
-            printf '%s\n' "$home_helper"
-            return 0
-        fi
-    done
-
+            home_helper="$HOME/dotfiles/common/.local/bin/$loader"
+            if [[ -x "$home_helper" ]]; then
+                printf '%s\n' "$home_helper"
+                return 0
+            fi
+        done
+    fi
     for loader in tmux-session-default-layout-local tmux-session-default-layout; do
         if resolved="$(command -v -- "$loader" 2>/dev/null)"; then
             printf '%s\n' "$resolved"
@@ -166,16 +167,18 @@ resolve_session_name_helper() {
         return 0
     fi
 
-    home_helper="${HOME:-}/.local/bin/$helper"
-    if [[ -x "$home_helper" ]]; then
-        printf '%s\n' "$home_helper"
-        return 0
-    fi
+    if [[ -n "${HOME:-}" ]]; then
+        home_helper="$HOME/.local/bin/$helper"
+        if [[ -x "$home_helper" ]]; then
+            printf '%s\n' "$home_helper"
+            return 0
+        fi
 
-    home_helper="${HOME:-}/dotfiles/common/.local/bin/$helper"
-    if [[ -x "$home_helper" ]]; then
-        printf '%s\n' "$home_helper"
-        return 0
+        home_helper="$HOME/dotfiles/common/.local/bin/$helper"
+        if [[ -x "$home_helper" ]]; then
+            printf '%s\n' "$home_helper"
+            return 0
+        fi
     fi
 
     if resolved="$(command -v -- "$helper" 2>/dev/null)"; then

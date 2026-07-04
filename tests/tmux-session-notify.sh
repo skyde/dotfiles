@@ -9,6 +9,21 @@ mkdir -p "$tmp/bin"
 mkdir -p "$tmp/home"
 ln -s "$root/common/.local/bin/tmux-session-notify" "$tmp/bin/tmux-session-notify"
 
+dollar='$'
+notify_source="$(<"$root/common/.local/bin/tmux-session-notify")"
+
+if [[ "$notify_source" == *"${dollar}{HOME:-}/.local/bin/tmux-session"* ]]; then
+  printf 'not ok - notify wrapper does not probe root-local helper fallback\n' >&2
+  exit 1
+fi
+printf 'ok - notify wrapper does not probe root-local helper fallback\n'
+
+if [[ "$notify_source" == *"${dollar}{HOME:-}/dotfiles/common/.local/bin/tmux-session"* ]]; then
+  printf 'not ok - notify wrapper does not probe root dotfiles helper fallback\n' >&2
+  exit 1
+fi
+printf 'ok - notify wrapper does not probe root dotfiles helper fallback\n'
+
 assert_eq() {
   local name="$1"
   local expected="$2"
@@ -205,6 +220,21 @@ path_fallback_output="$(
 )"
 assert_eq "notify wrapper falls back to PATH helper" "--window agent" "$(cat "$path_fallback_args_log")"
 assert_eq "notify wrapper preserves PATH fallback output" "attached" "$path_fallback_output"
+
+mkdir -p "$tmp/no-home-bin"
+ln -s "$root/common/.local/bin/tmux-session-notify" "$tmp/no-home-bin/tmux-session-notify"
+ln -s "$tmp/bin/tmux" "$tmp/no-home-bin/tmux"
+no_home_args_log="$tmp/no-home.args"
+no_home_output="$(
+  env -u HOME \
+    TMUX=fake \
+    TMUX_SESSION_NOTIFY_ARGS_LOG="$no_home_args_log" \
+    TMUX_SESSION_NOTIFY_DISPLAY_LOG="$tmp/no-home.display" \
+    PATH="$tmp/no-home-bin:$tmp/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+    "$tmp/no-home-bin/tmux-session-notify" --window terminal 2>&1
+)"
+assert_eq "notify wrapper falls back to PATH helper when HOME is unset" "--window terminal" "$(cat "$no_home_args_log")"
+assert_eq "notify wrapper preserves no-HOME PATH fallback output" "attached" "$no_home_output"
 
 mkdir -p "$tmp/home-local-bin" "$tmp/home-local-path-bin" "$tmp/home-local/.local/bin"
 ln -s "$root/common/.local/bin/tmux-session-notify" "$tmp/home-local-bin/tmux-session-notify"

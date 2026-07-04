@@ -22,6 +22,19 @@ assert_eq() {
   printf 'ok - %s\n' "$description"
 }
 
+assert_not_contains() {
+  local description="$1"
+  local haystack="$2"
+  local needle="$3"
+
+  if [[ "$haystack" == *"$needle"* ]]; then
+    printf 'not ok - %s\nunexpected:\n%s\nactual:\n%s\n' "$description" "$needle" "$haystack" >&2
+    exit 1
+  fi
+
+  printf 'ok - %s\n' "$description"
+}
+
 write_copy_helper() {
   local path="$1"
 
@@ -48,6 +61,22 @@ SH
 path_bin="$tmp/path-bin"
 home="$tmp/home"
 mkdir -p "$path_bin" "$home"
+
+dollar='$'
+copy_diff_source="$(<"$copy_diff")"
+git_copy_source="$(<"$git_copy")"
+assert_not_contains "copy-diff does not probe root-local copy helper fallback" \
+  "$copy_diff_source" \
+  "${dollar}{HOME:-}/.local/bin/osc-copy"
+assert_not_contains "copy-diff does not probe root dotfiles copy helper fallback" \
+  "$copy_diff_source" \
+  "${dollar}{HOME:-}/dotfiles/common/.local/bin/osc-copy"
+assert_not_contains "git-copy does not probe root-local copy helper fallback" \
+  "$git_copy_source" \
+  "${dollar}{HOME:-}/.local/bin/osc-copy"
+assert_not_contains "git-copy does not probe root dotfiles copy helper fallback" \
+  "$git_copy_source" \
+  "${dollar}{HOME:-}/dotfiles/common/.local/bin/osc-copy"
 
 cat >"$path_bin/git" <<'SH'
 #!/usr/bin/env bash
@@ -128,6 +157,41 @@ COPY_WRAPPER_LOG="$home_git_copy_log" \
   PATH="$path_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   "$adjacent_dir/git-copy" beta
 assert_eq "git-copy uses home dotfiles osc-copy before PATH shadow" "git-copy:beta" "$(cat "$home_git_copy_log")"
+
+rm -f "$home/dotfiles/common/.local/bin/osc-copy"
+write_copy_helper "$path_bin/osc-copy"
+
+path_copy_diff_log="$tmp/copy-diff-path.log"
+env -u HOME \
+  COPY_WRAPPER_LOG="$path_copy_diff_log" \
+  PATH="$path_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  "$adjacent_dir/copy-diff" 9
+assert_eq "copy-diff falls back to PATH osc-copy when HOME is unset" "copy-diff:-U9 base-ref" "$(cat "$path_copy_diff_log")"
+
+path_git_copy_log="$tmp/git-copy-path.log"
+env -u HOME \
+  COPY_WRAPPER_LOG="$path_git_copy_log" \
+  PATH="$path_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  "$adjacent_dir/git-copy" delta
+assert_eq "git-copy falls back to PATH osc-copy when HOME is unset" "git-copy:delta" "$(cat "$path_git_copy_log")"
+
+empty_home_copy_diff_log="$tmp/copy-diff-empty-home-path.log"
+HOME="" \
+  COPY_WRAPPER_LOG="$empty_home_copy_diff_log" \
+  PATH="$path_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  "$adjacent_dir/copy-diff" 11
+assert_eq "copy-diff falls back to PATH osc-copy when HOME is empty" \
+  "copy-diff:-U11 base-ref" \
+  "$(cat "$empty_home_copy_diff_log")"
+
+empty_home_git_copy_log="$tmp/git-copy-empty-home-path.log"
+HOME="" \
+  COPY_WRAPPER_LOG="$empty_home_git_copy_log" \
+  PATH="$path_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  "$adjacent_dir/git-copy" epsilon
+assert_eq "git-copy falls back to PATH osc-copy when HOME is empty" \
+  "git-copy:epsilon" \
+  "$(cat "$empty_home_git_copy_log")"
 
 missing_home="$tmp/missing-home"
 missing_path="$tmp/missing-path"

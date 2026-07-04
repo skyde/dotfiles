@@ -30,16 +30,23 @@ resolve_command() {
     return 0
   fi
 
-  for candidate in \
-    "${HOME:-}/.local/bin/$command_name" \
-    "${HOME:-}/dotfiles/common/.local/bin/$command_name" \
-    "$(script_dir)/$command_name"
-  do
-    if [[ -x "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
+  if [[ -n "${HOME:-}" ]]; then
+    for candidate in \
+      "$HOME/.local/bin/$command_name" \
+      "$HOME/dotfiles/common/.local/bin/$command_name"
+    do
+      if [[ -x "$candidate" ]]; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    done
+  fi
+
+  candidate="$(script_dir)/$command_name"
+  if [[ -x "$candidate" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
 
   command -v -- "$command_name" 2>/dev/null
 }

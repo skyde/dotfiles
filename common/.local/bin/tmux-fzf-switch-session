@@ -547,6 +547,10 @@ pick_session() {
 }
 
 ensure_usable_term
+if ! command -v tmux >/dev/null 2>&1; then
+  display_tmux_message "tmux is required for tmux session switching"
+  exit 1
+fi
 if tmux_client_is_live; then
   TMUX_CLIENT_LIVE=1
 fi

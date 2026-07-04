@@ -75,6 +75,21 @@ assert_contains() {
   printf 'ok - %s\n' "$name"
 }
 
+assert_not_contains() {
+  local name="$1"
+  local haystack="$2"
+  local needle="$3"
+
+  if [[ "$haystack" == *"$needle"* ]]; then
+    printf 'not ok - %s\n' "$name" >&2
+    printf 'unexpected:\n%s\n' "$needle" >&2
+    printf 'actual:\n%s\n' "$haystack" >&2
+    return 1
+  fi
+
+  printf 'ok - %s\n' "$name"
+}
+
 wait_for_log_lines() {
   local name="$1"
   local path="$2"
@@ -126,6 +141,14 @@ active_window() {
 }
 
 session="dotfiles-session-test"
+tmux_session_source="$(<"$root/common/.local/bin/tmux-session")"
+dollar='$'
+assert_not_contains "tmux-session does not probe root-local helper fallback" \
+  "$tmux_session_source" \
+  "${dollar}{HOME:-}/.local/bin/"
+assert_not_contains "tmux-session does not probe root dotfiles helper fallback" \
+  "$tmux_session_source" \
+  "${dollar}{HOME:-}/dotfiles/common/.local/bin/"
 tmux_test tmux -f "$root/common/.tmux.conf" new-session -d -s dotfiles-test-bootstrap -n bootstrap -c "$tmp"
 
 ln -s "$root/common/.local/bin/tmux-session" "$tmp/helper/tmux-session"
@@ -263,6 +286,43 @@ assert_eq \
   "1:fallback:$isolated_start" \
   "$isolated_windows"
 
+no_home_helper_dir="$tmp/no-home-helper"
+no_home_path_bin="$tmp/no-home-path"
+no_home_start="$tmp/no home start"
+no_home_session="${session}-no-home-fallback"
+mkdir -p "$no_home_helper_dir" "$no_home_path_bin" "$no_home_start"
+ln -s "$root/common/.local/bin/tmux-session" "$no_home_helper_dir/tmux-session"
+ln -s "$tmp/bin/tmux" "$no_home_path_bin/tmux"
+
+cat >"$no_home_path_bin/tmux-session-name" <<SH
+#!/usr/bin/env bash
+printf '%s\n' '$no_home_session'
+SH
+chmod +x "$no_home_path_bin/tmux-session-name"
+
+cat >"$no_home_path_bin/tmux-session-default-layout" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${SESSION_NAME:?SESSION_NAME must be set}"
+
+start_dir="${TMUX_SESSION_START_DIR:-$PWD}"
+tmux new-session -d -s "$SESSION_NAME" -n path -c "$start_dir"
+SH
+chmod +x "$no_home_path_bin/tmux-session-default-layout"
+
+env -u HOME \
+  PATH="$no_home_path_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  TMUX_TEST_REAL_TMUX="$real_tmux" \
+  TMUX_TEST_SOCKET="$socket_name" \
+  "$no_home_helper_dir/tmux-session" --start-dir "$no_home_start" --no-attach
+
+no_home_windows="$(tmux_test tmux list-windows -t "=$no_home_session" -F '#{window_index}:#{window_name}:#{pane_current_path}')"
+assert_eq \
+  "tmux-session resolves name and layout via PATH when HOME is unset" \
+  "1:path:$no_home_start" \
+  "$no_home_windows"
+
 missing_helper_dir="$tmp/missing-helper"
 missing_helper_home="$tmp/missing-helper-home"
 mkdir -p "$missing_helper_dir" "$missing_helper_home"
@@ -330,6 +390,54 @@ assert_eq \
   "default layout reports missing tmux" \
   "Error: tmux is not installed or not on PATH" \
   "$(cat "$missing_layout_tmux_log")"
+
+layout_cleanup_bin="$tmp/layout-cleanup-bin"
+layout_cleanup_log="$tmp/layout-cleanup-tmux.log"
+layout_cleanup_session="${session}-layout-cleanup"
+mkdir -p "$layout_cleanup_bin"
+cat >"$layout_cleanup_bin/tmux" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'args=%s\n' "$*" >>"${TMUX_SESSION_LAYOUT_CLEANUP_LOG:?}"
+
+case "${1:-}" in
+  new-session)
+    printf '@1\n'
+    ;;
+  new-window)
+    exit 88
+    ;;
+  kill-session)
+    ;;
+  display-message)
+    exit 1
+    ;;
+  send-keys|select-window)
+    ;;
+  *)
+    printf 'unexpected tmux command: %s\n' "$*" >&2
+    exit 2
+    ;;
+esac
+SH
+chmod +x "$layout_cleanup_bin/tmux"
+
+set +e
+SESSION_NAME="$layout_cleanup_session" \
+  PATH="$layout_cleanup_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  TMUX_SESSION_AGENT_RESUME_COMMAND='' \
+  TMUX_SESSION_AGENT_COMMAND='' \
+  TMUX_SESSION_LAYOUT_CLEANUP_LOG="$layout_cleanup_log" \
+  TMUX_SESSION_START_DIR="$tmp/work" \
+  "$root/common/.local/bin/tmux-session-default-layout" >"$tmp/layout-cleanup.out" 2>"$tmp/layout-cleanup.err"
+layout_cleanup_status=$?
+set -e
+assert_eq "default layout preserves failing tmux status during cleanup" "88" "$layout_cleanup_status"
+assert_contains \
+  "default layout removes partial session after layout failure" \
+  "$(cat "$layout_cleanup_log")" \
+  "args=kill-session -t =$layout_cleanup_session"
 
 tmux_test env \
   TMUX_SESSION_START_DIR="$tmp/work" \

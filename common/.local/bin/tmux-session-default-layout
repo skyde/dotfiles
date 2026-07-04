@@ -7,6 +7,10 @@ session_window_target() {
   printf '=%s:' "$1"
 }
 
+session_target() {
+  printf '=%s' "$1"
+}
+
 tmux_client_is_live() {
   [[ -n "${TMUX:-}" ]] || return 1
   tmux display-message -p '#{pane_id}' >/dev/null 2>&1
@@ -179,9 +183,25 @@ else
   agent_command="$(default_agent_command fresh)"
 fi
 
+created_session=0
+layout_complete=0
+
+cleanup_partial_session() {
+  local status=$?
+
+  if [[ "$created_session" == "1" && "$layout_complete" != "1" ]]; then
+    tmux_cmd kill-session -t "$(session_target "$SESSION_NAME")" >/dev/null 2>&1 || true
+  fi
+
+  exit "$status"
+}
+
+trap cleanup_partial_session ERR
+
 # Capture window IDs as each window is created so the layout does not depend on
 # the tmux server's base-index setting.
 first_window="$(tmux_cmd new-session -d -s "$SESSION_NAME" -n "$agent_resume_window_name" -c "$start_dir" -P -F '#{window_id}')"
+created_session=1
 send_window_command "$first_window" "$agent_resume_command"
 
 # Create second window for a fresh agent.
@@ -193,3 +213,5 @@ send_window_command "$second_window" "$agent_command"
 # Create third window 'terminal'
 tmux_cmd new-window -d -t "$(session_window_target "$SESSION_NAME")" -n "$terminal_window_name" -c "$start_dir"
 tmux_cmd select-window -t "$first_window"
+layout_complete=1
+trap - ERR

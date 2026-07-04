@@ -37,6 +37,20 @@ mkdir -p "$tmp/home/.local/bin" "$tmp/home/dotfiles/common/.local/bin" "$tmp/pat
 make_fake_command "$tmp/home/.local/bin/sample" home-local
 make_fake_command "$tmp/home/dotfiles/common/.local/bin/sample" home-dotfiles
 make_fake_command "$tmp/path-bin/sample" path
+dollar='$'
+runner_source="$(<"$runner")"
+
+if [[ "$runner_source" == *"${dollar}{HOME:-}/.local/bin/"* ]]; then
+  printf 'not ok - dotfiles-run does not probe root-local helper fallback\n' >&2
+  exit 1
+fi
+printf 'ok - dotfiles-run does not probe root-local helper fallback\n'
+
+if [[ "$runner_source" == *"${dollar}{HOME:-}/dotfiles/common/.local/bin/"* ]]; then
+  printf 'not ok - dotfiles-run does not probe root dotfiles helper fallback\n' >&2
+  exit 1
+fi
+printf 'ok - dotfiles-run does not probe root dotfiles helper fallback\n'
 
 log="$tmp/run.log"
 DOTFILES_RUN_LOG="$log" \
@@ -69,6 +83,13 @@ DOTFILES_RUN_LOG="$log" \
   PATH="$tmp/path-bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   "$runner" sample delta
 assert_eq "dotfiles-run falls back to PATH command" "path:delta" "$(cat "$log")"
+
+rm -f "$log"
+env -u HOME \
+  DOTFILES_RUN_LOG="$log" \
+  PATH="$tmp/path-bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  "$runner" sample no-home
+assert_eq "dotfiles-run falls back to PATH command when HOME is unset" "path:no-home" "$(cat "$log")"
 
 mkdir -p "$tmp/home/custom bin"
 make_fake_command "$tmp/home/custom bin/direct" direct

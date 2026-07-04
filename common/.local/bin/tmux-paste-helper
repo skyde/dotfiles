@@ -22,16 +22,18 @@ resolve_osc_paste() {
         return 0
     fi
 
-    home_helper="${HOME:-}/.local/bin/$helper"
-    if [[ -x "$home_helper" ]]; then
-        printf '%s\n' "$home_helper"
-        return 0
-    fi
+    if [[ -n "${HOME:-}" ]]; then
+        home_helper="$HOME/.local/bin/$helper"
+        if [[ -x "$home_helper" ]]; then
+            printf '%s\n' "$home_helper"
+            return 0
+        fi
 
-    home_helper="${HOME:-}/dotfiles/common/.local/bin/$helper"
-    if [[ -x "$home_helper" ]]; then
-        printf '%s\n' "$home_helper"
-        return 0
+        home_helper="$HOME/dotfiles/common/.local/bin/$helper"
+        if [[ -x "$home_helper" ]]; then
+            printf '%s\n' "$home_helper"
+            return 0
+        fi
     fi
 
     if resolved="$(command -v -- "$helper" 2>/dev/null)"; then
@@ -65,16 +67,17 @@ show_error() {
 
 make_temp_file() {
     local dir="${TMPDIR:-/tmp}"
-    local candidate i
+    local template candidate i
+
+    if [[ ! -d "$dir" || ! -w "$dir" || ! -x "$dir" ]]; then
+        dir="/tmp"
+    fi
+    template="$dir/tmux-paste.XXXXXX"
 
     if command -v mktemp >/dev/null 2>&1; then
-        if mktemp "$dir/tmux-paste.XXXXXX"; then
+        if mktemp "$template" 2>/dev/null; then
             return 0
         fi
-    fi
-
-    if [[ ! -d "$dir" ]]; then
-        dir="/tmp"
     fi
 
     for i in {1..20}; do

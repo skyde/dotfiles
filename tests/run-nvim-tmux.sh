@@ -44,6 +44,7 @@ shell_files=(
   tests/project-markers-consistency.sh
   tests/search-tools.sh
   tests/tmux-env-edge-cases.sh
+  tests/tmux-copy-helper.sh
   tests/tmux-fzf-switch-session.sh
   tests/tmux-fzf-url.sh
   tests/tmux-fzf-url-helper.sh
@@ -69,6 +70,7 @@ shell_files=(
   common/.local/bin/tmux-fzf-url-preview.sh
   common/.local/bin/tmux-open-helper.sh
   common/.local/bin/tmux-session
+  common/.local/bin/tmux-copy-helper
   common/.local/bin/tmux-paste-helper
   common/.local/bin/tmux-popup-tool
   common/.local/bin/tmux-session-notify
@@ -106,6 +108,7 @@ test_scripts=(
   tests/project-markers-consistency.sh
   tests/search-tools.sh
   tests/tmux-env-edge-cases.sh
+  tests/tmux-copy-helper.sh
   tests/tmux-fzf-url.sh
   tests/tmux-fzf-url-helper.sh
   tests/tmux-open-helper.sh

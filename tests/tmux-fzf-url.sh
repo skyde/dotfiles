@@ -131,6 +131,8 @@ run_picker() {
 
   HOME="${TMUX_FZF_URL_HOME:-$tmp/home}" \
     PATH="${TMUX_FZF_URL_PATH:-$tmp/bin:$PATH}" \
+    DISPLAY="${TMUX_FZF_URL_TEST_DISPLAY:-}" \
+    WAYLAND_DISPLAY="${TMUX_FZF_URL_TEST_WAYLAND_DISPLAY:-}" \
     TMUX=fake \
     TMUX_TEST_REAL_TMUX="$real_tmux" \
     TMUX_TEST_SOCKET="$socket_name" \
@@ -141,6 +143,10 @@ run_picker() {
     TMUX_FZF_URL_POPUP="${TMUX_FZF_URL_POPUP:-}" \
     TMUX_FZF_URL_CODE_LOG="$tmp/code.log" \
     TMUX_FZF_URL_COPY_LOG="$tmp/copy.log" \
+    TMUX_FZF_URL_PBCOPY_LOG="${TMUX_FZF_URL_PBCOPY_LOG:-}" \
+    TMUX_FZF_URL_WLCOPY_LOG="${TMUX_FZF_URL_WLCOPY_LOG:-}" \
+    TMUX_FZF_URL_XCLIP_LOG="${TMUX_FZF_URL_XCLIP_LOG:-}" \
+    TMUX_FZF_URL_XSEL_LOG="${TMUX_FZF_URL_XSEL_LOG:-}" \
     TMUX_FZF_URL_FZF_LOG="$tmp/fzf.log" \
     TMUX_FZF_URL_POPUP_LOG="${TMUX_FZF_URL_POPUP_LOG:-}" \
     TMUX_FZF_URL_POPUP_STATUS="${TMUX_FZF_URL_POPUP_STATUS:-0}" \
@@ -310,6 +316,60 @@ assert_eq \
   "$(cat "$tmp/code.log")"
 assert_eq "single candidate skips fzf" "" "$(cat "$tmp/fzf.log")"
 
+missing_extract_helper_dir="$tmp/missing-extract-helper"
+missing_extract_display_log="$tmp/missing-extract.display"
+mkdir -p "$missing_extract_helper_dir"
+for helper_name in tmux-fzf-url.sh tmux-open-helper.sh tmux-fzf-url-preview.sh; do
+  ln -s "$root/common/.local/bin/$helper_name" "$missing_extract_helper_dir/$helper_name"
+done
+: >"$missing_extract_display_log"
+if TMUX_FZF_URL_PICKER="$missing_extract_helper_dir/tmux-fzf-url.sh" \
+  TMUX_FZF_URL_DISPLAY_LOG="$missing_extract_display_log" \
+  run_picker "$open_pane" "src/app.py:3"; then
+  printf 'not ok - picker exits non-zero when extractor is missing\n' >&2
+  exit 1
+fi
+assert_contains \
+  "picker reports missing extractor helper" \
+  "$(cat "$missing_extract_display_log")" \
+  "tmux URL extractor is unavailable"
+
+missing_open_helper_dir="$tmp/missing-open-helper"
+missing_open_display_log="$tmp/missing-open.display"
+mkdir -p "$missing_open_helper_dir"
+for helper_name in tmux-fzf-url.sh tmux-fzf-url-helper.py tmux-fzf-url-preview.sh; do
+  ln -s "$root/common/.local/bin/$helper_name" "$missing_open_helper_dir/$helper_name"
+done
+: >"$missing_open_display_log"
+if TMUX_FZF_URL_PICKER="$missing_open_helper_dir/tmux-fzf-url.sh" \
+  TMUX_FZF_URL_DISPLAY_LOG="$missing_open_display_log" \
+  run_picker "$single_pane" "src/app.py:3"; then
+  printf 'not ok - picker exits non-zero when open helper is missing\n' >&2
+  exit 1
+fi
+assert_contains \
+  "picker reports missing open helper" \
+  "$(cat "$missing_open_display_log")" \
+  "tmux open helper is unavailable"
+
+missing_preview_helper_dir="$tmp/missing-preview-helper"
+missing_preview_display_log="$tmp/missing-preview.display"
+mkdir -p "$missing_preview_helper_dir"
+for helper_name in tmux-fzf-url.sh tmux-fzf-url-helper.py tmux-open-helper.sh; do
+  ln -s "$root/common/.local/bin/$helper_name" "$missing_preview_helper_dir/$helper_name"
+done
+: >"$missing_preview_display_log"
+if TMUX_FZF_URL_PICKER="$missing_preview_helper_dir/tmux-fzf-url.sh" \
+  TMUX_FZF_URL_DISPLAY_LOG="$missing_preview_display_log" \
+  run_picker "$open_pane" "src/app.py:3"; then
+  printf 'not ok - picker exits non-zero when preview helper is missing\n' >&2
+  exit 1
+fi
+assert_contains \
+  "picker reports missing preview helper" \
+  "$(cat "$missing_preview_display_log")" \
+  "tmux URL preview helper is unavailable"
+
 no_filter_bin="$tmp/no-filter-bin"
 no_filter_popup_log="$tmp/no-filter-popup.log"
 no_filter_display_log="$tmp/no-filter-display.log"
@@ -399,6 +459,14 @@ tmux_test tmux new-session -d -s picker-copy -n main -c "$tmp/work" \
   "printf '%s\n' 'https://example.test/docs' 'src/app.py:3'; sleep 60"
 copy_pane="$(tmux_test tmux list-panes -t =picker-copy -F '#{pane_id}')"
 wait_for_pane_text "$copy_pane" "https://example.test/docs"
+url_picker_source="$(<"$root/common/.local/bin/tmux-fzf-url.sh")"
+dollar='$'
+assert_not_contains "picker does not probe root-local copy helper fallback" \
+  "$url_picker_source" \
+  "${dollar}{HOME:-}/.local/bin/osc-copy"
+assert_not_contains "picker does not probe root dotfiles copy helper fallback" \
+  "$url_picker_source" \
+  "${dollar}{HOME:-}/dotfiles/common/.local/bin/osc-copy"
 
 : >"$tmp/copy.log"
 TMUX_FZF_URL_PICKER="$copy_helper_dir/tmux-fzf-url.sh" \
@@ -426,6 +494,11 @@ done
 for command_name in tmux fzf code; do
   ln -s "$tmp/bin/$command_name" "$isolated_path_bin/$command_name"
 done
+cat >"$isolated_path_bin/uname" <<'SH'
+#!/usr/bin/env bash
+printf 'Linux\n'
+SH
+chmod +x "$isolated_path_bin/uname"
 cat >"$isolated_helper_dir/osc-copy" <<'SH'
 #!/usr/bin/env bash
 cat >>"$TMUX_FZF_URL_COPY_LOG"
@@ -465,11 +538,140 @@ assert_eq \
   "https://example.test/docs" \
   "$(cat "$tmp/copy.log")"
 
+rm -f "$isolated_home/dotfiles/common/.local/bin/osc-copy" "$isolated_path_bin/osc-copy"
+cat >"$isolated_path_bin/osc-copy" <<'SH'
+#!/usr/bin/env bash
+cat >>"$TMUX_FZF_URL_COPY_LOG"
+SH
+chmod +x "$isolated_path_bin/osc-copy"
+: >"$tmp/copy.log"
+env -u HOME \
+  PATH="$isolated_path_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  DISPLAY= \
+  WAYLAND_DISPLAY= \
+  TMUX=fake \
+  TMUX_TEST_REAL_TMUX="$real_tmux" \
+  TMUX_TEST_SOCKET="$socket_name" \
+  TMUX_FZF_URL_TARGET_PANE="$copy_pane" \
+  FZF_TEST_CHOICE="https://example.test/unset-home" \
+  FZF_TEST_KEY=ctrl-y \
+  FZF_TEST_HELP="${FZF_TEST_HELP:-}" \
+  TMUX_FZF_URL_CODE_LOG="$tmp/code.log" \
+  TMUX_FZF_URL_COPY_LOG="$tmp/copy.log" \
+  TMUX_FZF_URL_FZF_LOG="$tmp/fzf.log" \
+  "$isolated_helper_dir/tmux-fzf-url.sh"
+assert_eq \
+  "picker falls back to PATH osc-copy when HOME is unset" \
+  "https://example.test/unset-home" \
+  "$(cat "$tmp/copy.log")"
+
+: >"$tmp/copy.log"
+HOME="" \
+  PATH="$isolated_path_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  DISPLAY='' \
+  WAYLAND_DISPLAY='' \
+  TMUX=fake \
+  TMUX_TEST_REAL_TMUX="$real_tmux" \
+  TMUX_TEST_SOCKET="$socket_name" \
+  TMUX_FZF_URL_TARGET_PANE="$copy_pane" \
+  FZF_TEST_CHOICE="https://example.test/empty-home" \
+  FZF_TEST_KEY=ctrl-y \
+  FZF_TEST_HELP="${FZF_TEST_HELP:-}" \
+  TMUX_FZF_URL_CODE_LOG="$tmp/code.log" \
+  TMUX_FZF_URL_COPY_LOG="$tmp/copy.log" \
+  TMUX_FZF_URL_FZF_LOG="$tmp/fzf.log" \
+  "$isolated_helper_dir/tmux-fzf-url.sh"
+assert_eq \
+  "picker falls back to PATH osc-copy when HOME is empty" \
+  "https://example.test/empty-home" \
+  "$(cat "$tmp/copy.log")"
+
+rm -f "$isolated_path_bin/osc-copy"
+cat >"$isolated_path_bin/wl-copy" <<'SH'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 42
+SH
+chmod +x "$isolated_path_bin/wl-copy"
+cat >"$isolated_path_bin/xclip" <<'SH'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 42
+SH
+chmod +x "$isolated_path_bin/xclip"
+cat >"$isolated_path_bin/xsel" <<'SH'
+#!/usr/bin/env bash
+if [[ "$*" != "--clipboard --input" ]]; then
+  printf 'unexpected xsel args: %s\n' "$*" >&2
+  exit 2
+fi
+cat >>"$TMUX_FZF_URL_COPY_LOG"
+SH
+chmod +x "$isolated_path_bin/xsel"
+
+: >"$tmp/copy.log"
+TMUX_FZF_URL_PICKER="$isolated_helper_dir/tmux-fzf-url.sh" \
+  TMUX_FZF_URL_PATH="$isolated_path_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  TMUX_FZF_URL_HOME="$isolated_home" \
+  TMUX_FZF_URL_TEST_DISPLAY=":99" \
+  TMUX_FZF_URL_TEST_WAYLAND_DISPLAY="wayland-test" \
+  run_picker "$copy_pane" "https://example.test/docs" ctrl-y
+assert_eq \
+  "picker copies via xsel after failed xclip" \
+  "https://example.test/docs" \
+  "$(cat "$tmp/copy.log")"
+
+headless_copy_display_log="$tmp/headless-copy.display"
+headless_wlcopy_log="$tmp/headless-copy.wl-copy"
+headless_xclip_log="$tmp/headless-copy.xclip"
+headless_xsel_log="$tmp/headless-copy.xsel"
+cat >"$isolated_path_bin/wl-copy" <<'SH'
+#!/usr/bin/env bash
+cat >"${TMUX_FZF_URL_WLCOPY_LOG:?}"
+exit 42
+SH
+chmod +x "$isolated_path_bin/wl-copy"
+cat >"$isolated_path_bin/xclip" <<'SH'
+#!/usr/bin/env bash
+cat >"${TMUX_FZF_URL_XCLIP_LOG:?}"
+exit 42
+SH
+chmod +x "$isolated_path_bin/xclip"
+cat >"$isolated_path_bin/xsel" <<'SH'
+#!/usr/bin/env bash
+cat >"${TMUX_FZF_URL_XSEL_LOG:?}"
+exit 42
+SH
+chmod +x "$isolated_path_bin/xsel"
+
+rm -f "$headless_wlcopy_log" "$headless_xclip_log" "$headless_xsel_log"
+: >"$tmp/copy.log"
+: >"$headless_copy_display_log"
+TMUX_FZF_URL_PICKER="$isolated_helper_dir/tmux-fzf-url.sh" \
+  TMUX_FZF_URL_PATH="$isolated_path_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  TMUX_FZF_URL_HOME="$isolated_home" \
+  TMUX_FZF_URL_DISPLAY_LOG="$headless_copy_display_log" \
+  TMUX_FZF_URL_WLCOPY_LOG="$headless_wlcopy_log" \
+  TMUX_FZF_URL_XCLIP_LOG="$headless_xclip_log" \
+  TMUX_FZF_URL_XSEL_LOG="$headless_xsel_log" \
+  run_picker "$copy_pane" "https://example.test/docs" ctrl-y
+assert_eq "headless Linux picker copy leaves selection uncopied" "" "$(cat "$tmp/copy.log")"
+assert_file_absent "headless Linux picker copy skips wl-copy without display" "$headless_wlcopy_log"
+assert_file_absent "headless Linux picker copy skips xclip without display" "$headless_xclip_log"
+assert_file_absent "headless Linux picker copy skips xsel without display" "$headless_xsel_log"
+assert_contains \
+  "headless Linux picker copy reports missing clipboard helper" \
+  "$(cat "$headless_copy_display_log")" \
+  "No clipboard helper available"
+
 ssh_no_clipboard_helper_dir="$tmp/ssh-no-clipboard-helper"
 ssh_no_clipboard_bin="$tmp/ssh-no-clipboard-bin"
 ssh_no_clipboard_home="$tmp/ssh-no-clipboard-home"
 ssh_no_clipboard_display_log="$tmp/ssh-no-clipboard.display"
 ssh_no_clipboard_pbcopy_log="$tmp/ssh-no-clipboard.pbcopy"
+ssh_no_clipboard_wlcopy_log="$tmp/ssh-no-clipboard.wl-copy"
+ssh_no_clipboard_xclip_log="$tmp/ssh-no-clipboard.xclip"
+ssh_no_clipboard_xsel_log="$tmp/ssh-no-clipboard.xsel"
 mkdir -p "$ssh_no_clipboard_helper_dir" "$ssh_no_clipboard_bin" "$ssh_no_clipboard_home"
 for helper_name in tmux-fzf-url.sh tmux-fzf-url-helper.py tmux-open-helper.sh tmux-fzf-url-preview.sh; do
   ln -s "$root/common/.local/bin/$helper_name" "$ssh_no_clipboard_helper_dir/$helper_name"
@@ -490,8 +692,23 @@ cat >"$ssh_no_clipboard_bin/pbcopy" <<'SH'
 cat >"${TMUX_FZF_URL_PBCOPY_LOG:?}"
 SH
 chmod +x "$ssh_no_clipboard_bin/pbcopy"
+cat >"$ssh_no_clipboard_bin/wl-copy" <<'SH'
+#!/usr/bin/env bash
+cat >"${TMUX_FZF_URL_WLCOPY_LOG:?}"
+SH
+chmod +x "$ssh_no_clipboard_bin/wl-copy"
+cat >"$ssh_no_clipboard_bin/xclip" <<'SH'
+#!/usr/bin/env bash
+cat >"${TMUX_FZF_URL_XCLIP_LOG:?}"
+SH
+chmod +x "$ssh_no_clipboard_bin/xclip"
+cat >"$ssh_no_clipboard_bin/xsel" <<'SH'
+#!/usr/bin/env bash
+cat >"${TMUX_FZF_URL_XSEL_LOG:?}"
+SH
+chmod +x "$ssh_no_clipboard_bin/xsel"
 
-rm -f "$ssh_no_clipboard_pbcopy_log"
+rm -f "$ssh_no_clipboard_pbcopy_log" "$ssh_no_clipboard_wlcopy_log" "$ssh_no_clipboard_xclip_log" "$ssh_no_clipboard_xsel_log"
 : >"$ssh_no_clipboard_display_log"
 SSH_CLIENT="127.0.0.1 1000 22" \
   TMUX_FZF_URL_PICKER="$ssh_no_clipboard_helper_dir/tmux-fzf-url.sh" \
@@ -499,8 +716,16 @@ SSH_CLIENT="127.0.0.1 1000 22" \
   TMUX_FZF_URL_HOME="$ssh_no_clipboard_home" \
   TMUX_FZF_URL_DISPLAY_LOG="$ssh_no_clipboard_display_log" \
   TMUX_FZF_URL_PBCOPY_LOG="$ssh_no_clipboard_pbcopy_log" \
+  TMUX_FZF_URL_WLCOPY_LOG="$ssh_no_clipboard_wlcopy_log" \
+  TMUX_FZF_URL_XCLIP_LOG="$ssh_no_clipboard_xclip_log" \
+  TMUX_FZF_URL_XSEL_LOG="$ssh_no_clipboard_xsel_log" \
+  TMUX_FZF_URL_TEST_DISPLAY=":99" \
+  TMUX_FZF_URL_TEST_WAYLAND_DISPLAY="wayland-test" \
   run_picker "$copy_pane" "https://example.test/docs" ctrl-y
 assert_file_absent "ssh picker copy skips pbcopy without osc-copy" "$ssh_no_clipboard_pbcopy_log"
+assert_file_absent "ssh picker copy skips wl-copy without osc-copy" "$ssh_no_clipboard_wlcopy_log"
+assert_file_absent "ssh picker copy skips xclip without osc-copy" "$ssh_no_clipboard_xclip_log"
+assert_file_absent "ssh picker copy skips xsel without osc-copy" "$ssh_no_clipboard_xsel_log"
 assert_contains \
   "ssh picker copy reports missing clipboard helper" \
   "$(cat "$ssh_no_clipboard_display_log")" \

@@ -47,16 +47,46 @@ is_ssh_session() {
   [[ -n "${SSH_CONNECTION:-}" || -n "${SSH_CLIENT:-}" || -n "${SSH_TTY:-}" ]]
 }
 
+copy_with_host_clipboard() {
+  local value="$1"
+  local attempted=0 os_name=""
+
+  os_name="$(uname -s 2>/dev/null || true)"
+
+  if [[ "$os_name" == "Darwin" ]] && command -v pbcopy >/dev/null 2>&1; then
+    attempted=1
+    printf '%s' "$value" | pbcopy && return 0
+  fi
+
+  if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
+    attempted=1
+    printf '%s' "$value" | wl-copy && return 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1; then
+    attempted=1
+    printf '%s' "$value" | xclip -selection clipboard && return 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1; then
+    attempted=1
+    printf '%s' "$value" | xsel --clipboard --input && return 0
+  fi
+
+  [[ "$attempted" == "1" ]] && return 2
+  return 1
+}
+
 copy_candidate() {
   local value="$1"
-  local helper=""
+  local helper="" status=0
 
   if [[ -x "$bin_dir/osc-copy" ]]; then
     helper="$bin_dir/osc-copy"
-  elif [[ -x "${HOME:-}/.local/bin/osc-copy" ]]; then
-    helper="${HOME:-}/.local/bin/osc-copy"
-  elif [[ -x "${HOME:-}/dotfiles/common/.local/bin/osc-copy" ]]; then
-    helper="${HOME:-}/dotfiles/common/.local/bin/osc-copy"
+  elif [[ -n "${HOME:-}" && -x "$HOME/.local/bin/osc-copy" ]]; then
+    helper="$HOME/.local/bin/osc-copy"
+  elif [[ -n "${HOME:-}" && -x "$HOME/dotfiles/common/.local/bin/osc-copy" ]]; then
+    helper="$HOME/dotfiles/common/.local/bin/osc-copy"
   elif helper="$(command -v -- osc-copy 2>/dev/null)"; then
     :
   fi
@@ -66,19 +96,16 @@ copy_candidate() {
       display_tmux_message "Unable to copy selection"
       return 1
     fi
-  elif ! is_ssh_session && [[ "$(uname -s)" == "Darwin" ]] && command -v pbcopy >/dev/null 2>&1; then
-    if ! printf '%s' "$value" | pbcopy; then
-      display_tmux_message "Unable to copy selection"
-      return 1
-    fi
-  elif ! is_ssh_session && command -v wl-copy >/dev/null 2>&1; then
-    if ! printf '%s' "$value" | wl-copy; then
-      display_tmux_message "Unable to copy selection"
-      return 1
-    fi
-  elif ! is_ssh_session && command -v xclip >/dev/null 2>&1; then
-    if ! printf '%s' "$value" | xclip -selection clipboard; then
-      display_tmux_message "Unable to copy selection"
+  elif ! is_ssh_session; then
+    if copy_with_host_clipboard "$value"; then
+      :
+    else
+      status=$?
+      if [[ "$status" == "2" ]]; then
+        display_tmux_message "Unable to copy selection"
+      else
+        display_tmux_message "No clipboard helper available"
+      fi
       return 1
     fi
   else
@@ -87,6 +114,18 @@ copy_candidate() {
   fi
 
   display_tmux_message "Copied selection"
+}
+
+require_helper() {
+  local helper_path="$1"
+  local message="$2"
+
+  if [[ -x "$helper_path" ]]; then
+    return 0
+  fi
+
+  display_tmux_message "$message"
+  return 1
 }
 
 is_candidate() {
@@ -212,12 +251,16 @@ if [[ -n "$target_pane" ]]; then
   capture_args+=(-t "$target_pane")
 fi
 
+require_helper "$extract" "tmux URL extractor is unavailable" || exit 1
 if ! pane_text="$(tmux_cmd capture-pane "${capture_args[@]}")"; then
   display_tmux_message "Unable to capture tmux pane"
   exit 0
 fi
 
-candidates=$(printf '%s\n' "$pane_text" | "$extract")
+if ! candidates=$(printf '%s\n' "$pane_text" | "$extract"); then
+  display_tmux_message "Unable to extract URLs or file paths"
+  exit 1
+fi
 
 if [[ -z "$candidates" ]]; then
   display_tmux_message "No URLs or file paths found"
@@ -225,6 +268,7 @@ if [[ -z "$candidates" ]]; then
 fi
 
 if [[ "$(line_count "$candidates")" == "1" && -z "${TMUX_FZF_URL_ALWAYS_PICK:-}" ]]; then
+  require_helper "$open" "tmux open helper is unavailable" || exit 1
   TMUX_FZF_URL_BASE_DIR="$base_dir" "$open" "$candidates"
   exit 0
 fi
@@ -234,6 +278,7 @@ if ! command -v fzf >/dev/null 2>&1; then
   exit 0
 fi
 
+require_helper "$preview" "tmux URL preview helper is unavailable" || exit 1
 if [[ "$inside_tmux" == "1" && -z "${TMUX_FZF_URL_POPUP:-}" ]] && ! fzf_supports '--tmux'; then
   if tmux_supports_display_popup; then
     if ! run_in_tmux_popup; then
@@ -314,5 +359,6 @@ fi
 if [[ "$key" == "ctrl-y" ]]; then
   copy_candidate "$chosen" || exit 0
 else
+  require_helper "$open" "tmux open helper is unavailable" || exit 1
   TMUX_FZF_URL_BASE_DIR="$base_dir" "$open" "$chosen"
 fi
