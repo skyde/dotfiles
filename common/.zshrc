@@ -6,7 +6,7 @@ export EDITOR="nvim"
 export VISUAL="$EDITOR"
 
 # -------- interactive TTY tweaks (skip in non‑tty to avoid extra 'stty' call)
-if [[ -o interactive && -t 0 ]]; then
+if [[ -o interactive && -t 0 && "${DOTFILES_TEST_SKIP_COMPLETION:-0}" != 1 ]]; then
   stty -ixon -ixoff
 fi
 

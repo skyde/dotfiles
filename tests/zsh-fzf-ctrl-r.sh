@@ -395,6 +395,7 @@ import time
 zsh_path, root, bin_dir, home, cache, call_log, display_status, tmux_env, tmux_version = sys.argv[1:]
 env = {
     "DOTFILES_TEST_SKIP_FZF_SHELL_DIRS": "1",
+    "DOTFILES_TEST_SKIP_COMPLETION": "1",
     "DOTFILES_ZSHRC": os.path.join(root, "common/.zshrc"),
     "HOME": home,
     "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
