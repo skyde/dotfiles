@@ -96,7 +96,7 @@ assert_contains "xterm keys option is quiet for old tmux" "$tmux_conf" "set-opti
 assert_contains "extended keys option is quiet for old tmux" "$tmux_conf" "set-option -gq extended-keys on"
 assert_contains "kitty extkeys feature is quiet for old tmux" "$tmux_conf" "set-option -gq terminal-features 'xterm-kitty:extkeys'"
 assert_contains "clipboard option is quiet for old tmux" "$tmux_conf" "set-option -gq set-clipboard on"
-assert_contains "clipboard terminal feature append is quiet for old tmux" "$tmux_conf" "set-option -asq terminal-features ',xterm*:clipboard'"
+assert_contains "clipboard terminal feature append is quiet for old tmux" "$tmux_conf" "set-option -asq terminal-features ',xterm*:clipboard,tmux*:clipboard,screen*:clipboard'"
 assert_contains "copy-command option is quiet for old tmux" "$tmux_conf" "set-option -gq copy-command"
 assert_contains "RGB terminal override append is quiet for old tmux" "$tmux_conf" "set-option -agq terminal-overrides"
 assert_contains "RGB terminal feature append is quiet for old tmux" "$tmux_conf" "set-option -asq terminal-features ',xterm-kitty:RGB"
@@ -110,6 +110,9 @@ assert_eq "kitty TERM_PROGRAM tmux uses kitty terminfo" "xterm-kitty" "$kitty_pr
 kitty_features="$("$real_tmux" -L "$kitty_program_socket" show-options -gqv terminal-features)"
 assert_contains "kitty tmux advertises kitty extkeys" "$kitty_features" "xterm-kitty:extkeys"
 assert_contains "kitty tmux advertises RGB" "$kitty_features" "xterm-kitty:RGB"
+assert_contains "kitty tmux advertises xterm clipboard" "$kitty_features" "xterm*:clipboard"
+assert_contains "kitty tmux advertises nested tmux clipboard" "$kitty_features" "tmux*:clipboard"
+assert_contains "kitty tmux advertises screen clipboard" "$kitty_features" "screen*:clipboard"
 
 TMUX_TEST_HAS_KITTY_TERMINFO=0 PATH="$tmp/bin:/usr/bin:/bin:/usr/sbin:/sbin" TERM_PROGRAM=kitty "$real_tmux" -L "$kitty_missing_terminfo_socket" -f "$root/common/.tmux.conf" new-session -d -s kitty-missing-terminfo-env 'sleep 60'
 kitty_missing_terminfo_terminal="$("$real_tmux" -L "$kitty_missing_terminfo_socket" show-options -gqv default-terminal)"
@@ -135,6 +138,9 @@ vscode_terminal="$("$real_tmux" -L "$vscode_socket" show-options -gqv default-te
 assert_eq "VS Code tmux uses xterm-256color" "xterm-256color" "$vscode_terminal"
 vscode_features="$("$real_tmux" -L "$vscode_socket" show-options -gqv terminal-features)"
 assert_contains "VS Code tmux advertises xterm RGB" "$vscode_features" "xterm-256color:RGB"
+assert_contains "VS Code tmux advertises xterm clipboard" "$vscode_features" "xterm*:clipboard"
+assert_contains "VS Code tmux advertises nested tmux clipboard" "$vscode_features" "tmux*:clipboard"
+assert_contains "VS Code tmux advertises screen clipboard" "$vscode_features" "screen*:clipboard"
 
 if [[ -n "$python3_path" ]]; then
   TERM_PROGRAM=vscode TERM=xterm-256color "$real_tmux" -L "$vscode_prefix_socket" -f "$root/common/.tmux.conf" \
