@@ -54,6 +54,12 @@ assert_success "direct slash UNC Windows path nvim.exe command line passes throu
 assert_success "direct vi command passes through" "$helper" vi /dev/ttys001
 assert_success "direct vim.basic command passes through" "$helper" /usr/bin/vim.basic /dev/ttys001
 assert_success "direct helix command passes through" "$helper" /opt/homebrew/bin/hx /dev/ttys001
+assert_success "direct nano command passes through" "$helper" /usr/bin/nano /dev/ttys001
+assert_success "direct micro command passes through" "$helper" /opt/homebrew/bin/micro /dev/ttys001
+assert_success "direct terminal emacs command passes through" "$helper" /opt/homebrew/bin/emacs /dev/ttys001
+assert_success "direct terminal emacsclient command passes through" "$helper" /opt/homebrew/bin/emacsclient /dev/ttys001
+assert_success "direct kak command passes through" "$helper" /opt/homebrew/bin/kak /dev/ttys001
+assert_success "direct kakoune command passes through" "$helper" /opt/homebrew/bin/kakoune /dev/ttys001
 assert_success "direct less pager command passes through" "$helper" /usr/bin/less /dev/ttys001
 assert_success "direct man pager command passes through" "$helper" /usr/bin/man /dev/ttys001
 assert_success "direct delta pager command passes through" "$helper" /opt/homebrew/bin/delta /dev/ttys001
@@ -88,6 +94,9 @@ assert_failure "direct ssh control command does not pass through without ps" env
 assert_success "paste key direct nvim command passes through" "$helper" --paste-key nvim /dev/ttys001
 assert_success "paste key direct vim command passes through" "$helper" --paste-key vim /dev/ttys001
 assert_success "paste key direct nested tmux command passes through" "$helper" --paste-key tmux /dev/ttys001
+assert_failure "paste key direct nano command uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key nano ""
+assert_failure "paste key direct micro command uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key micro ""
+assert_failure "paste key direct emacs command uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key emacs ""
 assert_failure "paste key direct ssh command uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key ssh ""
 assert_failure "paste key direct ssh remote shell uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "ssh devbox" ""
 assert_failure "paste key direct kitten ssh uses tmux paste" env PATH=/usr/bin:/bin "$helper" --paste-key "kitten ssh devbox" ""
@@ -595,6 +604,14 @@ assert_success "foreground vim.basic child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/bash\nS+ /usr/bin/vim.basic' "$helper" bash /dev/ttys001
 assert_success "foreground helix child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/hx' "$helper" zsh /dev/ttys001
+assert_success "foreground nano child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /usr/bin/nano /tmp/message.txt' "$helper" zsh /dev/ttys001
+assert_success "foreground micro child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/micro /tmp/message.txt' "$helper" zsh /dev/ttys001
+assert_success "foreground terminal emacs child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/emacs -nw /tmp/message.txt' "$helper" zsh /dev/ttys001
+assert_success "foreground kakoune child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /opt/homebrew/bin/kak /tmp/message.txt' "$helper" zsh /dev/ttys001
 assert_success "foreground less child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh\nS+ /usr/bin/less' "$helper" zsh /dev/ttys001
 assert_success "foreground delta child passes through behind shell" \

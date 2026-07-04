@@ -9,7 +9,7 @@ fi
 
 current_command="${1:-}"
 pane_tty="${2:-}"
-navigation_passthrough_pattern='^(vi|view|vim|vimdiff|vim\.basic|vim\.tiny|nvim|nvimdiff|hx|helix|less|more|most|man|delta|fzf|fzf-tmux|sk|lazygit|gitui|tig|tmux|screen|zellij|lazydocker|k9s|btop|htop|yazi|lf|ranger|nnn|bpython|ipython|ptpython|pdb|ipdb|pudb|irb|pry|rdbg|gdb|lldb|rr|ghci|iex|erl|utop|jshell|radian|phpdbg|codex|opencode|gemini|claude|aider|autossh|ssh|mosh|mosh-client)$'
+navigation_passthrough_pattern='^(vi|view|vim|vimdiff|vim\.basic|vim\.tiny|nvim|nvimdiff|hx|helix|nano|micro|emacs|emacsclient|kak|kakoune|less|more|most|man|delta|fzf|fzf-tmux|sk|lazygit|gitui|tig|tmux|screen|zellij|lazydocker|k9s|btop|htop|yazi|lf|ranger|nnn|bpython|ipython|ptpython|pdb|ipdb|pudb|irb|pry|rdbg|gdb|lldb|rr|ghci|iex|erl|utop|jshell|radian|phpdbg|codex|opencode|gemini|claude|aider|autossh|ssh|mosh|mosh-client)$'
 paste_key_passthrough_pattern='^(vi|view|vim|vimdiff|vim\.basic|vim\.tiny|nvim|nvimdiff|hx|helix|tmux|screen|zellij)$'
 passthrough_pattern="$navigation_passthrough_pattern"
 if [[ "$mode" == "paste-key" ]]; then

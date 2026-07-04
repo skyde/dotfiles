@@ -429,6 +429,43 @@ assert_contains \
 assert_file_absent \
   "navigation router does not use paste helper for foreground docker attach" \
   "$container_router_paste_log"
+
+editor_router_paste_log="$tmp/editor-router-paste.log"
+editor_router_tmux_log="$tmp/editor-router-tmux.log"
+rm -f "$container_router_ps_log" "$editor_router_paste_log" "$editor_router_tmux_log"
+env \
+  HOME="$fake_home" \
+  PATH="$container_router_path:/usr/bin:/bin" \
+  TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$editor_router_paste_log" \
+  TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
+  TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$editor_router_tmux_log" \
+  "$root/common/.local/bin/tmux-pane-key-router" nav-left %editor nano /dev/ttys001
+wait_for_file "$editor_router_tmux_log"
+assert_contains \
+  "navigation router passes C-h through to direct nano" \
+  "$(cat "$editor_router_tmux_log")" \
+  "tmux send-keys -t %editor C-h"
+assert_file_absent \
+  "navigation router does not use paste helper for direct nano" \
+  "$editor_router_paste_log"
+
+rm -f "$container_router_ps_log" "$editor_router_paste_log" "$editor_router_tmux_log"
+env \
+  HOME="$fake_home" \
+  PATH="$container_router_path:/usr/bin:/bin" \
+  TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$editor_router_paste_log" \
+  TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
+  TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$editor_router_tmux_log" \
+  "$root/common/.local/bin/tmux-pane-key-router" shift-insert %editor nano /dev/ttys001
+wait_for_file "$editor_router_paste_log"
+assert_eq \
+  "Shift-Insert router uses tmux paste helper for direct nano" \
+  "args=%editor" \
+  "$(cat "$editor_router_paste_log")"
+assert_not_contains \
+  "Shift-Insert router avoids raw Shift-Insert bytes for direct nano" \
+  "$(cat "$editor_router_tmux_log" 2>/dev/null || true)" \
+  "send-keys -t %editor -H 1b 5b 32 3b 32 7e"
 rm -f "$fake_home/.local/bin/tmux-paste-helper"
 
 mock_ssh_tunnel_ready="$tmp/mock-ssh-tunnel.ready"
