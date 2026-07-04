@@ -147,6 +147,12 @@ assert_contains "tmux root table passes VS Code Shift-F4 bytes to panes" \
 assert_contains "tmux root table passes VS Code Shift-F6 bytes to panes" \
   "$tmux_conf" \
   "bind-key -T root User91 send-keys -H 1b 5b 31 37 3b 32 7e"
+assert_contains "tmux root table passes native Shift-F4 to panes" \
+  "$tmux_conf" \
+  "bind-key -T root S-F4 send-keys -H 1b 5b 31 3b 32 53"
+assert_contains "tmux root table passes native Shift-F6 to panes" \
+  "$tmux_conf" \
+  "bind-key -T root S-F6 send-keys -H 1b 5b 31 37 3b 32 7e"
 assert_contains "tmux copy-mode scrolls up on VS Code Shift-F4 bytes" \
   "$tmux_conf" \
   "bind-key -T copy-mode-vi User90 send-keys -X -N 16 scroll-up"
