@@ -1121,7 +1121,8 @@ SH
   printf -v mock_ssh_cat_command 'cat > %q' "$mock_ssh_output"
 
   "$real_tmux" -L "$live_socket" kill-server >/dev/null 2>&1 || true
-  HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" new-session -d -s "$mock_ssh_session" "$mock_ssh_cat_command"
+  HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" -f "$root/common/.tmux.conf" \
+    new-session -d -s "$mock_ssh_session" "$mock_ssh_cat_command"
   mock_ssh_pane="$(HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" display-message -p '#{pane_id}')"
   HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" set-environment -g HOME "$mock_ssh_home"
   HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" set-environment -g PATH \
@@ -1134,11 +1135,103 @@ SH
   rm -f "$mock_ssh_pbpaste_log"
   HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" run-shell -b -t "$mock_ssh_pane" "$paste_binding_run_shell"
   wait_for_file "$mock_ssh_output"
+
+  python3_path=""
+  if python3_path="$(command -v python3 2>/dev/null)"; then
+    mock_ssh_shift_insert_output="$tmp/live-mock-ssh-shift-insert-pane-output.txt"
+    printf -v mock_ssh_shift_insert_cat_command 'cat > %q' "$mock_ssh_shift_insert_output"
+    mock_ssh_shift_insert_window="$(
+      HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" new-window -d -n mock-ssh-shift-insert -P -F '#{window_id}' "$mock_ssh_shift_insert_cat_command"
+    )"
+    mock_ssh_shift_insert_pane="$(
+      HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" list-panes -t "$mock_ssh_shift_insert_window" -F '#{pane_id}' |
+        awk 'NR == 1 { print; exit }'
+    )"
+  fi
+
   HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" send-keys -t "$mock_ssh_pane" C-d
   assert_files_equal "live mock ssh tmux paste binding reads tmux buffer" \
     "$mock_ssh_expected" \
     "$mock_ssh_output"
   assert_file_absent "live mock ssh tmux paste binding skips host pbpaste" "$mock_ssh_pbpaste_log"
+
+  if [[ -n "$python3_path" ]]; then
+    HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" select-window -t "$mock_ssh_shift_insert_window"
+    HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" load-buffer - <"$mock_ssh_expected"
+    rm -f "$mock_ssh_pbpaste_log"
+    if ! TERM=xterm-256color TERM_PROGRAM=vscode HOME="$mock_ssh_home" "$python3_path" - \
+      "$real_tmux" \
+      "$live_socket" \
+      "$mock_ssh_session" \
+      "$mock_ssh_shift_insert_output" <<'PY'
+import os
+import pty
+import select
+import subprocess
+import sys
+import time
+
+tmux_path, socket_name, session_name, output_path = sys.argv[1:]
+env = os.environ.copy()
+env.update({
+    "TERM": "xterm-256color",
+    "TERM_PROGRAM": "vscode",
+})
+
+master, slave = pty.openpty()
+try:
+    proc = subprocess.Popen(
+        [tmux_path, "-L", socket_name, "attach-session", "-t", session_name],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        env=env,
+        close_fds=True,
+    )
+finally:
+    os.close(slave)
+
+try:
+    deadline = time.time() + 5
+    sent = False
+    while time.time() < deadline:
+        ready, _, _ = select.select([master], [], [], 0.05)
+        if ready:
+            try:
+                os.read(master, 4096)
+            except OSError:
+                break
+
+        if not sent and time.time() > deadline - 4.5:
+            os.write(master, b"\x1b[2;2~")
+            sent = True
+
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            sys.exit(0)
+
+    print("timeout waiting for mock ssh Shift-Insert paste binding output")
+    sys.exit(1)
+finally:
+    proc.terminate()
+    try:
+        proc.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+    os.close(master)
+PY
+    then
+      printf 'not ok - live mock ssh tmux Shift-Insert binding reads tmux buffer\n' >&2
+      exit 1
+    fi
+    wait_for_file "$mock_ssh_shift_insert_output"
+    HOME="$mock_ssh_home" "$real_tmux" -L "$live_socket" send-keys -t "$mock_ssh_shift_insert_pane" C-d
+    assert_files_equal "live mock ssh tmux Shift-Insert binding reads tmux buffer" \
+      "$mock_ssh_expected" \
+      "$mock_ssh_shift_insert_output"
+    assert_file_absent "live mock ssh tmux Shift-Insert binding skips host pbpaste" "$mock_ssh_pbpaste_log"
+  else
+    printf 'skip - live mock ssh tmux Shift-Insert binding (python3 unavailable)\n'
+  fi
 
   "$real_tmux" -L "$live_socket" kill-server >/dev/null 2>&1 || true
   live_socket=""
