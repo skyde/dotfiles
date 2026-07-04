@@ -189,6 +189,7 @@ layout_complete=0
 cleanup_partial_session() {
   local status=$?
 
+  trap - EXIT INT TERM HUP
   if [[ "$created_session" == "1" && "$layout_complete" != "1" ]]; then
     tmux_cmd kill-session -t "$(session_target "$SESSION_NAME")" >/dev/null 2>&1 || true
   fi
@@ -196,7 +197,10 @@ cleanup_partial_session() {
   exit "$status"
 }
 
-trap cleanup_partial_session ERR
+trap cleanup_partial_session EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 # Capture window IDs as each window is created so the layout does not depend on
 # the tmux server's base-index setting.
@@ -214,4 +218,4 @@ send_window_command "$second_window" "$agent_command"
 tmux_cmd new-window -d -t "$(session_window_target "$SESSION_NAME")" -n "$terminal_window_name" -c "$start_dir"
 tmux_cmd select-window -t "$first_window"
 layout_complete=1
-trap - ERR
+trap - EXIT INT TERM HUP

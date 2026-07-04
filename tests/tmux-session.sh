@@ -29,12 +29,24 @@ exec "$TMUX_TEST_REAL_TMUX" -L "$TMUX_TEST_SOCKET" "$@"
 SH
 chmod +x "$tmp/bin/tmux"
 
+tmux_clean_env=(
+  -u TMUX
+  -u TMUX_PANE
+  -u TMUX_SESSION_AGENT_CLI
+  -u TMUX_SESSION_AGENT_COMMAND
+  -u TMUX_SESSION_AGENT_RESUME_COMMAND
+  -u TMUX_SESSION_AGENT_RESUME_WINDOW_NAME
+  -u TMUX_SESSION_AGENT_WINDOW_NAME
+  -u TMUX_SESSION_START_DIR
+  -u TMUX_SESSION_TERMINAL_WINDOW_NAME
+)
+
 tmux_test() {
   HOME="$tmp/home" \
     PATH="$tmp/bin:$root/common/.local/bin:$PATH" \
     TMUX_TEST_REAL_TMUX="$real_tmux" \
     TMUX_TEST_SOCKET="$socket_name" \
-    "$@"
+    env "${tmux_clean_env[@]}" "$@"
 }
 
 tmux_direct_test() {
@@ -42,7 +54,7 @@ tmux_direct_test() {
     PATH="$tmp/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
     TMUX_TEST_REAL_TMUX="$real_tmux" \
     TMUX_TEST_SOCKET="$socket_name" \
-    "$@"
+    env "${tmux_clean_env[@]}" "$@"
 }
 
 assert_eq() {
@@ -110,6 +122,23 @@ wait_for_log_lines() {
   printf 'not ok - %s\n' "$name" >&2
   printf 'expected at least %s lines in %s, got %s\n' "$expected_count" "$path" "${actual_count:-0}" >&2
   [[ -f "$path" ]] && cat "$path" >&2
+  return 1
+}
+
+wait_for_file() {
+  local name="$1"
+  local path="$2"
+
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    if [[ -e "$path" ]]; then
+      printf 'ok - %s\n' "$name"
+      return 0
+    fi
+    sleep 0.2
+  done
+
+  printf 'not ok - %s\n' "$name" >&2
+  printf 'expected file: %s\n' "$path" >&2
   return 1
 }
 
@@ -439,6 +468,73 @@ assert_contains \
   "$(cat "$layout_cleanup_log")" \
   "args=kill-session -t =$layout_cleanup_session"
 
+layout_signal_bin="$tmp/layout-signal-bin"
+layout_signal_log="$tmp/layout-signal-tmux.log"
+layout_signal_ready="$tmp/layout-signal-ready"
+layout_signal_release="$tmp/layout-signal-release"
+layout_signal_session="${session}-layout-signal"
+mkdir -p "$layout_signal_bin"
+cat >"$layout_signal_bin/tmux" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'args=%s\n' "$*" >>"${TMUX_SESSION_LAYOUT_SIGNAL_LOG:?}"
+
+case "${1:-}" in
+  display-message)
+    exit 1
+    ;;
+  new-session)
+    printf '@1\n'
+    ;;
+  send-keys)
+    : >"${TMUX_SESSION_LAYOUT_SIGNAL_READY:?}"
+    while [[ ! -e "${TMUX_SESSION_LAYOUT_SIGNAL_RELEASE:?}" ]]; do
+      sleep 0.05
+    done
+    ;;
+  kill-session)
+    ;;
+  new-window|select-window)
+    ;;
+  *)
+    printf 'unexpected tmux command: %s\n' "$*" >&2
+    exit 2
+    ;;
+esac
+SH
+chmod +x "$layout_signal_bin/tmux"
+
+set +e
+SESSION_NAME="$layout_signal_session" \
+  PATH="$layout_signal_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  TMUX_SESSION_AGENT_RESUME_COMMAND='echo resume' \
+  TMUX_SESSION_AGENT_COMMAND='' \
+  TMUX_SESSION_LAYOUT_SIGNAL_LOG="$layout_signal_log" \
+  TMUX_SESSION_LAYOUT_SIGNAL_READY="$layout_signal_ready" \
+  TMUX_SESSION_LAYOUT_SIGNAL_RELEASE="$layout_signal_release" \
+  TMUX_SESSION_START_DIR="$tmp/work" \
+  "$root/common/.local/bin/tmux-session-default-layout" >"$tmp/layout-signal.out" 2>"$tmp/layout-signal.err" &
+layout_signal_pid=$!
+set -e
+wait_for_file "default layout signal test reaches first window command" "$layout_signal_ready"
+kill -TERM "$layout_signal_pid"
+touch "$layout_signal_release"
+set +e
+wait "$layout_signal_pid"
+layout_signal_status=$?
+set -e
+assert_eq "default layout preserves signal status during cleanup" "143" "$layout_signal_status"
+layout_signal_output="$(cat "$layout_signal_log")"
+assert_contains \
+  "default layout removes partial session after termination" \
+  "$layout_signal_output" \
+  "args=kill-session -t =$layout_signal_session"
+assert_not_contains \
+  "default layout stops creating windows after termination" \
+  "$layout_signal_output" \
+  "args=new-window"
+
 tmux_test env \
   TMUX_SESSION_START_DIR="$tmp/work" \
   TMUX_SESSION_AGENT_RESUME_COMMAND= \
@@ -499,6 +595,19 @@ assert_eq \
   "default layout tolerates missing agent cli" \
   "$(printf '1:resume:%s\n2:AI:%s\n3:terminal:%s' "$tmp/work" "$tmp/work" "$tmp/work")" \
   "$no_agent_windows"
+
+inherited_env_session="${session}-inherited-env"
+TMUX_SESSION_AGENT_RESUME_WINDOW_NAME=leaked-resume \
+  TMUX_SESSION_AGENT_WINDOW_NAME=leaked-ai \
+  TMUX_SESSION_TERMINAL_WINDOW_NAME=leaked-terminal \
+  tmux_direct_test \
+    "$root/common/.local/bin/tmux-session" "$inherited_env_session" --start-dir "$tmp/work" --no-attach
+
+inherited_env_windows="$(tmux_test tmux list-windows -t "=$inherited_env_session" -F '#{window_index}:#{window_name}:#{pane_current_path}')"
+assert_eq \
+  "tmux-session tests isolate inherited layout env" \
+  "$(printf '1:resume:%s\n2:AI:%s\n3:terminal:%s' "$tmp/work" "$tmp/work" "$tmp/work")" \
+  "$inherited_env_windows"
 
 dash_session="--${session}-dash"
 tmux_test env \
