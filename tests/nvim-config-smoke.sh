@@ -580,6 +580,14 @@ assert(rhs_for("<F24>", "i") == "<cmd>bnext<CR>")
 assert(rhs_for("<D-s>") == "<cmd>w<CR>")
 assert(rhs_for("<D-s>", "i") == "<cmd>w<CR>")
 assert(rhs_for("<D-s>", "v") == "<cmd>w<CR>")
+assert(type(vim.fn.maparg("<C-Left>", "n", false, true).callback) == "function")
+assert(type(vim.fn.maparg("<C-Left>", "i", false, true).callback) == "function")
+assert(type(vim.fn.maparg("\27[1;5D", "n", false, true).callback) == "function")
+assert(type(vim.fn.maparg("\27[1;5D", "i", false, true).callback) == "function")
+assert(type(vim.fn.maparg("<C-Right>", "n", false, true).callback) == "function")
+assert(type(vim.fn.maparg("<C-Right>", "i", false, true).callback) == "function")
+assert(type(vim.fn.maparg("\27[1;5C", "n", false, true).callback) == "function")
+assert(type(vim.fn.maparg("\27[1;5C", "i", false, true).callback) == "function")
 assert(type(vim.fn.maparg("<C-Del>", "n", false, true).callback) == "function")
 assert(type(vim.fn.maparg("<C-Del>", "i", false, true).callback) == "function")
 _G.dotfiles_smoke_normal_copy_callback = vim.fn.maparg("<D-c>", "n", false, true).callback
@@ -667,6 +675,10 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
     vim.api.nvim_feedkeys(vim.keycode(keys), "xt", false)
   end
 
+  local function feed_raw(keys)
+    vim.api.nvim_feedkeys(keys, "xt", false)
+  end
+
   local function lines_text()
     return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "|")
   end
@@ -748,10 +760,40 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   assert(stored_type == "V", stored_type)
   assert(lines_text() == "ctrl insert copy|normal keep", lines_text())
 
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "normal ctrl left alpha beta gamma" })
+  feed("gg$")
+  feed_raw("\27[1;5D")
+  feed("iZ<Esc>")
+  assert(lines_text() == "normal ctrl left alpha beta Zgamma", lines_text())
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "normal ctrl right alpha beta gamma" })
+  feed("gg0")
+  feed_raw("\27[1;5C")
+  feed("aZ<Esc>")
+  assert(lines_text() == "normalZ ctrl right alpha beta gamma", lines_text())
+
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { "normal ctrl delete alpha beta gamma" })
   feed("gg04w")
   feed("<C-Del>")
   assert(lines_text() == "normal ctrl delete alpha gamma", lines_text())
+
+  local insert_ctrl_left_line = "insert ctrl left alpha beta gamma"
+  local insert_ctrl_left_callback = callback_for("\27[1;5D", "i")
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { insert_ctrl_left_line })
+  vim.api.nvim_win_set_cursor(0, { 1, #insert_ctrl_left_line })
+  insert_ctrl_left_callback()
+  local _, insert_ctrl_left_col = unpack(vim.api.nvim_win_get_cursor(0))
+  assert(insert_ctrl_left_col == insert_ctrl_left_line:find("gamma", 1, true) - 1, tostring(insert_ctrl_left_col))
+  feed("<Esc>")
+
+  local insert_ctrl_right_line = "insert ctrl right alpha beta gamma"
+  local insert_ctrl_right_callback = callback_for("\27[1;5C", "i")
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { insert_ctrl_right_line })
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+  insert_ctrl_right_callback()
+  local _, insert_ctrl_right_col = unpack(vim.api.nvim_win_get_cursor(0))
+  assert(insert_ctrl_right_col == #"insert", tostring(insert_ctrl_right_col))
+  feed("<Esc>")
 
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { "insert ctrl delete alpha beta gamma" })
   feed("gg04wi<C-Del>Z<Esc>")

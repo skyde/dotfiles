@@ -86,6 +86,16 @@ bash_ctrl_delete_binding="$(
 )"
 assert_contains "bashrc-custom maps Ctrl-Delete to kill-word" "$bash_ctrl_delete_binding" '"\e[3;5~": kill-word'
 
+bash_word_motion_bindings="$(
+  DOTFILES_BASHRC="$root/common/.bashrc-custom" \
+    HOME="$tmp/min-home" \
+    PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM=xterm-256color \
+    "$bash_path" --noprofile --norc -ic 'source "$DOTFILES_BASHRC"; bind -p | grep "\\\\e\\[1;5[CD]"' 2>/dev/null
+)"
+assert_contains "bashrc-custom maps Ctrl-Right to forward-word" "$bash_word_motion_bindings" '"\e[1;5C": forward-word'
+assert_contains "bashrc-custom maps Ctrl-Left to backward-word" "$bash_word_motion_bindings" '"\e[1;5D": backward-word'
+
 mkdir -p \
   "$tmp/home/.local/bin" \
   "$tmp/min-home/.local/bin" \

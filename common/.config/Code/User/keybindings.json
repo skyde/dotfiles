@@ -19,13 +19,27 @@
     // Ctrl left to jump words
     "key": "ctrl+left",
     "command": "cursorWordStartLeft",
-    "when": "editorTextFocus"
+    "when": "editorTextFocus && !terminalFocus"
+  },
+  {
+    // Ctrl+Left in the terminal sends the standard xterm previous-word key
+    "key": "ctrl+left",
+    "command": "workbench.action.terminal.sendSequence",
+    "when": "terminalFocus",
+    "args": { "text": "\u001B[1;5D" }
   },
   {
     // Ctrl right to jump words
     "key": "ctrl+right",
     "command": "cursorWordEndRight",
-    "when": "editorTextFocus"
+    "when": "editorTextFocus && !terminalFocus"
+  },
+  {
+    // Ctrl+Right in the terminal sends the standard xterm next-word key
+    "key": "ctrl+right",
+    "command": "workbench.action.terminal.sendSequence",
+    "when": "terminalFocus",
+    "args": { "text": "\u001B[1;5C" }
   },
   {
     // Ctrl+Backspace deletes the previous word (Windows-style)

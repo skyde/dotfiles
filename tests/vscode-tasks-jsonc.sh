@@ -201,6 +201,32 @@ assert has_keybinding(
 for path, bindings in ((keybindings_file, keybindings), (mac_keybindings_file, mac_keybindings)):
     assert has_keybinding(
         bindings,
+        "ctrl+left",
+        "cursorWordStartLeft",
+        when="editorTextFocus && !terminalFocus",
+    ), f"{path}: Ctrl+Left must move to the previous editor word without intercepting terminals"
+    assert has_keybinding(
+        bindings,
+        "ctrl+left",
+        "workbench.action.terminal.sendSequence",
+        {"text": "\x1b[1;5D"},
+        "terminalFocus",
+    ), f"{path}: Ctrl+Left must reach shells, tmux, and terminal Neovim"
+    assert has_keybinding(
+        bindings,
+        "ctrl+right",
+        "cursorWordEndRight",
+        when="editorTextFocus && !terminalFocus",
+    ), f"{path}: Ctrl+Right must move to the next editor word without intercepting terminals"
+    assert has_keybinding(
+        bindings,
+        "ctrl+right",
+        "workbench.action.terminal.sendSequence",
+        {"text": "\x1b[1;5C"},
+        "terminalFocus",
+    ), f"{path}: Ctrl+Right must reach shells, tmux, and terminal Neovim"
+    assert has_keybinding(
+        bindings,
         "ctrl+delete",
         "deleteWordRight",
         when="textInputFocus && !terminalFocus",

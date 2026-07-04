@@ -21,6 +21,60 @@ vim.keymap.set("n", "<leader>v", "<C-v>", { noremap = true, desc = "Block Visual
 -- Redo with Shift+U, matching redo keybindings from other editors
 map("n", "U", "<C-r>", { desc = "Redo" })
 
+-- Move by words with the same Ctrl+Left/Right convention used by shells
+-- and GUI editors.
+local function move_previous_word()
+  vim.cmd("normal! b")
+end
+
+local function move_previous_word_insert()
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  local line = vim.api.nvim_get_current_line()
+  local search_start = 1
+  local target_col = 0
+
+  while true do
+    local word_start, word_end = line:find("[%w_]+", search_start)
+    if not word_start or (word_start - 1) >= col then
+      break
+    end
+
+    target_col = word_start - 1
+    search_start = word_end + 1
+  end
+
+  vim.api.nvim_win_set_cursor(0, { row, target_col })
+  vim.cmd("startinsert")
+end
+
+local function move_next_word()
+  vim.cmd("normal! e")
+end
+
+local function move_next_word_insert()
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  local line = vim.api.nvim_get_current_line()
+  local word_start, word_end = line:find("[%w_]+", math.min(col + 1, #line + 1))
+
+  if word_start and word_end then
+    vim.api.nvim_win_set_cursor(0, { row, word_end })
+  else
+    vim.api.nvim_win_set_cursor(0, { row, #line })
+  end
+
+  vim.cmd("startinsert")
+end
+
+for _, lhs in ipairs({ "<C-Left>", "\27[1;5D" }) do
+  map("n", lhs, move_previous_word, { desc = "Move to previous word" })
+  map("i", lhs, move_previous_word_insert, { desc = "Move to previous word" })
+end
+
+for _, lhs in ipairs({ "<C-Right>", "\27[1;5C" }) do
+  map("n", lhs, move_next_word, { desc = "Move to next word" })
+  map("i", lhs, move_next_word_insert, { desc = "Move to next word" })
+end
+
 -- Delete the next word with the same Ctrl+Delete convention used by shells
 -- and GUI editors.
 local function delete_next_word()
