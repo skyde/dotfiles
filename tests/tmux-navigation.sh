@@ -430,42 +430,70 @@ assert_file_absent \
   "navigation router does not use paste helper for foreground docker attach" \
   "$container_router_paste_log"
 
-editor_router_paste_log="$tmp/editor-router-paste.log"
-editor_router_tmux_log="$tmp/editor-router-tmux.log"
-rm -f "$container_router_ps_log" "$editor_router_paste_log" "$editor_router_tmux_log"
-env \
-  HOME="$fake_home" \
-  PATH="$container_router_path:/usr/bin:/bin" \
-  TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$editor_router_paste_log" \
-  TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
-  TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$editor_router_tmux_log" \
-  "$root/common/.local/bin/tmux-pane-key-router" nav-left %editor nano /dev/ttys001
-wait_for_file "$editor_router_tmux_log"
-assert_contains \
-  "navigation router passes C-h through to direct nano" \
-  "$(cat "$editor_router_tmux_log")" \
-  "tmux send-keys -t %editor C-h"
-assert_file_absent \
-  "navigation router does not use paste helper for direct nano" \
-  "$editor_router_paste_log"
+assert_direct_router_conservative_paste() {
+  local label="$1" command="$2" pane_id="%direct-$1"
+  local direct_router_paste_log="$tmp/direct-router-$label-paste.log"
+  local direct_router_tmux_log="$tmp/direct-router-$label-tmux.log"
 
-rm -f "$container_router_ps_log" "$editor_router_paste_log" "$editor_router_tmux_log"
-env \
-  HOME="$fake_home" \
-  PATH="$container_router_path:/usr/bin:/bin" \
-  TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$editor_router_paste_log" \
-  TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
-  TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$editor_router_tmux_log" \
-  "$root/common/.local/bin/tmux-pane-key-router" shift-insert %editor nano /dev/ttys001
-wait_for_file "$editor_router_paste_log"
-assert_eq \
-  "Shift-Insert router uses tmux paste helper for direct nano" \
-  "args=%editor" \
-  "$(cat "$editor_router_paste_log")"
-assert_not_contains \
-  "Shift-Insert router avoids raw Shift-Insert bytes for direct nano" \
-  "$(cat "$editor_router_tmux_log" 2>/dev/null || true)" \
-  "send-keys -t %editor -H 1b 5b 32 3b 32 7e"
+  rm -f "$container_router_ps_log" "$direct_router_paste_log" "$direct_router_tmux_log"
+  env \
+    HOME="$fake_home" \
+    PATH="$container_router_path:/usr/bin:/bin" \
+    TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$direct_router_paste_log" \
+    TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
+    TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$direct_router_tmux_log" \
+    "$root/common/.local/bin/tmux-pane-key-router" nav-left "$pane_id" "$command" /dev/ttys001
+  wait_for_file "$direct_router_tmux_log"
+  assert_contains \
+    "navigation router passes C-h through to direct $label" \
+    "$(cat "$direct_router_tmux_log")" \
+    "tmux send-keys -t $pane_id C-h"
+  assert_file_absent \
+    "navigation router does not use paste helper for direct $label" \
+    "$direct_router_paste_log"
+
+  rm -f "$container_router_ps_log" "$direct_router_paste_log" "$direct_router_tmux_log"
+  env \
+    HOME="$fake_home" \
+    PATH="$container_router_path:/usr/bin:/bin" \
+    TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$direct_router_paste_log" \
+    TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
+    TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$direct_router_tmux_log" \
+    "$root/common/.local/bin/tmux-pane-key-router" shift-insert "$pane_id" "$command" /dev/ttys001
+  wait_for_file "$direct_router_paste_log"
+  assert_eq \
+    "Shift-Insert router uses tmux paste helper for direct $label" \
+    "args=$pane_id" \
+    "$(cat "$direct_router_paste_log")"
+  assert_not_contains \
+    "Shift-Insert router avoids raw Shift-Insert bytes for direct $label" \
+    "$(cat "$direct_router_tmux_log" 2>/dev/null || true)" \
+    "send-keys -t $pane_id -H 1b 5b 32 3b 32 7e"
+}
+
+direct_conservative_paste_cases=(
+  "less:less"
+  "delta:delta"
+  "fzf:fzf"
+  "lazygit:lazygit"
+  "gitui:gitui"
+  "tig:tig"
+  "yazi:yazi"
+  "lf:lf"
+  "ranger:ranger"
+  "nnn:nnn"
+  "btop:btop"
+  "k9s:k9s"
+  "lazydocker:lazydocker"
+  "nano:nano"
+  "micro:micro"
+  "emacs:emacs"
+  "kak:kak"
+)
+
+for direct_case in "${direct_conservative_paste_cases[@]}"; do
+  assert_direct_router_conservative_paste "${direct_case%%:*}" "${direct_case#*:}"
+done
 rm -f "$fake_home/.local/bin/tmux-paste-helper"
 
 mock_ssh_tunnel_ready="$tmp/mock-ssh-tunnel.ready"
