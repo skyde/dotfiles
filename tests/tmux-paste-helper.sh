@@ -755,6 +755,7 @@ SH
   chmod +x "$live_home/.local/bin/osc-paste"
   ln -s "$root/common/.local/bin/tmux-paste-helper" "$live_home/.local/bin/tmux-paste-helper"
   ln -s "$root/common/.local/bin/tmux-pane-should-passthrough" "$live_home/.local/bin/tmux-pane-should-passthrough"
+  ln -s "$root/common/.local/bin/tmux-pane-key-router" "$live_home/.local/bin/tmux-pane-key-router"
   printf 'live paste alpha\nlive paste beta\n' >"$live_clipboard"
 
   printf -v live_cat_command 'cat > %q' "$live_output"
@@ -1109,6 +1110,7 @@ PY
   rm -rf "$mock_ssh_home"
   mkdir -p "$mock_ssh_home/.local/bin"
   ln -s "$root/common/.local/bin/tmux-paste-helper" "$mock_ssh_home/.local/bin/tmux-paste-helper"
+  ln -s "$root/common/.local/bin/tmux-pane-key-router" "$mock_ssh_home/.local/bin/tmux-pane-key-router"
   ln -s "$root/common/.local/bin/osc-paste" "$mock_ssh_home/.local/bin/osc-paste"
   cat >"$mock_ssh_home/.local/bin/pbpaste" <<SH
 #!/usr/bin/env bash
@@ -1249,6 +1251,7 @@ PY
       mkdir -p "$real_home/.local/bin"
       ln -s "$root/common/.local/bin/tmux-paste-helper" "$real_home/.local/bin/tmux-paste-helper"
       ln -s "$root/common/.local/bin/tmux-pane-should-passthrough" "$real_home/.local/bin/tmux-pane-should-passthrough"
+      ln -s "$root/common/.local/bin/tmux-pane-key-router" "$real_home/.local/bin/tmux-pane-key-router"
       ln -s "$root/common/.local/bin/osc-paste" "$real_home/.local/bin/osc-paste"
       printf 'real host paste alpha\nreal host paste beta\n' >"$real_clipboard"
       pbcopy <"$real_clipboard"

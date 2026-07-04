@@ -74,6 +74,7 @@ shell_files=(
   common/.local/bin/tmux-copy-helper
   common/.local/bin/tmux-paste-helper
   common/.local/bin/tmux-popup-tool
+  common/.local/bin/tmux-pane-key-router
   common/.local/bin/tmux-session-notify
   common/.local/bin/tmux-session-name
   common/.local/bin/tmux-session-default-layout

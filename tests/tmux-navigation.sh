@@ -206,11 +206,20 @@ home_guard_raw='[ -n "${HOME:-}" ]'
 
 for key in C-h C-j C-k C-l "C-\\"; do
   binding="$("$real_tmux" -L "$socket_name" list-keys -T root "$key")"
-  assert_contains "navigation passthrough uses helper for $key" "$binding" "tmux-pane-should-passthrough"
-  assert_contains "navigation passthrough uses explicit home for $key" "$binding" "$home_marker"
-  assert_contains "navigation passthrough has repo fallback for $key" "$binding" "$repo_marker"
-  assert_contains "navigation passthrough has PATH fallback for $key" "$binding" "command -v tmux-pane-should-passthrough"
+  case "$key" in
+    C-h) router_action="nav-left" ;;
+    C-j) router_action="nav-down" ;;
+    C-k) router_action="nav-up" ;;
+    C-l) router_action="nav-right" ;;
+    "C-\\") router_action="nav-last" ;;
+  esac
+  assert_contains "navigation passthrough uses key router for $key" "$binding" "tmux-pane-key-router"
+  assert_contains "navigation passthrough uses explicit router home for $key" "$binding" "$home_marker"
+  assert_contains "navigation passthrough has router repo fallback for $key" "$binding" "$repo_marker"
+  assert_contains "navigation passthrough has router PATH fallback for $key" "$binding" "command -v tmux-pane-key-router"
   assert_contains "navigation passthrough guards unset HOME for $key" "$binding" "$home_guard"
+  assert_contains "navigation passthrough passes router action for $key" "$binding" "$router_action"
+  assert_contains "navigation passthrough passes current pane for $key" "$binding" '#{pane_id}'
   assert_contains "navigation passthrough shell-quotes current command for $key" "$binding" '#{q:pane_current_command}'
   assert_contains "navigation passthrough shell-quotes pane tty for $key" "$binding" '#{q:pane_tty}'
 done
@@ -418,17 +427,14 @@ assert_contains "paste binding reports missing helper to stderr" "$paste_binding
 assert_contains "paste binding exits non-zero without helper" "$paste_binding" "exit 127"
 
 shift_insert_paste_binding="$("$real_tmux" -L "$socket_name" list-keys -T root S-IC)"
-assert_contains "Shift-Insert paste binding checks passthrough helper" "$shift_insert_paste_binding" "tmux-pane-should-passthrough"
-assert_contains "Shift-Insert paste binding uses paste-key mode" "$shift_insert_paste_binding" "--paste-key"
-assert_contains "Shift-Insert paste binding sends key to pane-aware TUIs" "$shift_insert_paste_binding" "send-keys S-Insert"
-assert_contains "Shift-Insert paste binding falls back to paste helper" "$shift_insert_paste_binding" "tmux-paste-helper"
+assert_contains "Shift-Insert paste binding uses key router" "$shift_insert_paste_binding" "tmux-pane-key-router"
+assert_contains "Shift-Insert paste binding passes router action" "$shift_insert_paste_binding" "shift-insert"
 assert_contains "Shift-Insert paste binding uses explicit home" "$shift_insert_paste_binding" "$home_marker"
 assert_contains "Shift-Insert paste binding has repo fallback" "$shift_insert_paste_binding" "$repo_marker"
-assert_contains "Shift-Insert paste binding has PATH fallback" "$shift_insert_paste_binding" "command -v tmux-paste-helper"
+assert_contains "Shift-Insert paste binding has PATH fallback" "$shift_insert_paste_binding" "command -v tmux-pane-key-router"
 assert_contains "Shift-Insert paste binding guards unset HOME" "$shift_insert_paste_binding" "$home_guard"
 assert_contains "Shift-Insert paste binding targets current pane" "$shift_insert_paste_binding" '#{pane_id}'
-assert_contains "Shift-Insert paste binding targets async passthrough decision" "$shift_insert_paste_binding" 'if-shell -t "#{pane_id}"'
-assert_contains "Shift-Insert paste binding targets async paste branch" "$shift_insert_paste_binding" 'run-shell -b -t \"#{pane_id}\"'
+assert_contains "Shift-Insert paste binding uses async router" "$shift_insert_paste_binding" 'run-shell -b'
 assert_contains "Shift-Insert paste binding shell-quotes current command" "$shift_insert_paste_binding" '#{q:pane_current_command}'
 assert_contains "Shift-Insert paste binding shell-quotes pane tty" "$shift_insert_paste_binding" '#{q:pane_tty}'
 
@@ -455,34 +461,39 @@ assert_eq \
   "$(cat "$paste_binding_log")"
 
 ctrl_insert_binding="$("$real_tmux" -L "$socket_name" list-keys -T root C-IC)"
-assert_contains "Ctrl-Insert root binding checks passthrough helper" "$ctrl_insert_binding" "tmux-pane-should-passthrough"
+assert_contains "Ctrl-Insert root binding uses key router" "$ctrl_insert_binding" "tmux-pane-key-router"
+assert_contains "Ctrl-Insert root binding passes router action" "$ctrl_insert_binding" "ctrl-insert"
 assert_not_contains "Ctrl-Insert root binding does not use paste-key mode" "$ctrl_insert_binding" "--paste-key"
-assert_contains "Ctrl-Insert root binding sends key to pane-aware TUIs" "$ctrl_insert_binding" "send-keys C-Insert"
 assert_contains "Ctrl-Insert root binding uses explicit home" "$ctrl_insert_binding" "$home_marker"
 assert_contains "Ctrl-Insert root binding has repo fallback" "$ctrl_insert_binding" "$repo_marker"
-assert_contains "Ctrl-Insert root binding has PATH fallback" "$ctrl_insert_binding" "command -v tmux-pane-should-passthrough"
+assert_contains "Ctrl-Insert root binding has PATH fallback" "$ctrl_insert_binding" "command -v tmux-pane-key-router"
 assert_contains "Ctrl-Insert root binding guards unset HOME" "$ctrl_insert_binding" "$home_guard"
-assert_contains "Ctrl-Insert root binding targets async passthrough decision" "$ctrl_insert_binding" 'if-shell -t "#{pane_id}"'
+assert_contains "Ctrl-Insert root binding uses async router" "$ctrl_insert_binding" 'run-shell -b'
 assert_contains "Ctrl-Insert root binding shell-quotes current command" "$ctrl_insert_binding" '#{q:pane_current_command}'
 assert_contains "Ctrl-Insert root binding shell-quotes pane tty" "$ctrl_insert_binding" '#{q:pane_tty}'
 assert_contains "Ctrl-Insert root binding avoids raw shell input fallback" "$ctrl_insert_binding" "display-message"
 
 shift_delete_binding="$("$real_tmux" -L "$socket_name" list-keys -T root S-DC)"
-assert_contains "Shift-Delete root binding checks passthrough helper" "$shift_delete_binding" "tmux-pane-should-passthrough"
+assert_contains "Shift-Delete root binding uses key router" "$shift_delete_binding" "tmux-pane-key-router"
+assert_contains "Shift-Delete root binding passes router action" "$shift_delete_binding" "shift-delete"
 assert_not_contains "Shift-Delete root binding does not use paste-key mode" "$shift_delete_binding" "--paste-key"
-assert_contains "Shift-Delete root binding sends key to pane-aware TUIs" "$shift_delete_binding" "send-keys S-Delete"
 assert_contains "Shift-Delete root binding uses explicit home" "$shift_delete_binding" "$home_marker"
 assert_contains "Shift-Delete root binding has repo fallback" "$shift_delete_binding" "$repo_marker"
-assert_contains "Shift-Delete root binding has PATH fallback" "$shift_delete_binding" "command -v tmux-pane-should-passthrough"
+assert_contains "Shift-Delete root binding has PATH fallback" "$shift_delete_binding" "command -v tmux-pane-key-router"
 assert_contains "Shift-Delete root binding guards unset HOME" "$shift_delete_binding" "$home_guard"
-assert_contains "Shift-Delete root binding targets async passthrough decision" "$shift_delete_binding" 'if-shell -t "#{pane_id}"'
+assert_contains "Shift-Delete root binding uses async router" "$shift_delete_binding" 'run-shell -b'
 assert_contains "Shift-Delete root binding shell-quotes current command" "$shift_delete_binding" '#{q:pane_current_command}'
 assert_contains "Shift-Delete root binding shell-quotes pane tty" "$shift_delete_binding" '#{q:pane_tty}'
 assert_contains "Shift-Delete root binding avoids raw shell input fallback" "$shift_delete_binding" "display-message"
-assert_contains \
-  "Shift-Delete root binding points plain panes at copy mode" \
-  "$shift_delete_binding" \
-  "Shift-Delete: use copy mode or a pane-aware app to cut"
+
+key_router_script="$(cat "$root/common/.local/bin/tmux-pane-key-router")"
+assert_contains "key router checks passthrough helper" "$key_router_script" "tmux-pane-should-passthrough"
+assert_contains "key router uses paste helper for plain Shift-Insert panes" "$key_router_script" "tmux-paste-helper"
+assert_contains "key router sends Ctrl-Insert bytes" "$key_router_script" "send_hex 1b 5b 32 3b 35 7e"
+assert_contains "key router sends Shift-Insert bytes" "$key_router_script" "send_hex 1b 5b 32 3b 32 7e"
+assert_contains "key router sends Shift-Delete bytes" "$key_router_script" "send_hex 1b 5b 33 3b 32 7e"
+assert_contains "key router points plain Shift-Delete panes at copy mode" "$key_router_script" "Shift-Delete: use copy mode or a pane-aware app to cut"
+assert_contains "key router targets pane selection fallbacks" "$key_router_script" "tmux select-pane -t"
 
 rm -f "$fake_home/.local/bin/tmux-paste-helper"
 path_paste_path="$tmp/path-paste-path"

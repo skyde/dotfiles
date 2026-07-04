@@ -4,6 +4,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 tmux_bin="$(command -v tmux || true)"
 nvim_bin="$(command -v nvim || true)"
+export PATH="$root/common/.local/bin:$PATH"
 
 skip() {
   printf 'skip - %s\n' "$1"
