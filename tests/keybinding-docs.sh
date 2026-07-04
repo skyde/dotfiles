@@ -143,6 +143,15 @@ assert_contains "kitty maps Ctrl-Backspace to CSI-u sequence" \
 assert_contains "kitty maps Ctrl-Delete to xterm sequence" \
   "$kitty_conf" \
   "map ctrl+delete send_text all \\x1b[3;5~"
+assert_contains "kitty maps Ctrl-Insert to terminal copy sequence" \
+  "$kitty_conf" \
+  "map ctrl+insert send_text all \\x1b[2;5~"
+assert_contains "kitty maps Shift-Insert to terminal paste sequence" \
+  "$kitty_conf" \
+  "map shift+insert send_text all \\x1b[2;2~"
+assert_contains "kitty maps Shift-Delete to terminal cut sequence" \
+  "$kitty_conf" \
+  "map shift+delete send_text all \\x1b[3;2~"
 assert_contains "vim docs describe Ctrl-u as movement" "$vim_docs" "<C-u>\` – move up 16 lines"
 assert_contains "VS Code docs describe Vim Ctrl-u as movement" "$vscode_docs" "<C-u>\` – move up 16 lines (\`16k\`)"
 assert_not_contains "VS Code keybindings avoid workaround typo" "$(<"$root/common/.config/Code/User/keybindings.json")" "workround"
