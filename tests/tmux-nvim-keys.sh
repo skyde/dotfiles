@@ -27,7 +27,7 @@ assert_eq() {
 wait_for_file() {
   local path="$1"
 
-  for _ in 1 2 3 4 5 6 7 8 9 10; do
+  for _ in $(seq 1 50); do
     [[ -s "$path" ]] && return 0
     sleep 0.1
   done
@@ -41,7 +41,7 @@ wait_for_file_content() {
   local expected="$2"
   local actual=""
 
-  for _ in 1 2 3 4 5 6 7 8 9 10; do
+  for _ in $(seq 1 50); do
     actual="$(cat "$path" 2>/dev/null || true)"
     [[ "$actual" == "$expected" ]] && return 0
     sleep 0.1
@@ -56,6 +56,22 @@ lua_string() {
   value="${value//\\/\\\\}"
   value="${value//\"/\\\"}"
   printf '"%s"' "$value"
+}
+
+terminal_mode_copy_setup_command() {
+  local job_var="$1"
+  local display="$2"
+  local output_path="$3"
+
+  printf "%s" "lua vim.cmd('enew'); vim.g.${job_var} = vim.fn.termopen({'sh', '-c', 'printf \"%s\" \"\$1\"; cat > \"\$2\"', 'sh', $(lua_string "$display"), $(lua_string "$output_path")}); assert(type(vim.g.${job_var}) == 'number' and vim.g.${job_var} > 0); assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find($(lua_string "$display"), 1, true) ~= nil end)); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''; vim.cmd('startinsert')"
+}
+
+terminal_mode_key_result_command() {
+  local job_var="$1"
+  local output_path="$2"
+  local result_path="$3"
+
+  printf "%s" "lua _G.dotfiles_tmux_write_terminal_key_result($(lua_string "$job_var"), $(lua_string "$output_path"), $(lua_string "$result_path"))"
 }
 
 wait_for_pane_command() {
@@ -133,6 +149,33 @@ vim.g.clipboard = {
 
 vim.o.hlsearch = true
 vim.fn.setreg("/", "manual")
+
+function _G.dotfiles_tmux_write_terminal_key_result(job_var, output_path, result_path)
+  local ok, err = pcall(function()
+    local job_id = vim.g[job_var]
+    if type(job_id) == "number" then
+      pcall(vim.fn.chanclose, job_id, "stdin")
+      pcall(vim.fn.jobwait, { job_id }, 1000)
+    end
+
+    local lines = vim.api.nvim_buf_get_lines(0, 0, 1, false)
+    local output = ""
+    if vim.fn.filereadable(output_path) == 1 then
+      output = table.concat(vim.fn.readfile(output_path), "|")
+    end
+
+    vim.fn.writefile({
+      table.concat(vim.g.dotfiles_tmux_copy_lines, "|"),
+      vim.g.dotfiles_tmux_copy_type,
+      table.concat(lines, "|"),
+      output,
+    }, result_path)
+  end)
+
+  if not ok then
+    vim.fn.writefile({ "ERROR", tostring(err) }, result_path)
+  end
+end
 LUA
 
 for i in $(seq 1 32); do
@@ -419,6 +462,50 @@ sleep 0.2
   "lua vim.fn.chanclose(vim.g.dotfiles_tmux_terminal_mode_paste_job, 'stdin'); vim.cmd('enew!'); vim.fn.writefile({'ok'}, $(lua_string "$terminal_mode_shift_insert_cleanup"))" Enter
 wait_for_file "$terminal_mode_shift_insert_cleanup"
 
+terminal_mode_ctrl_insert_result="$tmp/terminal-mode-ctrl-insert-copy.log"
+terminal_mode_ctrl_insert_output="$tmp/terminal-mode-ctrl-insert-copy-output.log"
+terminal_mode_ctrl_insert_command="$(terminal_mode_copy_setup_command \
+  "dotfiles_tmux_terminal_mode_copy_job" \
+  "terminal mode copy via tmux" \
+  "$terminal_mode_ctrl_insert_output")"
+terminal_mode_ctrl_insert_write_command="$(terminal_mode_key_result_command \
+  "dotfiles_tmux_terminal_mode_copy_job" \
+  "$terminal_mode_ctrl_insert_output" \
+  "$terminal_mode_ctrl_insert_result")"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_mode_ctrl_insert_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$ctrl_insert_sequence"
+sleep 0.2
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" "C-\\" C-n
+sleep 0.2
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_mode_ctrl_insert_write_command" Enter
+wait_for_file "$terminal_mode_ctrl_insert_result"
+assert_eq "tmux passes Ctrl-Insert bytes to terminal-mode Neovim copy without leaking to job" \
+  "$(printf 'terminal mode copy via tmux|\nV\nterminal mode copy via tmux\n')" \
+  "$(cat "$terminal_mode_ctrl_insert_result")"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' 'enew!' Enter
+
+terminal_mode_shift_delete_result="$tmp/terminal-mode-shift-delete-cut.log"
+terminal_mode_shift_delete_output="$tmp/terminal-mode-shift-delete-cut-output.log"
+terminal_mode_shift_delete_command="$(terminal_mode_copy_setup_command \
+  "dotfiles_tmux_terminal_mode_cut_job" \
+  "terminal mode cut via tmux" \
+  "$terminal_mode_shift_delete_output")"
+terminal_mode_shift_delete_write_command="$(terminal_mode_key_result_command \
+  "dotfiles_tmux_terminal_mode_cut_job" \
+  "$terminal_mode_shift_delete_output" \
+  "$terminal_mode_shift_delete_result")"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_mode_shift_delete_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_delete_sequence"
+sleep 0.2
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" "C-\\" C-n
+sleep 0.2
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_mode_shift_delete_write_command" Enter
+wait_for_file "$terminal_mode_shift_delete_result"
+assert_eq "tmux passes Shift-Delete bytes to terminal-mode Neovim copy-only cut without leaking to job" \
+  "$(printf 'terminal mode cut via tmux|\nV\nterminal mode cut via tmux\n')" \
+  "$(cat "$terminal_mode_shift_delete_result")"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' 'enew!' Enter
+
 if python3_path="$(command -v python3 2>/dev/null)"; then
   send_attached_client_key() {
     local name="$1"
@@ -557,6 +644,50 @@ PY
   "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' \
     "lua vim.fn.chanclose(vim.g.dotfiles_tmux_attached_terminal_mode_paste_job, 'stdin'); vim.cmd('enew!'); vim.fn.writefile({'ok'}, $(lua_string "$attached_terminal_mode_shift_insert_cleanup"))" Enter
   wait_for_file "$attached_terminal_mode_shift_insert_cleanup"
+
+  attached_terminal_mode_ctrl_insert_result="$tmp/attached-terminal-mode-ctrl-insert-copy.log"
+  attached_terminal_mode_ctrl_insert_output="$tmp/attached-terminal-mode-ctrl-insert-copy-output.log"
+  attached_terminal_mode_ctrl_insert_command="$(terminal_mode_copy_setup_command \
+    "dotfiles_tmux_attached_terminal_mode_copy_job" \
+    "attached terminal mode ctrl-insert copy via tmux" \
+    "$attached_terminal_mode_ctrl_insert_output")"
+  attached_terminal_mode_ctrl_insert_write_command="$(terminal_mode_key_result_command \
+    "dotfiles_tmux_attached_terminal_mode_copy_job" \
+    "$attached_terminal_mode_ctrl_insert_output" \
+    "$attached_terminal_mode_ctrl_insert_result")"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_terminal_mode_ctrl_insert_command" Enter
+  send_attached_client_key "tmux attached client sends Ctrl-Insert bytes to terminal-mode Neovim" "$ctrl_insert_sequence"
+  sleep 0.2
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" "C-\\" C-n
+  sleep 0.2
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_terminal_mode_ctrl_insert_write_command" Enter
+  wait_for_file "$attached_terminal_mode_ctrl_insert_result"
+  assert_eq "tmux attached client passes Ctrl-Insert bytes through to terminal-mode Neovim copy without leaking to job" \
+    "$(printf 'attached terminal mode ctrl-insert copy via tmux|\nV\nattached terminal mode ctrl-insert copy via tmux\n')" \
+    "$(cat "$attached_terminal_mode_ctrl_insert_result")"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' 'enew!' Enter
+
+  attached_terminal_mode_shift_delete_result="$tmp/attached-terminal-mode-shift-delete-cut.log"
+  attached_terminal_mode_shift_delete_output="$tmp/attached-terminal-mode-shift-delete-cut-output.log"
+  attached_terminal_mode_shift_delete_command="$(terminal_mode_copy_setup_command \
+    "dotfiles_tmux_attached_terminal_mode_cut_job" \
+    "attached terminal mode shift-delete cut via tmux" \
+    "$attached_terminal_mode_shift_delete_output")"
+  attached_terminal_mode_shift_delete_write_command="$(terminal_mode_key_result_command \
+    "dotfiles_tmux_attached_terminal_mode_cut_job" \
+    "$attached_terminal_mode_shift_delete_output" \
+    "$attached_terminal_mode_shift_delete_result")"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_terminal_mode_shift_delete_command" Enter
+  send_attached_client_key "tmux attached client sends Shift-Delete bytes to terminal-mode Neovim" "$shift_delete_sequence"
+  sleep 0.2
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" "C-\\" C-n
+  sleep 0.2
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$attached_terminal_mode_shift_delete_write_command" Enter
+  wait_for_file "$attached_terminal_mode_shift_delete_result"
+  assert_eq "tmux attached client passes Shift-Delete bytes through to terminal-mode Neovim copy-only cut without leaking to job" \
+    "$(printf 'attached terminal mode shift-delete cut via tmux|\nV\nattached terminal mode shift-delete cut via tmux\n')" \
+    "$(cat "$attached_terminal_mode_shift_delete_result")"
+  "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' 'enew!' Enter
 
   attached_terminal_ctrl_insert_result="$tmp/attached-terminal-ctrl-insert-copy.log"
   attached_terminal_ctrl_insert_command="lua vim.cmd('enew'); vim.g.dotfiles_tmux_attached_terminal_copy_job = vim.fn.termopen({'sh', '-c', 'printf \"attached terminal ctrl-insert copy via tmux\\\\nsecond line\\\\n\"; cat >/dev/null'}); assert(type(vim.g.dotfiles_tmux_attached_terminal_copy_job) == 'number' and vim.g.dotfiles_tmux_attached_terminal_copy_job > 0); assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('second line', 1, true) ~= nil end)); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''"

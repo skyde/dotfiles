@@ -367,6 +367,14 @@ local function cut_clipboard_visual()
   vim.api.nvim_feedkeys(vim.keycode([["+d]]), "nx", false)
 end
 
+local function copy_clipboard_terminal()
+  vim.fn.setreg("+", vim.api.nvim_get_current_line(), "V")
+end
+
+local function cut_clipboard_terminal()
+  copy_clipboard_terminal()
+end
+
 local function paste_clipboard_to_terminal()
   local ok, job_id = pcall(vim.api.nvim_buf_get_var, 0, "terminal_job_id")
   if not ok or type(job_id) ~= "number" then
@@ -433,12 +441,18 @@ end
 
 map("n", "<D-c>", copy_clipboard_normal, { desc = "Copy line" })
 map("v", "<D-c>", copy_clipboard_visual, { desc = "Copy selection" })
+map("t", "<D-c>", copy_clipboard_terminal, { desc = "Copy line" })
 map("n", "<D-x>", cut_clipboard_normal, { desc = "Cut line" })
 map("v", "<D-x>", cut_clipboard_visual, { desc = "Cut selection" })
+map("t", "<D-x>", cut_clipboard_terminal, { desc = "Cut line" })
 map("n", "<C-Insert>", copy_clipboard_normal, { desc = "Copy line" })
 map("v", "<C-Insert>", copy_clipboard_visual, { desc = "Copy selection" })
+map("t", "<C-Insert>", copy_clipboard_terminal, { desc = "Copy line" })
+map("t", "\27[2;5~", copy_clipboard_terminal, { desc = "Copy line" })
 map("n", "<S-Del>", cut_clipboard_normal, { desc = "Cut line" })
 map("v", "<S-Del>", cut_clipboard_visual, { desc = "Cut selection" })
+map("t", "<S-Del>", cut_clipboard_terminal, { desc = "Cut line" })
+map("t", "\27[3;2~", cut_clipboard_terminal, { desc = "Cut line" })
 map("n", "<D-v>", paste_clipboard_normal, { desc = "Paste" })
 -- Visual P replaces the selection without clobbering the unnamed register.
 map("v", "<D-v>", paste_clipboard_visual, { desc = "Paste over selection" })
