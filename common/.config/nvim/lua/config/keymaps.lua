@@ -341,6 +341,32 @@ map("n", "<D-Left>", "<C-o>", { desc = "Jump backward" })
 map("n", "<D-Right>", "<C-i>", { desc = "Jump forward" })
 
 -- macOS clipboard shortcuts
+local function copy_clipboard_normal()
+  vim.cmd([[normal! "+yy]])
+end
+
+local function copy_clipboard_visual()
+  vim.api.nvim_feedkeys(vim.keycode([["+y]]), "nx", false)
+end
+
+local function cut_clipboard_normal()
+  if vim.bo.buftype == "terminal" then
+    copy_clipboard_normal()
+    return
+  end
+
+  vim.cmd([[normal! "+dd]])
+end
+
+local function cut_clipboard_visual()
+  if vim.bo.buftype == "terminal" then
+    copy_clipboard_visual()
+    return
+  end
+
+  vim.api.nvim_feedkeys(vim.keycode([["+d]]), "nx", false)
+end
+
 local function paste_clipboard_to_terminal()
   local ok, job_id = pcall(vim.api.nvim_buf_get_var, 0, "terminal_job_id")
   if not ok or type(job_id) ~= "number" then
@@ -405,14 +431,14 @@ local function paste_clipboard_visual()
   vim.api.nvim_feedkeys(vim.keycode([["+P]]), "n", false)
 end
 
-map("n", "<D-c>", '"+yy', { desc = "Copy line" })
-map("v", "<D-c>", '"+y', { desc = "Copy selection" })
-map("n", "<D-x>", '"+dd', { desc = "Cut line" })
-map("v", "<D-x>", '"+d', { desc = "Cut selection" })
-map("n", "<C-Insert>", '"+yy', { desc = "Copy line" })
-map("v", "<C-Insert>", '"+y', { desc = "Copy selection" })
-map("n", "<S-Del>", '"+dd', { desc = "Cut line" })
-map("v", "<S-Del>", '"+d', { desc = "Cut selection" })
+map("n", "<D-c>", copy_clipboard_normal, { desc = "Copy line" })
+map("v", "<D-c>", copy_clipboard_visual, { desc = "Copy selection" })
+map("n", "<D-x>", cut_clipboard_normal, { desc = "Cut line" })
+map("v", "<D-x>", cut_clipboard_visual, { desc = "Cut selection" })
+map("n", "<C-Insert>", copy_clipboard_normal, { desc = "Copy line" })
+map("v", "<C-Insert>", copy_clipboard_visual, { desc = "Copy selection" })
+map("n", "<S-Del>", cut_clipboard_normal, { desc = "Cut line" })
+map("v", "<S-Del>", cut_clipboard_visual, { desc = "Cut selection" })
 map("n", "<D-v>", paste_clipboard_normal, { desc = "Paste" })
 -- Visual P replaces the selection without clobbering the unnamed register.
 map("v", "<D-v>", paste_clipboard_visual, { desc = "Paste over selection" })

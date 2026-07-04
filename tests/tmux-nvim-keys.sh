@@ -204,6 +204,7 @@ shift_f5_sequence="$(printf '\033[15;2~')"
 ctrl_insert_sequence="$(printf '\033[2;5~')"
 shift_insert_sequence="$(printf '\033[2;2~')"
 shift_delete_sequence="$(printf '\033[3;2~')"
+nvim_terminal_normal_sequence="$(printf '\034\016')"
 normal_save_expected="$(printf 'normal shift-f5 save\nline 2')"
 normal_save_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'normal shift-f5 save', 'line 2'}); vim.cmd('normal! gg')"
 "$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$normal_save_command" Enter
@@ -263,6 +264,40 @@ wait_for_file "$visual_cut_result"
 assert_eq "tmux passes Shift-Delete bytes to visual Neovim cut" \
   "$(printf 'delete\nv\n selection|line 2')" \
   "$(cat "$visual_cut_result")"
+
+terminal_normal_cut_result="$tmp/terminal-normal-shift-delete-cut.log"
+terminal_normal_cut_command="lua vim.cmd('enew'); vim.g.dotfiles_tmux_terminal_cut_job = vim.fn.termopen({'sh', '-c', 'printf \"terminal normal cut via tmux\\\\nsecond line\\\\n\"; cat >/dev/null'}); assert(type(vim.g.dotfiles_tmux_terminal_cut_job) == 'number' and vim.g.dotfiles_tmux_terminal_cut_job > 0); assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('second line', 1, true) ~= nil end)); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''"
+terminal_normal_cut_write_command="lua local lines = vim.api.nvim_buf_get_lines(0, 0, 2, false); vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(lines, '|')}, $(lua_string "$terminal_normal_cut_result"))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_normal_cut_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_delete_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_normal_cut_write_command" Enter
+wait_for_file "$terminal_normal_cut_result"
+assert_eq "tmux passes Shift-Delete bytes to terminal-normal Neovim copy-only cut" \
+  "$(printf 'terminal normal cut via tmux|\nV\nterminal normal cut via tmux|second line')" \
+  "$(cat "$terminal_normal_cut_result")"
+terminal_normal_cut_cleanup="$tmp/terminal-normal-shift-delete-cut-cleanup.log"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' \
+  "lua vim.fn.chanclose(vim.g.dotfiles_tmux_terminal_cut_job, 'stdin'); vim.cmd('enew!'); vim.fn.writefile({'ok'}, $(lua_string "$terminal_normal_cut_cleanup"))" Enter
+wait_for_file "$terminal_normal_cut_cleanup"
+
+terminal_visual_cut_result="$tmp/terminal-visual-shift-delete-cut.log"
+terminal_visual_cut_ready="$tmp/terminal-visual-shift-delete-cut-ready.log"
+terminal_visual_cut_command="lua vim.cmd('enew'); vim.g.dotfiles_tmux_terminal_visual_cut_job = vim.fn.termopen({'sh', '-c', 'printf \"terminal visual cut via tmux\\\\nsecond line\\\\n\"; cat >/dev/null'}); assert(type(vim.g.dotfiles_tmux_terminal_visual_cut_job) == 'number' and vim.g.dotfiles_tmux_terminal_visual_cut_job > 0); assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('second line', 1, true) ~= nil end)); vim.g.dotfiles_tmux_copy_lines = {}; vim.g.dotfiles_tmux_copy_type = ''"
+terminal_visual_cut_wait_command="lua assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('second line', 1, true) ~= nil end)); vim.fn.writefile({'ok'}, $(lua_string "$terminal_visual_cut_ready"))"
+terminal_visual_cut_write_command="lua local lines = vim.api.nvim_buf_get_lines(0, 0, 2, false); vim.fn.writefile({table.concat(vim.g.dotfiles_tmux_copy_lines, '|'), vim.g.dotfiles_tmux_copy_type, table.concat(lines, '|')}, $(lua_string "$terminal_visual_cut_result"))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_visual_cut_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_visual_cut_wait_command" Enter
+wait_for_file "$terminal_visual_cut_ready"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'gg0v$'
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_delete_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$nvim_terminal_normal_sequence"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_visual_cut_write_command" Enter
+wait_for_file "$terminal_visual_cut_result"
+assert_eq "tmux passes Shift-Delete bytes to terminal-visual Neovim copy-only cut" \
+  "$(printf 'terminal visual cut via tmux|\nv\nterminal visual cut via tmux|second line')" \
+  "$(cat "$terminal_visual_cut_result")"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' \
+  "lua vim.fn.chanclose(vim.g.dotfiles_tmux_terminal_visual_cut_job, 'stdin'); vim.cmd('enew!')" Enter
 
 shift_insert_result="$tmp/shift-insert-paste.log"
 shift_insert_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'shift-insert '}); vim.g.dotfiles_tmux_paste = 'paste via tmux'; vim.cmd('startinsert!')"
