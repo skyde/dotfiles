@@ -91,7 +91,7 @@ assert_contains "Neovim config maps Ctrl-Backspace" \
   'for _, lhs in ipairs({ "<C-BS>", "\27[127;5u" }) do'
 assert_contains "Neovim config maps Ctrl-Delete" \
   "$nvim_keymaps" \
-  'map({ "n", "i" }, "<C-Del>", delete_next_word'
+  'for _, lhs in ipairs({ "<C-Del>", "\27[3;5~" }) do'
 assert_contains "zshrc maps Ctrl-Right word motion" \
   "$zshrc" \
   "bindkey '^[[1;5C' forward-word"

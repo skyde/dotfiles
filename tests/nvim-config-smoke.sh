@@ -593,8 +593,12 @@ assert(type(vim.fn.maparg("<C-BS>", "i", false, true).callback) == "function")
 assert(type(vim.fn.maparg("\27[127;5u", "n", false, true).callback) == "function")
 assert(type(vim.fn.maparg("\27[127;5u", "i", false, true).callback) == "function")
 assert(vim.fn.maparg("<C-w>", "n") == "", "normal Ctrl-W window prefix must remain available")
-assert(type(vim.fn.maparg("<C-Del>", "n", false, true).callback) == "function")
-assert(type(vim.fn.maparg("<C-Del>", "i", false, true).callback) == "function")
+_G.dotfiles_smoke_ctrl_delete_normal_callback = vim.fn.maparg("<C-Del>", "n", false, true).callback
+assert(type(_G.dotfiles_smoke_ctrl_delete_normal_callback) == "function")
+assert(vim.fn.maparg("\27[3;5~", "n", false, true).callback == _G.dotfiles_smoke_ctrl_delete_normal_callback)
+_G.dotfiles_smoke_ctrl_delete_insert_callback = vim.fn.maparg("<C-Del>", "i", false, true).callback
+assert(type(_G.dotfiles_smoke_ctrl_delete_insert_callback) == "function")
+assert(vim.fn.maparg("\27[3;5~", "i", false, true).callback == _G.dotfiles_smoke_ctrl_delete_insert_callback)
 _G.dotfiles_smoke_normal_copy_callback = vim.fn.maparg("<D-c>", "n", false, true).callback
 assert(type(_G.dotfiles_smoke_normal_copy_callback) == "function")
 _G.dotfiles_smoke_visual_copy_callback = vim.fn.maparg("<D-c>", "v", false, true).callback
@@ -795,6 +799,11 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   feed("<C-Del>")
   assert(lines_text() == "normal ctrl delete alpha gamma", lines_text())
 
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "normal raw delete alpha beta gamma" })
+  feed("gg04w")
+  feed_raw("\27[3;5~")
+  assert(lines_text() == "normal raw delete alpha gamma", lines_text())
+
   local insert_ctrl_backspace_line = "insert ctrl backspace alpha beta gamma"
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { insert_ctrl_backspace_line })
   feed("ggA")
@@ -831,6 +840,12 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { "insert ctrl delete alpha beta gamma" })
   feed("gg04wi<C-Del>Z<Esc>")
   assert(lines_text() == "insert ctrl delete alpha Zgamma", lines_text())
+
+  local insert_raw_ctrl_delete_callback = callback_for("\27[3;5~", "i")
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "insert raw delete alpha beta gamma" })
+  vim.api.nvim_win_set_cursor(0, { 1, #"insert raw delete alpha " })
+  insert_raw_ctrl_delete_callback()
+  assert(lines_text() == "insert raw delete alpha gamma", lines_text())
 
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { "insert cmd copy", "insert keep" })
   feed("ggA")

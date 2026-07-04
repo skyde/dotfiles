@@ -158,7 +158,9 @@ local function delete_next_word()
   vim.cmd("normal! dw")
 end
 
-map({ "n", "i" }, "<C-Del>", delete_next_word, { desc = "Delete next word" })
+for _, lhs in ipairs({ "<C-Del>", "\27[3;5~" }) do
+  map({ "n", "i" }, lhs, delete_next_word, { desc = "Delete next word" })
+end
 
 -- disable horizontal scroll with mouse/trackpad
 for _, mode in ipairs({ "n", "i", "v", "o", "t" }) do
