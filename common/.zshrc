@@ -34,28 +34,30 @@ bindkey '^X' edit-command-line          # Ctrl+X edits current prompt
 
 # -------- completion (cached)
 # Cache to XDG location and compile the dump for speed.
-zmodload -i zsh/complist
-autoload -Uz compinit
-: "${XDG_CACHE_HOME:=$HOME/.cache}"
-ZSH_CACHE_DIR="$XDG_CACHE_HOME/zsh"
-mkdir -p -- "$ZSH_CACHE_DIR"
-_compdump="$ZSH_CACHE_DIR/zcompdump-$ZSH_VERSION"
+if [[ -o interactive && -t 0 ]]; then
+  zmodload -i zsh/complist
+  autoload -Uz compinit
+  : "${XDG_CACHE_HOME:=$HOME/.cache}"
+  ZSH_CACHE_DIR="$XDG_CACHE_HOME/zsh"
+  mkdir -p -- "$ZSH_CACHE_DIR"
+  _compdump="$ZSH_CACHE_DIR/zcompdump-$ZSH_VERSION"
 
-# Fast path: if dump exists, use curtailed checks (-C). Otherwise, build it.
-if [[ -s $_compdump ]]; then
-  compinit -C -d "$_compdump"
-else
-  compinit -d "$_compdump"
+  # Fast path: if dump exists, use curtailed checks (-C). Otherwise, build it.
+  if [[ -s $_compdump ]]; then
+    compinit -C -d "$_compdump"
+  else
+    compinit -d "$_compdump"
+  fi
+
+  # Byte-compile the dump (only when updated)
+  if [[ -s $_compdump && ( ! -s $_compdump.zwc || $_compdump -nt $_compdump.zwc ) ]]; then
+    zcompile "$_compdump"
+  fi
+  unset _compdump
+
+  zstyle ':completion:*' menu select
+  zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 fi
-
-# Byte-compile the dump (only when updated)
-if [[ -s $_compdump && ( ! -s $_compdump.zwc || $_compdump -nt $_compdump.zwc ) ]]; then
-  zcompile "$_compdump"
-fi
-unset _compdump
-
-zstyle ':completion:*' menu select
-zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
 # # -------- prompt (Starship)
 if (( $+commands[starship] )); then
