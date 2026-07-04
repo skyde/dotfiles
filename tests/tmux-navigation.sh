@@ -288,6 +288,40 @@ HOME="$fake_home" "$real_tmux" -L "$socket_name" if-shell -t "$ssh_right_pane" "
 sleep 0.2
 assert_eq "navigation passes C-h through to a local mock ssh pane" "$ssh_right_pane" "$(active_pane_in_window '=mock-ssh-nav')"
 
+mock_ssh_ctrl_insert_log="$tmp/mock-ssh-ctrl-insert.log"
+mock_ssh_shift_delete_log="$tmp/mock-ssh-shift-delete.log"
+printf -v mock_ssh_ctrl_insert_log_q '%q' "$mock_ssh_ctrl_insert_log"
+printf -v mock_ssh_shift_delete_log_q '%q' "$mock_ssh_shift_delete_log"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" if-shell -t "$ssh_right_pane" "$nav_if_shell" \
+  "run-shell -b \"printf '%s\n' copy-passthrough > $mock_ssh_ctrl_insert_log_q\"" \
+  "select-pane -t $ssh_right_pane -L"
+wait_for_file "$mock_ssh_ctrl_insert_log"
+assert_eq "Ctrl-Insert copy helper selects passthrough for a local mock ssh pane" "copy-passthrough" "$(cat "$mock_ssh_ctrl_insert_log")"
+assert_eq "Ctrl-Insert copy decision keeps local mock ssh pane active" "$ssh_right_pane" "$(active_pane_in_window '=mock-ssh-nav')"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" if-shell -t "$ssh_right_pane" "$nav_if_shell" \
+  "run-shell -b \"printf '%s\n' cut-passthrough > $mock_ssh_shift_delete_log_q\"" \
+  "select-pane -t $ssh_right_pane -L"
+wait_for_file "$mock_ssh_shift_delete_log"
+assert_eq "Shift-Delete cut helper selects passthrough for a local mock ssh pane" "cut-passthrough" "$(cat "$mock_ssh_shift_delete_log")"
+assert_eq "Shift-Delete cut decision keeps local mock ssh pane active" "$ssh_right_pane" "$(active_pane_in_window '=mock-ssh-nav')"
+
+mock_ssh_shift_insert_log="$tmp/mock-ssh-shift-insert.log"
+cat >"$fake_home/.local/bin/tmux-paste-helper" <<'SH'
+#!/usr/bin/env bash
+printf 'args=%s\n' "$*" >"${TMUX_NAV_MOCK_SSH_PASTE_LOG:?}"
+SH
+chmod +x "$fake_home/.local/bin/tmux-paste-helper"
+HOME="$fake_home" "$real_tmux" -L "$socket_name" set-environment -g TMUX_NAV_MOCK_SSH_PASTE_LOG "$mock_ssh_shift_insert_log"
+# shellcheck disable=SC2016
+shift_insert_if_shell='if [ -n "${HOME:-}" ]; then for helper in "$HOME/.local/bin/tmux-pane-should-passthrough" "$HOME/dotfiles/common/.local/bin/tmux-pane-should-passthrough"; do [ -x "$helper" ] && exec "$helper" --paste-key #{q:pane_current_command} #{q:pane_tty}; done; fi; helper="$(command -v tmux-pane-should-passthrough 2>/dev/null)" && exec "$helper" --paste-key #{q:pane_current_command} #{q:pane_tty}; exit 1'
+HOME="$fake_home" "$real_tmux" -L "$socket_name" if-shell -t "$ssh_right_pane" "$shift_insert_if_shell" \
+  "select-pane -t $ssh_right_pane -L" \
+  "run-shell -b -t $ssh_right_pane '\$HOME/.local/bin/tmux-paste-helper #{pane_id}'"
+wait_for_file "$mock_ssh_shift_insert_log"
+assert_eq "Shift-Insert paste-key helper selects tmux paste helper for a local mock ssh pane" "args=$ssh_right_pane" "$(cat "$mock_ssh_shift_insert_log")"
+assert_eq "Shift-Insert paste decision keeps local mock ssh pane active" "$ssh_right_pane" "$(active_pane_in_window '=mock-ssh-nav')"
+rm -f "$fake_home/.local/bin/tmux-paste-helper"
+
 mock_ssh_tunnel_ready="$tmp/mock-ssh-tunnel.ready"
 mock_ssh_tunnel_server_port="$(start_mock_ssh_server "$mock_ssh_tunnel_ready")"
 mock_ssh_tunnel_local_port="$(free_tcp_port)"
