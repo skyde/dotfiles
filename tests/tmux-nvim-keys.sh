@@ -273,6 +273,31 @@ shift_insert_write_command="lua vim.fn.writefile({vim.api.nvim_get_current_line(
 wait_for_file "$shift_insert_result"
 assert_eq "tmux passes Shift-Insert bytes to insert Neovim paste" "shift-insert paste via tmux" "$(cat "$shift_insert_result")"
 
+terminal_normal_shift_insert_output="$tmp/terminal-normal-shift-insert-paste.log"
+terminal_normal_shift_insert_command="lua vim.cmd('enew'); vim.g.dotfiles_tmux_terminal_paste_job = vim.fn.termopen({'sh', '-c', 'cat > \"\$1\"', 'sh', $(lua_string "$terminal_normal_shift_insert_output")}); assert(type(vim.g.dotfiles_tmux_terminal_paste_job) == 'number' and vim.g.dotfiles_tmux_terminal_paste_job > 0); vim.g.dotfiles_tmux_paste = 'terminal-normal shift-insert via tmux\n'"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_normal_shift_insert_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_insert_sequence"
+wait_for_file_content "$terminal_normal_shift_insert_output" "terminal-normal shift-insert via tmux"
+assert_eq "tmux passes Shift-Insert bytes to terminal-normal Neovim paste" \
+  "terminal-normal shift-insert via tmux" \
+  "$(cat "$terminal_normal_shift_insert_output")"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' \
+  "lua vim.fn.chanclose(vim.g.dotfiles_tmux_terminal_paste_job, 'stdin'); vim.cmd('enew!')" Enter
+
+terminal_visual_shift_insert_output="$tmp/terminal-visual-shift-insert-paste.log"
+terminal_visual_shift_insert_command="lua vim.cmd('enew'); vim.g.dotfiles_tmux_terminal_visual_paste_job = vim.fn.termopen({'sh', '-c', 'printf \"terminal visual selection\\\\n\"; cat > \"\$1\"', 'sh', $(lua_string "$terminal_visual_shift_insert_output")}); assert(type(vim.g.dotfiles_tmux_terminal_visual_paste_job) == 'number' and vim.g.dotfiles_tmux_terminal_visual_paste_job > 0); vim.g.dotfiles_tmux_paste = 'terminal-visual shift-insert via tmux\n'"
+terminal_visual_wait_command="lua assert(vim.wait(1000, function() return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'):find('terminal visual selection', 1, true) ~= nil end))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_visual_shift_insert_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$terminal_visual_wait_command" Enter
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l 'gg0v$'
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" -l "$shift_insert_sequence"
+wait_for_file_content "$terminal_visual_shift_insert_output" "terminal-visual shift-insert via tmux"
+assert_eq "tmux passes Shift-Insert bytes to terminal-visual Neovim paste" \
+  "terminal-visual shift-insert via tmux" \
+  "$(cat "$terminal_visual_shift_insert_output")"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' \
+  "lua vim.fn.chanclose(vim.g.dotfiles_tmux_terminal_visual_paste_job, 'stdin'); vim.cmd('enew!')" Enter
+
 if python3_path="$(command -v python3 2>/dev/null)"; then
   send_attached_client_key() {
     local name="$1"
@@ -374,6 +399,9 @@ PY
 else
   skip "tmux attached client Insert/Delete Neovim copy-paste keys (python3 unavailable)"
 fi
+
+force_edit_search_command="lua vim.cmd('edit! ' .. vim.fn.fnameescape($(lua_string "$tmp/search.txt")))"
+"$tmux_bin" -L "$socket_name" send-keys -t "$pane_id" Escape ':' "$force_edit_search_command" Enter
 
 visual_save_expected="$(printf 'visual shift-f5 save\nline 2')"
 visual_save_command="lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'visual shift-f5 save', 'line 2'}); vim.cmd('normal! gg')"
