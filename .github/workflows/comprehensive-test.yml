@@ -80,6 +80,9 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Ubuntu 24.04 ships ShellCheck 0.9, which false-positives on trap cleanup code.
+      SHELLCHECK_OPTS: --exclude=SC2317
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
