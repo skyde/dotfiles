@@ -2068,10 +2068,40 @@ local function ssh_option_request_tty_state(word, key, next_word)
   return ssh_request_tty_value_state(value)
 end
 
+local function ssh_remote_command_value(word, key, next_word)
+  if key ~= "-o" then
+    return nil
+  end
+
+  local value = ssh_option_value(word)
+  if (not value or value == "") and word == key then
+    value = next_word
+  end
+
+  if value == nil or value == "" then
+    return nil
+  end
+
+  local lower = value:lower()
+  local command_string = nil
+  if lower:match("^remotecommand=") then
+    command_string = value:match("^[^=]*=(.*)$")
+  elseif lower:match("^remotecommand%s+") then
+    command_string = value:match("^%S+%s+(.+)$")
+  end
+
+  if command_string == nil or command_string == "" or command_string:lower() == "none" then
+    return nil
+  end
+
+  return command_string
+end
+
 local function ssh_passthrough_command(words, index, command)
   local has_args = false
   local request_tty_state = nil
   local tty_flag_state = nil
+  local remote_command = nil
 
   index = index + 1
   while words[index] do
@@ -2097,6 +2127,10 @@ local function ssh_passthrough_command(words, index, command)
       request_tty_state = ssh_option_request_tty_state(word, key, words[index + 1])
     end
 
+    if not remote_command then
+      remote_command = ssh_remote_command_value(word, key, words[index + 1])
+    end
+
     index = index + 1
     if ssh_option_takes_value(command, key) and word == key then
       index = index + 1
@@ -2114,27 +2148,40 @@ local function ssh_passthrough_command(words, index, command)
   local final_tty_state = tty_flag_state or request_tty_state
 
   index = index + 1
-  if not words[index] then
-    if final_tty_state == "no" then
+  if words[index] then
+    if final_tty_state ~= "yes" then
       return nil
     end
-    return command
-  end
 
-  if final_tty_state ~= "yes" then
+    local remote_words = {}
+    for remote_index = index, #words do
+      table.insert(remote_words, words[remote_index])
+    end
+
+    if command_should_passthrough_class(command_from_words(remote_words)) then
+      return command
+    end
+
     return nil
   end
 
-  local remote_words = {}
-  for remote_index = index, #words do
-    table.insert(remote_words, words[remote_index])
+  if remote_command then
+    if final_tty_state ~= "yes" then
+      return nil
+    end
+
+    if command_should_passthrough_class(command_from_words(split_words(remote_command))) then
+      return command
+    end
+
+    return nil
   end
 
-  if command_should_passthrough_class(command_from_words(remote_words)) then
-    return command
+  if final_tty_state == "no" then
+    return nil
   end
 
-  return nil
+  return command
 end
 
 local python_interactive_modules = {

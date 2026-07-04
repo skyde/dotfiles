@@ -2340,8 +2340,44 @@ command_words_match_from() {
   return "$status"
 }
 
+command_string_matches() {
+  local command_string="$1" status
+  local saved_words=("${split_result[@]}")
+
+  split_words "$command_string"
+  command_words_match
+  status=$?
+  split_result=("${saved_words[@]}")
+  return "$status"
+}
+
+ssh_option_remote_command() {
+  local word="$1" key="$2" next_word="${3:-}"
+  local value lower command_string
+
+  [[ "$key" == "-o" ]] || return 1
+  value="$(ssh_option_value "$word")"
+  if [[ -z "$value" && "$word" == "$key" ]]; then
+    value="$next_word"
+  fi
+  [[ -n "$value" ]] || return 1
+
+  lower="$(ascii_lower "$value")"
+  if [[ "$lower" == remotecommand=* ]]; then
+    command_string="${value#*=}"
+  elif [[ "$lower" == remotecommand[[:space:]]* ]]; then
+    command_string="${value#*[[:space:]]}"
+  else
+    return 1
+  fi
+
+  [[ -n "$command_string" ]] || return 1
+  [[ "$(ascii_lower "$command_string")" == "none" ]] && return 1
+  printf '%s\n' "$command_string"
+}
+
 ssh_command_matches() {
-  local index="$1" command="$2" word key has_args=0 request_tty_state="" tty_flag_state="" current_tty_state
+  local index="$1" command="$2" word key has_args=0 request_tty_state="" tty_flag_state="" current_tty_state remote_command="" current_remote_command
 
   ((index++))
   while [[ -n "${split_result[$index]:-}" ]]; do
@@ -2362,6 +2398,9 @@ ssh_command_matches() {
     if [[ -z "$request_tty_state" ]] && current_tty_state="$(ssh_option_request_tty_state "$word" "$key" "${split_result[$((index + 1))]:-}")"; then
       request_tty_state="$current_tty_state"
     fi
+    if [[ -z "$remote_command" ]] && current_remote_command="$(ssh_option_remote_command "$word" "$key" "${split_result[$((index + 1))]:-}")"; then
+      remote_command="$current_remote_command"
+    fi
 
     ((index++))
     if ssh_option_takes_value "$command" "$key" && [[ "$word" == "$key" ]]; then
@@ -2374,12 +2413,20 @@ ssh_command_matches() {
 
   ((index++))
   current_tty_state="${tty_flag_state:-$request_tty_state}"
-  if [[ -z "${split_result[$index]:-}" ]]; then
-    [[ "$current_tty_state" != "no" ]]
+  if [[ -n "${split_result[$index]:-}" ]]; then
+    [[ "$current_tty_state" == "yes" ]] || return 1
+    command_words_match_from "$index"
     return $?
   fi
-  [[ "$current_tty_state" == "yes" ]] || return 1
-  command_words_match_from "$index"
+
+  if [[ -n "$remote_command" ]]; then
+    [[ "$current_tty_state" == "yes" ]] || return 1
+    command_string_matches "$remote_command"
+    return $?
+  fi
+
+  [[ "$current_tty_state" != "no" ]]
+  return $?
 }
 
 command_words_match() {

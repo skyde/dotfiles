@@ -4889,6 +4889,26 @@ set_terminal_name("term://~/repo//152:/usr/bin/ssh -oRequestTTY=yes devbox nvim 
 vim.bo.filetype = ""
 assert(terminal_left() == "<C-h>")
 vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -oRemoteCommand='nvim README.md' devbox")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -oRequestTTY=yes -oRemoteCommand='nvim README.md' devbox")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-h>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -tt -o RemoteCommand='nvim README.md' devbox")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-h>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -t -oRemoteCommand='echo nvim' devbox")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")
+vim.cmd("enew!")
+set_terminal_name("term://~/repo//152:/usr/bin/ssh -oRemoteCommand=none devbox")
+vim.bo.filetype = ""
+assert(terminal_left() == "<C-h>")
+vim.cmd("enew!")
 set_terminal_name("term://~/repo//152:/usr/bin/ssh -oRequestTTY=no devbox")
 vim.bo.filetype = ""
 assert(terminal_left() == "<C-\\><C-n><cmd>TmuxNavigateLeft<cr>")

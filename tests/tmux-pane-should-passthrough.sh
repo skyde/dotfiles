@@ -82,6 +82,11 @@ assert_success "direct ssh forced tty remote nvim passes through without ps" env
 assert_success "direct ssh no-tty then forced tty remote nvim passes through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -Tt devbox nvim README.md" ""
 assert_success "direct ssh RequestTTY remote nvim passes through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -oRequestTTY=yes devbox nvim README.md" ""
 assert_success "direct ssh proxy command option still passes through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -o ProxyCommand='ssh -W %h:%p bastion' devbox" ""
+assert_failure "direct ssh RemoteCommand nvim without tty does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -oRemoteCommand='nvim README.md' devbox" ""
+assert_success "direct ssh RequestTTY RemoteCommand nvim passes through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -oRequestTTY=yes -oRemoteCommand='nvim README.md' devbox" ""
+assert_success "direct ssh forced tty RemoteCommand nvim passes through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -tt -o RemoteCommand='nvim README.md' devbox" ""
+assert_failure "direct ssh forced tty RemoteCommand one-shot does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -t -oRemoteCommand='echo nvim' devbox" ""
+assert_success "direct ssh RemoteCommand none remote shell passes through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -oRemoteCommand=none devbox" ""
 assert_failure "direct ssh remote one-shot command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh devbox echo nvim" ""
 assert_failure "direct ssh RequestTTY remote one-shot command does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -oRequestTTY=yes devbox echo nvim" ""
 assert_failure "direct ssh RequestTTY auto remote nvim does not pass through without ps" env PATH=/usr/bin:/bin "$helper" "ssh -oRequestTTY=auto devbox nvim README.md" ""
@@ -572,6 +577,16 @@ assert_success "foreground ssh no-tty then forced tty remote nvim child passes t
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -Tt devbox nvim README.md' "$helper" zsh /dev/ttys001
 assert_success "foreground ssh RequestTTY remote nvim child passes through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -oRequestTTY=yes devbox nvim README.md' "$helper" zsh /dev/ttys001
+assert_failure "foreground ssh RemoteCommand nvim without tty child does not pass through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -oRemoteCommand=\'nvim README.md\' devbox' "$helper" zsh /dev/ttys001
+assert_success "foreground ssh RequestTTY RemoteCommand nvim child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -oRequestTTY=yes -oRemoteCommand=\'nvim README.md\' devbox' "$helper" zsh /dev/ttys001
+assert_success "foreground ssh forced tty RemoteCommand nvim child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -tt -o RemoteCommand=\'nvim README.md\' devbox' "$helper" zsh /dev/ttys001
+assert_failure "foreground ssh forced tty RemoteCommand one-shot child does not pass through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -t -oRemoteCommand=\'echo nvim\' devbox' "$helper" zsh /dev/ttys001
+assert_success "foreground ssh RemoteCommand none child passes through behind shell" \
+  env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh -oRemoteCommand=none devbox' "$helper" zsh /dev/ttys001
 assert_failure "foreground ssh remote one-shot child does not pass through behind shell" \
   env PATH="$tmp/bin:/usr/bin:/bin" TMUX_TEST_PS_OUTPUT=$'S+ /bin/zsh /bin/zsh\nS+ /usr/bin/ssh /usr/bin/ssh devbox echo nvim' "$helper" zsh /dev/ttys001
 assert_failure "foreground ssh RequestTTY remote one-shot child does not pass through behind shell" \
