@@ -22,14 +22,14 @@ find_helper() {
 }
 
 should_passthrough() {
-  local helper mode=()
+  local helper
 
   helper="$(find_helper tmux-pane-should-passthrough)" || return 1
   if [[ "$action" == "shift-insert" ]]; then
-    mode=(--paste-key)
+    "$helper" --paste-key "$current_command" "$pane_tty"
+  else
+    "$helper" "$current_command" "$pane_tty"
   fi
-
-  "$helper" "${mode[@]}" "$current_command" "$pane_tty"
 }
 
 display_message() {

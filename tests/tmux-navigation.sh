@@ -364,6 +364,73 @@ assert_eq "Shift-Insert paste-key helper selects tmux paste helper for a local m
 assert_eq "Shift-Insert paste decision keeps local mock ssh pane active" "$ssh_right_pane" "$(active_pane_in_window '=mock-ssh-nav')"
 rm -f "$fake_home/.local/bin/tmux-paste-helper"
 
+container_router_path="$tmp/container-router-path"
+container_router_paste_log="$tmp/container-router-paste.log"
+container_router_ps_log="$tmp/container-router-ps.log"
+container_router_tmux_log="$tmp/container-router-tmux.log"
+mkdir -p "$container_router_path"
+cat >"$container_router_path/ps" <<'SH'
+#!/usr/bin/env bash
+printf 'ps %s\n' "$*" >"${TMUX_NAV_CONTAINER_ROUTER_PS_LOG:?}"
+printf '%s\n' \
+  'S+ /bin/zsh /bin/zsh' \
+  'S+ /usr/local/bin/docker /usr/local/bin/docker attach app'
+SH
+chmod +x "$container_router_path/ps"
+cat >"$container_router_path/tmux" <<'SH'
+#!/usr/bin/env bash
+{
+  printf 'tmux'
+  printf ' %s' "$@"
+  printf '\n'
+} >>"${TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG:?}"
+SH
+chmod +x "$container_router_path/tmux"
+cat >"$fake_home/.local/bin/tmux-paste-helper" <<'SH'
+#!/usr/bin/env bash
+printf 'args=%s\n' "$*" >"${TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG:?}"
+SH
+chmod +x "$fake_home/.local/bin/tmux-paste-helper"
+
+env \
+  HOME="$fake_home" \
+  PATH="$container_router_path:/usr/bin:/bin" \
+  TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$container_router_paste_log" \
+  TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
+  TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$container_router_tmux_log" \
+  "$root/common/.local/bin/tmux-pane-key-router" shift-insert %container zsh /dev/ttys001
+wait_for_file "$container_router_paste_log"
+assert_eq \
+  "Shift-Insert router uses tmux paste helper for foreground docker attach" \
+  "args=%container" \
+  "$(cat "$container_router_paste_log")"
+assert_contains \
+  "Shift-Insert router inspects foreground docker attach pane tty" \
+  "$(cat "$container_router_ps_log")" \
+  "-t ttys001"
+assert_not_contains \
+  "Shift-Insert router avoids raw Shift-Insert bytes for foreground docker attach" \
+  "$(cat "$container_router_tmux_log" 2>/dev/null || true)" \
+  "send-keys -t %container -H 1b 5b 32 3b 32 7e"
+
+rm -f "$container_router_paste_log" "$container_router_ps_log" "$container_router_tmux_log"
+env \
+  HOME="$fake_home" \
+  PATH="$container_router_path:/usr/bin:/bin" \
+  TMUX_NAV_CONTAINER_ROUTER_PASTE_LOG="$container_router_paste_log" \
+  TMUX_NAV_CONTAINER_ROUTER_PS_LOG="$container_router_ps_log" \
+  TMUX_NAV_CONTAINER_ROUTER_TMUX_LOG="$container_router_tmux_log" \
+  "$root/common/.local/bin/tmux-pane-key-router" nav-left %container zsh /dev/ttys001
+wait_for_file "$container_router_tmux_log"
+assert_contains \
+  "navigation router passes C-h through to foreground docker attach" \
+  "$(cat "$container_router_tmux_log")" \
+  "tmux send-keys -t %container C-h"
+assert_file_absent \
+  "navigation router does not use paste helper for foreground docker attach" \
+  "$container_router_paste_log"
+rm -f "$fake_home/.local/bin/tmux-paste-helper"
+
 mock_ssh_tunnel_ready="$tmp/mock-ssh-tunnel.ready"
 mock_ssh_tunnel_server_port="$(start_mock_ssh_server "$mock_ssh_tunnel_ready")"
 mock_ssh_tunnel_local_port="$(free_tcp_port)"
