@@ -525,8 +525,91 @@ assert(write_result == 0, "writefile failed " .. tostring(write_result))
     return results
 
 
+def nvim_foreground_behavior_results():
+    nvim = shutil.which("nvim")
+    if not nvim:
+        return None
+
+    with tempfile.TemporaryDirectory(prefix="tmux-passthrough-consistency.") as tempdir:
+        script_path = Path(tempdir) / "foreground-check.lua"
+        output_path = Path(tempdir) / "foreground-results.tsv"
+        case_rows = "\n".join(
+            f"  {{ label = {lua_quote(label)}, command = {lua_quote(commandline)} }},"
+            for label, commandline in behavior_cases
+        )
+
+        script_path.write_text(
+            f"""
+local root = {lua_quote(str(root))}
+local output_path = {lua_quote(str(output_path))}
+local spec = dofile(root .. "/common/.config/nvim/lua/plugins/tmux-navigator.lua")
+local terminal_left
+
+for _, key in ipairs(spec[1].keys) do
+  if key[1] == "<C-h>" and key.mode == "t" then
+    terminal_left = key[2]
+  end
+end
+
+assert(type(terminal_left) == "function", "missing terminal tmux left mapping")
+
+local cases = {{
+{case_rows}
+}}
+local lines = {{}}
+
+for index, case in ipairs(cases) do
+  local root_pid = 1000 + index
+  local child_pid = 2000 + index
+  vim.cmd("enew!")
+  vim.api.nvim_buf_set_name(0, "term://~/repo//" .. tostring(root_pid) .. ":/bin/zsh")
+  vim.bo.filetype = ""
+  vim.b.terminal_job_pid = root_pid
+  vim.env.DOTFILES_NVIM_TEST_PS_OUTPUT = table.concat({{
+    tostring(root_pid) .. " 1 S+ /bin/zsh",
+    tostring(child_pid) .. " " .. tostring(root_pid) .. " S+ " .. case.command,
+  }}, "\\n")
+  table.insert(lines, (terminal_left() == "<C-h>" and "1" or "0") .. "\\t" .. case.label)
+  vim.env.DOTFILES_NVIM_TEST_PS_OUTPUT = nil
+  vim.cmd("bwipeout!")
+end
+
+local write_result = vim.fn.writefile(lines, output_path)
+assert(write_result == 0, "writefile failed " .. tostring(write_result))
+""",
+            encoding="utf-8",
+        )
+
+        result = subprocess.run(
+            [nvim, "--headless", "-u", "NONE", "-i", "NONE", "-n", "--noplugin", "-S", str(script_path), "+qa"],
+            cwd=root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise AssertionError(
+                f"nvim foreground behavior check failed: exit={result.returncode} "
+                f"stdout={result.stdout!r} stderr={result.stderr!r}"
+            )
+        if not output_path.exists():
+            raise AssertionError(
+                "nvim foreground behavior check did not produce foreground-results.tsv: "
+                f"stdout={result.stdout!r} stderr={result.stderr!r}"
+            )
+
+        results = {}
+        for line in output_path.read_text(encoding="utf-8").splitlines():
+            value, label = line.split("\t", 1)
+            results[label] = value == "1"
+
+    return results
+
+
 shell_behavior = shell_behavior_results()
 nvim_behavior = nvim_behavior_results()
+nvim_foreground_behavior = nvim_foreground_behavior_results()
 
 if nvim_behavior is None:
     print("skip - tmux passthrough behavior consistency (nvim unavailable)")
@@ -545,6 +628,21 @@ else:
             )
         )
     print("tmux-passthrough-behavior-consistency-ok")
+
+    foreground_mismatches = [
+        (label, shell_behavior[label], nvim_foreground_behavior.get(label))
+        for label, _ in behavior_cases
+        if shell_behavior[label] != nvim_foreground_behavior.get(label)
+    ]
+    if foreground_mismatches:
+        raise AssertionError(
+            "tmux passthrough foreground behavior drift: "
+            + ", ".join(
+                f"{label}: shell={shell_result} nvim={nvim_result}"
+                for label, shell_result, nvim_result in foreground_mismatches
+            )
+        )
+    print("tmux-passthrough-foreground-behavior-consistency-ok")
 
 print("tmux-passthrough-consistency-ok")
 PY
