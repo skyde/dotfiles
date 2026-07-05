@@ -667,7 +667,10 @@ assert_contains \
   "$(HOME="$fake_home" "$real_tmux" -L "$socket_name" list-windows -t =swap-nav -F '#{window_index}:#{window_name}:#{window_active}')" \
   "2:two:1"
 
-paste_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix p)"
+previous_window_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix p)"
+assert_contains "prefix p selects previous window" "$previous_window_binding" "previous-window"
+
+paste_binding="$("$real_tmux" -L "$socket_name" list-keys -T prefix "]")"
 assert_contains "paste binding uses helper" "$paste_binding" "tmux-paste-helper"
 assert_contains "paste binding uses explicit home" "$paste_binding" "$home_marker"
 assert_contains "paste binding has repo fallback" "$paste_binding" "$repo_marker"

@@ -580,6 +580,24 @@ local function paste_clipboard_visual()
   vim.api.nvim_feedkeys(vim.keycode([["+P]]), "n", false)
 end
 
+local function delete_to_line_start()
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  if col <= 0 then
+    return
+  end
+
+  local line = vim.api.nvim_get_current_line()
+  vim.api.nvim_set_current_line(line:sub(col + 1))
+  vim.api.nvim_win_set_cursor(0, { row, 0 })
+end
+
+local function terminal_delete_to_line_start()
+  local ok, job_id = pcall(vim.api.nvim_buf_get_var, 0, "terminal_job_id")
+  if ok and type(job_id) == "number" then
+    vim.api.nvim_chan_send(job_id, "\21")
+  end
+end
+
 map("n", "<D-c>", copy_clipboard_normal, { desc = "Copy line" })
 map("v", "<D-c>", copy_clipboard_visual, { desc = "Copy selection" })
 map("i", "<D-c>", '<C-o>"+yy', { desc = "Copy line" })
@@ -613,6 +631,9 @@ for _, lhs in ipairs({ "<S-Insert>", "\27[2;2~" }) do
   map("c", lhs, "<C-r>+", { desc = "Paste" })
   map("t", lhs, paste_clipboard_to_terminal, { desc = "Paste" })
 end
+map({ "n", "i" }, "<D-BS>", delete_to_line_start, { desc = "Delete to line start" })
+map("c", "<D-BS>", "<C-u>", { desc = "Delete to line start" })
+map("t", "<D-BS>", terminal_delete_to_line_start, { desc = "Delete to line start" })
 map({ "n", "v" }, "<D-a>", "ggVG", { desc = "Select all" })
 map("i", "<D-a>", "<Esc>ggVG", { desc = "Select all" })
 

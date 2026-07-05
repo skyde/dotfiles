@@ -73,6 +73,9 @@ assert_contains "VS Code docs describe terminal-mode paste" \
 assert_contains "VS Code docs describe word delete keys" \
   "$vscode_docs" \
   "Ctrl+Backspace\` / \`Ctrl+Delete"
+assert_contains "VS Code docs describe Cmd-Backspace line-start delete" \
+  "$vscode_docs" \
+  "Cmd+Backspace\` – delete from the cursor to the start"
 assert_contains "VS Code docs describe word motion keys" \
   "$vscode_docs" \
   "Ctrl+Left\` / \`Ctrl+Right"
@@ -95,6 +98,9 @@ assert_contains "Neovim config maps Ctrl-Backspace" \
 assert_contains "Neovim config maps Ctrl-Delete" \
   "$nvim_keymaps" \
   'for _, lhs in ipairs({ "<C-Del>", "\27[3;5~" }) do'
+assert_contains "Neovim config maps Cmd-Backspace" \
+  "$nvim_keymaps" \
+  'map({ "n", "i" }, "<D-BS>", delete_to_line_start'
 assert_contains "Neovim config maps Ctrl-Insert raw terminal bytes" \
   "$nvim_keymaps" \
   'for _, lhs in ipairs({ "<C-Insert>", "\27[2;5~" }) do'
@@ -143,6 +149,9 @@ assert_contains "kitty maps Ctrl-Backspace to CSI-u sequence" \
 assert_contains "kitty maps Ctrl-Delete to xterm sequence" \
   "$kitty_conf" \
   "map ctrl+delete send_text all \\x1b[3;5~"
+assert_contains "kitty maps Cmd-Backspace to Ctrl-U" \
+  "$kitty_conf" \
+  "map cmd+backspace send_text all \\x15"
 assert_contains "kitty maps Ctrl-Insert to terminal copy sequence" \
   "$kitty_conf" \
   "map ctrl+insert send_text all \\x1b[2;5~"
@@ -195,5 +204,11 @@ assert_contains "tmux config passes Ctrl-Backspace to panes" \
 assert_contains "tmux config passes Ctrl-Delete to panes" \
   "$tmux_conf" \
   "bind-key -n C-Delete send-keys C-Delete"
+assert_contains "tmux prefix p selects previous window" \
+  "$tmux_conf" \
+  "bind-key p previous-window"
+assert_contains "tmux prefix bracket uses paste helper" \
+  "$tmux_conf" \
+  "bind-key ] run-shell -b"
 assert_not_contains "tmux config avoids vague escape-time typo" "$tmux_conf" "vsmall"
 assert_not_contains "tmux config avoids stale Ctrl-s issue comment" "$tmux_conf" "some issue here"

@@ -131,6 +131,9 @@ fi
 
 if [[ "$TMUX_CLIENT_LIVE" == "1" ]]; then
   if tmux load-buffer -w - <"$content_file" 2>/dev/null; then
+    if in_ssh_session; then
+      emit_osc52 || true
+    fi
     try_host_clipboard || true
     exit 0
   fi

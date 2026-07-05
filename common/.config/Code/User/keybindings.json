@@ -68,6 +68,19 @@
     "args": { "text": "\u001B[3;5~" }
   },
   {
+    // Cmd+Backspace deletes from the cursor to the start of the line
+    "key": "cmd+backspace",
+    "command": "deleteAllLeft",
+    "when": "textInputFocus && !terminalFocus"
+  },
+  {
+    // Cmd+Backspace in the terminal sends Ctrl+U, the shell line-kill key
+    "key": "cmd+backspace",
+    "command": "workbench.action.terminal.sendSequence",
+    "when": "terminalFocus",
+    "args": { "text": "\u0015" }
+  },
+  {
     // Let terminal apps (e.g. yazi) receive F1 instead of opening the command palette
     "key": "f1",
     "command": "-workbench.action.showCommands"

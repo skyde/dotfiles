@@ -580,6 +580,13 @@ assert(rhs_for("<F24>", "i") == "<cmd>bnext<CR>")
 assert(rhs_for("<D-s>") == "<cmd>w<CR>")
 assert(rhs_for("<D-s>", "i") == "<cmd>w<CR>")
 assert(rhs_for("<D-s>", "v") == "<cmd>w<CR>")
+_G.dotfiles_smoke_normal_cmd_backspace_callback = vim.fn.maparg("<D-BS>", "n", false, true).callback
+assert(type(_G.dotfiles_smoke_normal_cmd_backspace_callback) == "function")
+_G.dotfiles_smoke_insert_cmd_backspace_callback = vim.fn.maparg("<D-BS>", "i", false, true).callback
+assert(type(_G.dotfiles_smoke_insert_cmd_backspace_callback) == "function")
+assert(rhs_for("<D-BS>", "c") == "<C-u>")
+_G.dotfiles_smoke_terminal_cmd_backspace_callback = vim.fn.maparg("<D-BS>", "t", false, true).callback
+assert(type(_G.dotfiles_smoke_terminal_cmd_backspace_callback) == "function")
 assert(type(vim.fn.maparg("<C-Left>", "n", false, true).callback) == "function")
 assert(type(vim.fn.maparg("<C-Left>", "i", false, true).callback) == "function")
 assert(type(vim.fn.maparg("\27[1;5D", "n", false, true).callback) == "function")
@@ -800,6 +807,24 @@ assert(rhs_for("<D-a>", "i") == "<Esc>ggVG")
   feed_raw("\27[1;5C")
   feed("aZ<Esc>")
   assert(lines_text() == "normalZ ctrl right alpha beta gamma", lines_text())
+
+  feed("<Esc>")
+  vim.cmd("stopinsert")
+  vim.cmd("enew!")
+
+  local normal_cmd_backspace_callback = callback_for("<D-BS>", "n")
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "normal cmd backspace alpha beta gamma" })
+  vim.api.nvim_win_set_cursor(0, { 1, #"normal cmd backspace alpha beta" })
+  normal_cmd_backspace_callback()
+  assert(lines_text() == " gamma", lines_text())
+
+  local insert_cmd_backspace_callback = callback_for("<D-BS>", "i")
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "insert cmd backspace alpha beta gamma" })
+  vim.api.nvim_win_set_cursor(0, { 1, #"insert cmd backspace alpha beta" })
+  insert_cmd_backspace_callback()
+  assert(lines_text() == " gamma", lines_text())
 
   local normal_ctrl_backspace_callback = callback_for("\27[127;5u", "n")
   local normal_ctrl_backspace_line = "normal ctrl backspace alpha beta gamma"

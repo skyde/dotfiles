@@ -465,14 +465,21 @@ assert_file_absent "osc-copy SSH plain tmux fallback without tty skips host pbco
 
 ssh_tmux_log="$tmp/ssh-tmux-buffer.txt"
 ssh_tmux_pbcopy_log="$tmp/ssh-tmux-pbcopy-should-not-run.txt"
+ssh_tmux_osc52_expected="$tmp/ssh-tmux-osc52.expected"
+ssh_tmux_osc52_actual="$tmp/ssh-tmux-osc52.actual"
+printf '\033Ptmux;\033\033]52;c;%s\a\033%s' "$encoded" "\\" >"$ssh_tmux_osc52_expected"
 HOME="$tmp/home" \
   TMUX=fake \
   SSH_CLIENT="127.0.0.1 1000 22" \
   OSC_COPY_TMUX_LOG="$ssh_tmux_log" \
   OSC_COPY_PBCOPY_LOG="$ssh_tmux_pbcopy_log" \
+  OSC_TTY="$ssh_tmux_osc52_actual" \
   PATH="$tmp/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   "$root/common/.local/bin/osc-copy" <"$expected"
 assert_files_equal "osc-copy live SSH tmux still writes tmux buffer" "$expected" "$ssh_tmux_log"
+assert_files_equal "osc-copy live SSH tmux also emits wrapped OSC52" \
+  "$ssh_tmux_osc52_expected" \
+  "$ssh_tmux_osc52_actual"
 assert_file_absent "osc-copy live SSH tmux skips host pbcopy" "$ssh_tmux_pbcopy_log"
 
 stale_tmux_log="$tmp/stale-tmux-buffer.txt"

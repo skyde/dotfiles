@@ -245,6 +245,19 @@ for path, bindings in ((keybindings_file, keybindings), (mac_keybindings_file, m
         {"text": "\x1b[3;5~"},
         "terminalFocus",
     ), f"{path}: Ctrl+Delete must reach shells, tmux, and terminal Neovim"
+    assert has_keybinding(
+        bindings,
+        "cmd+backspace",
+        "deleteAllLeft",
+        when="textInputFocus && !terminalFocus",
+    ), f"{path}: Cmd+Backspace must delete from cursor to line start in editors"
+    assert has_keybinding(
+        bindings,
+        "cmd+backspace",
+        "workbench.action.terminal.sendSequence",
+        {"text": "\x15"},
+        "terminalFocus",
+    ), f"{path}: Cmd+Backspace must send Ctrl+U to shells and terminal apps"
 
 assert has_mapping(normal_mappings, ["<leader>", "f", "t"], "workbench.action.tasks.runTask", "StandardTerminal"), settings_file
 assert has_mapping(normal_mappings, ["<leader>", "a"], "workbench.action.tasks.runTask", "Tmux: Switch to AI"), settings_file
