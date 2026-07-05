@@ -1,39 +1,156 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-raw_data="$(cat)"
+in_ssh_session() {
+  [[ -n "${SSH_CLIENT:-}" || -n "${SSH_TTY:-}" || -n "${SSH_CONNECTION:-}" ]]
+}
 
-if [[ -n "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
-  printf '%s' "$raw_data" | tmux load-buffer -w -
+tmux_client_is_live() {
+  [[ -n "${TMUX:-}" ]] || return 1
+  command -v tmux >/dev/null 2>&1 || return 1
+  tmux display-message -p '#{pane_id}' >/dev/null 2>&1
+}
+
+make_temp_file() {
+  local dir="${TMPDIR:-/tmp}"
+  local template path attempt
+
+  if [[ ! -d "$dir" || ! -w "$dir" || ! -x "$dir" ]]; then
+    dir="/tmp"
+  fi
+  template="$dir/osc-copy.XXXXXX"
+
+  if command -v mktemp >/dev/null 2>&1; then
+    if mktemp "$template" 2>/dev/null; then
+      return
+    fi
+  fi
+
+  attempt=0
+  while ((attempt < 100)); do
+    path="$dir/osc-copy.$$.$attempt"
+    if (set -C; : >"$path") 2>/dev/null; then
+      printf '%s\n' "$path"
+      return 0
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  return 1
+}
+
+encode_content_file() {
+  local encoded
+
+  command -v base64 >/dev/null 2>&1 || return 1
+  encoded="$(base64 <"$content_file")" || return 1
+  encoded="${encoded//$'\n'/}"
+  encoded="${encoded//$'\r'/}"
+  printf '%s' "$encoded"
+}
+
+try_copy_command() {
+  "$@" <"$content_file" 2>/dev/null
+}
+
+content_is_valid_utf8() {
+  if command -v iconv >/dev/null 2>&1; then
+    iconv -f UTF-8 -t UTF-8 <"$content_file" >/dev/null 2>&1
+    return
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$content_file" >/dev/null 2>&1 <<'PY'
+import pathlib
+import sys
+
+try:
+    pathlib.Path(sys.argv[1]).read_bytes().decode("utf-8")
+except UnicodeDecodeError:
+    sys.exit(1)
+PY
+    return
+  fi
+
+  return 0
+}
+
+try_host_clipboard() {
+  in_ssh_session && return 1
+
+  if content_is_valid_utf8 && command -v pbcopy >/dev/null 2>&1 &&
+    try_copy_command pbcopy; then
+    return 0
+  fi
+
+  if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1 &&
+    try_copy_command wl-copy; then
+    return 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1 &&
+    try_copy_command xclip -selection clipboard; then
+    return 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1 &&
+    try_copy_command xsel --clipboard --input; then
+    return 0
+  fi
+
+  return 1
+}
+
+emit_osc52() {
+  local encoded osc_sequence
+
+  encoded="$(encode_content_file)" || return 1
+
+  trap '' SIGTTOU
+
+  if [[ "$TMUX_CLIENT_LIVE" == "1" ]]; then
+    osc_sequence="$(printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$encoded")"
+  else
+    osc_sequence="$(printf "\033]52;c;%s\a" "$encoded")"
+  fi
+
+  printf '%s' "$osc_sequence" 2>/dev/null >"${OSC_TTY:-/dev/tty}"
+}
+
+content_file="$(make_temp_file)" || {
+  echo "No copy method available." >&2
+  exit 1
+}
+trap 'rm -f "$content_file" 2>/dev/null || true' EXIT
+cat >"$content_file"
+
+TMUX_CLIENT_LIVE=0
+if tmux_client_is_live; then
+  TMUX_CLIENT_LIVE=1
+fi
+
+if [[ "$TMUX_CLIENT_LIVE" == "1" ]]; then
+  if tmux load-buffer -w - <"$content_file" 2>/dev/null; then
+    if in_ssh_session; then
+      emit_osc52 || true
+    fi
+    try_host_clipboard || true
+    exit 0
+  fi
+
+  if tmux load-buffer - <"$content_file" 2>/dev/null; then
+    try_host_clipboard || emit_osc52 || true
+    exit 0
+  fi
+fi
+
+if try_host_clipboard; then
   exit 0
 fi
 
-if command -v pbcopy >/dev/null 2>&1; then
-  printf '%s' "$raw_data" | pbcopy
+if emit_osc52; then
   exit 0
 fi
 
-if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
-  printf '%s' "$raw_data" | wl-copy
-  exit 0
-fi
-
-if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1; then
-  printf '%s' "$raw_data" | xclip -selection clipboard
-  exit 0
-fi
-
-if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1; then
-  printf '%s' "$raw_data" | xsel --clipboard --input
-  exit 0
-fi
-
-data=$(printf '%s' "$raw_data" | base64 | tr -d '\n')
-
-trap '' SIGTTOU
-
-if [[ -n "${TMUX:-}" ]]; then
-  printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$data" >/dev/tty 2>/dev/null || true
-else
-  printf "\033]52;c;%s\a" "$data" >/dev/tty 2>/dev/null || true
-fi
+echo "No copy method available." >&2
+exit 1

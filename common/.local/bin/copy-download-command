@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+bin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
   cat <<'EOF'
@@ -10,6 +11,34 @@ Builds an rsync download command for the current host and copies it to the clipb
 - source_path defaults to the current working directory (can be a file or directory)
 - destination_base defaults to ~/Downloads
 EOF
+}
+
+resolve_copy_helper() {
+  local helper=""
+
+  if [[ -x "$bin_dir/osc-copy" ]]; then
+    printf '%s\n' "$bin_dir/osc-copy"
+    return 0
+  fi
+
+  if [[ -n "${HOME:-}" ]]; then
+    for helper in \
+      "$HOME/.local/bin/osc-copy" \
+      "$HOME/dotfiles/common/.local/bin/osc-copy"
+    do
+      if [[ -x "$helper" ]]; then
+        printf '%s\n' "$helper"
+        return 0
+      fi
+    done
+  fi
+
+  if helper="$(command -v -- osc-copy 2>/dev/null)"; then
+    printf '%s\n' "$helper"
+    return 0
+  fi
+
+  return 1
 }
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
@@ -48,5 +77,9 @@ else
 fi
 
 download_cmd="${download_cmd//\\~/\~}"
-printf '%s\n' "$download_cmd" | osc-copy
+if ! copy_helper="$(resolve_copy_helper)"; then
+  printf 'copy-download-command: osc-copy not found\n' >&2
+  exit 127
+fi
+printf '%s\n' "$download_cmd" | "$copy_helper"
 printf '%s\n' "$download_cmd"
