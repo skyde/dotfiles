@@ -73,6 +73,49 @@ jobs:
           bash -n common/.bashrc-custom || { echo "❌ .bashrc-custom has syntax errors"; exit 1; }
           echo "✅ Shell configurations have valid syntax"
 
+  # Focused Neovim/tmux behavior tests
+  nvim_tmux_smoke:
+    name: Neovim and tmux Smoke
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Ubuntu 24.04 ships ShellCheck 0.9, which false-positives on trap cleanup code.
+      SHELLCHECK_OPTS: --exclude=SC2317
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            ca-certificates \
+            curl \
+            fzf \
+            git \
+            python3 \
+            shellcheck \
+            stow \
+            tmux \
+            wl-clipboard \
+            xclip \
+            xsel \
+            zsh
+          curl -fsSL \
+            https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz \
+            -o "$RUNNER_TEMP/nvim-linux-x86_64.tar.gz"
+          tar -xzf "$RUNNER_TEMP/nvim-linux-x86_64.tar.gz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/nvim-linux-x86_64/bin" >> "$GITHUB_PATH"
+
+      - name: Show tool versions
+        run: |
+          nvim --version | head -1
+          tmux -V
+
+      - name: Run Neovim/tmux smoke tests
+        run: tests/run-nvim-tmux.sh
+
   # Multi-platform testing matrix
   test-platforms:
     name: Test on ${{ matrix.os }}
@@ -567,7 +610,7 @@ jobs:
   # Final validation
   summary:
     name: Test Summary
-    needs: [validate, test-platforms, integration-test, security-check]
+    needs: [validate, nvim_tmux_smoke, test-platforms, integration-test, security-check]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -577,11 +620,13 @@ jobs:
           echo "======================="
           echo ""
           echo "✅ Repository validation: ${{ needs.validate.result }}"
+          echo "✅ Neovim/tmux smoke: ${{ needs.nvim_tmux_smoke.result }}"
           echo "✅ Platform testing: ${{ needs.test-platforms.result }}"
           echo "✅ Integration testing: ${{ needs.integration-test.result }}"
           echo "✅ Security checks: ${{ needs.security-check.result }}"
           echo ""
           if [ "${{ needs.validate.result }}" = "success" ] && 
+             [ "${{ needs.nvim_tmux_smoke.result }}" = "success" ] &&
              [ "${{ needs.test-platforms.result }}" = "success" ] && 
              [ "${{ needs.integration-test.result }}" = "success" ] && 
              [ "${{ needs.security-check.result }}" = "success" ]; then
