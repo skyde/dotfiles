@@ -1,0 +1,251 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    echo "Usage: $0 [--start-dir DIR] [--title TITLE] TOOL [TOOL...]" >&2
+}
+
+show_error() {
+    local message="$1"
+
+    printf 'Error: %s\n' "$message" >&2
+    if inside_tmux_client; then
+        tmux display-message "$message" >/dev/null 2>&1 || true
+    elif [[ -n "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
+        (unset TMUX; tmux display-message "$message") >/dev/null 2>&1 || true
+    fi
+}
+
+current_tmux_pane_id() {
+    local pane_id
+
+    [[ -n "${TMUX:-}" ]] || return 1
+    pane_id="$(tmux display-message -p '#{pane_id}' 2>/dev/null)" || return 1
+    [[ -n "$pane_id" ]] || return 1
+    printf '%s\n' "$pane_id"
+}
+
+inside_tmux_client() {
+    current_tmux_pane_id >/dev/null
+}
+
+tmux_cmd() {
+    if [[ "$inside_tmux" == "1" || -z "${TMUX:-}" ]]; then
+        tmux "$@"
+    else
+        (unset TMUX; tmux "$@")
+    fi
+}
+
+shell_quote_word() {
+    printf '%q' "$1"
+}
+
+join_tool_names() {
+    local joined="" tool
+
+    for tool in "$@"; do
+        if [[ -n "$joined" ]]; then
+            joined+=", "
+        fi
+        joined+="$tool"
+    done
+
+    printf '%s\n' "$joined"
+}
+
+resolve_tool() {
+    local tool="$1"
+    local candidate
+
+    if [[ "$tool" == */* ]]; then
+        command -v -- "$tool" 2>/dev/null
+        return
+    fi
+
+    if [[ -n "${HOME:-}" ]]; then
+        for candidate in "$HOME/.local/bin/$tool" "$HOME/dotfiles/common/.local/bin/$tool"; do
+            if [[ -x "$candidate" ]]; then
+                printf '%s\n' "$candidate"
+                return 0
+            fi
+        done
+    fi
+
+    candidate="$script_dir/$tool"
+    if [[ -x "$candidate" ]]; then
+        printf '%s\n' "$candidate"
+        return 0
+    fi
+
+    command -v -- "$tool" 2>/dev/null
+}
+
+expand_home_dir() {
+    local value="$1"
+
+    case "$value" in
+        "~") printf '%s\n' "${HOME:-$value}" ;;
+        \~/*) printf '%s/%s\n' "${HOME:-~}" "${value#\~/}" ;;
+        *) printf '%s\n' "$value" ;;
+    esac
+}
+
+is_windows_environment() {
+    [[ "${OS:-}" == "Windows_NT" || "${OSTYPE:-}" == msys* || "${OSTYPE:-}" == cygwin* || -n "${MSYSTEM:-}" ]]
+}
+
+is_windows_absolute_path() {
+    [[ "$1" =~ ^[A-Za-z]:[\\/] || "$1" == \\\\* || "$1" == //* ]]
+}
+
+normalize_windows_absolute_path() {
+    local value="$1"
+
+    if is_windows_absolute_path "$value"; then
+        value="${value//\\//}"
+    fi
+
+    printf '%s\n' "$value"
+}
+
+tmux_supports_display_popup() {
+    local line
+
+    while IFS= read -r line; do
+        if [[ "$line" == display-popup* ]]; then
+            return 0
+        fi
+    done < <(tmux_cmd list-commands 2>/dev/null)
+
+    return 1
+}
+
+script_source="${BASH_SOURCE[0]}"
+script_dir="."
+if [[ "$script_source" == */* ]]; then
+    script_dir="${script_source%/*}"
+fi
+script_dir="$(cd -- "$script_dir" && pwd -P)"
+start_dir=""
+title=""
+tools=()
+
+while (($#)); do
+    case "$1" in
+        --start-dir)
+            shift
+            if [[ -z "${1:-}" ]]; then
+                echo "Error: --start-dir requires a directory" >&2
+                usage
+                exit 1
+            fi
+            start_dir="$1"
+            ;;
+        --start-dir=*)
+            start_dir="${1#--start-dir=}"
+            if [[ -z "$start_dir" ]]; then
+                echo "Error: --start-dir requires a directory" >&2
+                usage
+                exit 1
+            fi
+            ;;
+        --title)
+            shift
+            if [[ -z "${1:-}" ]]; then
+                echo "Error: --title requires a value" >&2
+                usage
+                exit 1
+            fi
+            title="$1"
+            ;;
+        --title=*)
+            title="${1#--title=}"
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            while (($#)); do
+                tools+=("$1")
+                shift
+            done
+            break
+            ;;
+        --*)
+            echo "Error: unknown option: $1" >&2
+            usage
+            exit 1
+            ;;
+        *)
+            tools+=("$1")
+            ;;
+    esac
+    shift
+done
+
+if ! command -v tmux >/dev/null 2>&1; then
+    printf 'Error: tmux is not installed or not on PATH\n' >&2
+    exit 1
+fi
+
+if [[ "${#tools[@]}" -eq 0 ]]; then
+    show_error "No popup command specified"
+    usage
+    exit 1
+fi
+
+inside_tmux=0
+if inside_tmux_client; then
+    inside_tmux=1
+fi
+
+if [[ -z "$start_dir" && "$inside_tmux" == "1" ]]; then
+    start_dir="$(tmux_cmd display-message -p '#{pane_current_path}' 2>/dev/null || true)"
+fi
+start_dir="$(expand_home_dir "${start_dir:-$PWD}")"
+if [[ ! -d "$start_dir" ]]; then
+    if is_windows_environment && is_windows_absolute_path "$start_dir"; then
+        start_dir="$(normalize_windows_absolute_path "$start_dir")"
+    else
+        show_error "Popup start directory is not a directory: $start_dir"
+        exit 1
+    fi
+fi
+
+selected_tool=""
+selected_executable=""
+for tool in "${tools[@]}"; do
+    if selected_executable="$(resolve_tool "$tool")"; then
+        selected_tool="$tool"
+        break
+    fi
+done
+
+if [[ -z "$selected_tool" ]]; then
+    show_error "No popup command found: $(join_tool_names "${tools[@]}")"
+    exit 1
+fi
+
+popup_title="${title:-$selected_tool}"
+popup_command="$(shell_quote_word "$selected_executable")"
+
+if [[ "$inside_tmux" == "1" ]] && tmux_supports_display_popup; then
+    if ! tmux_cmd display-popup \
+        -E \
+        -d "$start_dir" \
+        -w "${TMUX_POPUP_WIDTH:-90%}" \
+        -h "${TMUX_POPUP_HEIGHT:-85%}" \
+        -T " $popup_title " \
+        "$popup_command"; then
+        show_error "Unable to open popup: $selected_tool"
+        exit 1
+    fi
+else
+    if ! tmux_cmd new-window -c "$start_dir" -n "$popup_title" "$popup_command"; then
+        show_error "Unable to open fallback window: $selected_tool"
+        exit 1
+    fi
+fi

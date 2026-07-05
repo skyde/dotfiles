@@ -1,0 +1,398 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+workspace_markers=(
+  ".git"
+  ".jj"
+  ".devcontainer"
+  "CMakeLists.txt"
+  "Makefile"
+  "Justfile"
+  "justfile"
+  "Taskfile.yml"
+  "Taskfile.yaml"
+  "taskfile.yml"
+  "taskfile.yaml"
+  "package.json"
+  "pnpm-workspace.yaml"
+  "package-lock.json"
+  "pnpm-lock.yaml"
+  "yarn.lock"
+  "bun.lock"
+  "bun.lockb"
+  "bunfig.toml"
+  "tsconfig.json"
+  "jsconfig.json"
+  "vite.config.js"
+  "vite.config.ts"
+  "next.config.js"
+  "next.config.ts"
+  "eslint.config.js"
+  "eslint.config.mjs"
+  "eslint.config.ts"
+  "turbo.json"
+  "nx.json"
+  "angular.json"
+  "lerna.json"
+  "rush.json"
+  "biome.json"
+  "biome.jsonc"
+  "pyproject.toml"
+  "poetry.lock"
+  "pdm.lock"
+  "pixi.toml"
+  "pixi.lock"
+  "uv.lock"
+  "requirements.txt"
+  "pyrightconfig.json"
+  "ruff.toml"
+  "mypy.ini"
+  "setup.py"
+  "setup.cfg"
+  "tox.ini"
+  "pytest.ini"
+  "Pipfile"
+  "Cargo.toml"
+  "stack.yaml"
+  "cabal.project"
+  "package.yaml"
+  "Package.swift"
+  "go.mod"
+  "go.work"
+  "WORKSPACE"
+  "WORKSPACE.bazel"
+  "MODULE.bazel"
+  "deno.json"
+  "deno.jsonc"
+  "deno.lock"
+  "flake.nix"
+  ".tool-versions"
+  ".mise.toml"
+  "mise.toml"
+  "meson.build"
+  "build.gradle"
+  "build.gradle.kts"
+  "settings.gradle"
+  "settings.gradle.kts"
+  "pom.xml"
+  "composer.json"
+  "Gemfile"
+  "Rakefile"
+  "gradlew"
+  "compose.yaml"
+  "compose.yml"
+  "docker-compose.yaml"
+  "docker-compose.yml"
+  "mix.exs"
+  "rebar.config"
+  "gleam.toml"
+  "dune-project"
+  "dune-workspace"
+)
+fallback_workspace_markers=(
+  ".vscode"
+)
+
+usage() {
+  local command_name="${0##*/}"
+
+  printf 'Usage: %s [--] [path]\n' "${command_name:-tmux-session-name}" >&2
+}
+
+expand_home_dir() {
+  local value="$1"
+
+  case "$value" in
+    "~") printf '%s\n' "${HOME:-$value}" ;;
+    \~/*) printf '%s/%s\n' "${HOME:-~}" "${value#\~/}" ;;
+    *) printf '%s\n' "$value" ;;
+  esac
+}
+
+is_windows_absolute_path() {
+  [[ "$1" =~ ^[A-Za-z]:[\\/] || "$1" == \\\\* || "$1" == //* ]]
+}
+
+normalize_windows_absolute_path() {
+  local path="$1"
+
+  if is_windows_absolute_path "$path"; then
+    path="${path//\\//}"
+  fi
+
+  printf '%s\n' "$path"
+}
+
+sanitize_name() {
+  local value="$1"
+  local sanitized="" char previous_separator=1 i
+
+  for ((i = 0; i < ${#value}; i++)); do
+    char="${value:i:1}"
+    case "$char" in
+      [[:alnum:]]|-)
+        sanitized="${sanitized}${char}"
+        previous_separator=0
+        ;;
+      _|*)
+        if [[ "$previous_separator" == "0" ]]; then
+          sanitized="${sanitized}_"
+          previous_separator=1
+        fi
+        ;;
+    esac
+  done
+
+  sanitized="${sanitized%_}"
+
+  printf '%s\n' "${sanitized:-workspace}"
+}
+
+first_line() {
+  local line
+
+  IFS= read -r line || return 0
+  printf '%s\n' "$line"
+}
+
+base_name() {
+  local path="${1%/}"
+
+  path="${path##*/}"
+  printf '%s\n' "${path:-/}"
+}
+
+parent_dir() {
+  local path="${1%/}"
+
+  if [[ -z "$path" || "$path" == "/" ]]; then
+    printf '/\n'
+    return
+  fi
+  if [[ "$path" =~ ^[A-Za-z]:$ || ( "$path" != */* && "$path" != *\\* ) ]]; then
+    printf '/\n'
+    return
+  fi
+
+  path="${path%/*}"
+  printf '%s\n' "${path:-/}"
+}
+
+absolute_path() {
+  local path="$1"
+
+  path="$(expand_home_dir "$path")"
+  if is_windows_absolute_path "$path"; then
+    normalize_windows_absolute_path "$path"
+    return
+  fi
+  case "$path" in
+    /*) printf '%s\n' "$path" ;;
+    *) printf '%s/%s\n' "$PWD" "$path" ;;
+  esac
+}
+
+canonical_path() {
+  local path="$1"
+  local resolved dir base
+
+  path="$(normalize_windows_absolute_path "$path")"
+  if [[ "$path" =~ ^[A-Za-z]:/ || "$path" == //* ]]; then
+    printf '%s\n' "$path"
+    return
+  fi
+
+  if [[ "$path" == "/" ]]; then
+    printf '/\n'
+    return
+  fi
+
+  if command -v realpath >/dev/null 2>&1 && resolved="$(realpath "$path" 2>/dev/null)"; then
+    printf '%s\n' "$resolved"
+    return
+  fi
+
+  if command -v grealpath >/dev/null 2>&1 && resolved="$(grealpath -m "$path" 2>/dev/null)"; then
+    printf '%s\n' "$resolved"
+    return
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$path"
+    return
+  fi
+
+  dir="$(parent_dir "$path")"
+  base="$(base_name "$path")"
+  if [[ -d "$dir" ]]; then
+    (cd -- "$dir" && printf '%s/%s\n' "$PWD" "$base")
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+start_dir_for_path() {
+  local path="$1"
+  local start name
+
+  path="$(absolute_path "$path")"
+  if [[ "$path" =~ ^[A-Za-z]:/ || "$path" == //* ]]; then
+    name="$(base_name "$path")"
+    if [[ "$path" == */ || "$name" != *.* ]]; then
+      start="${path%/}"
+    else
+      start="$(parent_dir "$path")"
+    fi
+  elif [[ -d "$path" || "$path" == */ ]]; then
+    start="${path%/}"
+  else
+    start="$(parent_dir "$path")"
+  fi
+
+  canonical_path "$start"
+}
+
+find_marker_root() {
+  local current="$1"
+  local marker="$2"
+  local next
+
+  found_marker_root=""
+
+  [[ -n "$current" ]] || return 1
+  while [[ "$current" != "/" && -n "$current" ]]; do
+    if [[ -e "$current/$marker" ]]; then
+      found_marker_root="$current"
+      return 0
+    fi
+
+    next="${current%/}"
+    next="${next%/*}"
+    [[ "$next" != "$current" ]] || break
+    current="${next:-/}"
+  done
+
+  return 1
+}
+
+find_workspace_root() {
+  local start="$1"
+  shift
+  local marker marker_dir best_dir=""
+
+  found_workspace_root=""
+  for marker in "$@"; do
+    if find_marker_root "$start" "$marker"; then
+      marker_dir="$found_marker_root"
+    else
+      marker_dir=""
+    fi
+    if [[ -n "$marker_dir" && ${#marker_dir} -gt ${#best_dir} ]]; then
+      best_dir="$marker_dir"
+    fi
+  done
+
+  [[ -n "$best_dir" ]] || return 1
+  found_workspace_root="$best_dir"
+}
+
+workspace_name_for_path() {
+  local path="$1"
+  local start home_start="" marker_dir git_dir
+
+  start="$(start_dir_for_path "$path")"
+  if [[ -n "${HOME:-}" ]]; then
+    home_start="$(canonical_path "$HOME")"
+  fi
+  if [[ -n "$home_start" && "$start" == "$home_start" ]]; then
+    printf '%s\n' "home"
+    return 0
+  fi
+  if [[ "$start" =~ ^/google/src/cloud/[^/]+/([^/]+) ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  if find_workspace_root "$start" "${workspace_markers[@]}"; then
+    marker_dir="$found_workspace_root"
+  else
+    marker_dir=""
+  fi
+  if [[ -z "$marker_dir" ]]; then
+    if find_workspace_root "$start" "${fallback_workspace_markers[@]}"; then
+      marker_dir="$found_workspace_root"
+    else
+      marker_dir=""
+    fi
+  fi
+  if [[ -n "$marker_dir" ]]; then
+    base_name "$marker_dir"
+    return 0
+  fi
+
+  git_dir="$(git -C "$start" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$git_dir" ]]; then
+    base_name "$git_dir"
+    return 0
+  fi
+
+  base_name "$start"
+}
+
+explicit_path=0
+path="${TMUX_SESSION_START_DIR:-$PWD}"
+
+while (($#)); do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      if [[ -z "${1:-}" ]]; then
+        break
+      fi
+      if [[ "$explicit_path" == "1" ]]; then
+        printf 'Error: unexpected argument: %s\n' "$1" >&2
+        usage
+        exit 1
+      fi
+      path="$1"
+      explicit_path=1
+      shift
+      if (($#)); then
+        printf 'Error: unexpected argument: %s\n' "$1" >&2
+        usage
+        exit 1
+      fi
+      break
+      ;;
+    --*)
+      printf 'Error: unknown option: %s\n' "$1" >&2
+      usage
+      exit 1
+      ;;
+    *)
+      if [[ "$explicit_path" == "1" ]]; then
+        printf 'Error: unexpected argument: %s\n' "$1" >&2
+        usage
+        exit 1
+      fi
+      path="$1"
+      explicit_path=1
+      ;;
+  esac
+  shift
+done
+
+name=""
+if [[ "$explicit_path" == "0" ]] && command -v get-workspace-name >/dev/null 2>&1; then
+  name="$(get-workspace-name 2>/dev/null | first_line || true)"
+fi
+
+if [[ -z "$name" ]]; then
+  name="$(workspace_name_for_path "$path")"
+fi
+
+sanitize_name "$name"

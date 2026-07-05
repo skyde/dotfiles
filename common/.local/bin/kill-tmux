@@ -1,8 +1,28 @@
-#!/bin/bash
-# Generic script to fix stuck tmux sessions
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Force kill if still running
-if pgrep -u "$(whoami)" tmux > /dev/null; then
-    echo "Some tmux processes are still running. Force killing..."
-    pkill -9 -u "$(whoami)" tmux
+user_name="${USER:-$(id -un)}"
+
+if command -v tmux >/dev/null 2>&1; then
+  tmux kill-server >/dev/null 2>&1 || true
+fi
+
+if ! pgrep -x -u "$user_name" tmux >/dev/null 2>&1; then
+  echo "No tmux processes running"
+  exit 0
+fi
+
+echo "Some tmux processes are still running. Sending TERM..."
+pkill -TERM -x -u "$user_name" tmux >/dev/null 2>&1 || true
+sleep 0.2
+
+if pgrep -x -u "$user_name" tmux >/dev/null 2>&1; then
+  echo "Tmux processes are still running. Force killing..."
+  pkill -KILL -x -u "$user_name" tmux >/dev/null 2>&1 || true
+  sleep 0.2
+
+  if pgrep -x -u "$user_name" tmux >/dev/null 2>&1; then
+    echo "Unable to stop tmux processes"
+    exit 1
+  fi
 fi

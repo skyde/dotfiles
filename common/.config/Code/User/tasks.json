@@ -8,8 +8,13 @@
       "command": "bash",
       "args": [
         "-c",
-        "sess=$(if command -v get-workspace-name >/dev/null; then get-workspace-name; else echo '${workspaceFolder}' | tr '/.' '_'; fi); tmux-session \"$sess\" || true"
+        "for runner in \"$HOME/.local/bin/dotfiles-run\" \"$HOME/dotfiles/common/.local/bin/dotfiles-run\"; do [ -x \"$runner\" ] && exec \"$runner\" tmux-session; done; echo \"dotfiles-run unavailable\" >&2; exit 127"
       ],
+      "options": {
+        "env": {
+          "TMUX_SESSION_START_DIR": "${workspaceFolder}"
+        }
+      },
       "presentation": {
         "echo": false,
         "clear": true,
@@ -29,8 +34,35 @@
       "command": "bash",
       "args": [
         "-c",
-        "sess=$(if command -v get-workspace-name >/dev/null; then get-workspace-name; else echo '${workspaceFolder}' | tr '/.' '_'; fi); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 2 --no-attach"
+        "for runner in \"$HOME/.local/bin/dotfiles-run\" \"$HOME/dotfiles/common/.local/bin/dotfiles-run\"; do [ -x \"$runner\" ] && exec \"$runner\" tmux-session --window agent --no-attach; done; echo \"dotfiles-run unavailable\" >&2; exit 127"
       ],
+      "options": {
+        "env": {
+          "TMUX_SESSION_START_DIR": "${workspaceFolder}"
+        }
+      },
+      "presentation": {
+        "echo": false,
+        "reveal": "silent",
+        "focus": false,
+        "close": true,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Tmux: Switch to Resume",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "for runner in \"$HOME/.local/bin/dotfiles-run\" \"$HOME/dotfiles/common/.local/bin/dotfiles-run\"; do [ -x \"$runner\" ] && exec \"$runner\" tmux-session --window resume --no-attach; done; echo \"dotfiles-run unavailable\" >&2; exit 127"
+      ],
+      "options": {
+        "env": {
+          "TMUX_SESSION_START_DIR": "${workspaceFolder}"
+        }
+      },
       "presentation": {
         "echo": false,
         "reveal": "silent",
@@ -46,8 +78,13 @@
       "command": "bash",
       "args": [
         "-c",
-        "sess=$(if command -v get-workspace-name >/dev/null; then get-workspace-name; else echo '${workspaceFolder}' | tr '/.' '_'; fi); $HOME/dotfiles/common/.local/bin/tmux-session \"$sess\" 3 --no-attach"
+        "for runner in \"$HOME/.local/bin/dotfiles-run\" \"$HOME/dotfiles/common/.local/bin/dotfiles-run\"; do [ -x \"$runner\" ] && exec \"$runner\" tmux-session --window terminal --no-attach; done; echo \"dotfiles-run unavailable\" >&2; exit 127"
       ],
+      "options": {
+        "env": {
+          "TMUX_SESSION_START_DIR": "${workspaceFolder}"
+        }
+      },
       "presentation": {
         "echo": false,
         "reveal": "silent",
@@ -63,7 +100,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "$HOME/dotfiles/common/.local/bin/kill-tmux"
+        "for runner in \"$HOME/.local/bin/dotfiles-run\" \"$HOME/dotfiles/common/.local/bin/dotfiles-run\"; do [ -x \"$runner\" ] && exec \"$runner\" kill-tmux; done; echo \"dotfiles-run unavailable\" >&2; exit 127"
       ],
       "presentation": {
         "echo": false,
@@ -192,7 +229,7 @@
     {
       "label": "Zoekt Search",
       "type": "shell",
-      "command": "sz",
+      "command": "st-zoekt",
       "args": [
         "--code"
       ],

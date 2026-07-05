@@ -1,8 +1,8 @@
 return {
   {
     "mikavilpas/yazi.nvim",
-    -- Load lazily; the keymap in config/keymaps.lua calls :Yazi
-    event = "VeryLazy",
+    -- Load lazily; config/keymaps.lua calls the plugin API when available.
+    cmd = "Yazi",
     opts = {
       -- Keep defaults; this just registers the :Yazi command
     },

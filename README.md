@@ -196,7 +196,7 @@ scroll down - Shift F6
 stop build - Shift F7
 goto definition - Shift F8
 open spotlight - tap Cmd
-tmux prefix / toggle eye mouse - Shift F10
+tmux prefix - Shift F10
 toggle comment - Shift F11
 
 ```
