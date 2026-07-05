@@ -1,16 +1,41 @@
 # Stow wrapper for dotfiles management on Windows
 $ErrorActionPreference = 'Stop'
 
-# Install stow if needed
-if (-not (Get-Command stow -ErrorAction SilentlyContinue)) {
+function Install-Stow {
+    if (Get-Command stow -ErrorAction SilentlyContinue) {
+        return
+    }
+
     Write-Host "Installing stow..." -ForegroundColor Yellow
     if (Get-Command winget -ErrorAction SilentlyContinue) {
-        winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
-    } else {
-        Write-Host "Please install stow first: winget install stefansundin.gnu-stow" -ForegroundColor Red
+        try {
+            winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+        } catch {
+            Write-Host "winget install failed, trying Chocolatey fallback" -ForegroundColor Yellow
+        }
+    }
+
+    if ((-not (Get-Command stow -ErrorAction SilentlyContinue)) -and (Get-Command choco -ErrorAction SilentlyContinue)) {
+        try {
+            choco install stow -y
+            $chocoProfile = Join-Path $env:ChocolateyInstall "helpers\chocolateyProfile.psm1"
+            if (Test-Path $chocoProfile) {
+                Import-Module $chocoProfile
+                refreshenv
+            }
+        } catch {
+            Write-Host "Chocolatey install failed" -ForegroundColor Yellow
+        }
+    }
+
+    if (-not (Get-Command stow -ErrorAction SilentlyContinue)) {
+        Write-Host "Please install GNU Stow first, then rerun apply.ps1." -ForegroundColor Red
         exit 1
     }
 }
+
+# Install stow if needed
+Install-Stow
 
 # Go to script directory
 Set-Location $PSScriptRoot

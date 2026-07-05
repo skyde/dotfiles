@@ -2,7 +2,35 @@
 # si — Simple Zoekt indexer
 
 set -euo pipefail
-set -x
+
+usage() {
+  echo "Usage: si [PATH]" >&2
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+if (($# > 1)); then
+  usage
+  exit 2
+fi
+
+target_input="${1:-$PWD}"
+target="$target_input"
+if [[ -f "$target" ]]; then
+  target="$(dirname "$target")"
+fi
+if ! root="$(cd "$target" >/dev/null 2>&1 && pwd -P)"; then
+  echo "error: index root not found: $target_input" >&2
+  exit 1
+fi
+
+if ! command -v zoekt-index >/dev/null 2>&1; then
+  echo "error: zoekt-index not found in PATH" >&2
+  exit 1
+fi
 
 # Get CPU count for parallelism
 if command -v sysctl >/dev/null 2>&1; then
@@ -12,27 +40,30 @@ elif command -v nproc >/dev/null 2>&1; then
 else
   cpu_count=256
 fi
-echo "$cpu_count"
+echo "Indexing $root with $cpu_count workers..."
 
 IGNORES=".git,.svn,.hg,.idea,.vs,node_modules,out,build,dist,tmp,temp,cache,.cache,__pycache__,.mypy_cache,.pytest_cache,.tox,vendor,CMakeFiles,.gradle,.mvn,pkg,bin,.terraform,.jekyll-cache,_site"
 
-TARGET_DIR=".zoekt"
+TARGET_DIR="$root/.zoekt"
 
-# 1. Create a temp directory in the CURRENT folder.
+# 1. Create a temp directory in the target folder.
 #    We do this locally (instead of /tmp) so the final 'mv' is an instant rename 
 #    rather than a slow file copy across filesystems.
-TEMP_DIR=$(mktemp -d "./${TARGET_DIR}.tmp.XXXXXX")
+TEMP_DIR=$(mktemp -d "$root/.zoekt.tmp.XXXXXX")
 
 # 2. Set a trap to clean up the temp dir on exit.
 #    - If the script crashes or you Ctrl+C, this deletes the partial index (TEMP_DIR).
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
 # 3. Run the indexer into the temporary directory
-zoekt-index \
-  -index "$TEMP_DIR" \
-  -parallelism "$cpu_count" \
-  -ignore_dirs="$IGNORES" \
-  .
+(
+  cd "$root"
+  zoekt-index \
+    -index "$TEMP_DIR" \
+    -parallelism "$cpu_count" \
+    -ignore_dirs="$IGNORES" \
+    .
+)
 
 # 4. If we reach this point, indexing succeeded. Swap the directories.
 echo "Indexing complete. Swapping in new index..."
