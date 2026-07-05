@@ -9,8 +9,8 @@
   // Navigate backward/forward through editor history.
   { "key": "cmd+o", "command": "workbench.action.navigateBack" },
   { "key": "cmd+i", "command": "workbench.action.navigateForward" },
-  { "key": "ctrl+o", "command": "workbench.action.navigateBack" },
-  { "key": "ctrl+i", "command": "workbench.action.navigateForward" },
+  { "key": "ctrl+o", "command": "workbench.action.navigateBack", "when": "!terminalFocus" },
+  { "key": "ctrl+i", "command": "workbench.action.navigateForward", "when": "!terminalFocus" },
 
   // Disable line move shortcuts
   { "key": "alt+down", "command": "-editor.action.moveLinesDownAction" },
@@ -19,13 +19,27 @@
     // Ctrl left to jump words
     "key": "ctrl+left",
     "command": "cursorWordStartLeft",
-    "when": "editorTextFocus"
+    "when": "editorTextFocus && !terminalFocus"
+  },
+  {
+    // Ctrl+Left in the terminal sends the standard xterm previous-word key
+    "key": "ctrl+left",
+    "command": "workbench.action.terminal.sendSequence",
+    "when": "terminalFocus",
+    "args": { "text": "\u001B[1;5D" }
   },
   {
     // Ctrl right to jump words
     "key": "ctrl+right",
     "command": "cursorWordEndRight",
-    "when": "editorTextFocus"
+    "when": "editorTextFocus && !terminalFocus"
+  },
+  {
+    // Ctrl+Right in the terminal sends the standard xterm next-word key
+    "key": "ctrl+right",
+    "command": "workbench.action.terminal.sendSequence",
+    "when": "terminalFocus",
+    "args": { "text": "\u001B[1;5C" }
   },
   {
     // Ctrl+Backspace deletes the previous word (Windows-style)
@@ -34,18 +48,44 @@
     "when": "textInputFocus && !terminalFocus"
   },
   {
-    // Ctrl+Backspace in the terminal deletes the previous word (send Ctrl+W)
+    // Ctrl+Backspace in the terminal sends a distinct previous-word delete key
     "key": "ctrl+backspace",
     "command": "workbench.action.terminal.sendSequence",
     "when": "terminalFocus",
-    "args": { "text": "\u0017" }
+    "args": { "text": "\u001B[127;5u" }
+  },
+  {
+    // Ctrl+Delete deletes the next word (Windows-style)
+    "key": "ctrl+delete",
+    "command": "deleteWordRight",
+    "when": "textInputFocus && !terminalFocus"
+  },
+  {
+    // Ctrl+Delete in the terminal sends the standard xterm forward-delete-word key
+    "key": "ctrl+delete",
+    "command": "workbench.action.terminal.sendSequence",
+    "when": "terminalFocus",
+    "args": { "text": "\u001B[3;5~" }
+  },
+  {
+    // Cmd+Backspace deletes from the cursor to the start of the line
+    "key": "cmd+backspace",
+    "command": "deleteAllLeft",
+    "when": "textInputFocus && !terminalFocus"
+  },
+  {
+    // Cmd+Backspace in the terminal sends Ctrl+U, the shell line-kill key
+    "key": "cmd+backspace",
+    "command": "workbench.action.terminal.sendSequence",
+    "when": "terminalFocus",
+    "args": { "text": "\u0015" }
   },
   {
     // Let terminal apps (e.g. yazi) receive F1 instead of opening the command palette
     "key": "f1",
     "command": "-workbench.action.showCommands"
   },
-  // Page Down - workround to make cursor movement match Nvim
+  // Page Down - workaround to make cursor movement match Nvim
   {
     "key": "pagedown",
     "command": "runCommands",
@@ -81,7 +121,7 @@
     }
   },
 
-  // Page Up - workround to make cursor movement match Nvim
+  // Page Up - workaround to make cursor movement match Nvim
   {
     "key": "pageup",
     "command": "runCommands",
@@ -116,12 +156,13 @@
   {
     "key": "shift+f2",
     "command": "workbench.action.debug.start",
-    "when": "taskCommandsRegistered"
+    "when": "taskCommandsRegistered && !terminalFocus"
   },
   // Fuzzy find class / file by name
   {
     "key": "shift+f3",
-    "command": "workbench.action.quickOpen"
+    "command": "workbench.action.quickOpen",
+    "when": "!terminalFocus"
   },
 
   // Scroll up 16 Lines
@@ -226,7 +267,7 @@
   { "key": "cmd+k", "command": "workbench.action.focusActiveEditorGroup" },
 
   // Scroll up 16 Lines
-  // Matches Nvim where small scrolls will keep the cursor in exacty the same relative place on the screen
+  // Matches Nvim where small moves keep the cursor in exactly the same relative place on the screen
   {
     "key": "shift+f4",
     "command": "runCommands",
@@ -314,6 +355,7 @@
   {
     "key": "shift+f7",
     "command": "runCommands",
+    "when": "!terminalFocus",
     "args": {
       "commands": [
         // "workbench.action.tasks.terminate",
@@ -689,6 +731,96 @@
     "key": "cmd+s",
     "command": "workbench.action.terminal.sendSequence",
     "args": { "text": "\u001B[15;2~" }, // sends Shift‑F5
+    "when": "terminalFocus"
+  },
+  {
+    "key": "ctrl+insert",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[2;5~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+insert",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[2;2~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+delete",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[3;2~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f1",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[1;2P" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f2",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[1;2Q" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f3",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[1;2R" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f4",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[1;2S" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f5",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[15;2~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f6",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[17;2~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f7",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[18;2~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f8",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[19;2~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f9",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[20;2~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f10",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[21;2~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f11",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[23;2~" },
+    "when": "terminalFocus"
+  },
+  {
+    "key": "shift+f12",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001B[24;2~" },
     "when": "terminalFocus"
   },
   {

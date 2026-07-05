@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir() {
+    local source="${BASH_SOURCE[0]}"
+    local dir="."
+
+    if [[ "$source" == */* ]]; then
+        dir="${source%/*}"
+    fi
+
+    cd -- "$dir" && pwd
+}
+
+resolve_osc_paste() {
+    local helper="osc-paste"
+    local resolved script_directory home_helper
+
+    script_directory="$(script_dir)"
+    if [[ -x "$script_directory/$helper" ]]; then
+        printf '%s\n' "$script_directory/$helper"
+        return 0
+    fi
+
+    if [[ -n "${HOME:-}" ]]; then
+        home_helper="$HOME/.local/bin/$helper"
+        if [[ -x "$home_helper" ]]; then
+            printf '%s\n' "$home_helper"
+            return 0
+        fi
+
+        home_helper="$HOME/dotfiles/common/.local/bin/$helper"
+        if [[ -x "$home_helper" ]]; then
+            printf '%s\n' "$home_helper"
+            return 0
+        fi
+    fi
+
+    if resolved="$(command -v -- "$helper" 2>/dev/null)"; then
+        printf '%s\n' "$resolved"
+        return 0
+    fi
+
+    return 1
+}
+
+tmux_client_is_live() {
+    [[ -n "${TMUX:-}" ]] || return 1
+    command -v tmux >/dev/null 2>&1 || return 1
+    tmux display-message -p '#{pane_id}' >/dev/null 2>&1
+}
+
+tmux_cmd() {
+    if [[ "$TMUX_CLIENT_LIVE" == "1" || -z "${TMUX:-}" ]]; then
+        tmux "$@"
+    else
+        (unset TMUX; tmux "$@")
+    fi
+}
+
+show_error() {
+    local message="$1"
+
+    printf 'Error: %s\n' "$message" >&2
+    tmux_cmd display-message "$message" >/dev/null 2>&1 || true
+}
+
+make_temp_file() {
+    local dir="${TMPDIR:-/tmp}"
+    local template candidate i
+
+    if [[ ! -d "$dir" || ! -w "$dir" || ! -x "$dir" ]]; then
+        dir="/tmp"
+    fi
+    template="$dir/tmux-paste.XXXXXX"
+
+    if command -v mktemp >/dev/null 2>&1; then
+        if mktemp "$template" 2>/dev/null; then
+            return 0
+        fi
+    fi
+
+    for i in {1..20}; do
+        candidate="$dir/tmux-paste.$$.$RANDOM.$i"
+        if (set -C; : >"$candidate") 2>/dev/null; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    printf 'Error: unable to create temporary clipboard file\n' >&2
+    return 1
+}
+
+target_pane="${1:-}"
+buffer_name="${TMUX_PASTE_BUFFER_NAME:-dotfiles-clipboard-$$}"
+clipboard_file="$(make_temp_file)"
+buffer_loaded=0
+TMUX_CLIENT_LIVE=0
+
+cleanup() {
+    rm -f "$clipboard_file"
+    if [[ "$buffer_loaded" == "1" ]]; then
+        tmux_cmd delete-buffer -b "$buffer_name" >/dev/null 2>&1 || true
+    fi
+}
+trap cleanup EXIT
+
+if ! command -v tmux >/dev/null 2>&1; then
+    printf 'Error: tmux is not installed or not on PATH\n' >&2
+    exit 1
+fi
+
+if tmux_client_is_live; then
+    TMUX_CLIENT_LIVE=1
+fi
+
+if ! osc_paste_path="$(resolve_osc_paste)"; then
+    show_error "osc-paste is unavailable"
+    exit 1
+fi
+
+if ! "$osc_paste_path" >"$clipboard_file"; then
+    show_error "Unable to read clipboard"
+    exit 1
+fi
+
+if ! tmux_cmd load-buffer -b "$buffer_name" "$clipboard_file"; then
+    show_error "Unable to load paste buffer"
+    exit 1
+fi
+buffer_loaded=1
+
+paste_args=(-p -b "$buffer_name")
+if [[ -n "$target_pane" ]]; then
+    paste_args+=(-t "$target_pane")
+fi
+
+if ! tmux_cmd paste-buffer "${paste_args[@]}"; then
+    show_error "Unable to paste buffer"
+    exit 1
+fi
