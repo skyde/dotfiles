@@ -648,11 +648,6 @@
       "before": ["<leader>", "f", "p"],
       "commands": ["g4d"]
     },
-    // Make Project
-    {
-      "before": ["<leader>", "f", "P"],
-      "commands": ["g4d"]
-    },
     // Buffers
     {
       // New tab
