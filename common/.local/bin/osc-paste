@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+in_ssh_session() {
+  [[ -n "${SSH_CLIENT:-}" || -n "${SSH_TTY:-}" || -n "${SSH_CONNECTION:-}" ]]
+}
+
+decode_base64() {
+  if base64 --decode </dev/null >/dev/null 2>&1; then
+    base64 --decode
+  else
+    base64 -D
+  fi
+}
+
+if [[ -n "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
+  if tmux save-buffer - 2>/dev/null; then
+    exit 0
+  fi
+fi
+
+if ! in_ssh_session; then
+  if command -v pbpaste >/dev/null 2>&1; then
+    pbpaste
+    exit 0
+  fi
+
+  if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-paste >/dev/null 2>&1; then
+    wl-paste
+    exit 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1; then
+    xclip -selection clipboard -o
+    exit 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1; then
+    xsel --clipboard --output
+    exit 0
+  fi
+fi
+
+# Fall back to an OSC 52 paste query, reading the terminal's reply from the tty.
+if [[ -r /dev/tty && -w /dev/tty ]]; then
+  saved_tty=$(stty -g </dev/tty)
+  trap 'stty "$saved_tty" </dev/tty 2>/dev/null || true' EXIT INT TERM
+  stty raw -echo </dev/tty
+
+  if [[ -n "${TMUX:-}" ]]; then
+    printf '\033Ptmux;\033\033]52;c;?\a\033\134' >/dev/tty
+  else
+    printf '\033]52;c;?\a' >/dev/tty
+  fi
+
+  if IFS= read -r -s -t 1 -d $'\a' response </dev/tty; then
+    if [[ "$response" =~ \;([A-Za-z0-9+/=]+)$ ]]; then
+      printf '%s' "${BASH_REMATCH[1]}" | decode_base64
+      exit 0
+    fi
+  fi
+fi
+
+echo "No paste method available." >&2
+exit 1
