@@ -64,7 +64,7 @@
 
   // Nvim Style 2
   "editor.fontFamily": "'JetBrains Mono', 'JetBrainsMono Nerd Font', monospace",
-  "terminal.integrated.fontWeight": "320",
+  "terminal.integrated.fontWeight": "400",
   "terminal.integrated.fontLigatures.enabled": true,
   "terminal.integrated.enableImages": true,
   "terminal.integrated.fontFamily": "'JetBrains Mono', 'JetBrainsMono Nerd Font', monospace",
@@ -1942,5 +1942,12 @@
   "workbench.editorAssociations": {
     "*.pdf": "pdf.preview"
   },
-  "workbench.editorLargeFileConfirmation": 1000
+  "workbench.editorLargeFileConfirmation": 1000,
+  "editor.tabSize": 2,
+  "editor.detectIndentation": false,
+  "livePreview.notifyOnOpenLooseFile": false,
+  "bazel.commandLine.startupOptions": [
+    "--quiet"
+  ],
+  "bazel.executable": "blaze"
 }
