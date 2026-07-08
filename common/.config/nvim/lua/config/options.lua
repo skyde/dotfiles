@@ -20,8 +20,14 @@ vim.g.neovide_cursor_trail_length = 0
 vim.opt.mouse = "a"
 
 local win32yank_path = "win32yank.exe"
+local is_windows = vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 or vim.fn.has("win32unix") == 1
+local use_osc52 = vim.env.SSH_CLIENT ~= nil
+  or vim.env.SSH_TTY ~= nil
+  or vim.env.SSH_CONNECTION ~= nil
+  or vim.env.TMUX ~= nil
+
 -- Clipboard provider (works in native Windows, MSYS2 and WSL)
-if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 or vim.fn.has("win32unix") == 1 then
+if is_windows then
   vim.g.clipboard = {
     name = "win32yank-lf",
     copy = {
@@ -33,6 +39,19 @@ if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 or vim.fn.has("win32unix
       ["*"] = { win32yank_path, "-o", "--lf" },
     },
     cache_enabled = 0, -- 1 if you want selections cached for speed
+  }
+elseif use_osc52 and vim.fn.executable("osc-copy") == 1 and vim.fn.executable("osc-paste") == 1 then
+  vim.g.clipboard = {
+    name = "osc-copy/osc-paste",
+    copy = {
+      ["+"] = { "osc-copy" },
+      ["*"] = { "osc-copy" },
+    },
+    paste = {
+      ["+"] = { "osc-paste" },
+      ["*"] = { "osc-paste" },
+    },
+    cache_enabled = 0,
   }
 end
 
