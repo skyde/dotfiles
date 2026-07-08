@@ -40,22 +40,19 @@ if is_windows then
     },
     cache_enabled = 0, -- 1 if you want selections cached for speed
   }
-elseif use_osc52 then
-  local ok, osc52 = pcall(require, "vim.ui.clipboard.osc52")
-
-  if ok then
-    vim.g.clipboard = {
-      name = "OSC 52",
-      copy = {
-        ["+"] = osc52.copy("+"),
-        ["*"] = osc52.copy("*"),
-      },
-      paste = {
-        ["+"] = osc52.paste("+"),
-        ["*"] = osc52.paste("*"),
-      },
-    }
-  end
+elseif use_osc52 and vim.fn.executable("osc-copy") == 1 and vim.fn.executable("osc-paste") == 1 then
+  vim.g.clipboard = {
+    name = "osc-copy/osc-paste",
+    copy = {
+      ["+"] = { "osc-copy" },
+      ["*"] = { "osc-copy" },
+    },
+    paste = {
+      ["+"] = { "osc-paste" },
+      ["*"] = { "osc-paste" },
+    },
+    cache_enabled = 0,
+  }
 end
 
 vim.opt.clipboard:append("unnamedplus")
