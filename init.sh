@@ -33,30 +33,39 @@ cd "$SCRIPT_DIR"
 # Install packages
 if [ -f "packages.txt" ]; then
   # Build package list with platform-specific names
-  packages=$(grep -v '^[[:space:]]*$' packages.txt | grep -v '^[[:space:]]*#' | tr '\n' ' ')
+  packages=()
+  while IFS= read -r pkg; do
+    [[ -z "$pkg" || "$pkg" =~ ^[[:space:]]*# ]] && continue
+    packages+=("$pkg")
+  done <packages.txt
+
   # Handle fd package name difference on Linux
   if [[ "$(uname)" == "Linux" ]]; then
-    packages="${packages//fd/fd-find}"
-    packages="${packages//delta/git-delta}"
+    for i in "${!packages[@]}"; do
+      case "${packages[$i]}" in
+      fd) packages[i]="fd-find" ;;
+      delta) packages[i]="git-delta" ;;
+      esac
+    done
   fi
 
-  install_apps=$(get_user_confirmation "Install packages ($packages)? (y/N): ")
+  install_apps=$(get_user_confirmation "Install packages (${packages[*]})? (y/N): ")
   if [[ "$install_apps" =~ ^[Yy] ]]; then
     echo "Installing packages..."
     case "$(uname)" in
     Darwin)
-      command -v brew >/dev/null && brew install $packages || echo "Homebrew not found. Install it first: https://brew.sh"
+      command -v brew >/dev/null && brew install "${packages[@]}" || echo "Homebrew not found. Install it first: https://brew.sh"
       ;;
     Linux)
-      command -v apt >/dev/null && sudo apt update && sudo apt install -y $packages
+      command -v apt >/dev/null && sudo apt update && sudo apt install -y "${packages[@]}"
       ;;
     MINGW* | MSYS* | CYGWIN*)
       if command -v winget >/dev/null; then
-        for pkg in $packages; do winget install "$pkg" --silent --accept-source-agreements --accept-package-agreements; done
+        for pkg in "${packages[@]}"; do winget install "$pkg" --silent --accept-source-agreements --accept-package-agreements; done
       elif command -v choco >/dev/null; then
-        choco install $packages -y
+        choco install "${packages[@]}" -y
       else
-        echo "Neither winget nor chocolatey found. Please install packages manually: $packages"
+        echo "Neither winget nor chocolatey found. Please install packages manually: ${packages[*]}"
       fi
       ;;
     esac
@@ -173,8 +182,13 @@ else
 fi
 
 echo "Building bat cache for custom theme..."
-# Build bat cache for custom theme
-bat cache --build
+if command -v bat >/dev/null 2>&1; then
+  bat cache --build || echo "Warning: bat cache build failed; continuing"
+elif command -v batcat >/dev/null 2>&1; then
+  batcat cache --build || echo "Warning: batcat cache build failed; continuing"
+else
+  echo "bat not found, skipping bat cache build"
+fi
 
 # Run local dotfiles initialization if it exists
 LOCAL_INIT_SCRIPT="$HOME/dotfiles-local/init.sh"

@@ -1,0 +1,252 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+in_ssh_session() {
+  [[ -n "${SSH_CLIENT:-}" || -n "${SSH_TTY:-}" || -n "${SSH_CONNECTION:-}" ]]
+}
+
+tmux_client_is_live() {
+  [[ -n "${TMUX:-}" ]] || return 1
+  command -v tmux >/dev/null 2>&1 || return 1
+  tmux display-message -p '#{pane_id}' >/dev/null 2>&1
+}
+
+make_temp_file() {
+  local dir="${TMPDIR:-/tmp}"
+  local template path attempt
+
+  if [[ ! -d "$dir" || ! -w "$dir" || ! -x "$dir" ]]; then
+    dir="/tmp"
+  fi
+  template="$dir/osc-paste.XXXXXX"
+
+  if command -v mktemp >/dev/null 2>&1; then
+    if mktemp "$template" 2>/dev/null; then
+      return
+    fi
+  fi
+
+  attempt=0
+  while ((attempt < 100)); do
+    path="$dir/osc-paste.$$.$attempt"
+    if (set -C; : >"$path") 2>/dev/null; then
+      printf '%s\n' "$path"
+      return 0
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  return 1
+}
+
+decode_base64() {
+  if base64 --decode </dev/null >/dev/null 2>&1; then
+    base64 --decode
+  elif base64 -d </dev/null >/dev/null 2>&1; then
+    base64 -d
+  else
+    base64 -D
+  fi
+}
+
+osc52_payload() {
+  local response="$1"
+  local bel=$'\a'
+  local st=$'\033\\'
+  local osc52_regex=']52;[^;]*;([A-Za-z0-9+/=]*)$'
+  local payload_regex=';([A-Za-z0-9+/=]*)$'
+
+  while [[ "$response" == *"$bel" || "$response" == *"$st" ]]; do
+    response="${response%"$bel"}"
+    response="${response%"$st"}"
+  done
+
+  if [[ "$response" =~ $osc52_regex ]]; then
+    printf '%s' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  if [[ "$response" =~ $payload_regex ]]; then
+    printf '%s' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  return 1
+}
+
+decode_osc52_response() {
+  local response payload
+
+  response="$(cat)"
+  if ! payload="$(osc52_payload "$response")"; then
+    return 1
+  fi
+
+  printf '%s' "$payload" | decode_base64
+}
+
+read_timeout() {
+  local raw="${OSC_PASTE_TIMEOUT:-1}"
+  local integer fraction
+
+  if [[ "$raw" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$raw"
+    return
+  fi
+
+  if [[ "$raw" =~ ^[0-9]+\.[0-9]*$ ]]; then
+    integer="${raw%%.*}"
+    fraction="${raw#*.}"
+    integer=$((10#$integer))
+    if [[ -z "${fraction//0/}" ]]; then
+      printf '%s\n' "$integer"
+    else
+      printf '%s\n' "$((integer + 1))"
+    fi
+    return
+  fi
+
+  if [[ "$raw" =~ ^\.[0-9]+$ ]]; then
+    printf '1\n'
+    return
+  fi
+
+  printf '1\n'
+}
+
+read_osc52_response() {
+  local tty="$1"
+  local response="" character
+  local timeout
+  local esc=$'\033'
+
+  timeout="$(read_timeout)"
+  while IFS= read -r -s -t "$timeout" -n 1 character; do
+    if [[ "$character" == $'\a' ]]; then
+      printf '%s' "$response"
+      return 0
+    fi
+
+    if [[ "$character" == $'\\' && "$response" == *$'\033' ]]; then
+      response="${response%"$esc"}"
+      printf '%s' "$response"
+      return 0
+    fi
+
+    response+="$character"
+  done <"$tty"
+
+  return 1
+}
+
+if [[ "${1:-}" == "--decode-base64" ]]; then
+  decode_base64
+  exit 0
+fi
+
+if [[ "${1:-}" == "--decode-osc52-response" ]]; then
+  decode_osc52_response
+  exit 0
+fi
+
+paste_output_file="$(make_temp_file)" || paste_output_file=""
+tty=""
+saved_tty=""
+
+# shellcheck disable=SC2329
+cleanup() {
+  if [[ -n "${saved_tty:-}" && -n "${tty:-}" ]]; then
+    stty "$saved_tty" <"$tty" 2>/dev/null || true
+  fi
+
+  if [[ -n "${paste_output_file:-}" ]]; then
+    rm -f "$paste_output_file" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+
+try_paste_command() {
+  [[ -n "${paste_output_file:-}" ]] || return 1
+
+  if "$@" >"$paste_output_file" 2>/dev/null; then
+    cat "$paste_output_file"
+    return 0
+  fi
+
+  : >"$paste_output_file" 2>/dev/null || true
+  return 1
+}
+
+try_host_clipboard() {
+  in_ssh_session && return 1
+
+  if command -v pbpaste >/dev/null 2>&1 && try_paste_command pbpaste; then
+    return 0
+  fi
+
+  if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-paste >/dev/null 2>&1 &&
+    try_paste_command wl-paste; then
+    return 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1 &&
+    try_paste_command xclip -selection clipboard -o; then
+    return 0
+  fi
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1 &&
+    try_paste_command xsel --clipboard --output; then
+    return 0
+  fi
+
+  return 1
+}
+
+TMUX_CLIENT_LIVE=0
+if tmux_client_is_live; then
+  TMUX_CLIENT_LIVE=1
+fi
+
+if [[ "$TMUX_CLIENT_LIVE" == "1" ]] && try_host_clipboard; then
+  exit 0
+fi
+
+if [[ "$TMUX_CLIENT_LIVE" == "1" ]]; then
+  if try_paste_command tmux save-buffer -; then
+    exit 0
+  fi
+
+  if try_paste_command tmux show-buffer; then
+    exit 0
+  fi
+fi
+
+if try_host_clipboard; then
+  exit 0
+fi
+
+# Fall back to an OSC 52 paste query, reading the terminal's reply from the tty.
+tty="${OSC_TTY:-/dev/tty}"
+if saved_tty=$(stty -g <"$tty" 2>/dev/null) || [[ -n "${OSC_TTY:-}" ]]; then
+  if [[ -n "$saved_tty" ]] && ! stty raw -echo <"$tty" 2>/dev/null; then
+    stty "$saved_tty" <"$tty" 2>/dev/null || true
+    saved_tty=""
+    echo "No paste method available." >&2
+    exit 1
+  fi
+
+  if [[ "$TMUX_CLIENT_LIVE" == "1" ]]; then
+    printf '\033Ptmux;\033\033]52;c;?\a\033%s' $'\\' >"$tty" 2>/dev/null || true
+  else
+    printf '\033]52;c;?\a' >"$tty" 2>/dev/null || true
+  fi
+
+  if response="$(read_osc52_response "$tty")"; then
+    if printf '%s' "$response" | decode_osc52_response; then
+      exit 0
+    fi
+  fi
+fi
+
+echo "No paste method available." >&2
+exit 1

@@ -7,24 +7,40 @@ This document lists the custom shortcuts I use in VS Code. The same keybindings 
 - `Ctrl+Shift+Tab` – switch to the previous tab (Windows only).
 - `PageDown` – scroll one page down and move the cursor to the top of the viewport (matches Vim behavior).
 - `PageUp` – scroll one page up and move the cursor to the bottom of the viewport (matches Vim behavior).
-- `Shift+F4` – scroll up 16 lines.
-- `Shift+F6` – scroll down 16 lines.
+- `Shift+F4` – scroll up 16 lines outside the integrated terminal.
+- `Shift+F6` – scroll down 16 lines outside the integrated terminal.
+- `Ctrl+O` / `Ctrl+I` – jump backward/forward through editor history outside the integrated terminal.
 
 ## Editing
 - `Alt+Up` – disabled to prevent moving the current line.
 - `Alt+Down` – disabled to prevent moving the current line.
+- `Ctrl+Left` / `Ctrl+Right` – move to the previous or next word outside the integrated terminal.
+- `Ctrl+Backspace` / `Ctrl+Delete` – delete the previous or next word outside the integrated terminal.
+- `Cmd+Backspace` – delete from the cursor to the start of the current line outside the integrated terminal.
 
 ## Terminal
 - `Ctrl+/` – toggle the integrated terminal.
-- `Cmd+T` – toggle the terminal visibility and exit fullscreen if needed.
+- `Ctrl+T` – toggle the terminal visibility and exit fullscreen if needed.
 - `Cmd+S` – when a terminal is focused, send Shift+F5 to the terminal (mapped in Neovim to save the file).
+- `Cmd+C` / `Cmd+V` – use VS Code's standard terminal copy/paste path; terminal auto-copy-on-selection is disabled so tmux and Neovim copy helpers do not lose ownership of the clipboard.
+- `Ctrl+Left` / `Ctrl+Right` – move by words in shells, tmux panes, and terminal Neovim.
+- `Ctrl+Backspace` / `Ctrl+Delete` – delete the previous or next word in shells, tmux panes, and terminal Neovim using distinct terminal sequences, so terminal Neovim does not confuse Ctrl+Backspace with the normal-mode Ctrl+W window prefix.
+- `Cmd+Backspace` – send Ctrl+U to delete from the cursor to the start of the current shell line.
+- `Ctrl+Insert` / `Shift+Insert` / `Shift+Delete` – send standard terminal copy, paste, and cut keys. Neovim handles them mode-aware, including insert-mode line copy/cut, terminal-mode copy/cut of the visible terminal line, and paste into terminal buffers from terminal-normal, terminal-visual, and terminal-mode; terminal cut copies output without trying to modify scrollback. tmux uses `Ctrl+Insert` and `Shift+Delete` in copy mode, passes copy/cut through to pane-aware apps, and uses `Shift+Insert` to paste into plain panes.
+- `Ctrl+O` / `Ctrl+I` – passed through to terminal apps such as tmux and Neovim.
+- `Shift+F1` / `Shift+F12` – passed through to terminal apps when the terminal is focused.
+- `Shift+F2` / `Shift+F3` / `Shift+F7` – passed through to terminal apps when the terminal is focused.
+- `Shift+F4` / `Shift+F5` / `Shift+F6` – passed through to terminal apps when the terminal is focused; tmux copy mode uses Shift+F4/F6 to scroll 16 lines.
+- `Shift+F8` / `Shift+F11` – passed through to terminal apps when the terminal is focused.
+- `Shift+F9` – passed through to terminal Neovim to toggle search highlighting.
+- `Shift+F10` – passed through to tmux as the secondary prefix key.
 
 ## Build and Search
-- `Shift+F2` – start debugging.
-- `Shift+F3` – quick open file or symbol.
+- `Shift+F2` – start debugging outside the integrated terminal.
+- `Shift+F3` – quick open file or symbol outside the integrated terminal.
 - `Shift+F8` – go to definition.
 - `Shift+F11` – toggle comment for the current line.
-- `Shift+F7` – stop build or debugging.
+- `Shift+F7` – stop build or debugging outside the integrated terminal.
 
 ## Debugging
 - `Alt+Down` – step over.
@@ -55,8 +71,8 @@ Space is mapped as `<leader>`.
 - `<leader> v` – <C-v>
 - `<tab>` – indent lines
 - `<S-tab>` – outdent lines
-- `<C-u>` – 16k
-- `<C-d>` – 16j
+- `<C-u>` – move up 16 lines (`16k`)
+- `<C-d>` – move down 16 lines (`16j`)
 - `<D-Left>` – go back
 - `<D-Right>` – go forward
 - `<C-o>` – go back
@@ -117,10 +133,14 @@ Space is mapped as `<leader>`.
 - `<leader> c e` – Quick Fix / Code Actions
 - `<leader> c s` – switch diff side
 - `<leader> c v` – revert selected ranges
+- `<leader> <BS>` – show hover
+- `<BS> <leader>` – show parameter hints
+- `<BS> <BS>` – show hover
 - `<leader> e e` – open problems view
 - `<leader> e n` – next problem
 - `<leader> e p` – previous problem
 - `<leader> d b` – toggle breakpoint
+- `<leader> d <BS>` – show debug hover
 - `<leader> d d` – disable all breakpoints
 - `<leader> d e` – enable all breakpoints
 - `<leader> d r` – remove all breakpoints

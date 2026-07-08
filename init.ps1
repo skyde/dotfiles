@@ -5,6 +5,9 @@ Write-Host "Installing dotfiles..." -ForegroundColor Green
 
 # Use apply.ps1 and pass through all command line arguments
 & "$PSScriptRoot\apply.ps1" @args
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
 
 # Install VS Code extensions
 $codeCommand = Get-Command code -ErrorAction SilentlyContinue

@@ -56,10 +56,10 @@ jobs:
           echo "📄 Validating configuration files..."
 
           # Check essential config files exist
-          test -f "dotfiles/common/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
-          test -f "dotfiles/common/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
-          test -f "dotfiles/common/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
-          test -f "dotfiles/common/.config/git/config" || { echo "❌ git config missing"; exit 1; }
+          test -f "common/.bashrc-custom" || { echo "❌ .bashrc-custom missing"; exit 1; }
+          test -f "common/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
+          test -f "common/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
+          test -f "common/.config/git/config" || { echo "❌ git config missing"; exit 1; }
           echo "✅ Essential config files present"
 
           # Validate shell script syntax
@@ -71,8 +71,51 @@ jobs:
 
           # Validate shell config syntax
           echo "🔍 Validating shell configuration syntax..."
-          bash -n dotfiles/common/.bashrc || { echo "❌ .bashrc has syntax errors"; exit 1; }
+          bash -n common/.bashrc-custom || { echo "❌ .bashrc-custom has syntax errors"; exit 1; }
           echo "✅ Shell configurations have valid syntax"
+
+  # Focused Neovim/tmux behavior tests
+  nvim_tmux_smoke:
+    name: Neovim and tmux Smoke
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Ubuntu 24.04 ships ShellCheck 0.9, which false-positives on trap cleanup code.
+      SHELLCHECK_OPTS: --exclude=SC2317
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            ca-certificates \
+            curl \
+            fzf \
+            git \
+            python3 \
+            shellcheck \
+            stow \
+            tmux \
+            wl-clipboard \
+            xclip \
+            xsel \
+            zsh
+          curl -fsSL \
+            https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz \
+            -o "$RUNNER_TEMP/nvim-linux-x86_64.tar.gz"
+          tar -xzf "$RUNNER_TEMP/nvim-linux-x86_64.tar.gz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/nvim-linux-x86_64/bin" >> "$GITHUB_PATH"
+
+      - name: Show tool versions
+        run: |
+          nvim --version | head -1
+          tmux -V
+
+      - name: Run Neovim/tmux smoke tests
+        run: tests/run-nvim-tmux.sh
 
   # Multi-platform testing matrix
   test-platforms:
@@ -83,7 +126,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          [ubuntu-latest, ubuntu-20.04, macos-latest, macos-12, windows-latest]
+          [ubuntu-latest, ubuntu-22.04, macos-latest, macos-15-intel, windows-latest]
         include:
           - os: ubuntu-latest
             platform: linux
@@ -91,7 +134,7 @@ jobs:
             init_script: ./init.sh
             apply_script: ./apply.sh
             update_script: ./update.sh
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             platform: linux
             shell_cmd: bash
             init_script: ./init.sh
@@ -103,7 +146,7 @@ jobs:
             init_script: ./init.sh
             apply_script: ./apply.sh
             update_script: ./update.sh
-          - os: macos-12
+          - os: macos-15-intel
             platform: macos
             shell_cmd: bash
             init_script: ./init.sh
@@ -140,14 +183,25 @@ jobs:
             brew install stow
             echo "✅ macOS dependencies installed"
           elif [ "${{ matrix.platform }}" = "windows" ]; then
-            # Install stow via winget (check if available first)
+            # Install stow via winget with Chocolatey as a fallback.
             if command -v winget >/dev/null 2>&1; then
               winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements || echo "winget install failed, trying alternative"
-            else
-              echo "winget not available, using chocolatey fallback"
+            fi
+            if ! command -v stow >/dev/null 2>&1 && command -v choco >/dev/null 2>&1; then
               choco install stow -y || echo "choco install failed"
             fi
             echo "✅ Windows dependencies installation attempted"
+          fi
+
+          if command -v stow >/dev/null 2>&1; then
+            echo "STOW_AVAILABLE=true" >> "$GITHUB_ENV"
+            stow --version
+          elif [ "${{ matrix.platform }}" = "windows" ]; then
+            echo "STOW_AVAILABLE=false" >> "$GITHUB_ENV"
+            echo "::warning::GNU Stow is unavailable on this Windows runner; skipping stow-dependent Windows checks"
+          else
+            echo "❌ GNU Stow is unavailable after dependency installation"
+            exit 1
           fi
         shell: bash
 
@@ -159,10 +213,14 @@ jobs:
           ls -la
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
+            if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+              echo "GNU Stow unavailable; skipping Windows stow dry run"
+              exit 0
+            fi
             echo "Testing PowerShell scripts..."
             echo "Script path: ${{ matrix.apply_script }}"
             if [ -f "${{ matrix.apply_script }}" ]; then
-              pwsh -Command "& './${{ matrix.apply_script }}' --no" || echo "PowerShell script test failed"
+              pwsh -Command "& './${{ matrix.apply_script }}' --no"
               echo "✅ PowerShell apply script dry run completed"
             else
               echo "❌ PowerShell script not found"
@@ -190,10 +248,14 @@ jobs:
           ls -la
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
+            if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+              echo "GNU Stow unavailable; skipping Windows full installation"
+              exit 0
+            fi
             echo "Running Windows installation..."
             echo "Script path: ${{ matrix.init_script }}"
             if [ -f "${{ matrix.init_script }}" ]; then
-              pwsh -Command '$env:AUTO_INSTALL = "0"; & "./${{ matrix.init_script }}"' || echo "Windows installation failed"
+              pwsh -Command '$env:AUTO_INSTALL = "0"; & "./${{ matrix.init_script }}"'
             else
               echo "❌ Windows init script not found"
               exit 1
@@ -217,8 +279,13 @@ jobs:
         run: |
           echo "🔗 Verifying package-based symlinks..."
 
+          if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+            echo "GNU Stow unavailable; skipping symlink verification"
+            exit 0
+          fi
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
@@ -227,7 +294,7 @@ jobs:
 
           # Check for expected configuration files
           echo "Checking for expected configuration files..."
-          test -f "$home_dir/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
+          test -f "$home_dir/.bashrc-custom" || { echo "❌ .bashrc-custom missing"; exit 1; }
           test -f "$home_dir/.config/git/config" || { echo "❌ git config missing"; exit 1; }
           test -d "$home_dir/.config/nvim" || { echo "❌ nvim config missing"; exit 1; }
           test -f "$home_dir/.config/Code/User/settings.json" || { echo "❌ VS Code config missing"; exit 1; }
@@ -253,14 +320,19 @@ jobs:
         run: |
           echo "📄 Testing configuration file access..."
 
+          if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+            echo "GNU Stow unavailable; skipping installed configuration access checks"
+            exit 0
+          fi
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
 
           # Test shell configurations
-          test -f "$home_dir/.bashrc" || { echo "❌ .bashrc not accessible"; exit 1; }
+          test -f "$home_dir/.bashrc-custom" || { echo "❌ .bashrc-custom not accessible"; exit 1; }
           test -f "$home_dir/.zshrc" || { echo "❌ .zshrc not accessible"; exit 1; }
           test -f "$home_dir/.tmux.conf" || { echo "❌ .tmux.conf not accessible"; exit 1; }
           echo "✅ Shell configs accessible"
@@ -283,7 +355,7 @@ jobs:
           echo "🎯 Testing platform-specific configurations..."
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
             # Test Windows-specific packages if they exist
             echo "Checking for Windows-specific packages..."
             if test -d "$home_dir/Documents"; then
@@ -323,14 +395,19 @@ jobs:
         run: |
           echo "⚡ Testing configuration loading..."
 
+          if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+            echo "GNU Stow unavailable; skipping installed configuration loading checks"
+            exit 0
+          fi
+
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
+            home_dir="$HOME"
           else
             home_dir="$HOME"
           fi
 
           # Test bash config syntax
-          bash -n "$home_dir/.bashrc" || { echo "❌ .bashrc has syntax errors"; exit 1; }
+          bash -n "$home_dir/.bashrc-custom" || { echo "❌ .bashrc-custom has syntax errors"; exit 1; }
           echo "✅ Bash config syntax valid"
 
           # Test git config validity
@@ -351,8 +428,12 @@ jobs:
           echo "🔄 Testing package management operations..."
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
+            if [ "${STOW_AVAILABLE:-false}" != "true" ]; then
+              echo "GNU Stow unavailable; skipping Windows restow operation"
+              exit 0
+            fi
             echo "Testing PowerShell package management..."
-            pwsh -Command '& "./${{ matrix.apply_script }}" --restow' || echo "PowerShell restow failed"
+            pwsh -Command '& "./${{ matrix.apply_script }}" --restow'
             echo "✅ PowerShell restow operation completed"
           else
             echo "Testing shell package management..."
@@ -360,7 +441,6 @@ jobs:
             echo "✅ Shell restow operation successful"
             
             # Test individual package operations  
-            cd dotfiles
             stow --target=$HOME --verbose common
             stow --target=$HOME --delete common
             stow --target=$HOME common
@@ -373,7 +453,7 @@ jobs:
           echo "🔄 Testing update functionality..."
 
           # Create a test change
-          echo "# Test comment" >> dotfiles/common/.bashrc
+          echo "# Test comment" >> common/.bashrc-custom
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
             echo "Testing PowerShell update script..."
@@ -422,13 +502,13 @@ jobs:
           echo "🌐 Testing cross-platform compatibility..."
 
           # Display entry counts for reference
-          common_actual=$(find dotfiles/common -mindepth 1 -maxdepth 1 | wc -l)
+          common_actual=$(find common -mindepth 1 -maxdepth 1 | wc -l)
           echo "Common entries: $common_actual"
 
-          mac_actual=$(find dotfiles/mac -mindepth 1 -maxdepth 1 | wc -l)
+          mac_actual=$(find mac -mindepth 1 -maxdepth 1 | wc -l)
           echo "macOS entries: $mac_actual"
 
-          windows_actual=$(find dotfiles/windows -mindepth 1 -maxdepth 1 | wc -l)
+          windows_actual=$(find windows -mindepth 1 -maxdepth 1 | wc -l)
           echo "Windows entries: $windows_actual"
 
           if ! grep -q 'dotfiles/common' README.md; then
@@ -441,20 +521,32 @@ jobs:
         run: |
           echo "⚡ Running performance and edge case tests..."
 
+          edge_tmp=$(mktemp -d)
+          trap 'rm -rf "$edge_tmp"' EXIT
+
           # Test with existing files (conflict scenario)
           echo "Testing conflict handling..."
-          touch ~/.bashrc ~/.zshrc
-          AUTO_INSTALL=0 ./init.sh || echo "Expected to handle conflicts"
+          conflict_home="$edge_tmp/conflict-home"
+          mkdir -p "$conflict_home"
+          touch "$conflict_home/.bashrc" "$conflict_home/.zshrc"
+          if HOME="$conflict_home" AUTO_INSTALL=0 ./init.sh; then
+            echo "❌ Conflict scenario unexpectedly succeeded"
+            exit 1
+          else
+            echo "Expected conflict handled"
+          fi
 
           # Test multiple installs (idempotent behavior)
           echo "Testing idempotent behavior..."
-          AUTO_INSTALL=0 ./init.sh
-          AUTO_INSTALL=0 ./init.sh
+          install_home="$edge_tmp/install-home"
+          mkdir -p "$install_home"
+          HOME="$install_home" AUTO_INSTALL=0 ./init.sh
+          HOME="$install_home" AUTO_INSTALL=0 ./init.sh
           echo "✅ Multiple installs handled correctly"
 
           # Test cleanup
           echo "Testing cleanup..."
-          ./apply.sh --delete
+          HOME="$install_home" ./apply.sh --delete
           echo "✅ Cleanup successful"
 
           echo "✅ Performance and edge case testing completed"
@@ -513,7 +605,7 @@ jobs:
   # Final validation
   summary:
     name: Test Summary
-    needs: [validate, test-platforms, integration-test, security-check]
+    needs: [validate, nvim_tmux_smoke, test-platforms, integration-test, security-check]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -523,11 +615,13 @@ jobs:
           echo "======================="
           echo ""
           echo "✅ Repository validation: ${{ needs.validate.result }}"
+          echo "✅ Neovim/tmux smoke: ${{ needs.nvim_tmux_smoke.result }}"
           echo "✅ Platform testing: ${{ needs.test-platforms.result }}"
           echo "✅ Integration testing: ${{ needs.integration-test.result }}"
           echo "✅ Security checks: ${{ needs.security-check.result }}"
           echo ""
           if [ "${{ needs.validate.result }}" = "success" ] && 
+             [ "${{ needs.nvim_tmux_smoke.result }}" = "success" ] &&
              [ "${{ needs.test-platforms.result }}" = "success" ] && 
              [ "${{ needs.integration-test.result }}" = "success" ] && 
              [ "${{ needs.security-check.result }}" = "success" ]; then

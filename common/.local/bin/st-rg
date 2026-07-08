@@ -8,13 +8,17 @@
 
 set -euo pipefail
 
+shell_quote() {
+  printf '%q' "$1"
+}
+
 # Build args as an array so quoting stays correct.
-ADDITIONAL_ARGS=(--bind "enter:become(cd '{root}' && nvim +{2} {1})")
+ADDITIONAL_ARGS=(--bind "enter:become(cd {root} && nvim +{2} {1})")
 
 if [[ "${1:-}" == "--code" ]]; then
   # Open at line without becoming; keep fzf running. Work relative to search root.
   ADDITIONAL_ARGS=(
-    --bind "enter:execute-silent(cd '{root}' && code -r -g {1}:{2})"
+    --bind "enter:execute-silent(cd {root} && code -r -g {1}:{2})"
     --bind "esc:clear-query"
   )
   shift
@@ -29,6 +33,7 @@ if ! root="$(cd "$target" >/dev/null 2>&1 && pwd -P)"; then
   echo "error: search root not found: $target_input" >&2
   exit 1
 fi
+quoted_root="$(shell_quote "$root")"
 
 command -v rg >/dev/null 2>&1 || {
   echo "error: ripgrep (rg) not found in PATH" >&2
@@ -50,6 +55,7 @@ command -v bat >/dev/null 2>&1 || {
 #   1: raw path
 #   2: raw line number
 #   3: pretty display (colored "path:line[:col]: text" with rg match highlights)
+# shellcheck disable=SC2016 # Awk program is passed literally to the child awk.
 export RG_AWK_SCRIPT='BEGIN{
     FS=":"; OFS=":";
     mag="\033[38;2;106;153;85m";   # filename color
@@ -85,6 +91,7 @@ export RG_AWK_SCRIPT='BEGIN{
 #   2: raw line number
 #   3: pretty display
 # Note: git grep -n output format is file:line:content
+# shellcheck disable=SC2016 # Awk program is passed literally to the child awk.
 export GIT_GREP_AWK_SCRIPT='BEGIN{
     FS=":"; OFS=":";
     mag="\033[38;2;106;153;85m";   # filename color
@@ -128,14 +135,14 @@ fi
 # so that it is NOT expanded by the parent shell, but rather passed literally to fzf/sh.
 if [[ "$use_git_grep" == "true" ]]; then
   # git grep version
-  reload_cmd="cd '$root' && git grep -n --color=always -e '{q}' -- '*.h' '*.c' '*.cc' '*.cpp' '*.m' '*.mm' | awk \"\$GIT_GREP_AWK_SCRIPT\""
+  reload_cmd="cd $quoted_root && git grep -n --color=always -e '{q}' -- '*.h' '*.c' '*.cc' '*.cpp' '*.m' '*.mm' | awk \"\$GIT_GREP_AWK_SCRIPT\""
 else
   # rg version
-  reload_cmd="cd '$root' && rg --line-number --column --with-filename --no-heading --color=always --smart-case -- {q} | awk \"\$RG_AWK_SCRIPT\""
+  reload_cmd="cd $quoted_root && rg --line-number --column --with-filename --no-heading --color=always --smart-case -- {q} | awk \"\$RG_AWK_SCRIPT\""
 fi
 
 for i in "${!ADDITIONAL_ARGS[@]}"; do
-  ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//'{root}'/$root}"
+  ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//\{root\}/$quoted_root}"
 done
 
 exec fzf \
@@ -146,6 +153,6 @@ exec fzf \
   --with-nth=3.. \
   --bind "start:reload:${reload_cmd} || true" \
   --bind "change:reload:${reload_cmd} || true" \
-  --preview "cd '${root}' && bat --style=numbers --color=always --paging=never {2} {1}" \
+  --preview "cd $quoted_root && bat --style=numbers --color=always --paging=never --highlight-line {2} {1}" \
   --preview-window 'bottom,30%,+{2}/2' \
   "${ADDITIONAL_ARGS[@]}"

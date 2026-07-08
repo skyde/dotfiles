@@ -1,53 +1,374 @@
-#!/bin/bash
-SESSION_NAME="$1"
-WINDOW_INDEX="$2"
-NO_ATTACH="$3"
+#!/usr/bin/env bash
+set -euo pipefail
 
-if [ -z "$SESSION_NAME" ]; then
-    echo "Usage: $0 <session_name> [window_index] [--no-attach]"
+usage() {
+    echo "Usage: $0 [--no-attach] [--start-dir DIR] [--window WINDOW] [--] [session_name] [window_index|window_name]" >&2
+}
+
+set_positional_arg() {
+    local value="$1"
+
+    if [[ -z "$SESSION_NAME" ]]; then
+        SESSION_NAME="$value"
+    elif [[ -z "$WINDOW_SELECTOR" ]]; then
+        WINDOW_SELECTOR="$value"
+    else
+        echo "Error: unexpected argument: $value" >&2
+        usage
+        exit 1
+    fi
+}
+
+session_target() {
+    printf '=%s' "$1"
+}
+
+script_dir() {
+    local source="${BASH_SOURCE[0]}"
+    local source_dir="."
+
+    if [[ "$source" == */* ]]; then
+        source_dir="${source%/*}"
+    fi
+
+    cd -- "$source_dir" && pwd
+}
+
+ascii_lower() {
+    local value="$1"
+    local upper="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    local lower="abcdefghijklmnopqrstuvwxyz"
+    local i
+
+    for ((i = 0; i < ${#upper}; i++)); do
+        value="${value//${upper:i:1}/${lower:i:1}}"
+    done
+
+    printf '%s\n' "$value"
+}
+
+expand_home_dir() {
+    local value="$1"
+
+    case "$value" in
+        "~") printf '%s\n' "${HOME:-$value}" ;;
+        \~/*) printf '%s/%s\n' "${HOME:-~}" "${value#\~/}" ;;
+        *) printf '%s\n' "$value" ;;
+    esac
+}
+
+is_windows_environment() {
+    [[ "${OS:-}" == "Windows_NT" || "${OSTYPE:-}" == msys* || "${OSTYPE:-}" == cygwin* || -n "${MSYSTEM:-}" ]]
+}
+
+is_windows_absolute_path() {
+    [[ "$1" =~ ^[A-Za-z]:[\\/] || "$1" == \\\\* || "$1" == //* ]]
+}
+
+normalize_windows_absolute_path() {
+    local value="$1"
+
+    if is_windows_absolute_path "$value"; then
+        value="${value//\\//}"
+    fi
+
+    printf '%s\n' "$value"
+}
+
+absolute_dir() {
+    local value="$1"
+
+    value="$(expand_home_dir "$value")"
+    if [[ -d "$value" ]]; then
+        (cd -- "$value" && pwd -P)
+        return 0
+    fi
+
+    if is_windows_absolute_path "$value"; then
+        value="$(normalize_windows_absolute_path "$value")"
+        if [[ -d "$value" ]]; then
+            (cd -- "$value" && pwd -P)
+            return 0
+        fi
+        printf '%s\n' "$value"
+        return 0
+    fi
+
+    case "$value" in
+        /*) printf '%s\n' "$value" ;;
+        *) printf '%s/%s\n' "$PWD" "$value" ;;
+    esac
+}
+
+tmux_client_is_live() {
+    [[ -n "${TMUX:-}" ]] || return 1
+    tmux display-message -p '#{pane_id}' >/dev/null 2>&1
+}
+
+tmux_cmd() {
+    if [[ "${TMUX_CLIENT_LIVE:-0}" == "1" || -z "${TMUX:-}" ]]; then
+        tmux "$@"
+    else
+        (unset TMUX; tmux "$@")
+    fi
+}
+
+run_default_loader() {
+    if [[ "${TMUX_CLIENT_LIVE:-0}" == "1" || -z "${TMUX:-}" ]]; then
+        TMUX_SESSION_START_DIR="$START_DIR" SESSION_NAME="$SESSION_NAME" "$DEFAULT_LOADER_PATH"
+    else
+        (unset TMUX; TMUX_SESSION_START_DIR="$START_DIR" SESSION_NAME="$SESSION_NAME" "$DEFAULT_LOADER_PATH")
+    fi
+}
+
+resolve_default_loader() {
+    local loader resolved script_directory="" home_helper
+
+    script_directory="$(script_dir)"
+    for loader in tmux-session-default-layout-local tmux-session-default-layout; do
+        if [[ -x "$script_directory/$loader" ]]; then
+            printf '%s\n' "$script_directory/$loader"
+            return 0
+        fi
+    done
+
+    if [[ -n "${HOME:-}" ]]; then
+        for loader in tmux-session-default-layout-local tmux-session-default-layout; do
+            home_helper="$HOME/.local/bin/$loader"
+            if [[ -x "$home_helper" ]]; then
+                printf '%s\n' "$home_helper"
+                return 0
+            fi
+
+            home_helper="$HOME/dotfiles/common/.local/bin/$loader"
+            if [[ -x "$home_helper" ]]; then
+                printf '%s\n' "$home_helper"
+                return 0
+            fi
+        done
+    fi
+    for loader in tmux-session-default-layout-local tmux-session-default-layout; do
+        if resolved="$(command -v -- "$loader" 2>/dev/null)"; then
+            printf '%s\n' "$resolved"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+resolve_session_name_helper() {
+    local helper="tmux-session-name"
+    local resolved script_directory="" home_helper
+
+    script_directory="$(script_dir)"
+    if [[ -x "$script_directory/$helper" ]]; then
+        printf '%s\n' "$script_directory/$helper"
+        return 0
+    fi
+
+    if [[ -n "${HOME:-}" ]]; then
+        home_helper="$HOME/.local/bin/$helper"
+        if [[ -x "$home_helper" ]]; then
+            printf '%s\n' "$home_helper"
+            return 0
+        fi
+
+        home_helper="$HOME/dotfiles/common/.local/bin/$helper"
+        if [[ -x "$home_helper" ]]; then
+            printf '%s\n' "$home_helper"
+            return 0
+        fi
+    fi
+
+    if resolved="$(command -v -- "$helper" 2>/dev/null)"; then
+        printf '%s\n' "$resolved"
+        return 0
+    fi
+
+    return 1
+}
+
+resolve_window_target() {
+    local session_name="$1"
+    local selector="$2"
+    local index name id ordinal="" selector_lower
+
+    selector_lower="$(ascii_lower "$selector")"
+
+    case "$selector_lower" in
+        resume|first)
+            ordinal=1
+            ;;
+        agent|ai)
+            ordinal=2
+            ;;
+        terminal|shell|third)
+            ordinal=3
+            ;;
+    esac
+
+    while IFS=$'\t' read -r index name id; do
+        if [[ -n "$ordinal" && "$ordinal" == "1" ]]; then
+            printf '%s\n' "$id"
+            return 0
+        fi
+        if [[ -n "$ordinal" ]]; then
+            ordinal=$((ordinal - 1))
+            continue
+        fi
+
+        if [[ "$index" == "$selector" || "$name" == "$selector" ]]; then
+            printf '%s\n' "$id"
+            return 0
+        fi
+    done < <(tmux_cmd list-windows -t "$(session_target "$session_name")" -F $'#{window_index}\t#{window_name}\t#{window_id}' 2>/dev/null)
+
+    return 1
+}
+
+SESSION_NAME=""
+WINDOW_SELECTOR=""
+NO_ATTACH=0
+START_DIR="${TMUX_SESSION_START_DIR:-}"
+START_DIR_EXPLICIT=0
+
+while (($#)); do
+    arg="$1"
+    case "$arg" in
+        --no-attach)
+            NO_ATTACH=1
+            ;;
+        --window)
+            shift
+            if [[ -z "${1:-}" ]]; then
+                echo "Error: --window requires a window index or name" >&2
+                usage
+                exit 1
+            fi
+            WINDOW_SELECTOR="$1"
+            ;;
+        --window=*)
+            WINDOW_SELECTOR="${arg#--window=}"
+            if [[ -z "$WINDOW_SELECTOR" ]]; then
+                echo "Error: --window requires a window index or name" >&2
+                usage
+                exit 1
+            fi
+            ;;
+        --start-dir)
+            shift
+            if [[ -z "${1:-}" ]]; then
+                echo "Error: --start-dir requires a directory" >&2
+                usage
+                exit 1
+            fi
+            START_DIR="$1"
+            START_DIR_EXPLICIT=1
+            ;;
+        --start-dir=*)
+            START_DIR="${arg#--start-dir=}"
+            if [[ -z "$START_DIR" ]]; then
+                echo "Error: --start-dir requires a directory" >&2
+                usage
+                exit 1
+            fi
+            START_DIR_EXPLICIT=1
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            while (($#)); do
+                set_positional_arg "$1"
+                shift
+            done
+            break
+            ;;
+        --*)
+            echo "Error: unknown option: $arg" >&2
+            usage
+            exit 1
+            ;;
+        *)
+            set_positional_arg "$arg"
+            ;;
+    esac
+    shift
+done
+
+if ! command -v tmux >/dev/null 2>&1; then
+    echo "Error: tmux is not installed or not on PATH" >&2
+    exit 1
+fi
+
+TMUX_CLIENT_LIVE=0
+if tmux_client_is_live; then
+    TMUX_CLIENT_LIVE=1
+fi
+
+if [[ -n "$START_DIR" ]]; then
+    START_DIR="$(absolute_dir "$START_DIR")"
+fi
+
+if [[ "$START_DIR_EXPLICIT" == "1" && ! -d "$START_DIR" ]]; then
+    if ! is_windows_environment || ! is_windows_absolute_path "$START_DIR"; then
+        echo "Error: --start-dir is not a directory: $START_DIR" >&2
+        exit 1
+    fi
+fi
+
+if [[ -z "$SESSION_NAME" ]]; then
+    if ! SESSION_NAME_HELPER_PATH="$(resolve_session_name_helper)"; then
+        echo "Error: tmux-session-name not found in adjacent, home local, home dotfiles, or PATH helper locations." >&2
+        exit 1
+    fi
+
+    SESSION_NAME="$(TMUX_SESSION_START_DIR="$START_DIR" "$SESSION_NAME_HELPER_PATH")"
+fi
+
+if [[ -z "$SESSION_NAME" ]]; then
+    echo "Error: unable to derive tmux session name" >&2
     exit 1
 fi
 
 # Ensure session exists with correct layout if it doesn't exist at all
-if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-    DEFAULT_LOADER="tmux-session-default-layout"
-    if command -v "${DEFAULT_LOADER}-local" >/dev/null 2>&1; then
-        DEFAULT_LOADER="${DEFAULT_LOADER}-local"
+if ! tmux_cmd has-session -t "$(session_target "$SESSION_NAME")" 2>/dev/null; then
+    if ! DEFAULT_LOADER_PATH="$(resolve_default_loader)"; then
+        echo "Error: tmux-session-default-layout not found in adjacent, home local, home dotfiles, or PATH helper locations." >&2
+        exit 1
     fi
 
-    if command -v "$DEFAULT_LOADER" >/dev/null 2>&1; then
-        SESSION_NAME="$SESSION_NAME" "$DEFAULT_LOADER"
-    else
-        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-        DEFAULT_LOADER_PATH="${SCRIPT_DIR}/${DEFAULT_LOADER}"
-        if [ ! -x "$DEFAULT_LOADER_PATH" ]; then
-            echo "Error: ${DEFAULT_LOADER} not found in PATH or ${SCRIPT_DIR}." >&2
-            exit 1
-        fi
-        SESSION_NAME="$SESSION_NAME" "$DEFAULT_LOADER_PATH"
-    fi
+    run_default_loader
 fi
 
 # Switch window globally for the session
-if [ -n "$WINDOW_INDEX" ]; then
-    tmux select-window -t "${SESSION_NAME}:${WINDOW_INDEX}"
+if [[ -n "$WINDOW_SELECTOR" ]]; then
+    if ! RESOLVED_WINDOW_TARGET="$(resolve_window_target "$SESSION_NAME" "$WINDOW_SELECTOR")"; then
+        echo "Error: session '$SESSION_NAME' has no window index or name: $WINDOW_SELECTOR" >&2
+        exit 1
+    fi
+    tmux_cmd select-window -t "$RESOLVED_WINDOW_TARGET"
 fi
 
 # Check if we should exit without attaching
-if [ "$NO_ATTACH" == "--no-attach" ]; then
+if [[ "$NO_ATTACH" == "1" ]]; then
     exit 0
 fi
 
 # Attach logic
-if [ -n "$TMUX" ]; then
-    # We are inside tmux. Switch client to this session if needed.
-    CURRENT_SESSION=$(tmux display-message -p '#S')
-    if [ "$CURRENT_SESSION" != "$SESSION_NAME" ]; then
-         tmux switch-client -t "$SESSION_NAME"
+if [[ "$TMUX_CLIENT_LIVE" == "1" ]] && CURRENT_SESSION="$(tmux_cmd display-message -p '#S' 2>/dev/null)"; then
+    # We are inside a live tmux client. Switch client to this session if needed.
+    if [[ "$CURRENT_SESSION" != "$SESSION_NAME" ]]; then
+         tmux_cmd switch-client -t "$(session_target "$SESSION_NAME")"
     fi
 else
     # We are outside tmux (e.g., standard VS Code terminal task).
-    # Attach to the session.
-    # 'new-session -A' attaches to the existing session.
-    exec tmux new-session -A -s "$SESSION_NAME"
+    # Attach to the session created above.
+    if [[ -n "${TMUX:-}" ]]; then
+        unset TMUX
+    fi
+    exec tmux attach-session -t "$(session_target "$SESSION_NAME")"
 fi

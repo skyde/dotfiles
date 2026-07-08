@@ -15,6 +15,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source helper functions
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/run_ensure.sh"
 
 echo "Installing Linux-specific packages..."

@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_source="${BASH_SOURCE[0]}"
+script_dir="."
+if [[ "$script_source" == */* ]]; then
+  script_dir="${script_source%/*}"
+fi
+script_dir="$(cd -- "$script_dir" && pwd -P)"
+
+resolve_osc_copy() {
+  local candidate
+
+  candidate="$script_dir/osc-copy"
+  if [[ -x "$candidate" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  if [[ -n "${HOME:-}" ]]; then
+    for candidate in "$HOME/.local/bin/osc-copy" "$HOME/dotfiles/common/.local/bin/osc-copy"; do
+      if [[ -x "$candidate" ]]; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    done
+  fi
+
+  command -v -- osc-copy 2>/dev/null
+}
+
+tmux_client_is_live() {
+  [[ -n "${TMUX:-}" ]] || return 1
+  command -v tmux >/dev/null 2>&1 || return 1
+  tmux display-message -p '#{pane_id}' >/dev/null 2>&1
+}
+
+show_error() {
+  local message="$1"
+
+  printf 'tmux-copy-helper: %s\n' "$message" >&2
+  if tmux_client_is_live; then
+    tmux display-message "$message" >/dev/null 2>&1 || true
+  fi
+}
+
+helper="$(resolve_osc_copy)" || {
+  show_error "osc-copy not found"
+  exit 127
+}
+
+if "$helper"; then
+  exit 0
+else
+  status=$?
+  show_error "osc-copy failed"
+  exit "$status"
+fi

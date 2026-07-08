@@ -101,8 +101,10 @@ main() {
   link_config_tree "$config_home" "$temp_config"
   build_merged_keymap "$config_home" "$temp_config" "$local_keymap"
 
+  set +e
   YAZI_CONFIG_HOME="$temp_config" "$real_yazi" "$@"
   rc=$?
+  set -e
   rm -rf -- "$temp_config"
   trap - EXIT
   exit "$rc"
