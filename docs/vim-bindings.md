@@ -11,10 +11,10 @@ using that extension's settings.
 - Arrow keys act as `h`, `j`, `k`, `l`.
 - `vig` – select entire buffer.
 - `yig` – yank entire buffer.
-- `<C-u>` – scroll up 16 lines.
-- `<C-d>` – scroll down 16 lines.
-- `<S-F4>` – scroll up 16 lines (macro).
-- `<S-F6>` – scroll down 16 lines (macro).
+- `<C-u>` – move up 16 lines.
+- `<C-d>` – move down 16 lines.
+- `<S-F4>` – move up 16 lines (macro).
+- `<S-F6>` – move down 16 lines (macro).
 - `<C-O>` / `<C-I>` – jump backward/forward through edits.
 - `<C-h/j/k/l>` – move between windows.
 - `<` / `>` in visual mode keep selection when indenting.
@@ -116,11 +116,11 @@ These key combinations are implemented via keyboard macros rather than the VSVim
 ```
 build and run   – Shift+F2
 find class      – Shift+F3
-scroll up       – Shift+F4
-scroll down     – Shift+F6
+move up         – Shift+F4
+move down       – Shift+F6
 stop build      – Shift+F7
 goto definition – Shift+F8
 toggle search   – Shift+F9
-toggle eye      – Shift+F10
+tmux prefix     – Shift+F10
 toggle comment  – Shift+F11
 ```

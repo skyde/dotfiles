@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+action="${1:-}"
+pane_id="${2:-}"
+current_command="${3:-}"
+pane_tty="${4:-}"
+
+usage() {
+  echo "usage: tmux-pane-key-router <action> <pane-id> <current-command> <pane-tty>" >&2
+  exit 64
+}
+
+if [[ -z "$action" || -z "$pane_id" || -z "$pane_tty" ]]; then
+  usage
+fi
+
+script_source="${BASH_SOURCE[0]}"
+script_dir="."
+if [[ "$script_source" == */* ]]; then
+  script_dir="${script_source%/*}"
+fi
+script_dir="$(cd -- "$script_dir" && pwd -P)"
+
+find_helper() {
+  local name="$1" helper
+
+  if [[ -n "${HOME:-}" ]]; then
+    for helper in "$HOME/.local/bin/$name" "$HOME/dotfiles/common/.local/bin/$name"; do
+      [[ -x "$helper" ]] && {
+        printf '%s\n' "$helper"
+        return 0
+      }
+    done
+  fi
+
+  helper="$script_dir/$name"
+  if [[ -x "$helper" ]]; then
+    printf '%s\n' "$helper"
+    return 0
+  fi
+
+  command -v "$name" 2>/dev/null
+}
+
+should_passthrough() {
+  local helper
+
+  helper="$(find_helper tmux-pane-should-passthrough)" || return 1
+  if [[ "$action" == "shift-insert" ]]; then
+    "$helper" --paste-key "$current_command" "$pane_tty"
+  else
+    "$helper" "$current_command" "$pane_tty"
+  fi
+}
+
+display_message() {
+  local message="$1"
+
+  if command -v tmux >/dev/null 2>&1; then
+    tmux display-message -t "$pane_id" "$message" 2>/dev/null || true
+  fi
+}
+
+send_hex() {
+  tmux send-keys -t "$pane_id" -H "$@"
+}
+
+send_key() {
+  tmux send-keys -t "$pane_id" "$1"
+}
+
+run_paste_helper() {
+  local helper
+
+  helper="$(find_helper tmux-paste-helper)" || {
+    display_message "tmux-paste-helper unavailable"
+    echo "tmux-paste-helper unavailable" >&2
+    exit 127
+  }
+
+  exec "$helper" "$pane_id"
+}
+
+select_direction() {
+  tmux select-pane -t "$pane_id" "$1"
+}
+
+last_pane() {
+  local window_id
+
+  window_id="$(tmux display-message -p -t "$pane_id" '#{window_id}')"
+  tmux last-pane -t "$window_id"
+}
+
+case "$action" in
+  ctrl-insert)
+    if should_passthrough; then
+      send_hex 1b 5b 32 3b 35 7e
+    else
+      display_message "Ctrl-Insert: use copy mode or a pane-aware app"
+    fi
+    ;;
+  shift-insert)
+    if should_passthrough; then
+      send_hex 1b 5b 32 3b 32 7e
+    else
+      run_paste_helper
+    fi
+    ;;
+  shift-delete)
+    if should_passthrough; then
+      send_hex 1b 5b 33 3b 32 7e
+    else
+      display_message "Shift-Delete: use copy mode or a pane-aware app to cut"
+    fi
+    ;;
+  nav-left)
+    if should_passthrough; then
+      send_key C-h
+    else
+      select_direction -L
+    fi
+    ;;
+  nav-down)
+    if should_passthrough; then
+      send_key C-j
+    else
+      select_direction -D
+    fi
+    ;;
+  nav-up)
+    if should_passthrough; then
+      send_key C-k
+    else
+      select_direction -U
+    fi
+    ;;
+  nav-right)
+    if should_passthrough; then
+      send_key C-l
+    else
+      select_direction -R
+    fi
+    ;;
+  nav-last)
+    if should_passthrough; then
+      send_key $'C-\\'
+    else
+      last_pane
+    fi
+    ;;
+  *)
+    usage
+    ;;
+esac
