@@ -20,8 +20,14 @@ vim.g.neovide_cursor_trail_length = 0
 vim.opt.mouse = "a"
 
 local win32yank_path = "win32yank.exe"
+local is_windows = vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 or vim.fn.has("win32unix") == 1
+local use_osc52 = vim.env.SSH_CLIENT ~= nil
+  or vim.env.SSH_TTY ~= nil
+  or vim.env.SSH_CONNECTION ~= nil
+  or vim.env.TMUX ~= nil
+
 -- Clipboard provider (works in native Windows, MSYS2 and WSL)
-if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 or vim.fn.has("win32unix") == 1 then
+if is_windows then
   vim.g.clipboard = {
     name = "win32yank-lf",
     copy = {
@@ -34,6 +40,22 @@ if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 or vim.fn.has("win32unix
     },
     cache_enabled = 0, -- 1 if you want selections cached for speed
   }
+elseif use_osc52 then
+  local ok, osc52 = pcall(require, "vim.ui.clipboard.osc52")
+
+  if ok then
+    vim.g.clipboard = {
+      name = "OSC 52",
+      copy = {
+        ["+"] = osc52.copy("+"),
+        ["*"] = osc52.copy("*"),
+      },
+      paste = {
+        ["+"] = osc52.paste("+"),
+        ["*"] = osc52.paste("*"),
+      },
+    }
+  end
 end
 
 vim.opt.clipboard:append("unnamedplus")
