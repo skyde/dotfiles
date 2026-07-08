@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# zi — Create/update a Zoekt index under <root>/.zoekt and manage optional git hooks.
+
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  zi [PATH]                Index PATH (or git root or $PWD) into <root>/.zoekt
+  zi --install-hooks [PATH]          Install post-merge & post-checkout hooks for PATH (repo)
+  zi --install-global-hooks          Install hooks into ~/.git-templates/hooks (set core.hooksPath)
+
+Details:
+- Git repos use 'zoekt-git-index -index <root>/.zoekt <root>'.
+- Non-git directories use 'zoekt-index -index <root>/.zoekt -ignore_dirs ".git,.hg,.svn,.zoekt" <root>'.
+- Hooks run 'zi <root>' after pulls/branch switches to keep the index fresh.
+USAGE
+}
+
+write_hook() {
+  local hook_path="$1" zi_bin="$2"
+  mkdir -p "$(dirname "$hook_path")"
+  cat > "$hook_path" <<'HOOK'
+#!/usr/bin/env bash
+set -euo pipefail
+ZI_BIN="$zi_bin"
+if [[ ! -x "$ZI_BIN" ]]; then
+  ZI_BIN="zi"  # fallback to PATH if absolute path missing
+fi
+root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# Quiet re-index; ignore errors so hooks never block merges/checkouts.
+"$ZI_BIN" "$root" >/dev/null 2>&1 || true
+HOOK
+  chmod +x "$hook_path"
+}
+
+install_repo_hooks() {
+  local repo="$1"
+  if ! git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Not a git repo: $repo" >&2
+    exit 1
+  fi
+  local hooks_dir="$repo/.git/hooks"
+  local zi_bin
+  zi_bin="$(command -v zi || true)"
+  if [[ -z "$zi_bin" ]]; then
+    echo "Warning: 'zi' is not on PATH right now; hooks will try 'zi' from PATH later." >&2
+    zi_bin="zi"
+  fi
+  write_hook "$hooks_dir/post-merge" "$zi_bin"
+  write_hook "$hooks_dir/post-checkout" "$zi_bin"
+  echo "Installed hooks: $hooks_dir/post-merge, $hooks_dir/post-checkout"
+}
+
+install_global_hooks() {
+  local tmpl="$HOME/.git-templates/hooks"
+  mkdir -p "$tmpl"
+  local zi_bin
+  zi_bin="$(command -v zi || true)"
+  [[ -z "$zi_bin" ]] && zi_bin="zi"
+  write_hook "$tmpl/post-merge" "$zi_bin"
+  write_hook "$tmpl/post-checkout" "$zi_bin"
+  echo "Installed global hooks to: $tmpl"
+  echo "If not already set, run:"
+  echo "  git config --global core.hooksPath \"$HOME/.git-templates/hooks\""
+}
+
+# --- flags / subcommands
+case "${1:-}" in
+  -h|--help) usage; exit 0 ;;
+  --install-hooks)
+    shift
+    target="${1:-}"
+    if [[ -z "$target" ]]; then
+      if git_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+        target="$git_root"
+      else
+        target="$PWD"
+      fi
+    fi
+    target="$(cd "$target" && pwd)"
+    install_repo_hooks "$target"
+    exit 0
+    ;;
+  --install-global-hooks)
+    install_global_hooks
+    exit 0
+    ;;
+esac
+
+# --- normal indexing
+# Resolve target directory
+if [[ -n "${1:-}" ]]; then
+  target="$(cd "$1" && pwd)"
+elif git_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+  target="$git_root"
+else
+  target="$PWD"
+fi
+
+index_dir="${target}/.zoekt"
+mkdir -p "$index_dir"
+
+# Prefer git-aware indexer when available
+if git -C "$target" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Indexing (git) $target -> $index_dir"
+  zoekt-git-index -index "$index_dir" "$target"
+else
+  echo "Indexing (dir) $target -> $index_dir"
+  zoekt-index -index "$index_dir" -ignore_dirs ".git,.hg,.svn,.zoekt" "$target"
+fi
+
+echo "Done. Shards: $index_dir"
+echo "Tip: add '.zoekt/' to .gitignore if not already ignored."
