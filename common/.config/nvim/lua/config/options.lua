@@ -28,17 +28,31 @@ local use_osc52 = vim.env.SSH_CLIENT ~= nil
 
 -- Clipboard provider (works in native Windows, MSYS2 and WSL)
 if is_windows then
-  vim.g.clipboard = require("config.clipboard").provider(
-    "win32yank-lf",
-    { win32yank_path, "-i", "--crlf" },
-    { win32yank_path, "-o", "--lf" }
-  )
+  vim.g.clipboard = {
+    name = "win32yank-lf",
+    copy = {
+      ["+"] = { win32yank_path, "-i", "--crlf" },
+      ["*"] = { win32yank_path, "-i", "--crlf" },
+    },
+    paste = {
+      ["+"] = { win32yank_path, "-o", "--lf" },
+      ["*"] = { win32yank_path, "-o", "--lf" },
+    },
+    cache_enabled = 0,
+  }
 elseif use_osc52 and vim.fn.executable("osc-copy") == 1 and vim.fn.executable("osc-paste") == 1 then
-  vim.g.clipboard = require("config.clipboard").provider(
-    "osc-copy/osc-paste",
-    { "osc-copy" },
-    { "osc-paste" }
-  )
+  vim.g.clipboard = {
+    name = "osc-copy/osc-paste",
+    copy = {
+      ["+"] = { "osc-copy" },
+      ["*"] = { "osc-copy" },
+    },
+    paste = {
+      ["+"] = { "osc-paste" },
+      ["*"] = { "osc-paste" },
+    },
+    cache_enabled = 0,
+  }
 end
 
 vim.opt.clipboard:append("unnamedplus")

@@ -13,30 +13,38 @@ decode_base64() {
   fi
 }
 
+normalize_newlines() {
+  LC_ALL=C sed $'s/\r$//'
+}
+
 if [[ -n "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
-  if tmux save-buffer - 2>/dev/null; then
+  if tmux refresh-client -l 2>/dev/null; then
+    sleep 0.05
+  fi
+
+  if tmux save-buffer - 2>/dev/null | normalize_newlines; then
     exit 0
   fi
 fi
 
 if ! in_ssh_session; then
   if command -v pbpaste >/dev/null 2>&1; then
-    pbpaste
+    pbpaste | normalize_newlines
     exit 0
   fi
 
   if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-paste >/dev/null 2>&1; then
-    wl-paste
+    wl-paste --no-newline | normalize_newlines
     exit 0
   fi
 
   if [[ -n "${DISPLAY:-}" ]] && command -v xclip >/dev/null 2>&1; then
-    xclip -selection clipboard -o
+    xclip -selection clipboard -o | normalize_newlines
     exit 0
   fi
 
   if [[ -n "${DISPLAY:-}" ]] && command -v xsel >/dev/null 2>&1; then
-    xsel --clipboard --output
+    xsel --clipboard --output | normalize_newlines
     exit 0
   fi
 fi
@@ -54,8 +62,8 @@ if [[ -r /dev/tty && -w /dev/tty ]]; then
   fi
 
   if IFS= read -r -s -t 1 -d $'\a' response </dev/tty; then
-    if [[ "$response" =~ \;([A-Za-z0-9+/=]+)$ ]]; then
-      printf '%s' "${BASH_REMATCH[1]}" | decode_base64
+    if [[ "$response" =~ \;([A-Za-z0-9+/=]*)$ ]]; then
+      printf '%s' "${BASH_REMATCH[1]}" | decode_base64 | normalize_newlines
       exit 0
     fi
   fi
