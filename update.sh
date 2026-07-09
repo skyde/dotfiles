@@ -1,36 +1,28 @@
 #!/bin/bash
-# Update dotfiles from remote repository
-set -e
+# Update dotfiles from their remotes and restow them.
+set -euo pipefail
 
+ORIGINAL_DIR="$PWD"
+SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+restore_original_dir() {
+    cd "$ORIGINAL_DIR" 2>/dev/null || true
+}
+trap restore_original_dir EXIT
+
+cd "$SCRIPT_DIR"
 echo "Updating dotfiles from remote..."
 
-# Save current directory
-ORIGINAL_DIR="$PWD"
-
-# Go to dotfiles directory
-SCRIPT_DIR="$(dirname "$0")"
-cd "$SCRIPT_DIR"
-
-# Pull latest changes
 echo "Pulling latest changes..."
-git pull
+git pull --ff-only
 
-# Check for dotfiles-local and update if present
-if [ -d "$HOME/dotfiles-local/.git" ]; then
-  echo "Updating dotfiles-local from remote..."
-  git -C "$HOME/dotfiles-local" pull
-  if [ -f "$HOME/dotfiles-local/apply.sh" ]; then
-    echo "Running dotfiles-local apply script..."
-    "$HOME/dotfiles-local/apply.sh"
-  fi
+LOCAL_DOTFILES="$HOME/dotfiles-local"
+if [ -e "$LOCAL_DOTFILES/.git" ]; then
+    echo "Updating dotfiles-local from remote..."
+    git -C "$LOCAL_DOTFILES" pull --ff-only
 fi
 
-# Apply the updated dotfiles
 echo "Applying updated dotfiles..."
-# Pass through any additional arguments along with --restow
 ./apply.sh --restow "$@"
 
 echo "✅ Dotfiles updated successfully!"
-
-# Return to original directory
-cd "$ORIGINAL_DIR"
