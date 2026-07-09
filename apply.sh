@@ -1,137 +1,166 @@
 #!/bin/bash
-# Stow wrapper for dotfiles management
-set -e
+# Stow wrapper for dotfiles management.
+set -eo pipefail
 
-# Parse arguments to detect dry-run mode
+SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+ARGS=("$@")
 DRY_RUN=false
-ARGS=("$@")  # Pass through all arguments
+DELETE_MODE=false
+STOW_COMMAND="${DOTFILES_STOW_COMMAND:-stow}"
+STOW_ARGS=()
 
-for arg in "$@"; do
-    case $arg in
-        --no-act|--no|--simulate|-n)
+for arg in "${ARGS[@]}"; do
+    case "$arg" in
+        --no-act)
             DRY_RUN=true
+            STOW_ARGS+=(--no)
+            ;;
+        --no|--simulate|-n)
+            DRY_RUN=true
+            STOW_ARGS+=("$arg")
+            ;;
+        --delete|-D)
+            DELETE_MODE=true
+            STOW_ARGS+=("$arg")
+            ;;
+        -y|--yes)
+            # Wrapper-only confirmation flags are never forwarded to Stow.
+            ;;
+        *)
+            STOW_ARGS+=("$arg")
             ;;
     esac
 done
 
-# Install stow if needed
-if ! command -v stow >/dev/null; then
-# Check for dotfiles-local and run its apply script if present
-if [ -x "$HOME/dotfiles-local/apply.sh" ]; then
-    echo "🔗 Found dotfiles-local, applying..."
-    "$HOME/dotfiles-local/apply.sh" "${ARGS[@]}"
-fi
-
-    if $DRY_RUN; then
-        echo "[DRY RUN] Would install stow"
-    else
-        echo "Installing stow..."
-        case "$(uname)" in
-            Darwin) brew install stow ;;
-            Linux) sudo apt install stow ;;
-        esac
+install_stow() {
+    if command -v "$STOW_COMMAND" >/dev/null 2>&1; then
+        return 0
     fi
-fi
 
-# Go to script directory
-cd "$(dirname "$0")"
+    if [ "$DRY_RUN" = true ]; then
+        echo "GNU Stow is required to preview dotfile changes; install it and retry." >&2
+        return 127
+    fi
+
+    if [ "$STOW_COMMAND" != "stow" ]; then
+        echo "Configured Stow command '$STOW_COMMAND' was not found." >&2
+        return 127
+    fi
+
+    echo "Installing GNU Stow..."
+    case "$(uname -s)" in
+        Darwin)
+            if ! command -v brew >/dev/null 2>&1; then
+                echo "Homebrew is required to install Stow on macOS." >&2
+                return 1
+            fi
+            brew install stow
+            ;;
+        Linux)
+            if command -v apt-get >/dev/null 2>&1; then
+                sudo apt-get install -y stow
+            elif command -v apt >/dev/null 2>&1; then
+                sudo apt install -y stow
+            else
+                echo "No supported package manager found; install GNU Stow manually." >&2
+                return 1
+            fi
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            echo "Use apply.ps1 on Windows, or install GNU Stow before retrying." >&2
+            return 1
+            ;;
+        *)
+            echo "Unsupported platform; install GNU Stow manually." >&2
+            return 1
+            ;;
+    esac
+
+    hash -r
+    if ! command -v stow >/dev/null 2>&1; then
+        echo "GNU Stow installation completed, but 'stow' is still unavailable in PATH." >&2
+        return 1
+    fi
+}
 
 stow_package() {
     local pkg="$1"
-    shift
-    [ -d "$pkg" ] || return 0
-    echo "📦 Installing $pkg package"
+    local dir rel_path target_path item item_name
 
-    # Pre-create directories safely (never remove or replace existing paths)
-    if [ -d "$pkg" ]; then
-        echo "  Ensuring directories exist for $pkg..."
-        find "$pkg" -mindepth 1 -type d | sort | while read -r dir; do
-            rel_path="${dir#$pkg/}"
+    [ -d "$pkg" ] || return 0
+    echo "📦 Applying $pkg package"
+
+    # Keep configuration roots as real directories so unrelated files can coexist.
+    # Deletion must not manufacture a directory tree in an otherwise empty HOME.
+    if [ "$DELETE_MODE" = false ]; then
+        while IFS= read -r -d '' dir; do
+            rel_path="${dir#"$pkg"/}"
             target_path="$HOME/$rel_path"
 
-            # If anything already exists at the target path (dir, file, or symlink),
-            # do nothing.
             if [ -e "$target_path" ] || [ -L "$target_path" ]; then
                 continue
             fi
 
-            if $DRY_RUN; then
+            if [ "$DRY_RUN" = true ]; then
                 echo "  [DRY RUN] Would create directory $target_path"
             else
-                mkdir -p -- "$target_path"
+                mkdir -p "$target_path"
             fi
-        done
+        done < <(find "$pkg" -mindepth 1 -type d -print0)
     fi
 
-    # Filter out -y/--yes from stow arguments
-    STOW_ARGS=()
-    for arg in "${ARGS[@]}"; do
-        if [[ "$arg" != "-y" ]] && [[ "$arg" != "--yes" ]]; then
-            STOW_ARGS+=("$arg")
-        fi
-    done
+    "$STOW_COMMAND" --target="$HOME" --verbose=1 "${STOW_ARGS[@]}" "$pkg"
 
-    # Use restow to handle any conflicts or missing symlinks
-    stow --target="$HOME" --verbose=1 "${STOW_ARGS[@]}" "$pkg"
-
-    # Skip verification in dry-run mode
-# Check for dotfiles-local and run its apply script if present
-if [ -x "$HOME/dotfiles-local/apply.sh" ]; then
-    echo "🔗 Found dotfiles-local, applying..."
-    "$HOME/dotfiles-local/apply.sh" "${ARGS[@]}"
-fi
-
-    if $DRY_RUN; then
-        echo "  [DRY RUN] Skipping verification"
+    if [ "$DRY_RUN" = true ] || [ "$DELETE_MODE" = true ]; then
         return 0
     fi
 
-    # Check only the directories that this package actually affects
-    # Skip problematic directories like Library which can have massive cache data
-    if [ -d "$pkg" ]; then
-        echo "🔍 Checking stowed files for $pkg package..."
-        for item in "$pkg"/*; do
-            if [ -e "$item" ]; then
-                item_name=$(basename "$item")
-                target_path="$HOME/$item_name"
-                
-                # Skip Library and other problematic directories
-                case "$item_name" in
-                    Library|Caches|Cache|.cache)
-                        echo "  Skipping $item_name (too large/problematic)"
-                        continue
-                        ;;
-                esac
-                
-                if [ -e "$target_path" ]; then
-                    echo "  Checking $target_path..."
-                    # Only run chkstow on directories, files are handled by the directory check
-                    if [ -d "$target_path" ]; then
-                        # Broken symlinks
-                        chkstow --badlinks -t "$target_path" 2>/dev/null || true
-                        # Non-symlink "alien" files (things Stow doesn't manage) in the target
-                        chkstow --aliens -t "$target_path" 2>/dev/null | head -20 || true
-                        # What package owns each link
-                        chkstow --list -t "$target_path" 2>/dev/null | head -10 || true
-                    fi
-                fi
-            fi
-        done
+    if ! command -v chkstow >/dev/null 2>&1; then
+        return 0
+    fi
+
+    echo "🔍 Checking stowed directories for $pkg package..."
+    for item in "$pkg"/.[!.]* "$pkg"/..?* "$pkg"/*; do
+        if [ ! -e "$item" ] && [ ! -L "$item" ]; then
+            continue
+        fi
+
+        item_name="$(basename "$item")"
+        target_path="$HOME/$item_name"
+        case "$item_name" in
+            Library|Caches|Cache|.cache)
+                continue
+                ;;
+        esac
+
+        if [ -d "$target_path" ]; then
+            chkstow --badlinks -t "$target_path" 2>/dev/null || true
+            chkstow --aliens -t "$target_path" 2>/dev/null | head -20 || true
+            chkstow --list -t "$target_path" 2>/dev/null | head -10 || true
+        fi
+    done
+}
+
+run_local_apply() {
+    local local_apply="$HOME/dotfiles-local/apply.sh"
+    if [ -x "$local_apply" ]; then
+        echo "🔗 Found dotfiles-local, applying..."
+        "$local_apply" "${ARGS[@]}"
     fi
 }
 
-# Stow common package (always)
+install_stow
 stow_package common
 
-# Stow platform-specific packages
-case "$(uname)" in
+case "$(uname -s)" in
     Darwin)
         echo "🍎 macOS detected"
         stow_package mac
         ;;
     Linux)
         echo "🐧 Linux detected"
-        # Linux uses common package for VS Code (already stowed above)
         ;;
     MINGW*|MSYS*|CYGWIN*)
         echo "🪟 Windows detected"
@@ -142,14 +171,12 @@ case "$(uname)" in
         ;;
 esac
 
-# Check for dotfiles-local and run its apply script if present
-if [ -x "$HOME/dotfiles-local/apply.sh" ]; then
-    echo "🔗 Found dotfiles-local, applying..."
-    "$HOME/dotfiles-local/apply.sh" "${ARGS[@]}"
-fi
+run_local_apply
 
-if $DRY_RUN; then
+if [ "$DRY_RUN" = true ]; then
     echo "✅ Dry run completed - no changes were made"
+elif [ "$DELETE_MODE" = true ]; then
+    echo "✅ Dotfiles removed"
 else
     echo "✅ Stow operation completed"
 fi
