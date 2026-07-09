@@ -38,7 +38,7 @@ if is_windows then
       ["+"] = { win32yank_path, "-o", "--lf" },
       ["*"] = { win32yank_path, "-o", "--lf" },
     },
-    cache_enabled = 0, -- 1 if you want selections cached for speed
+    cache_enabled = 0,
   }
 elseif use_osc52 and vim.fn.executable("osc-copy") == 1 and vim.fn.executable("osc-paste") == 1 then
   vim.g.clipboard = {

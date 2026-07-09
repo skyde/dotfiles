@@ -48,5 +48,5 @@ else
 fi
 
 download_cmd="${download_cmd//\\~/\~}"
-printf '%s\n' "$download_cmd" | osc-copy
+printf '%s' "$download_cmd" | osc-copy
 printf '%s\n' "$download_cmd"
