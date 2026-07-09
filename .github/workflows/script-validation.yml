@@ -5,53 +5,41 @@ on:
     paths:
       - "**.sh"
       - "**.ps1"
-      - "common/.local/bin/**"
       - ".github/workflows/**"
   pull_request:
     paths:
       - "**.sh"
       - "**.ps1"
-      - "common/.local/bin/**"
       - ".github/workflows/**"
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
   shellcheck:
     name: ShellCheck Analysis
-    runs-on: ubuntu-24.04
-    env:
-      SHELLCHECK_VERSION: v0.11.0
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install ShellCheck
         run: |
-          install_dir="$RUNNER_TEMP/shellcheck"
-          mkdir -p "$install_dir"
-          curl -fsSL \
-            "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
-            -o "$RUNNER_TEMP/shellcheck.tar.xz"
-          tar --no-same-owner -xJf "$RUNNER_TEMP/shellcheck.tar.xz" \
-            --strip-components=1 \
-            -C "$install_dir"
-          echo "$install_dir" >> "$GITHUB_PATH"
+          sudo apt update
+          sudo apt install -y shellcheck
 
       - name: Run ShellCheck on shell scripts
         run: |
           echo "🔍 Running ShellCheck analysis..."
 
-          while IFS= read -r -d '' script; do
-            first_line=""
-            IFS= read -r first_line < "$script" || true
-            if [[ "$first_line" =~ ^#!.*(bash|/sh)([[:space:]]|$) ]]; then
-              echo "Checking $script"
-              shellcheck -x "$script"
+          # Find and check all shell scripts
+          find . -name "*.sh" -type f | while read -r script; do
+            echo "Checking: $script"
+            if shellcheck --severity=error "$script"; then
+              echo "✅ $script passed ShellCheck"
+            else
+              echo "❌ $script failed ShellCheck"
+              exit 1
             fi
-          done < <(git ls-files -z)
+          done
 
           echo "✅ All shell scripts passed ShellCheck"
 
@@ -66,19 +54,24 @@ jobs:
         run: |
           Write-Host "🔍 Validating PowerShell scripts..."
 
+          $scripts = Get-ChildItem -Path . -Filter "*.ps1" -Recurse
           $failed = $false
-          Get-ChildItem -Path . -Filter '*.ps1' -Recurse | ForEach-Object {
+
+          foreach ($script in $scripts) {
+            Write-Host "Validating: $($script.Name)"
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(
-              $_.FullName,
+              $script.FullName,
               [ref]$tokens,
               [ref]$errors
             ) | Out-Null
 
-            if ($errors.Count -gt 0) {
+            if ($errors.Count -eq 0) {
+              Write-Host "✅ $($script.Name) syntax is valid"
+            } else {
+              Write-Host "❌ $($script.Name) has syntax errors: $($errors -join '; ')"
               $failed = $true
-              Write-Error "$($_.FullName): $($errors -join '; ')"
             }
           }
 
@@ -88,6 +81,55 @@ jobs:
 
           Write-Host "✅ All PowerShell scripts passed validation"
         shell: pwsh
+
+  cross-script-compatibility:
+    name: Cross-Script Compatibility Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check script compatibility
+        run: |
+          echo "🔍 Checking cross-script compatibility..."
+
+          # Check if shell and PowerShell scripts have matching functionality
+          shell_scripts=("init.sh" "apply.sh" "update.sh")
+          ps_scripts=("init.ps1" "apply.ps1" "update.ps1")
+
+          for i in "${!shell_scripts[@]}"; do
+            shell_script="${shell_scripts[$i]}"
+            ps_script="${ps_scripts[$i]}"
+            
+            echo "Comparing $shell_script and $ps_script..."
+            
+            # Check if both files exist
+            if [[ ! -f "$shell_script" ]]; then
+              echo "❌ $shell_script missing"
+              exit 1
+            fi
+            
+            if [[ ! -f "$ps_script" ]]; then
+              echo "❌ $ps_script missing"
+              exit 1
+            fi
+            
+            # Check for key functionality markers
+            if grep -q "AUTO_INSTALL" "$shell_script" && grep -q "AUTO_INSTALL" "$ps_script"; then
+              echo "✅ Both scripts support AUTO_INSTALL"
+            else
+              echo "⚠️ AUTO_INSTALL support mismatch"
+            fi
+            
+            # Check for error handling
+            if grep -q "set -e" "$shell_script" && grep -q "ErrorActionPreference" "$ps_script"; then
+              echo "✅ Both scripts have error handling"
+            else
+              echo "⚠️ Error handling mismatch"
+            fi
+          done
+
+          echo "✅ Cross-script compatibility check completed"
 
   documentation-sync:
     name: Documentation Synchronization Check

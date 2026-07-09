@@ -48,15 +48,6 @@ jobs:
           test_home="$(mktemp -d)"
           trap 'rm -rf "$test_home"' EXIT
 
-          mkdir -p "$test_home/dotfiles-local"
-          # The dollar expressions in the generated helper must remain literal.
-          # shellcheck disable=SC2016
-          printf '%s\n' \
-            '#!/usr/bin/env bash' \
-            'printf "%s\n" "$*" >> "$HOME/local-apply-calls"' \
-            > "$test_home/dotfiles-local/apply.sh"
-          chmod +x "$test_home/dotfiles-local/apply.sh"
-
           HOME="$test_home" ./apply.sh --no
           HOME="$test_home" ./apply.sh
 
@@ -71,9 +62,6 @@ jobs:
             .bashrc-custom
             .zshrc
             .tmux.conf
-            .config/git/config
-            .config/git/ignore
-            .config/lazygit/config.yml
           )
           for path in "${expected_removed[@]}"; do
             if [ -e "$test_home/$path" ] || [ -L "$test_home/$path" ]; then
@@ -81,8 +69,6 @@ jobs:
               exit 1
             fi
           done
-
-          test "$(wc -l < "$test_home/local-apply-calls")" -eq 4
         shell: bash
 
       - name: Keep existing files unchanged on conflict

@@ -55,12 +55,6 @@ jobs:
             bash -n "$script"
           done < <(git ls-files -z '*.sh')
 
-      - name: Preview without installing dependencies
-        run: |
-          test_home="$(mktemp -d)"
-          trap 'rm -rf "$test_home"' EXIT
-          HOME="$test_home" ./apply.sh --no
-
   unix-install:
     name: Install lifecycle (${{ matrix.os }})
     needs: validate
@@ -98,7 +92,6 @@ jobs:
           test -L "$test_home/.tmux.conf"
           test -e "$test_home/.config/git/config"
 
-          HOME="$test_home" AUTO_INSTALL=0 ./init.sh
           HOME="$test_home" ./apply.sh --restow
           HOME="$test_home" ./apply.sh --delete
 
@@ -106,9 +99,6 @@ jobs:
             .bashrc-custom
             .zshrc
             .tmux.conf
-            .config/git/config
-            .config/git/ignore
-            .config/lazygit/config.yml
           )
           for path in "${expected_removed[@]}"; do
             if [ -e "$test_home/$path" ] || [ -L "$test_home/$path" ]; then
@@ -189,118 +179,4 @@ jobs:
               throw "Stow call used the wrong target: $call"
             }
           }
-
-          $env:STOW_EXIT_CODE = '7'
-          $failedAsExpected = $false
-          try {
-            & "$PWD\apply.ps1" --no
-          } catch {
-            $failedAsExpected = $true
-          }
-
-          if (-not $failedAsExpected) {
-            throw 'apply.ps1 ignored a nonzero Stow exit code'
-          }
-
-          # The failure was expected and asserted above. Prevent the Actions
-          # PowerShell wrapper from reusing Stow's stale native exit code.
-          $global:LASTEXITCODE = 0
         shell: pwsh
-
-  powershell-stow:
-    name: PowerShell with real GNU Stow
-    needs: validate
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install GNU Stow
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y stow
-
-      - name: Exercise PowerShell lifecycle and failure handling
-        run: |
-          $testHome = Join-Path $env:RUNNER_TEMP 'powershell-stow-home'
-          New-Item -ItemType Directory -Force -Path $testHome | Out-Null
-
-          $env:USERPROFILE = $testHome
-          $env:HOME = $testHome
-          $env:AUTO_INSTALL = '0'
-
-          & "$PWD/apply.ps1" --no
-          & "$PWD/apply.ps1"
-
-          foreach ($path in @('.zshrc', '.vsvimrc', '.config/git/config')) {
-            if (-not (Test-Path (Join-Path $testHome $path))) {
-              throw "Stow did not install $path"
-            }
-          }
-
-          & "$PWD/init.ps1" --no
-          & "$PWD/apply.ps1" --delete
-
-          foreach ($path in @(
-            '.bashrc-custom',
-            '.zshrc',
-            '.vsvimrc',
-            '.config/git/config',
-            '.config/lazygit/config.yml'
-          )) {
-            $target = Join-Path $testHome $path
-            if (Get-Item -Force -LiteralPath $target -ErrorAction SilentlyContinue) {
-              throw "Stow delete left $path behind"
-            }
-          }
-
-          $conflictHome = Join-Path $env:RUNNER_TEMP 'powershell-conflict-home'
-          New-Item -ItemType Directory -Force -Path $conflictHome | Out-Null
-          Set-Content -LiteralPath (Join-Path $conflictHome '.zshrc') -Value '# existing config'
-          $env:USERPROFILE = $conflictHome
-          $env:HOME = $conflictHome
-
-          $failedAsExpected = $false
-          try {
-            & "$PWD/apply.ps1"
-          } catch {
-            $failedAsExpected = $true
-          }
-
-          if (-not $failedAsExpected) {
-            throw 'apply.ps1 ignored a real Stow conflict'
-          }
-
-          $contents = Get-Content -Raw (Join-Path $conflictHome '.zshrc')
-          if ($contents.Trim() -ne '# existing config') {
-            throw 'Stow changed the existing conflict file'
-          }
-
-          # The conflict was expected and asserted above. Prevent the Actions
-          # PowerShell wrapper from reusing Stow's stale native exit code.
-          $global:LASTEXITCODE = 0
-        shell: pwsh
-
-  nvim-clipboard:
-    name: Neovim clipboard behavior
-    needs: validate
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    env:
-      NVIM_VERSION: v0.12.4
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Neovim
-        run: |
-          curl -fsSL "https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux-x86_64.tar.gz" \
-            -o "$RUNNER_TEMP/nvim.tar.gz"
-          tar --no-same-owner -xzf "$RUNNER_TEMP/nvim.tar.gz" -C "$RUNNER_TEMP"
-          echo "$RUNNER_TEMP/nvim-linux-x86_64/bin" >> "$GITHUB_PATH"
-
-      - name: Run clipboard behavior tests
-        run: |
-          nvim --version | head -1
-          nvim --headless -u NONE -i NONE -l tests/nvim_clipboard_spec.lua

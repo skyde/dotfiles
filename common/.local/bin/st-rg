@@ -50,8 +50,6 @@ command -v bat >/dev/null 2>&1 || {
 #   1: raw path
 #   2: raw line number
 #   3: pretty display (colored "path:line[:col]: text" with rg match highlights)
-# The dollar expressions below belong to awk and must remain literal in Bash.
-# shellcheck disable=SC2016
 export RG_AWK_SCRIPT='BEGIN{
     FS=":"; OFS=":";
     mag="\033[38;2;106;153;85m";   # filename color
@@ -87,7 +85,6 @@ export RG_AWK_SCRIPT='BEGIN{
 #   2: raw line number
 #   3: pretty display
 # Note: git grep -n output format is file:line:content
-# shellcheck disable=SC2016
 export GIT_GREP_AWK_SCRIPT='BEGIN{
     FS=":"; OFS=":";
     mag="\033[38;2;106;153;85m";   # filename color
