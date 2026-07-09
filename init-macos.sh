@@ -8,6 +8,7 @@ echo "🍎 Running macOS-specific setup..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source helper functions
+# shellcheck source=lib/run_ensure.sh
 source "${SCRIPT_DIR}/lib/run_ensure.sh"
 
 echo "Installing macOS-specific packages and apps..."
@@ -28,9 +29,18 @@ done
 
 # Verify JetBrainsMono Nerd Font is installed in user Fonts directory
 if [ -d "$HOME/Library/Fonts" ]; then
-    if ! ls -1 "$HOME/Library/Fonts" 2>/dev/null | grep -qi "^JetBrainsMono.*Nerd\s*Font.*\.(ttf\|otf)$"; then
-        echo "[warn] JetBrainsMono Nerd Font not detected in ~/Library/Fonts. If VS Code doesn't show the font, try re-running this script or manually running: brew install --cask font-jetbrains-mono-nerd-font" >&2
-    fi
+  font_found=false
+  shopt -s nullglob nocaseglob
+  for font in "$HOME"/Library/Fonts/JetBrainsMono*Nerd*Font*.{ttf,otf}; do
+    [[ -f "$font" ]] || continue
+    font_found=true
+    break
+  done
+  shopt -u nullglob nocaseglob
+
+  if ! $font_found; then
+    echo "[warn] JetBrainsMono Nerd Font not detected in ~/Library/Fonts. If VS Code doesn't show the font, try re-running this script or manually running: brew install --cask font-jetbrains-mono-nerd-font" >&2
+  fi
 fi
 
 # Fix fd linking issue on macOS if needed

@@ -8,7 +8,28 @@ socket_is_live() {
 resolve_vscode_socket() {
   socket_is_live "${VSCODE_IPC_HOOK_CLI:-}" && return
   local socket
-  for socket in $(ls -t "/run/user/$UID"/vscode-ipc-*.sock 2>/dev/null); do
+  local newest
+  local newest_index
+  local index
+  local -a sockets=()
+
+  for socket in "/run/user/$UID"/vscode-ipc-*.sock; do
+    [[ -S "$socket" ]] && sockets+=("$socket")
+  done
+
+  while (("${#sockets[@]}" > 0)); do
+    newest_index=0
+    for index in "${!sockets[@]}"; do
+      if [[ "${sockets[$index]}" -nt "${sockets[$newest_index]}" ]]; then
+        newest_index="$index"
+      fi
+    done
+
+    newest="${sockets[$newest_index]}"
+    unset 'sockets[newest_index]'
+    sockets=("${sockets[@]}")
+
+    socket="$newest"
     if socket_is_live "$socket"; then
       export VSCODE_IPC_HOOK_CLI="$socket"
       return
@@ -19,7 +40,14 @@ resolve_vscode_socket() {
 resolve_vscode_browser() {
   [[ -x "${BROWSER:-}" ]] && return
   local helper
-  helper=$(ls -tr "$HOME"/.vscode-server/cli/servers/*/server/bin/helpers/browser.sh 2>/dev/null | tail -n 1)
+  local candidate
+  helper=""
+  for candidate in "$HOME"/.vscode-server/cli/servers/*/server/bin/helpers/browser.sh; do
+    [[ -x "$candidate" ]] || continue
+    if [[ -z "$helper" || "$candidate" -nt "$helper" ]]; then
+      helper="$candidate"
+    fi
+  done
   [[ -n "$helper" ]] && export BROWSER="$helper"
 }
 

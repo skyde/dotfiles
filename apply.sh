@@ -4,6 +4,7 @@ set -e
 
 # Parse arguments to detect dry-run mode
 DRY_RUN=false
+STOW_AVAILABLE=true
 ARGS=("$@")  # Pass through all arguments
 
 for arg in "$@"; do
@@ -16,14 +17,9 @@ done
 
 # Install stow if needed
 if ! command -v stow >/dev/null; then
-# Check for dotfiles-local and run its apply script if present
-if [ -x "$HOME/dotfiles-local/apply.sh" ]; then
-    echo "🔗 Found dotfiles-local, applying..."
-    "$HOME/dotfiles-local/apply.sh" "${ARGS[@]}"
-fi
-
     if $DRY_RUN; then
         echo "[DRY RUN] Would install stow"
+        STOW_AVAILABLE=false
     else
         echo "Installing stow..."
         case "$(uname)" in
@@ -31,6 +27,11 @@ fi
             Linux) sudo apt install stow ;;
         esac
     fi
+fi
+
+if ! $DRY_RUN && ! command -v stow >/dev/null 2>&1; then
+    echo "Error: GNU Stow is required but could not be installed." >&2
+    exit 1
 fi
 
 # Go to script directory
@@ -46,7 +47,7 @@ stow_package() {
     if [ -d "$pkg" ]; then
         echo "  Ensuring directories exist for $pkg..."
         find "$pkg" -mindepth 1 -type d | sort | while read -r dir; do
-            rel_path="${dir#$pkg/}"
+            rel_path="${dir#"$pkg"/}"
             target_path="$HOME/$rel_path"
 
             # If anything already exists at the target path (dir, file, or symlink),
@@ -71,16 +72,15 @@ stow_package() {
         fi
     done
 
+    if ! $STOW_AVAILABLE; then
+        echo "  [DRY RUN] Would run Stow for $pkg package"
+        return 0
+    fi
+
     # Use restow to handle any conflicts or missing symlinks
     stow --target="$HOME" --verbose=1 "${STOW_ARGS[@]}" "$pkg"
 
     # Skip verification in dry-run mode
-# Check for dotfiles-local and run its apply script if present
-if [ -x "$HOME/dotfiles-local/apply.sh" ]; then
-    echo "🔗 Found dotfiles-local, applying..."
-    "$HOME/dotfiles-local/apply.sh" "${ARGS[@]}"
-fi
-
     if $DRY_RUN; then
         echo "  [DRY RUN] Skipping verification"
         return 0

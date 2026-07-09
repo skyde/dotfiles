@@ -41,14 +41,14 @@ fi
 # 3. Safety Check: Ensure no git processes are currently running
 # Deleting locks while git is running can corrupt your repo.
 # We check for 'git' processes but exclude this script and grep itself.
-RUNNING_PROCESSES=$(ps -ef | grep "git " | grep -v "grep" | grep -v "git-unlock")
+RUNNING_PROCESSES=$(ps -ef | awk '/[g]it / && !/git-unlock/')
 
 if [ -n "$RUNNING_PROCESSES" ]; then
     echo ""
     echo "⚠️  WARNING: It looks like Git processes are currently running."
     echo "Deleting lock files while Git is active is dangerous."
     echo ""
-    read -p "Are you sure you want to force delete lock files? (y/N) " confirm
+    read -r -p "Are you sure you want to force delete lock files? (y/N) " confirm
     if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
         echo "Aborting."
         exit 0

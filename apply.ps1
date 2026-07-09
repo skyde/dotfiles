@@ -5,11 +5,23 @@ $ErrorActionPreference = 'Stop'
 if (-not (Get-Command stow -ErrorAction SilentlyContinue)) {
     Write-Host "Installing stow..." -ForegroundColor Yellow
     if (Get-Command winget -ErrorAction SilentlyContinue) {
-        winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+        & winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements
+        if ($LASTEXITCODE -ne 0) {
+            throw "winget failed to install GNU Stow (exit code $LASTEXITCODE)"
+        }
+
+        $wingetLinks = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links"
+        if (Test-Path $wingetLinks) {
+            $env:PATH = "$wingetLinks$([IO.Path]::PathSeparator)$env:PATH"
+        }
     } else {
         Write-Host "Please install stow first: winget install stefansundin.gnu-stow" -ForegroundColor Red
         exit 1
     }
+}
+
+if (-not (Get-Command stow -ErrorAction SilentlyContinue)) {
+    throw "GNU Stow is unavailable after installation"
 }
 
 # Go to script directory
@@ -25,6 +37,9 @@ function Invoke-StowPackage {
 
     Write-Host "📦 Installing $Package package"
     & stow --target=$env:USERPROFILE --verbose @ExtraArgs $Package
+    if ($LASTEXITCODE -ne 0) {
+        throw "GNU Stow failed for package '$Package' (exit code $LASTEXITCODE)"
+    }
 }
 
 try {
@@ -35,5 +50,5 @@ try {
     Write-Host "✅ Stow operation completed" -ForegroundColor Green
 } catch {
     Write-Host "❌ Stow operation failed: $($_.Exception.Message)" -ForegroundColor Red
-    exit 1
+    throw
 }
