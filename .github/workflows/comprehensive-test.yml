@@ -177,7 +177,24 @@ jobs:
         shell: pwsh
 
       - name: Run PowerShell behavior tests
-        run: ./tests/powershell_behavior_spec.ps1
+        id: powershell-tests
+        continue-on-error: true
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'powershell-behavior.log'
+          & ./tests/powershell_behavior_spec.ps1 *>&1 | Tee-Object -FilePath $log
+        shell: pwsh
+
+      - name: Upload PowerShell failure log
+        if: steps.powershell-tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: powershell-behavior-log
+          path: ${{ runner.temp }}/powershell-behavior.log
+          if-no-files-found: error
+
+      - name: Enforce PowerShell behavior result
+        if: steps.powershell-tests.outcome == 'failure'
+        run: exit 1
         shell: pwsh
 
   neovim-clipboard:
