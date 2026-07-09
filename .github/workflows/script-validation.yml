@@ -31,7 +31,7 @@ jobs:
           echo "🔍 Running ShellCheck analysis..."
 
           # Find and check all shell scripts
-          find . -name "*.sh" -type f | while read -r script; do
+          find . -path "./.git" -prune -o -name "*.sh" -type f -print | while read -r script; do
             echo "Checking: $script"
             if shellcheck "$script"; then
               echo "✅ $script passed ShellCheck"
