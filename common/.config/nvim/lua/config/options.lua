@@ -74,17 +74,129 @@ local function executable_path(name)
   return nil
 end
 
+local clipboard_regtypes = {}
+
+local function clipboard_lines_to_text(lines)
+  return table.concat(lines or {}, "\n")
+end
+
+local function clipboard_text_to_lines(text)
+  return vim.split(text or "", "\n", { plain = true })
+end
+
+local function notify_clipboard_failure(action, provider, err)
+  local name = type(provider) == "table" and table.concat(provider, " ") or tostring(provider)
+  vim.schedule(function()
+    vim.notify("Clipboard " .. action .. " failed for " .. name .. ": " .. tostring(err), vim.log.levels.WARN)
+  end)
+end
+
+local function call_clipboard_copy_provider(provider, lines, regtype)
+  if type(provider) == "function" then
+    return pcall(provider, lines, regtype)
+  end
+
+  if type(provider) == "table" then
+    local ok, result = pcall(vim.fn.system, provider, clipboard_lines_to_text(lines))
+    if not ok then
+      return false, result
+    end
+
+    if vim.v.shell_error ~= 0 then
+      return false, "exit " .. vim.v.shell_error .. ": " .. tostring(result)
+    end
+
+    return true
+  end
+
+  return false, "unsupported provider"
+end
+
+local function call_clipboard_paste_provider(provider)
+  if type(provider) == "function" then
+    local ok, lines, regtype = pcall(provider)
+    if not ok then
+      return false, nil, nil, lines
+    end
+
+    if type(lines) == "string" then
+      lines = clipboard_text_to_lines(lines)
+    end
+
+    return true, lines, regtype
+  end
+
+  if type(provider) == "table" then
+    local ok, result = pcall(vim.fn.system, provider)
+    if not ok then
+      return false, nil, nil, result
+    end
+
+    if vim.v.shell_error ~= 0 then
+      return false, nil, nil, "exit " .. vim.v.shell_error .. ": " .. tostring(result)
+    end
+
+    return true, clipboard_text_to_lines(result), "v"
+  end
+
+  return false, nil, nil, "unsupported provider"
+end
+
+local function cache_clipboard_regtype(register, lines, regtype)
+  clipboard_regtypes[register] = {
+    text = clipboard_lines_to_text(lines),
+    regtype = regtype,
+  }
+end
+
+local function cached_clipboard_regtype(register, lines, fallback)
+  local cached = clipboard_regtypes[register]
+  if cached and cached.text == clipboard_lines_to_text(lines) then
+    return cached.regtype
+  end
+
+  return fallback or "v"
+end
+
+local function wrap_clipboard_copy_provider(provider, register)
+  return function(lines, regtype)
+    local ok, err = call_clipboard_copy_provider(provider, lines, regtype)
+    if ok then
+      cache_clipboard_regtype(register, lines, regtype)
+      return
+    end
+
+    clipboard_regtypes[register] = nil
+    notify_clipboard_failure("copy", provider, err)
+  end
+end
+
+local function wrap_clipboard_paste_provider(provider, register)
+  return function()
+    local ok, lines, regtype, err = call_clipboard_paste_provider(provider)
+    if not ok then
+      notify_clipboard_failure("paste", provider, err)
+      return { "" }, "v"
+    end
+
+    return lines, cached_clipboard_regtype(register, lines, regtype)
+  end
+end
+
 -- Clipboard provider (works in native Windows, MSYS2 and WSL)
 if is_windows and win32yank_available then
+  local copy_provider = { win32yank_path, "-i", "--crlf" }
+  local paste_provider = { win32yank_path, "-o", "--lf" }
+
   vim.g.clipboard = {
     name = "win32yank-lf",
     copy = {
-      ["+"] = { win32yank_path, "-i", "--crlf" },
-      ["*"] = { win32yank_path, "-i", "--crlf" },
+      ["+"] = wrap_clipboard_copy_provider(copy_provider, "+"),
+      ["*"] = wrap_clipboard_copy_provider(copy_provider, "*"),
     },
     paste = {
-      ["+"] = { win32yank_path, "-o", "--lf" },
-      ["*"] = { win32yank_path, "-o", "--lf" },
+      ["+"] = wrap_clipboard_paste_provider(paste_provider, "+"),
+      ["*"] = wrap_clipboard_paste_provider(paste_provider, "*"),
     },
     cache_enabled = 0, -- 1 if you want selections cached for speed
   }
@@ -110,12 +222,12 @@ elseif use_osc52 then
     vim.g.clipboard = {
       name = provider_name,
       copy = {
-        ["+"] = copy_provider,
-        ["*"] = copy_provider_star,
+        ["+"] = wrap_clipboard_copy_provider(copy_provider, "+"),
+        ["*"] = wrap_clipboard_copy_provider(copy_provider_star, "*"),
       },
       paste = {
-        ["+"] = paste_provider,
-        ["*"] = paste_provider_star,
+        ["+"] = wrap_clipboard_paste_provider(paste_provider, "+"),
+        ["*"] = wrap_clipboard_paste_provider(paste_provider_star, "*"),
       },
       cache_enabled = (copy_helper or paste_helper) and 0 or nil,
     }
