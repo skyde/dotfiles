@@ -201,6 +201,10 @@ jobs:
           if (-not $failedAsExpected) {
             throw 'apply.ps1 ignored a nonzero Stow exit code'
           }
+
+          # The failure was expected and asserted above. Prevent the Actions
+          # PowerShell wrapper from reusing Stow's stale native exit code.
+          $global:LASTEXITCODE = 0
         shell: pwsh
 
   powershell-stow:
@@ -272,6 +276,10 @@ jobs:
           if ($contents.Trim() -ne '# existing config') {
             throw 'Stow changed the existing conflict file'
           }
+
+          # The conflict was expected and asserted above. Prevent the Actions
+          # PowerShell wrapper from reusing Stow's stale native exit code.
+          $global:LASTEXITCODE = 0
         shell: pwsh
 
   nvim-clipboard:
