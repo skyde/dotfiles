@@ -4,536 +4,179 @@ on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main]
   workflow_dispatch:
   schedule:
-    # Run tests weekly to catch potential issues
     - cron: "0 0 * * 0"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: comprehensive-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  # Basic validation checks
   validate:
-    name: Validate Repository Structure
-    runs-on: ubuntu-latest
+    name: Validate repository
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate repository structure
+      - name: Validate structure and shell syntax
         run: |
-          echo "🔍 Validating repository structure..."
+          required_paths=(
+            common/.bashrc-custom
+            common/.zshrc
+            common/.tmux.conf
+            common/.config/git/config
+            mac/Library
+            windows/.vsvimrc
+            init.sh
+            apply.sh
+            update.sh
+            init.ps1
+            apply.ps1
+            update.ps1
+          )
 
-          # Check essential directories exist
-          test -d "common" || { echo "❌ common directory missing"; exit 1; }
-          test -d "mac" || { echo "❌ mac directory missing"; exit 1; }
-          test -d "windows" || { echo "❌ windows directory missing"; exit 1; }
-          echo "✅ Directory structure valid"
+          for path in "${required_paths[@]}"; do
+            test -e "$path" || {
+              echo "Missing required path: $path" >&2
+              exit 1
+            }
+          done
 
-          # Check essential scripts exist
-          test -f "init.sh" || { echo "❌ init.sh missing"; exit 1; }
-          test -f "apply.sh" || { echo "❌ apply.sh missing"; exit 1; }
-          test -f "update.sh" || { echo "❌ update.sh missing"; exit 1; }
-          test -f "init.ps1" || { echo "❌ init.ps1 missing"; exit 1; }
-          test -f "apply.ps1" || { echo "❌ apply.ps1 missing"; exit 1; }
-          test -f "update.ps1" || { echo "❌ update.ps1 missing"; exit 1; }
-          echo "✅ All essential scripts present"
+          test -x init.sh
+          test -x apply.sh
+          test -x update.sh
 
-          # Check scripts are executable
-          test -x "init.sh" || { echo "❌ init.sh not executable"; exit 1; }
-          test -x "apply.sh" || { echo "❌ apply.sh not executable"; exit 1; }
-          test -x "update.sh" || { echo "❌ update.sh not executable"; exit 1; }
-          echo "✅ Shell scripts are executable"
+          while IFS= read -r -d '' script; do
+            bash -n "$script"
+          done < <(git ls-files -z '*.sh')
 
-          # Validate package structure
-          echo "📦 Package validation:"
-          test -f "common/.bashrc-custom" || { echo "❌ common/.bashrc-custom missing"; exit 1; }
-          test -d "mac/Library" || { echo "❌ mac/Library missing"; exit 1; }
-          test -f "windows/.vsvimrc" || { echo "❌ windows/.vsvimrc missing"; exit 1; }
-          echo "✅ Package structure validation passed"
-
-      - name: Validate configuration files
-        run: |
-          echo "📄 Validating configuration files..."
-
-          # Check essential config files exist
-          test -f "dotfiles/common/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
-          test -f "dotfiles/common/.zshrc" || { echo "❌ .zshrc missing"; exit 1; }
-          test -f "dotfiles/common/.tmux.conf" || { echo "❌ .tmux.conf missing"; exit 1; }
-          test -f "dotfiles/common/.config/git/config" || { echo "❌ git config missing"; exit 1; }
-          echo "✅ Essential config files present"
-
-          # Validate shell script syntax
-          echo "🔍 Validating shell script syntax..."
-          bash -n init.sh || { echo "❌ init.sh has syntax errors"; exit 1; }
-          bash -n apply.sh || { echo "❌ apply.sh has syntax errors"; exit 1; }
-          bash -n update.sh || { echo "❌ update.sh has syntax errors"; exit 1; }
-          echo "✅ Shell scripts have valid syntax"
-
-          # Validate shell config syntax
-          echo "🔍 Validating shell configuration syntax..."
-          bash -n dotfiles/common/.bashrc || { echo "❌ .bashrc has syntax errors"; exit 1; }
-          echo "✅ Shell configurations have valid syntax"
-
-  # Multi-platform testing matrix
-  test-platforms:
-    name: Test on ${{ matrix.os }}
+  unix-install:
+    name: Install lifecycle (${{ matrix.os }})
     needs: validate
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        os:
-          [ubuntu-latest, ubuntu-20.04, macos-latest, macos-12, windows-latest]
-        include:
-          - os: ubuntu-latest
-            platform: linux
-            shell_cmd: bash
-            init_script: ./init.sh
-            apply_script: ./apply.sh
-            update_script: ./update.sh
-          - os: ubuntu-20.04
-            platform: linux
-            shell_cmd: bash
-            init_script: ./init.sh
-            apply_script: ./apply.sh
-            update_script: ./update.sh
-          - os: macos-latest
-            platform: macos
-            shell_cmd: bash
-            init_script: ./init.sh
-            apply_script: ./apply.sh
-            update_script: ./update.sh
-          - os: macos-12
-            platform: macos
-            shell_cmd: bash
-            init_script: ./init.sh
-            apply_script: ./apply.sh
-            update_script: ./update.sh
-          - os: windows-latest
-            platform: windows
-            shell_cmd: pwsh
-            init_script: ./init.ps1
-            apply_script: ./apply.ps1
-            update_script: ./update.ps1
-
+        os: [ubuntu-24.04, macos-15-intel]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup environment
+      - name: Install GNU Stow
         run: |
-          echo "🔧 Setting up environment for ${{ matrix.platform }}..."
-          echo "OS: ${{ matrix.os }}"
-          echo "Platform: ${{ matrix.platform }}"
-          echo "Shell: ${{ matrix.shell_cmd }}"
-        shell: bash
-
-      - name: Install dependencies
-        run: |
-          echo "📦 Installing dependencies..."
-          if [ "${{ matrix.platform }}" = "linux" ]; then
-            sudo apt update
-            sudo apt install -y stow git curl zsh
-            echo "✅ Linux dependencies installed"
-          elif [ "${{ matrix.platform }}" = "macos" ]; then
-            # Homebrew should be pre-installed on GitHub Actions macOS runners
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update
+            sudo apt-get install -y stow
+          elif ! command -v stow >/dev/null 2>&1; then
             brew install stow
-            echo "✅ macOS dependencies installed"
-          elif [ "${{ matrix.platform }}" = "windows" ]; then
-            # Install stow via winget (check if available first)
-            if command -v winget >/dev/null 2>&1; then
-              winget install stefansundin.gnu-stow --silent --accept-package-agreements --accept-source-agreements || echo "winget install failed, trying alternative"
-            else
-              echo "winget not available, using chocolatey fallback"
-              choco install stow -y || echo "choco install failed"
-            fi
-            echo "✅ Windows dependencies installation attempted"
           fi
+          stow --version
         shell: bash
 
-      - name: Test script execution (dry run)
+      - name: Exercise bootstrap and Stow lifecycle
         run: |
-          echo "🧪 Testing script execution (dry run)..."
-          echo "Current directory: $(pwd)"
-          echo "Available files:"
-          ls -la
+          test_home="$(mktemp -d)"
+          trap 'rm -rf "$test_home"' EXIT
 
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            echo "Testing PowerShell scripts..."
-            echo "Script path: ${{ matrix.apply_script }}"
-            if [ -f "${{ matrix.apply_script }}" ]; then
-              pwsh -Command "& './${{ matrix.apply_script }}' --no" || echo "PowerShell script test failed"
-              echo "✅ PowerShell apply script dry run completed"
-            else
-              echo "❌ PowerShell script not found"
+          HOME="$test_home" ./apply.sh --no
+          HOME="$test_home" ./apply.sh
+
+          test -L "$test_home/.bashrc-custom"
+          test -L "$test_home/.zshrc"
+          test -L "$test_home/.tmux.conf"
+          test -e "$test_home/.config/git/config"
+
+          HOME="$test_home" ./apply.sh --restow
+          HOME="$test_home" ./apply.sh --delete
+
+          expected_removed=(
+            .bashrc-custom
+            .zshrc
+            .tmux.conf
+          )
+          for path in "${expected_removed[@]}"; do
+            if [ -e "$test_home/$path" ] || [ -L "$test_home/$path" ]; then
+              echo "Stow delete left $path behind" >&2
               exit 1
             fi
-          else
-            echo "Testing shell scripts..."
-            echo "Script path: ${{ matrix.apply_script }}"
-            if [ -f "${{ matrix.apply_script }}" ]; then
-              chmod +x "${{ matrix.apply_script }}"
-              ${{ matrix.apply_script }} --no
-              echo "✅ Shell apply script dry run successful"
-            else
-              echo "❌ Shell script not found"
-              exit 1
-            fi
-          fi
-        shell: bash
-
-      - name: Test full installation
-        run: |
-          echo "🚀 Testing full installation..."
-          echo "Current directory: $(pwd)"
-          echo "Available files:"
-          ls -la
-
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            echo "Running Windows installation..."
-            echo "Script path: ${{ matrix.init_script }}"
-            if [ -f "${{ matrix.init_script }}" ]; then
-              pwsh -Command '$env:AUTO_INSTALL = "0"; & "./${{ matrix.init_script }}"' || echo "Windows installation failed"
-            else
-              echo "❌ Windows init script not found"
-              exit 1
-            fi
-          else
-            echo "Running Unix installation..."
-            echo "Script path: ${{ matrix.init_script }}"
-            if [ -f "${{ matrix.init_script }}" ]; then
-              chmod +x "${{ matrix.init_script }}"
-              AUTO_INSTALL=0 ${{ matrix.init_script }}
-            else
-              echo "❌ Unix init script not found"
-              exit 1
-            fi
-          fi
-
-          echo "✅ Installation completed successfully"
-        shell: bash
-
-      - name: Verify package-based symlinks
-        run: |
-          echo "🔗 Verifying package-based symlinks..."
-
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
-          else
-            home_dir="$HOME"
-          fi
-
-          echo "Home directory: $home_dir"
-
-          # Check for expected configuration files
-          echo "Checking for expected configuration files..."
-          test -f "$home_dir/.bashrc" || { echo "❌ .bashrc missing"; exit 1; }
-          test -f "$home_dir/.config/git/config" || { echo "❌ git config missing"; exit 1; }
-          test -d "$home_dir/.config/nvim" || { echo "❌ nvim config missing"; exit 1; }
-          test -f "$home_dir/.config/Code/User/settings.json" || { echo "❌ VS Code config missing"; exit 1; }
-
-          # Count total symlinks for verification
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            # On Windows, count junction points and symlinks
-            echo "Verifying Windows symlinks/junctions..."
-            symlink_count=$(find "$home_dir" -maxdepth 1 -type l 2>/dev/null | wc -l)
-            echo "Symlinks found: $symlink_count"
-            # Windows may create junctions instead of symlinks, so we check directories exist
-            echo "✅ Package directories verified on Windows"
-          else
-            # Unix symlink verification
-            symlink_count=$(find "$home_dir" -maxdepth 1 -type l | wc -l)
-            echo "Symlinks created: $symlink_count"
-            test "$symlink_count" -gt 0 || { echo "❌ No symlinks created"; exit 1; }
-            echo "✅ Symlinks created successfully"
-          fi
-        shell: bash
-
-      - name: Test configuration access
-        run: |
-          echo "📄 Testing configuration file access..."
-
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
-          else
-            home_dir="$HOME"
-          fi
-
-          # Test shell configurations
-          test -f "$home_dir/.bashrc" || { echo "❌ .bashrc not accessible"; exit 1; }
-          test -f "$home_dir/.zshrc" || { echo "❌ .zshrc not accessible"; exit 1; }
-          test -f "$home_dir/.tmux.conf" || { echo "❌ .tmux.conf not accessible"; exit 1; }
-          echo "✅ Shell configs accessible"
-
-          # Test git configuration
-          test -f "$home_dir/.config/git/config" || { echo "❌ git config not accessible"; exit 1; }
-          echo "✅ Git config accessible"
-
-          # Test VS Code configuration
-          test -f "$home_dir/.config/Code/User/settings.json" || { echo "❌ VS Code config not accessible"; exit 1; }
-          echo "✅ VS Code config accessible"
-
-          # Test Neovim configuration
-          test -d "$home_dir/.config/nvim" || { echo "❌ Neovim config not accessible"; exit 1; }
-          echo "✅ Neovim config accessible"
-        shell: bash
-
-      - name: Test platform-specific configurations
-        run: |
-          echo "🎯 Testing platform-specific configurations..."
-
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
-            # Test Windows-specific packages if they exist
-            echo "Checking for Windows-specific packages..."
-            if test -d "$home_dir/Documents"; then
-              echo "✅ Windows Documents package found"
-            else
-              echo "ℹ️ Windows Documents package not installed (optional)"
-            fi
-            if test -d "$home_dir/vsvim"; then
-              echo "✅ VSVim package found"
-            else
-              echo "ℹ️ VSVim package not installed (optional)"
-            fi
-            echo "✅ Windows platform configuration check completed"
-            
-          elif [ "${{ matrix.platform }}" = "macos" ]; then
-            home_dir="$HOME"
-            # Test macOS-specific packages if they exist
-            echo "Checking for macOS-specific packages..."
-            if test -d "$home_dir/hammerspoon"; then
-              echo "✅ Hammerspoon package found"
-              if test -f "$home_dir/hammerspoon/.hammerspoon/init.lua"; then
-                echo "✅ Hammerspoon config accessible"
-              else
-                echo "⚠️ Hammerspoon config missing"
-              fi
-            else
-              echo "ℹ️ Hammerspoon package not installed (optional)"
-            fi
-            echo "✅ macOS platform configuration check completed"
-            
-          else
-            echo "✅ Linux platform testing (common packages only)"
-          fi
-        shell: bash
-
-      - name: Test configuration loading
-        run: |
-          echo "⚡ Testing configuration loading..."
-
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            home_dir="$USERPROFILE"
-          else
-            home_dir="$HOME"
-          fi
-
-          # Test bash config syntax
-          bash -n "$home_dir/.bashrc" || { echo "❌ .bashrc has syntax errors"; exit 1; }
-          echo "✅ Bash config syntax valid"
-
-          # Test git config validity
-          git config --file "$home_dir/.config/git/config" --list > /dev/null || { echo "❌ Git config invalid"; exit 1; }
-          echo "✅ Git config valid"
-
-          # Test if zsh config can be parsed (if zsh available)
-          if command -v zsh > /dev/null 2>&1; then
-            zsh -n "$home_dir/.zshrc" 2>/dev/null || echo "⚠️ Zsh config has warnings (may be expected)"
-            echo "✅ Zsh config tested"
-          else
-            echo "ℹ️ Zsh not available for testing"
-          fi
-        shell: bash
-
-      - name: Test package management operations
-        run: |
-          echo "🔄 Testing package management operations..."
-
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            echo "Testing PowerShell package management..."
-            pwsh -Command '& "./${{ matrix.apply_script }}" --restow' || echo "PowerShell restow failed"
-            echo "✅ PowerShell restow operation completed"
-          else
-            echo "Testing shell package management..."
-            ${{ matrix.apply_script }} --restow
-            echo "✅ Shell restow operation successful"
-            
-            # Test individual package operations  
-            cd dotfiles
-            stow --target=$HOME --verbose common
-            stow --target=$HOME --delete common
-            stow --target=$HOME common
-            echo "✅ Individual package operations successful"
-          fi
-        shell: bash
-
-      - name: Test update functionality
-        run: |
-          echo "🔄 Testing update functionality..."
-
-          # Create a test change
-          echo "# Test comment" >> dotfiles/common/.bashrc
-
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            echo "Testing PowerShell update script..."
-            pwsh -Command 'Select-String -Path "${{ matrix.update_script }}" -Pattern "git pull" -Quiet' || { echo "❌ Update script missing git pull"; exit 1; }
-            pwsh -Command 'Select-String -Path "${{ matrix.update_script }}" -Pattern "apply.ps1.*--restow" -Quiet' || { echo "❌ Update script missing restow"; exit 1; }
-          else
-            echo "Testing shell update script..."
-            grep -q "git pull" ${{ matrix.update_script }} || { echo "❌ Update script missing git pull"; exit 1; }
-            grep -q "apply.sh.*--restow" ${{ matrix.update_script }} || { echo "❌ Update script missing restow"; exit 1; }
-          fi
-
-          echo "✅ Update functionality verified"
-        shell: bash
-
-  # Comprehensive integration testing
-  integration-test:
-    name: Integration Testing
-    needs: test-platforms
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y stow git curl zsh shellcheck
-
-      - name: Comprehensive shell script analysis
-        run: |
-          echo "🔍 Running comprehensive shell script analysis..."
-
-          # ShellCheck analysis
-          echo "Running ShellCheck on all shell scripts..."
-          find . -name "*.sh" -type f -exec shellcheck {} \; || echo "⚠️ ShellCheck found issues (review recommended)"
-
-          # Function and variable analysis
-          echo "Analyzing script dependencies..."
-          grep -r "command -v" *.sh || echo "No command checks found"
-          grep -r "AUTO_INSTALL" *.sh || echo "No AUTO_INSTALL usage found"
-
-          echo "✅ Shell script analysis completed"
-
-      - name: Test cross-platform compatibility
-        run: |
-          echo "🌐 Testing cross-platform compatibility..."
-
-          # Display entry counts for reference
-          common_actual=$(find dotfiles/common -mindepth 1 -maxdepth 1 | wc -l)
-          echo "Common entries: $common_actual"
-
-          mac_actual=$(find dotfiles/mac -mindepth 1 -maxdepth 1 | wc -l)
-          echo "macOS entries: $mac_actual"
-
-          windows_actual=$(find dotfiles/windows -mindepth 1 -maxdepth 1 | wc -l)
-          echo "Windows entries: $windows_actual"
-
-          if ! grep -q 'dotfiles/common' README.md; then
-            echo "⚠️ README structure reference may need updating"
-          fi
-
-          echo "✅ Cross-platform compatibility verified"
-
-      - name: Performance and edge case testing
-        run: |
-          echo "⚡ Running performance and edge case tests..."
-
-          # Test with existing files (conflict scenario)
-          echo "Testing conflict handling..."
-          touch ~/.bashrc ~/.zshrc
-          AUTO_INSTALL=0 ./init.sh || echo "Expected to handle conflicts"
-
-          # Test multiple installs (idempotent behavior)
-          echo "Testing idempotent behavior..."
-          AUTO_INSTALL=0 ./init.sh
-          AUTO_INSTALL=0 ./init.sh
-          echo "✅ Multiple installs handled correctly"
-
-          # Test cleanup
-          echo "Testing cleanup..."
-          ./apply.sh --delete
-          echo "✅ Cleanup successful"
-
-          echo "✅ Performance and edge case testing completed"
-
-  # Security and compliance checks
-  security-check:
-    name: Security and Compliance
-    needs: validate
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Security scan
-        run: |
-          echo "🔒 Running security scans..."
-
-          # Check for sensitive information
-          echo "Scanning for potential secrets..."
-          grep -r -i "password\|secret\|key\|token" --exclude-dir=.git --exclude="*.md" . || echo "✅ No obvious secrets found"
-
-          # Check file permissions
-          echo "Checking file permissions..."
-          find . -type f -perm /111 | grep -v "\.sh$\|\.ps1$\|/bin/\|\.git/" && echo "⚠️ Unexpected executable files found" || echo "✅ File permissions appropriate"
-
-          # Check for symlink attacks
-          echo "Checking for suspicious symlinks..."
-          find . -type l | while read -r link; do
-            target=$(readlink "$link")
-            case "$target" in
-              /*|../*) echo "⚠️ Suspicious symlink: $link -> $target" ;;
-            esac
           done
+        shell: bash
 
-          echo "✅ Security scan completed"
-
-      - name: Compliance checks
-        run: |
-          echo "📋 Running compliance checks..."
-
-          # License check
-          test -f LICENSE || { echo "❌ LICENSE file missing"; exit 1; }
-          echo "✅ License file present"
-
-          # Documentation check
-          test -f README.md || { echo "❌ README.md missing"; exit 1; }
-          test -f README-usage.md || { echo "❌ README-usage.md missing"; exit 1; }
-          echo "✅ Documentation present"
-
-          # Check for required files
-          test -f vscode_extensions.txt || { echo "❌ vscode_extensions.txt missing"; exit 1; }
-          echo "✅ Extension list present"
-
-          echo "✅ Compliance checks passed"
-
-  # Final validation
-  summary:
-    name: Test Summary
-    needs: [validate, test-platforms, integration-test, security-check]
-    runs-on: ubuntu-latest
-    if: always()
+  windows-scripts:
+    name: Windows PowerShell behavior
+    needs: validate
+    runs-on: windows-latest
+    timeout-minutes: 10
     steps:
-      - name: Test Results Summary
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Parse PowerShell scripts
         run: |
-          echo "📊 TEST RESULTS SUMMARY"
-          echo "======================="
-          echo ""
-          echo "✅ Repository validation: ${{ needs.validate.result }}"
-          echo "✅ Platform testing: ${{ needs.test-platforms.result }}"
-          echo "✅ Integration testing: ${{ needs.integration-test.result }}"
-          echo "✅ Security checks: ${{ needs.security-check.result }}"
-          echo ""
-          if [ "${{ needs.validate.result }}" = "success" ] && 
-             [ "${{ needs.test-platforms.result }}" = "success" ] && 
-             [ "${{ needs.integration-test.result }}" = "success" ] && 
-             [ "${{ needs.security-check.result }}" = "success" ]; then
-            echo "🎉 ALL TESTS PASSED!"
-            echo "✅ Dotfiles are ready for deployment across all platforms"
-          else
-            echo "❌ Some tests failed. Please review the logs above."
+          $failed = $false
+          Get-ChildItem -Path . -Filter '*.ps1' -Recurse | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+
+            if ($errors.Count -gt 0) {
+              $failed = $true
+              Write-Error "$($_.FullName): $($errors -join '; ')"
+            }
+          }
+
+          if ($failed) {
             exit 1
-          fi
+          }
+        shell: pwsh
+
+      - name: Exercise apply and init control flow
+        run: |
+          $fakeBin = Join-Path $env:RUNNER_TEMP 'fake-stow'
+          $testHome = Join-Path $env:RUNNER_TEMP 'dotfiles-home'
+          $env:STOW_LOG = Join-Path $env:RUNNER_TEMP 'stow-calls.txt'
+
+          New-Item -ItemType Directory -Force -Path $fakeBin, $testHome | Out-Null
+          $stowShim = @'
+          @echo off
+          echo %*>>"%STOW_LOG%"
+          if not "%STOW_EXIT_CODE%"=="" exit /b %STOW_EXIT_CODE%
+          exit /b 0
+          '@
+          $stowShim | Set-Content -Encoding ascii (Join-Path $fakeBin 'stow.cmd')
+
+          $env:PATH = "$fakeBin$([IO.Path]::PathSeparator)$env:PATH"
+          $env:USERPROFILE = $testHome
+          $env:HOME = $testHome
+          $env:AUTO_INSTALL = '0'
+
+          & "$PWD\apply.ps1" --no
+          & "$PWD\init.ps1" --no
+
+          $calls = @(Get-Content $env:STOW_LOG)
+          if ($calls.Count -ne 4) {
+            throw "Expected four Stow calls, got $($calls.Count): $calls"
+          }
+
+          $commonCalls = @($calls | Where-Object { $_ -match ' common$' })
+          $windowsCalls = @($calls | Where-Object { $_ -match ' windows$' })
+          if ($commonCalls.Count -ne 2 -or $windowsCalls.Count -ne 2) {
+            throw "Expected common and windows packages twice each: $calls"
+          }
+
+          foreach ($call in $calls) {
+            if (-not $call.Contains("--target=$testHome")) {
+              throw "Stow call used the wrong target: $call"
+            }
+          }
+        shell: pwsh

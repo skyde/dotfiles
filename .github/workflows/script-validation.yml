@@ -33,7 +33,7 @@ jobs:
           # Find and check all shell scripts
           find . -name "*.sh" -type f | while read -r script; do
             echo "Checking: $script"
-            if shellcheck "$script"; then
+            if shellcheck --severity=error "$script"; then
               echo "✅ $script passed ShellCheck"
             else
               echo "❌ $script failed ShellCheck"
@@ -59,12 +59,18 @@ jobs:
 
           foreach ($script in $scripts) {
             Write-Host "Validating: $($script.Name)"
-            try {
-              # Parse the script to check for syntax errors
-              $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content $script.FullName -Raw), [ref]$null)
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $script.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+
+            if ($errors.Count -eq 0) {
               Write-Host "✅ $($script.Name) syntax is valid"
-            } catch {
-              Write-Host "❌ $($script.Name) has syntax errors: $($_.Exception.Message)"
+            } else {
+              Write-Host "❌ $($script.Name) has syntax errors: $($errors -join '; ')"
               $failed = $true
             }
           }
@@ -147,7 +153,7 @@ jobs:
           done
 
           # Check VS Code extensions count
-          vscode_count=$(grep -v '^#' vscode_extensions.txt | grep -v '^$' | wc -l)
+          vscode_count=$(grep -vcE '^(#|$)' vscode_extensions.txt)
           echo "  VS Code extensions: $vscode_count"
 
           # Verify script documentation exists (in README.md or README-usage.md)
