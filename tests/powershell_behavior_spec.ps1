@@ -184,9 +184,9 @@ Add-Content -LiteralPath $env:LOCAL_APPLY_LOG -Value ("CALL " + ($args -join " "
 function Get-Lines {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) {
-        return @()
+        return
     }
-    return @(Get-Content -LiteralPath $Path)
+    Get-Content -LiteralPath $Path
 }
 
 function Test-ApplyNormalizesArgumentsAndRunsLocalOnce {
@@ -212,9 +212,9 @@ function Test-ApplyNormalizesArgumentsAndRunsLocalOnce {
             Assert-Equal 0 $result.ExitCode 'apply.ps1 should succeed'
         }
 
-        $stowLines = Get-Lines $stowLog
+        $stowLines = @(Get-Lines $stowLog)
         $stowText = $stowLines -join "`n"
-        $localLines = Get-Lines $localLog
+        $localLines = @(Get-Lines $localLog)
         Assert-Equal 2 $stowLines.Count 'common and windows should each be stowed once'
         Assert-Contains $stowText "--target=$home" 'HOME with spaces should remain one target argument'
         Assert-Contains $stowText '--no' '--no-act should normalize to --no'
@@ -307,7 +307,7 @@ function Test-InitWorksFromAnotherDirectoryWithoutPrompts {
             Assert-Equal 0 $result.ExitCode 'init.ps1 should work outside the repository directory'
         }
 
-        Assert-Equal 2 (Get-Lines $stowLog).Count 'init should apply common and windows once each'
+        Assert-Equal 2 (@(Get-Lines $stowLog)).Count 'init should apply common and windows once each'
     } finally {
         Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -343,8 +343,8 @@ function Test-InitAutomaticModeUsesRepositoryManifests {
                 ForEach-Object { $_.Trim() } |
                 Where-Object { $_ -and -not $_.StartsWith('#') }
         ).Count
-        Assert-Equal $expectedExtensions (Get-Lines $codeLog).Count 'all extension manifest entries should be processed'
-        Assert-Equal 12 (Get-Lines $wingetLog).Count 'all common Windows applications should be processed'
+        Assert-Equal $expectedExtensions (@(Get-Lines $codeLog)).Count 'all extension manifest entries should be processed'
+        Assert-Equal 12 (@(Get-Lines $wingetLog)).Count 'all common Windows applications should be processed'
     } finally {
         Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -374,11 +374,11 @@ function Test-UpdatePullsBothRepositoriesAndAppliesLocalOnce {
             Assert-Equal 0 $result.ExitCode 'update.ps1 should succeed'
         }
 
-        $gitLines = Get-Lines $gitLog
+        $gitLines = @(Get-Lines $gitLog)
         $gitText = $gitLines -join "`n"
-        $stowLines = Get-Lines $stowLog
+        $stowLines = @(Get-Lines $stowLog)
         $stowText = $stowLines -join "`n"
-        $localLines = Get-Lines $localLog
+        $localLines = @(Get-Lines $localLog)
         Assert-Equal 2 $gitLines.Count 'main and local repositories should each be pulled once'
         Assert-Contains $gitText 'pull --ff-only' 'pulls should be fast-forward only'
         Assert-Contains $gitText "-C `"$home\dotfiles-local`" pull --ff-only" 'local repository path should stay intact'
