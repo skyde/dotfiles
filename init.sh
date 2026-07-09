@@ -45,15 +45,18 @@ if [ -f "packages.txt" ]; then
     echo "Installing packages..."
     case "$(uname)" in
     Darwin)
+      # shellcheck disable=SC2086 # Intentionally split package list into separate package arguments.
       command -v brew >/dev/null && brew install $packages || echo "Homebrew not found. Install it first: https://brew.sh"
       ;;
     Linux)
+      # shellcheck disable=SC2086 # Intentionally split package list into separate package arguments.
       command -v apt >/dev/null && sudo apt update && sudo apt install -y $packages
       ;;
     MINGW* | MSYS* | CYGWIN*)
       if command -v winget >/dev/null; then
         for pkg in $packages; do winget install "$pkg" --silent --accept-source-agreements --accept-package-agreements; done
       elif command -v choco >/dev/null; then
+        # shellcheck disable=SC2086 # Intentionally split package list into separate package arguments.
         choco install $packages -y
       else
         echo "Neither winget nor chocolatey found. Please install packages manually: $packages"
@@ -172,9 +175,13 @@ else
   echo "Skipping platform-specific setup"
 fi
 
-echo "Building bat cache for custom theme..."
-# Build bat cache for custom theme
-bat cache --build
+if command -v bat >/dev/null 2>&1; then
+  echo "Building bat cache for custom theme..."
+  # Build bat cache for custom theme
+  bat cache --build
+else
+  echo "bat not found, skipping bat cache build"
+fi
 
 # Run local dotfiles initialization if it exists
 LOCAL_INIT_SCRIPT="$HOME/dotfiles-local/init.sh"
