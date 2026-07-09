@@ -55,7 +55,7 @@ try {
                 try {
                     Invoke-NativeCommand -Command 'code' -ArgumentList @('--install-extension', $extension, '--force')
                 } catch {
-                    Write-Host "    Warning: Failed to install $extension: $($_.Exception.Message)" -ForegroundColor Yellow
+                    Write-Host "    Warning: Failed to install ${extension}: $($_.Exception.Message)" -ForegroundColor Yellow
                 }
             }
             Write-Host '✅ VS Code extension processing completed' -ForegroundColor Green
@@ -98,7 +98,7 @@ try {
                         '--accept-source-agreements'
                     )
                 } catch {
-                    Write-Host "Warning: Failed to install $app: $($_.Exception.Message)" -ForegroundColor Yellow
+                    Write-Host "Warning: Failed to install ${app}: $($_.Exception.Message)" -ForegroundColor Yellow
                 }
             }
         }
