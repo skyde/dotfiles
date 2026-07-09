@@ -173,8 +173,8 @@ exit /b 0
 }
 
 function New-LocalApply {
-    param([Parameter(Mandatory = $true)][string]$Home)
-    $localRoot = Join-Path $Home 'dotfiles-local'
+    param([Parameter(Mandatory = $true)][string]$TestHome)
+    $localRoot = Join-Path $TestHome 'dotfiles-local'
     New-Item -ItemType Directory -Force -Path $localRoot | Out-Null
     Set-Content -LiteralPath (Join-Path $localRoot 'apply.ps1') -Encoding utf8 -Value @'
 Add-Content -LiteralPath $env:LOCAL_APPLY_LOG -Value ("CALL " + ($args -join " "))
@@ -192,17 +192,17 @@ function Get-Lines {
 function Test-ApplyNormalizesArgumentsAndRunsLocalOnce {
     $temp = New-TestDirectory
     try {
-        $home = Join-Path $temp 'home with spaces'
-        New-Item -ItemType Directory -Path $home | Out-Null
+        $testHome = Join-Path $temp 'home with spaces'
+        New-Item -ItemType Directory -Path $testHome | Out-Null
         $fakeBin = New-FakeBin -Root $temp -Stow
-        New-LocalApply -Home $home
+        New-LocalApply -TestHome $testHome
         $stowLog = Join-Path $temp 'stow.log'
         $localLog = Join-Path $temp 'local.log'
 
         Invoke-WithEnvironment @{
             PATH = "$fakeBin$([IO.Path]::PathSeparator)$env:PATH"
-            USERPROFILE = $home
-            HOME = $home
+            USERPROFILE = $testHome
+            HOME = $testHome
             STOW_LOG = $stowLog
             LOCAL_APPLY_LOG = $localLog
             DOTFILES_STOW_COMMAND = 'stow'
@@ -216,7 +216,7 @@ function Test-ApplyNormalizesArgumentsAndRunsLocalOnce {
         $stowText = $stowLines -join "`n"
         $localLines = @(Get-Lines $localLog)
         Assert-Equal 2 $stowLines.Count 'common and windows should each be stowed once'
-        Assert-Contains $stowText "--target=$home" 'HOME with spaces should remain one target argument'
+        Assert-Contains $stowText "--target=$testHome" 'HOME with spaces should remain one target argument'
         Assert-Contains $stowText '--no' '--no-act should normalize to --no'
         Assert-Contains $stowText '--restow' 'restow should reach Stow'
         Assert-NotContains $stowText '--no-act' 'unsupported alias must not reach Stow'
@@ -233,17 +233,17 @@ function Test-ApplyNormalizesArgumentsAndRunsLocalOnce {
 function Test-ApplyPropagatesNativeFailure {
     $temp = New-TestDirectory
     try {
-        $home = Join-Path $temp 'home'
-        New-Item -ItemType Directory -Path $home | Out-Null
+        $testHome = Join-Path $temp 'home'
+        New-Item -ItemType Directory -Path $testHome | Out-Null
         $fakeBin = New-FakeBin -Root $temp -Stow
-        New-LocalApply -Home $home
+        New-LocalApply -TestHome $testHome
         $stowLog = Join-Path $temp 'stow.log'
         $localLog = Join-Path $temp 'local.log'
 
         Invoke-WithEnvironment @{
             PATH = "$fakeBin$([IO.Path]::PathSeparator)$env:PATH"
-            USERPROFILE = $home
-            HOME = $home
+            USERPROFILE = $testHome
+            HOME = $testHome
             STOW_LOG = $stowLog
             STOW_EXIT_CODE = '23'
             LOCAL_APPLY_LOG = $localLog
@@ -263,15 +263,15 @@ function Test-ApplyPropagatesNativeFailure {
 function Test-ApplyDryRunDoesNotInstallMissingStow {
     $temp = New-TestDirectory
     try {
-        $home = Join-Path $temp 'home'
-        New-Item -ItemType Directory -Path $home | Out-Null
+        $testHome = Join-Path $temp 'home'
+        New-Item -ItemType Directory -Path $testHome | Out-Null
         $fakeBin = New-FakeBin -Root $temp -Winget
         $wingetLog = Join-Path $temp 'winget.log'
 
         Invoke-WithEnvironment @{
             PATH = "$fakeBin$([IO.Path]::PathSeparator)$env:PATH"
-            USERPROFILE = $home
-            HOME = $home
+            USERPROFILE = $testHome
+            HOME = $testHome
             WINGET_LOG = $wingetLog
             DOTFILES_STOW_COMMAND = 'definitely-missing-stow'
         } {
@@ -289,16 +289,16 @@ function Test-ApplyDryRunDoesNotInstallMissingStow {
 function Test-InitWorksFromAnotherDirectoryWithoutPrompts {
     $temp = New-TestDirectory
     try {
-        $home = Join-Path $temp 'home'
+        $testHome = Join-Path $temp 'home'
         $working = Join-Path $temp 'elsewhere'
-        New-Item -ItemType Directory -Path $home, $working | Out-Null
+        New-Item -ItemType Directory -Path $testHome, $working | Out-Null
         $fakeBin = New-FakeBin -Root $temp -Stow
         $stowLog = Join-Path $temp 'stow.log'
 
         Invoke-WithEnvironment @{
             PATH = "$fakeBin$([IO.Path]::PathSeparator)$env:PATH"
-            USERPROFILE = $home
-            HOME = $home
+            USERPROFILE = $testHome
+            HOME = $testHome
             STOW_LOG = $stowLog
             AUTO_INSTALL = '0'
             DOTFILES_STOW_COMMAND = 'stow'
@@ -316,9 +316,9 @@ function Test-InitWorksFromAnotherDirectoryWithoutPrompts {
 function Test-InitAutomaticModeUsesRepositoryManifests {
     $temp = New-TestDirectory
     try {
-        $home = Join-Path $temp 'home'
+        $testHome = Join-Path $temp 'home'
         $working = Join-Path $temp 'elsewhere'
-        New-Item -ItemType Directory -Path $home, $working | Out-Null
+        New-Item -ItemType Directory -Path $testHome, $working | Out-Null
         $fakeBin = New-FakeBin -Root $temp -Stow -Winget -Code
         $stowLog = Join-Path $temp 'stow.log'
         $wingetLog = Join-Path $temp 'winget.log'
@@ -326,8 +326,8 @@ function Test-InitAutomaticModeUsesRepositoryManifests {
 
         Invoke-WithEnvironment @{
             PATH = "$fakeBin$([IO.Path]::PathSeparator)$env:PATH"
-            USERPROFILE = $home
-            HOME = $home
+            USERPROFILE = $testHome
+            HOME = $testHome
             STOW_LOG = $stowLog
             WINGET_LOG = $wingetLog
             CODE_LOG = $codeLog
@@ -353,18 +353,18 @@ function Test-InitAutomaticModeUsesRepositoryManifests {
 function Test-UpdatePullsBothRepositoriesAndAppliesLocalOnce {
     $temp = New-TestDirectory
     try {
-        $home = Join-Path $temp 'home with spaces'
-        New-Item -ItemType Directory -Path (Join-Path $home 'dotfiles-local\.git') -Force | Out-Null
+        $testHome = Join-Path $temp 'home with spaces'
+        New-Item -ItemType Directory -Path (Join-Path $testHome 'dotfiles-local\.git') -Force | Out-Null
         $fakeBin = New-FakeBin -Root $temp -Stow -Git
-        New-LocalApply -Home $home
+        New-LocalApply -TestHome $testHome
         $stowLog = Join-Path $temp 'stow.log'
         $gitLog = Join-Path $temp 'git.log'
         $localLog = Join-Path $temp 'local.log'
 
         Invoke-WithEnvironment @{
             PATH = "$fakeBin$([IO.Path]::PathSeparator)$env:PATH"
-            USERPROFILE = $home
-            HOME = $home
+            USERPROFILE = $testHome
+            HOME = $testHome
             STOW_LOG = $stowLog
             GIT_LOG = $gitLog
             LOCAL_APPLY_LOG = $localLog
@@ -381,7 +381,7 @@ function Test-UpdatePullsBothRepositoriesAndAppliesLocalOnce {
         $localLines = @(Get-Lines $localLog)
         Assert-Equal 2 $gitLines.Count 'main and local repositories should each be pulled once'
         Assert-Contains $gitText 'pull --ff-only' 'pulls should be fast-forward only'
-        Assert-Contains $gitText "-C `"$home\dotfiles-local`" pull --ff-only" 'local repository path should stay intact'
+        Assert-Contains $gitText "-C `"$testHome\dotfiles-local`" pull --ff-only" 'local repository path should stay intact'
         Assert-Equal 2 $stowLines.Count 'update should restow common and windows once each'
         Assert-Contains $stowText '--restow' 'restow should reach Stow'
         Assert-Contains $stowText '--no' 'preview should reach Stow'
@@ -396,18 +396,18 @@ function Test-UpdatePullsBothRepositoriesAndAppliesLocalOnce {
 function Test-UpdateStopsOnGitFailure {
     $temp = New-TestDirectory
     try {
-        $home = Join-Path $temp 'home'
-        New-Item -ItemType Directory -Path (Join-Path $home 'dotfiles-local\.git') -Force | Out-Null
+        $testHome = Join-Path $temp 'home'
+        New-Item -ItemType Directory -Path (Join-Path $testHome 'dotfiles-local\.git') -Force | Out-Null
         $fakeBin = New-FakeBin -Root $temp -Stow -Git
-        New-LocalApply -Home $home
+        New-LocalApply -TestHome $testHome
         $stowLog = Join-Path $temp 'stow.log'
         $gitLog = Join-Path $temp 'git.log'
         $localLog = Join-Path $temp 'local.log'
 
         Invoke-WithEnvironment @{
             PATH = "$fakeBin$([IO.Path]::PathSeparator)$env:PATH"
-            USERPROFILE = $home
-            HOME = $home
+            USERPROFILE = $testHome
+            HOME = $testHome
             STOW_LOG = $stowLog
             GIT_LOG = $gitLog
             GIT_EXIT_CODE = '42'
@@ -441,7 +441,8 @@ function Test-AllPowerShellScriptsParse {
         }
     }
 
-    Assert-Equal 0 $failures.Count ($failures -join "`n")
+    $context = if ($failures.Count -gt 0) { $failures -join "`n" } else { 'all PowerShell scripts should parse' }
+    Assert-Equal 0 $failures.Count $context
 }
 
 function Run-Test {
