@@ -1,24 +1,26 @@
 return {
-  -- {
-  --   "akinsho/git-conflict.nvim",
-  --   version = "*",
-  --   config = function()
-  --     require("git-conflict").setup({
-  --       default_mappings = false,
-  --       -- use diff colors from the colorscheme
-  --       highlights = {
-  --         current = "DiffText",
-  --         incoming = "DiffAdd",
-  --         ancestor = "DiffChange",
-  --       },
-  --     })
-  --     local map = vim.keymap.set
-  --     map("n", "<leader>co", "<Plug>(git-conflict-ours)", { desc = "Choose ours" })
-  --     map("n", "<leader>ct", "<Plug>(git-conflict-theirs)", { desc = "Choose theirs" })
-  --     map("n", "<leader>cb", "<Plug>(git-conflict-both)", { desc = "Choose both" })
-  --     map("n", "<leader>c0", "<Plug>(git-conflict-none)", { desc = "Choose none" })
-  --     map("n", "]x", "<Plug>(git-conflict-next-conflict)", { desc = "Next conflict" })
-  --     map("n", "[x", "<Plug>(git-conflict-prev-conflict)", { desc = "Prev conflict" })
-  --   end,
-  -- },
+  {
+    "akinsho/git-conflict.nvim",
+    version = "*",
+    event = "BufReadPre",
+    opts = {
+      default_mappings = false,
+      default_commands = true,
+      disable_diagnostics = false,
+      highlights = {
+        current = "DiffText",
+        incoming = "DiffAdd",
+        ancestor = "DiffChange",
+      },
+    },
+    keys = {
+      { "<leader>co", "<Plug>(git-conflict-ours)", desc = "Conflict: choose ours" },
+      { "<leader>ct", "<Plug>(git-conflict-theirs)", desc = "Conflict: choose theirs" },
+      { "<leader>ca", "<Plug>(git-conflict-both)", desc = "Conflict: choose both" },
+      { "<leader>cb", "<Plug>(git-conflict-both)", desc = "Conflict: choose both" },
+      { "<leader>c0", "<Plug>(git-conflict-none)", desc = "Conflict: choose none" },
+      { "]x", "<Plug>(git-conflict-next-conflict)", desc = "Next conflict" },
+      { "[x", "<Plug>(git-conflict-prev-conflict)", desc = "Previous conflict" },
+    },
+  },
 }

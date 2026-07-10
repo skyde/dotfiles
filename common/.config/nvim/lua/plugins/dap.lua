@@ -26,12 +26,74 @@ return {
           desc = "DAP Conditional Breakpoint",
         },
         { "<leader>dc", dap.continue, desc = "DAP Continue" },
+        { "<leader>dP", dap.pause, desc = "DAP Pause" },
+        { "<leader>dS", dap.terminate, desc = "DAP Stop" },
+        { "<leader>dR", dap.restart, desc = "DAP Restart" },
+        { "<leader>dg", dap.goto_, desc = "DAP Set Next Statement" },
+        { "<leader>dC", dap.run_to_cursor, desc = "DAP Run to Cursor" },
+        { "<leader>dBr", dap.clear_breakpoints, desc = "DAP Remove All Breakpoints" },
+        {
+          "<leader>dL",
+          function()
+            vim.ui.input({ prompt = "Log point message: " }, function(message)
+              if message and message ~= "" then
+                dap.set_breakpoint(nil, nil, message)
+              end
+            end)
+          end,
+          desc = "DAP Log Point",
+        },
         { "<leader>tn", dap.step_over, desc = "DAP Step Over" },
         { "<leader>ti", dap.step_into, desc = "DAP Step Into" },
         { "<leader>to", dap.step_out, desc = "DAP Step Out" },
+        { "<leader>tu", dap.up, desc = "DAP Stack Up" },
+        { "<leader>td", dap.down, desc = "DAP Stack Down" },
         { "<leader>dr", dap.repl.open, desc = "DAP REPL" },
         { "<leader>dl", dap.run_last, desc = "DAP Run Last" },
         { "<leader>du", dapui.toggle, desc = "DAP UI Toggle" },
+        {
+          "<leader>de",
+          function()
+            dapui.eval()
+          end,
+          mode = { "n", "v" },
+          desc = "DAP Evaluate",
+        },
+        {
+          "<leader>tl",
+          function()
+            dapui.float_element("scopes", { enter = true })
+          end,
+          desc = "DAP Locals",
+        },
+        {
+          "<leader>tw",
+          function()
+            dapui.float_element("watches", { enter = true })
+          end,
+          desc = "DAP Watches",
+        },
+        {
+          "<leader>th",
+          function()
+            dapui.float_element("repl", { enter = true })
+          end,
+          desc = "DAP REPL View",
+        },
+        {
+          "<leader>tb",
+          function()
+            dapui.float_element("breakpoints", { enter = true })
+          end,
+          desc = "DAP Breakpoints",
+        },
+        {
+          "<leader>tc",
+          function()
+            dapui.float_element("stacks", { enter = true })
+          end,
+          desc = "DAP Call Stack",
+        },
         {
           "<leader><backspace>",
           function()

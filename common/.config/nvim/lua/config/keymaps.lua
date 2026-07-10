@@ -120,20 +120,20 @@ map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
 map_shift_f(1, "<cmd>bprevious<CR>", { mode = { "n", "i" }, desc = "Previous buffer" })
 map_shift_f(12, "<cmd>bnext<CR>", { mode = { "n", "i" }, desc = "Next buffer" })
 
--- Open new tab
-map("n", "<leader>bn", "<cmd>tabnew<CR>", { desc = "New tab" })
+-- VS Code tabs correspond to Neovim buffers in this setup. Keep these on the
+-- same keys while retaining LazyVim's native tab-page mappings under
+-- <leader><tab>.
+map("n", "<leader>bn", "<cmd>enew<CR>", { desc = "New buffer" })
+map("n", "<leader>bh", "<cmd>BufferLineMovePrev<CR>", { desc = "Move buffer left" })
+map("n", "<leader>bl", "<cmd>BufferLineMoveNext<CR>", { desc = "Move buffer right" })
 
--- Move tab left/right
-map("n", "<leader>bh", "<cmd>tabmove -1<CR>", { desc = "Move tab left" })
-map("n", "<leader>bl", "<cmd>tabmove +1<CR>", { desc = "Move tab right" })
-
--- Jump to tab by number
+-- Jump to the visible buffer by number.
 for i = 1, 9 do
-  map("n", "<leader>" .. i, "<cmd>tabnext " .. i .. "<CR>", {
-    desc = "Go to tab " .. i,
+  map("n", "<leader>" .. i, "<cmd>BufferLineGoToBuffer " .. i .. "<CR>", {
+    desc = "Go to buffer " .. i,
   })
 end
-map("n", "<leader>0", "<cmd>tablast<CR>", { desc = "Go to last tab" })
+map("n", "<leader>0", "<cmd>BufferLineGoToBuffer -1<CR>", { desc = "Go to last buffer" })
 
 -- Indent with Tab and unindent with Shift+Tab
 map("n", "<Tab>", ">>", { desc = "Indent line" })
@@ -168,3 +168,74 @@ map({ "n", "v" }, "<leader>fl", function()
   vim.fn.setreg("+", p)
   vim.notify("Copied path: " .. p)
 end, { desc = "Copy path of active file" })
+
+map("n", "<leader>E", function()
+  local path = vim.fn.expand("%:p")
+  if path == "" then
+    return vim.notify("No file", vim.log.levels.WARN)
+  end
+  vim.ui.open(path)
+end, { desc = "Reveal file in OS" })
+
+-- Match the VS Code window-prefix bindings in addition to LazyVim's native
+-- <C-w> and <C-hjkl> mappings.
+map("n", "<leader>wv", "<C-w>v", { desc = "Split window right", remap = true })
+map("n", "<leader>ws", "<C-w>s", { desc = "Split window below", remap = true })
+for _, direction in ipairs({ "h", "j", "k", "l" }) do
+  map("n", "<leader>w" .. direction, "<C-w>" .. direction, {
+    desc = "Focus " .. direction .. " window",
+    remap = true,
+  })
+end
+for _, direction in ipairs({ "H", "J", "K", "L" }) do
+  map("n", "<leader>w" .. direction, "<C-w>" .. direction, {
+    desc = "Move window " .. direction,
+    remap = true,
+  })
+end
+
+-- UI and language actions that use the same keys as VS Code.
+Snacks.toggle.option("list", { name = "Whitespace" }):map("<leader>uc")
+map("n", "<leader>cI", vim.lsp.buf.signature_help, { desc = "Signature help" })
+map("n", "<leader><BS>", vim.lsp.buf.hover, { desc = "Hover" })
+map("n", "<BS><BS>", vim.lsp.buf.hover, { desc = "Hover" })
+map("i", "<BS><leader>", vim.lsp.buf.signature_help, { desc = "Signature help" })
+
+-- Whole-buffer text objects from the VS Code Vim configuration.
+map("n", "vig", "ggVG", { desc = "Select whole buffer" })
+map("n", "yig", "<cmd>%yank<CR>", { desc = "Yank whole buffer" })
+map("n", "dig", "ggVGd", { desc = "Delete whole buffer" })
+
+local function workspace_session_name()
+  if vim.fn.executable("get-workspace-name") == 1 then
+    local name = vim.trim(vim.fn.system({ "get-workspace-name" }))
+    if vim.v.shell_error == 0 and name ~= "" then
+      return name
+    end
+  end
+  return vim.fn.getcwd():gsub("[/%.]", "_")
+end
+
+local function switch_tmux_window(index)
+  if vim.fn.executable("tmux-session") ~= 1 then
+    return vim.notify("tmux-session is not available", vim.log.levels.WARN)
+  end
+  vim.system(
+    { "tmux-session", workspace_session_name(), tostring(index), "--no-attach" },
+    { text = true },
+    function(result)
+      if result.code ~= 0 then
+        vim.schedule(function()
+          vim.notify(vim.trim(result.stderr or "Unable to switch tmux window"), vim.log.levels.ERROR)
+        end)
+      end
+    end
+  )
+end
+
+map("n", "<leader>a", function()
+  switch_tmux_window(2)
+end, { desc = "Tmux: switch to AI" })
+map("n", "<leader>i", function()
+  switch_tmux_window(3)
+end, { desc = "Tmux: switch to terminal" })
