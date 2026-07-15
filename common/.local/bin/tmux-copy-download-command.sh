@@ -25,10 +25,7 @@ if [[ -z "$chosen" ]]; then
   exit 0
 fi
 
-if output=$("$copy_download" "$chosen" 2>&1); then
-  tmux display-message "Copied download command"
-  printf '%s\n' "$output"
-else
+if ! output=$("$copy_download" "$chosen" 2>&1); then
   tmux display-message "Failed to copy download command: $output"
   printf '%s\n' "$output" >&2
   exit 1
