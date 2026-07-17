@@ -28,7 +28,8 @@ bindkey '^[[1;5C' forward-word          # Ctrl+Right
 bindkey '^[[1;5D' backward-word         # Ctrl+Left
 autoload -Uz edit-command-line
 zle -N edit-command-line
-bindkey '^X' edit-command-line          # Ctrl+X edits current prompt
+bindkey '^G' edit-command-line          # Ctrl+G opens current prompt in $EDITOR
+bindkey '^X^E' edit-command-line        # Ctrl+X Ctrl+E (standard)
 
 # -------- completion (cached)
 # Cache to XDG location and compile the dump for speed.
