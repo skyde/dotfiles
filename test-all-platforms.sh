@@ -1,212 +1,94 @@
 #!/bin/bash
-set -e
+# Trigger and watch the hosted cross-platform test workflow without modifying the repository.
+set -euo pipefail
 
-# GitHub repository and workflow monitoring script
-REPO="skyde/dotfiles"
-BRANCH="main"
-WORKFLOW_FILE="simple-test.yml"
+REPO="${DOTFILES_REPO:-skyde/dotfiles}"
+WORKFLOW_FILE="${DOTFILES_WORKFLOW:-comprehensive-test.yml}"
+BRANCH="${DOTFILES_BRANCH:-$(git branch --show-current 2>/dev/null || true)}"
 
-echo "=== MULTI-PLATFORM TESTING AUTOMATION ==="
-echo "Repository: $REPO"
-echo "Branch: $BRANCH"
-echo "Workflow: $WORKFLOW_FILE"
-echo ""
+usage() {
+    cat <<USAGE
+Usage: $0 [number_of_cycles]
 
-# Function to check if gh is authenticated
-check_gh_auth() {
-    if gh auth status >/dev/null 2>&1; then
-        echo "✓ GitHub CLI authenticated"
-        return 0
-    else
-        echo "ℹ GitHub CLI not authenticated - using public API"
-        return 1
-    fi
+Triggers $WORKFLOW_FILE on GitHub Actions and waits for each run to finish.
+Environment overrides:
+  DOTFILES_REPO       Repository in owner/name form (default: $REPO)
+  DOTFILES_BRANCH     Remote branch to test (default: current branch)
+  DOTFILES_WORKFLOW   Workflow file (default: $WORKFLOW_FILE)
+USAGE
 }
 
-# Function to trigger workflow using GitHub CLI
-trigger_workflow_gh() {
-    echo "Triggering workflow via GitHub CLI..."
-    gh workflow run "$WORKFLOW_FILE" --repo "$REPO" --ref "$BRANCH"
+latest_run_id() {
+    gh run list \
+        --repo "$REPO" \
+        --workflow "$WORKFLOW_FILE" \
+        --branch "$BRANCH" \
+        --event workflow_dispatch \
+        --limit 1 \
+        --json databaseId \
+        --jq '.[0].databaseId // empty'
 }
 
-# Function to trigger workflow using git push
-trigger_workflow_git() {
-    echo "Triggering workflow via git push (branch: $BRANCH)..."
-    if git rev-parse --verify "$BRANCH" >/dev/null 2>&1; then
-        echo "# Test trigger $(date)" >> .github/test-trigger.md
-        git add .github/test-trigger.md
-        git commit -m "Trigger workflow for platform testing $(date +%H:%M:%S)" || true
-        git push origin "$BRANCH"
-    else
-        echo "⚠️ Branch '$BRANCH' not found; please create it or change BRANCH variable." >&2
-        return 1
-    fi
-}
+wait_for_new_run() {
+    local previous_id="$1"
+    local attempt run_id
 
-# Function to get workflow status using GitHub API
-get_workflow_status() {
-    echo "Fetching workflow status..."
-    
-    # Get latest workflow runs
-    if check_gh_auth; then
-        if command -v jq >/dev/null 2>&1; then
-            gh run list --workflow="$WORKFLOW_FILE" --repo "$REPO" --limit 1 --json status,conclusion,url,createdAt
-        else
-            echo "⚠️ jq not installed; showing raw output" >&2
-            gh run list --workflow="$WORKFLOW_FILE" --repo "$REPO" --limit 1
+    for attempt in $(seq 1 30); do
+        run_id="$(latest_run_id)"
+        if [ -n "$run_id" ] && [ "$run_id" != "$previous_id" ]; then
+            printf '%s\n' "$run_id"
+            return 0
         fi
-    else
-        # Use curl to access public GitHub API
-        curl -s "https://api.github.com/repos/$REPO/actions/workflows" | \
-        python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-for wf in data.get('workflows', []):
-    if '$WORKFLOW_FILE' in wf['path']:
-        print(f'Workflow ID: {wf[\"id\"]}')
-        break
-" 2>/dev/null || echo "Could not fetch workflow info via API"
-    fi
-}
-
-# Function to monitor workflow results
-monitor_workflow() {
-    local max_wait=600  # 10 minutes max wait
-    local wait_time=0
-    local check_interval=30
-    
-    echo "Monitoring workflow progress..."
-    
-    while [ $wait_time -lt $max_wait ]; do
-        echo "Checking status... (${wait_time}s elapsed)"
-        
-    if check_gh_auth && command -v jq >/dev/null 2>&1; then
-            # Get the latest run status
-            local status
-            status=$(gh run list --workflow="$WORKFLOW_FILE" --repo "$REPO" --limit 1 --json status,conclusion --jq '.[0]')
-            
-            if [ "$status" != "null" ] && [ -n "$status" ]; then
-                local run_status
-                local conclusion
-                run_status=$(echo "$status" | jq -r '.status')
-                conclusion=$(echo "$status" | jq -r '.conclusion')
-                
-                echo "Status: $run_status, Conclusion: $conclusion"
-                
-                if [ "$run_status" = "completed" ]; then
-                    if [ "$conclusion" = "success" ]; then
-                        echo "✅ Workflow completed successfully!"
-                        return 0
-                    else
-                        echo "❌ Workflow failed with conclusion: $conclusion"
-                        return 1
-                    fi
-                fi
-            fi
-    else
-            echo "ℹ Cannot monitor without authentication - check manually at:"
-            echo "https://github.com/$REPO/actions"
-        fi
-        
-        sleep $check_interval
-        wait_time=$((wait_time + check_interval))
+        sleep 2
     done
-    
-    echo "⏰ Monitoring timeout reached"
-    return 2
+
+    echo "Timed out waiting for the workflow run to appear." >&2
+    return 1
 }
 
-# Function to run comprehensive platform tests
-run_platform_tests() {
-    local test_count=${1:-3}
-    local success_count=0
-    
-    echo "=== RUNNING $test_count PLATFORM TEST CYCLES ==="
-    
-    for i in $(seq 1 "$test_count"); do
-        echo ""
-        echo "🚀 TEST CYCLE $i/$test_count"
-        echo "===================="
-        
-        # Trigger the workflow
-        if check_gh_auth; then
-            trigger_workflow_gh
-        else
-            trigger_workflow_git
-        fi
-        
-        echo "Waiting 60 seconds for workflow to start..."
-        sleep 60
-        
-        # Monitor the results
-        if monitor_workflow; then
-            echo "✅ Test cycle $i completed successfully"
-            success_count=$((success_count + 1))
-        else
-            echo "❌ Test cycle $i failed"
-        fi
-        
-        # Wait between cycles if not the last one
-        if [ "$i" -lt "$test_count" ]; then
-            echo "Waiting 120 seconds before next cycle..."
-            sleep 120
-        fi
-    done
-    
-    echo ""
-    echo "=== FINAL RESULTS ==="
-    echo "Successful cycles: $success_count/$test_count"
-    echo "Success rate: $(( success_count * 100 / test_count ))%"
-    
-    if [ "$success_count" -eq "$test_count" ]; then
-        echo "🎉 ALL PLATFORM TESTS PASSED!"
-        return 0
-    else
-        echo "⚠️  Some platform tests failed"
-        return 1
-    fi
-}
-
-# Main execution
 main() {
-    echo "Checking current repository status..."
-    git status --porcelain
-    
-    if [ -n "$(git status --porcelain)" ]; then
-        echo "⚠️  Working directory not clean - committing changes first"
-        git add -A
-        git commit -m "Auto-commit before platform testing"
-        git push origin "$BRANCH"
+    local cycles="${1:-3}"
+    local cycle previous_id run_id
+
+    if ! [[ "$cycles" =~ ^[1-9][0-9]*$ ]]; then
+        echo "number_of_cycles must be a positive integer." >&2
+        return 2
     fi
-    
-    echo ""
-    get_workflow_status
-    echo ""
-    
-    # Default to 3 test cycles
-    local cycles=${1:-3}
-    run_platform_tests "$cycles"
+
+    if [ -z "$BRANCH" ]; then
+        echo "No current branch detected; set DOTFILES_BRANCH explicitly." >&2
+        return 2
+    fi
+
+    if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+        echo "GitHub CLI authentication is required: gh auth login" >&2
+        return 1
+    fi
+
+    if [ -n "$(git status --porcelain 2>/dev/null || true)" ]; then
+        echo "Warning: local changes are not part of the remote workflow run." >&2
+    fi
+
+    echo "Repository: $REPO"
+    echo "Branch: $BRANCH"
+    echo "Workflow: $WORKFLOW_FILE"
+
+    for cycle in $(seq 1 "$cycles"); do
+        echo "=== Test cycle $cycle/$cycles ==="
+        previous_id="$(latest_run_id)"
+        gh workflow run "$WORKFLOW_FILE" --repo "$REPO" --ref "$BRANCH"
+        run_id="$(wait_for_new_run "$previous_id")"
+        gh run watch "$run_id" --repo "$REPO" --exit-status
+    done
+
+    echo "✅ All $cycles hosted test cycle(s) passed"
 }
 
-# Check command line arguments
-if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-    echo "Usage: $0 [number_of_cycles]"
-    echo ""
-    echo "This script triggers and monitors GitHub Actions workflows"
-    echo "to test dotfiles installation across all platforms:"
-    echo "  - Linux (Ubuntu)"
-    echo "  - macOS (latest)"
-    echo "  - Windows (latest)"
-    echo ""
-    echo "Options:"
-    echo "  number_of_cycles  Number of test cycles to run (default: 3)"
-    echo "  --help, -h        Show this help message"
-    echo ""
-    echo "Examples:"
-    echo "  $0              # Run 3 test cycles"
-    echo "  $0 5            # Run 5 test cycles"
-    exit 0
-fi
+case "${1:-}" in
+    --help|-h)
+        usage
+        exit 0
+        ;;
+esac
 
-# Run main function with arguments
 main "$@"

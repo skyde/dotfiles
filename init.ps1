@@ -1,84 +1,110 @@
-# Simple dotfiles installer for Windows
+# Interactive dotfiles bootstrapper for Windows.
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
-Write-Host "Installing dotfiles..." -ForegroundColor Green
+$scriptArguments = @($args)
 
-# Use apply.ps1 and pass through all command line arguments
-& "$PSScriptRoot\apply.ps1" @args
+function Get-UserConfirmation {
+    param([Parameter(Mandatory = $true)][string]$Prompt)
 
-# Install VS Code extensions
-$codeCommand = Get-Command code -ErrorAction SilentlyContinue
-if ($codeCommand) {
-    if (Test-Path "vscode_extensions.txt") {
-        if ($env:AUTO_INSTALL -eq "1") {
-            $installExtensions = "y"
-        } elseif ($env:AUTO_INSTALL -eq "0") {
-            $installExtensions = "n"
-        } else {
-            $installExtensions = Read-Host "Install VS Code extensions? (y/N)"
-        }
-        
-        if ($installExtensions -match "^[Yy]") {
-            Write-Host "Installing VS Code extensions..." -ForegroundColor Yellow
-            Get-Content "vscode_extensions.txt" | ForEach-Object {
-                $ext = $_.Trim()
-                if ($ext -and (-not $ext.StartsWith("#"))) {
-                    Write-Host "  Installing: $ext" -ForegroundColor Cyan
-                    try {
-                        & code --install-extension $ext --force | Out-Null
-                    } catch {
-                        Write-Host "    Warning: Failed to install $ext" -ForegroundColor Yellow
-                    }
+    if ($env:AUTO_INSTALL -eq '1') {
+        return 'y'
+    }
+    if ($env:AUTO_INSTALL -eq '0') {
+        return 'n'
+    }
+    return Read-Host $Prompt
+}
+
+function Invoke-NativeCommand {
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [string[]]$ArgumentList = @()
+    )
+
+    $global:LASTEXITCODE = 0
+    & $Command @ArgumentList
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+        throw "'$Command' failed with exit code $exitCode"
+    }
+}
+
+$originalLocation = (Get-Location).Path
+try {
+    Set-Location -LiteralPath $PSScriptRoot
+    Write-Host 'Installing dotfiles...' -ForegroundColor Green
+
+    & (Join-Path $PSScriptRoot 'apply.ps1') @scriptArguments
+    if (-not $?) {
+        throw 'apply.ps1 failed.'
+    }
+
+    $extensionsFile = Join-Path $PSScriptRoot 'vscode_extensions.txt'
+    if ((Get-Command code -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $extensionsFile -PathType Leaf)) {
+        $installExtensions = Get-UserConfirmation 'Install VS Code extensions? (y/N)'
+        if ($installExtensions -match '^[Yy]') {
+            Write-Host 'Installing VS Code extensions...' -ForegroundColor Yellow
+            foreach ($line in Get-Content -LiteralPath $extensionsFile) {
+                $extension = $line.Trim()
+                if (-not $extension -or $extension.StartsWith('#')) {
+                    continue
+                }
+
+                Write-Host "  Installing: $extension" -ForegroundColor Cyan
+                try {
+                    Invoke-NativeCommand -Command 'code' -ArgumentList @('--install-extension', $extension, '--force')
+                } catch {
+                    Write-Host "    Warning: Failed to install ${extension}: $($_.Exception.Message)" -ForegroundColor Yellow
                 }
             }
-            Write-Host "✅ VS Code extensions installed" -ForegroundColor Green
+            Write-Host '✅ VS Code extension processing completed' -ForegroundColor Green
         } else {
-            Write-Host "Skipping VS Code extensions" -ForegroundColor Yellow
-        }
-    }
-} else {
-    Write-Host "VS Code not found, skipping extensions" -ForegroundColor Yellow
-}
-
-# Install common development tools
-if ($env:AUTO_INSTALL -eq "1") {
-    $installApps = "y"
-} elseif ($env:AUTO_INSTALL -eq "0") {
-    $installApps = "n"
-} else {
-    $installApps = Read-Host "Install common development tools? (y/N)"
-}
-
-if ($installApps -match "^[Yy]") {
-    if (Get-Command winget -ErrorAction SilentlyContinue) {
-        Write-Host "Installing common apps..." -ForegroundColor Yellow
-        $apps = @(
-            "Git.Git",
-            "BurntSushi.ripgrep.MSVC", 
-            "junegunn.fzf",
-            "sharkdp.bat",
-            "Neovim.Neovim",
-            # "tmux" - Not available on Windows, use Windows Terminal instead
-            "dandavison.delta",
-            "eza-community.eza",
-            "JesseDuffield.lazygit",
-            "sharkdp.fd",
-            "ajeetdsouza.zoxide",
-            "Starship.Starship",
-            "gokcehan.lf"
-        )
-        
-        foreach ($app in $apps) {
-            Write-Host "Installing $app..." -ForegroundColor Cyan
-            try {
-                winget install $app --silent --accept-package-agreements --accept-source-agreements | Out-Null
-            } catch {
-                Write-Host "Warning: Failed to install $app" -ForegroundColor Yellow
-            }
+            Write-Host 'Skipping VS Code extensions' -ForegroundColor Yellow
         }
     } else {
-        Write-Host "Winget not found. Please install from Microsoft Store or enable it." -ForegroundColor Red
+        Write-Host 'VS Code not found, skipping extensions' -ForegroundColor Yellow
     }
-}
 
-Write-Host "Done! 🎉" -ForegroundColor Green
+    $installApps = Get-UserConfirmation 'Install common development tools? (y/N)'
+    if ($installApps -match '^[Yy]') {
+        if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            Write-Host 'Winget not found. Install App Installer from the Microsoft Store.' -ForegroundColor Red
+        } else {
+            Write-Host 'Installing common apps...' -ForegroundColor Yellow
+            $apps = @(
+                'Git.Git',
+                'BurntSushi.ripgrep.MSVC',
+                'junegunn.fzf',
+                'sharkdp.bat',
+                'Neovim.Neovim',
+                'dandavison.delta',
+                'eza-community.eza',
+                'JesseDuffield.lazygit',
+                'sharkdp.fd',
+                'ajeetdsouza.zoxide',
+                'Starship.Starship',
+                'gokcehan.lf'
+            )
+
+            foreach ($app in $apps) {
+                Write-Host "Installing $app..." -ForegroundColor Cyan
+                try {
+                    Invoke-NativeCommand -Command 'winget' -ArgumentList @(
+                        'install',
+                        $app,
+                        '--silent',
+                        '--accept-package-agreements',
+                        '--accept-source-agreements'
+                    )
+                } catch {
+                    Write-Host "Warning: Failed to install ${app}: $($_.Exception.Message)" -ForegroundColor Yellow
+                }
+            }
+        }
+    }
+
+    Write-Host 'Done! 🎉' -ForegroundColor Green
+} finally {
+    Set-Location -LiteralPath $originalLocation
+}

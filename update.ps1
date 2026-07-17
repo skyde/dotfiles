@@ -1,41 +1,53 @@
-# Update dotfiles from remote repository
+# Update dotfiles from their remotes and restow them.
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
-Write-Host "Updating dotfiles from remote..." -ForegroundColor Green
+$scriptArguments = @($args)
 
-# Save current directory
-$originalDir = Get-Location
+function Invoke-NativeCommand {
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [string[]]$ArgumentList = @()
+    )
 
+    $global:LASTEXITCODE = 0
+    & $Command @ArgumentList
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+        throw "'$Command' failed with exit code $exitCode"
+    }
+}
+
+if (-not $env:USERPROFILE) {
+    Write-Host '❌ USERPROFILE is not set.' -ForegroundColor Red
+    exit 1
+}
+
+$originalLocation = (Get-Location).Path
 try {
-    # Go to dotfiles directory
-    Set-Location $PSScriptRoot
+    Set-Location -LiteralPath $PSScriptRoot
+    Write-Host 'Updating dotfiles from remote...' -ForegroundColor Green
 
-    # Pull latest changes
-    Write-Host "Pulling latest changes..." -ForegroundColor Yellow
-    git pull
+    Write-Host 'Pulling latest changes...' -ForegroundColor Yellow
+    Invoke-NativeCommand -Command 'git' -ArgumentList @('pull', '--ff-only')
 
-    # Check for dotfiles-local and update if present
-    $localDotfiles = Join-Path $env:USERPROFILE "dotfiles-local"
-    if (Test-Path (Join-Path $localDotfiles ".git")) {
-        Write-Host "Updating dotfiles-local from remote..." -ForegroundColor Yellow
-        git -C $localDotfiles pull
-        $localInstall = Join-Path $localDotfiles "install.ps1"
-        if (Test-Path $localInstall) {
-            Write-Host "Running dotfiles-local install script..." -ForegroundColor Yellow
-            & $localInstall
-        }
+    $localDotfiles = Join-Path $env:USERPROFILE 'dotfiles-local'
+    if (Test-Path -LiteralPath (Join-Path $localDotfiles '.git')) {
+        Write-Host 'Updating dotfiles-local from remote...' -ForegroundColor Yellow
+        Invoke-NativeCommand -Command 'git' -ArgumentList @('-C', $localDotfiles, 'pull', '--ff-only')
     }
 
-    # Apply the updated dotfiles
-    Write-Host "Applying updated dotfiles..." -ForegroundColor Yellow
-    # Pass through any additional arguments along with --restow
-    & "$PSScriptRoot\apply.ps1" --restow @args
+    Write-Host 'Applying updated dotfiles...' -ForegroundColor Yellow
+    $applyArguments = @('--restow') + $scriptArguments
+    & (Join-Path $PSScriptRoot 'apply.ps1') @applyArguments
+    if (-not $?) {
+        throw 'apply.ps1 failed.'
+    }
 
-    Write-Host "✅ Dotfiles updated successfully!" -ForegroundColor Green
+    Write-Host '✅ Dotfiles updated successfully!' -ForegroundColor Green
 } catch {
     Write-Host "❌ Update failed: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 } finally {
-    # Return to original directory
-    Set-Location $originalDir
+    Set-Location -LiteralPath $originalLocation
 }

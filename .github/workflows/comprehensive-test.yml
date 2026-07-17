@@ -19,6 +19,7 @@ jobs:
   validate:
     name: Validate repository
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,6 +39,9 @@ jobs:
             init.ps1
             apply.ps1
             update.ps1
+            tests/shell_behavior_spec.sh
+            tests/powershell_behavior_spec.ps1
+            tests/nvim_clipboard_spec.lua
           )
 
           for path in "${required_paths[@]}"; do
@@ -50,16 +54,36 @@ jobs:
           test -x init.sh
           test -x apply.sh
           test -x update.sh
+          test -x test-all-platforms.sh
 
           while IFS= read -r -d '' script; do
             bash -n "$script"
           done < <(git ls-files -z '*.sh')
 
+          git config --file common/.config/git/config --list >/dev/null
+
+      - name: Reject duplicate manifest entries
+        run: |
+          for manifest in packages.txt vscode_extensions.txt; do
+            duplicates="$(
+              sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$manifest" |
+                grep -vE '^(#|$)' |
+                tr '[:upper:]' '[:lower:]' |
+                sort |
+                uniq -d
+            )"
+            if [ -n "$duplicates" ]; then
+              echo "Duplicate entries in $manifest:" >&2
+              echo "$duplicates" >&2
+              exit 1
+            fi
+          done
+
   unix-install:
-    name: Install lifecycle (${{ matrix.os }})
+    name: Unix behavior and lifecycle (${{ matrix.os }})
     needs: validate
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -67,6 +91,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Run shell behavior tests
+        run: bash tests/shell_behavior_spec.sh
+        shell: bash
 
       - name: Install GNU Stow
         run: |
@@ -82,7 +110,8 @@ jobs:
       - name: Exercise bootstrap and Stow lifecycle
         run: |
           test_home="$(mktemp -d)"
-          trap 'rm -rf "$test_home"' EXIT
+          delete_home="$(mktemp -d)"
+          trap 'rm -rf "$test_home" "$delete_home"' EXIT
 
           HOME="$test_home" ./apply.sh --no
           HOME="$test_home" ./apply.sh
@@ -106,13 +135,20 @@ jobs:
               exit 1
             fi
           done
+
+          HOME="$delete_home" ./apply.sh --delete
+          if find "$delete_home" -mindepth 1 -print -quit | grep -q .; then
+            echo "Deleting from an empty HOME created files or directories" >&2
+            find "$delete_home" -mindepth 1 -print >&2
+            exit 1
+          fi
         shell: bash
 
   windows-scripts:
     name: Windows PowerShell behavior
     needs: validate
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -140,43 +176,45 @@ jobs:
           }
         shell: pwsh
 
-      - name: Exercise apply and init control flow
+      - name: Run PowerShell behavior tests
+        id: powershell-tests
+        continue-on-error: true
         run: |
-          $fakeBin = Join-Path $env:RUNNER_TEMP 'fake-stow'
-          $testHome = Join-Path $env:RUNNER_TEMP 'dotfiles-home'
-          $env:STOW_LOG = Join-Path $env:RUNNER_TEMP 'stow-calls.txt'
-
-          New-Item -ItemType Directory -Force -Path $fakeBin, $testHome | Out-Null
-          $stowShim = @'
-          @echo off
-          echo %*>>"%STOW_LOG%"
-          if not "%STOW_EXIT_CODE%"=="" exit /b %STOW_EXIT_CODE%
-          exit /b 0
-          '@
-          $stowShim | Set-Content -Encoding ascii (Join-Path $fakeBin 'stow.cmd')
-
-          $env:PATH = "$fakeBin$([IO.Path]::PathSeparator)$env:PATH"
-          $env:USERPROFILE = $testHome
-          $env:HOME = $testHome
-          $env:AUTO_INSTALL = '0'
-
-          & "$PWD\apply.ps1" --no
-          & "$PWD\init.ps1" --no
-
-          $calls = @(Get-Content $env:STOW_LOG)
-          if ($calls.Count -ne 4) {
-            throw "Expected four Stow calls, got $($calls.Count): $calls"
-          }
-
-          $commonCalls = @($calls | Where-Object { $_ -match ' common$' })
-          $windowsCalls = @($calls | Where-Object { $_ -match ' windows$' })
-          if ($commonCalls.Count -ne 2 -or $windowsCalls.Count -ne 2) {
-            throw "Expected common and windows packages twice each: $calls"
-          }
-
-          foreach ($call in $calls) {
-            if (-not $call.Contains("--target=$testHome")) {
-              throw "Stow call used the wrong target: $call"
-            }
-          }
+          $log = Join-Path $env:RUNNER_TEMP 'powershell-behavior.log'
+          & ./tests/powershell_behavior_spec.ps1 *>&1 | Tee-Object -FilePath $log
         shell: pwsh
+
+      - name: Upload PowerShell failure log
+        if: steps.powershell-tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: powershell-behavior-log
+          path: ${{ runner.temp }}/powershell-behavior.log
+          if-no-files-found: error
+
+      - name: Enforce PowerShell behavior result
+        if: steps.powershell-tests.outcome == 'failure'
+        run: exit 1
+        shell: pwsh
+
+  neovim-clipboard:
+    name: Neovim clipboard behavior
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      NVIM_VERSION: v0.12.4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Neovim
+        run: |
+          curl -fsSLO "https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux-x86_64.tar.gz"
+          tar xzf nvim-linux-x86_64.tar.gz
+          echo "$PWD/nvim-linux-x86_64/bin" >> "$GITHUB_PATH"
+
+      - name: Run clipboard regression suite
+        run: |
+          nvim --version | head -1
+          nvim --headless -u NONE -i NONE -l tests/nvim_clipboard_spec.lua
