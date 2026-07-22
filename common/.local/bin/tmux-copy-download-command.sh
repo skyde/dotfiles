@@ -7,7 +7,7 @@ copy_download="$bin_dir/copy-download-command"
 
 candidates=$(
   tmux capture-pane -J -p -S -2000 \
-    | "$extract" \
+    | "$extract" --paths-newest-first \
     | while IFS= read -r candidate; do
         [[ -e "$candidate" ]] && printf '%s\n' "$candidate"
       done
@@ -19,7 +19,7 @@ if [[ -z "$candidates" ]]; then
   exit 0
 fi
 
-chosen=$(printf '%s\n' "$candidates" | fzf --tmux center,80%,40% --exit-0 --no-preview --prompt="Download> " || true)
+chosen=$(printf '%s\n' "$candidates" | fzf --tmux center,80%,40% --exit-0 --no-preview --no-sort --layout=reverse --prompt="Download> " || true)
 
 if [[ -z "$chosen" ]]; then
   exit 0

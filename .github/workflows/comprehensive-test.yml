@@ -55,6 +55,8 @@ jobs:
             bash -n "$script"
           done < <(git ls-files -z '*.sh')
 
+          python3 -m unittest discover -s tests -p 'test_*.py'
+
   unix-install:
     name: Install lifecycle (${{ matrix.os }})
     needs: validate
