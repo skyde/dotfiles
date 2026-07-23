@@ -65,24 +65,80 @@ if (( $+commands[zoxide] )); then
   eval "$(zoxide init zsh)"
 fi
 
-# -------- fzf-powered history search (Ctrl-R), deduped & reverse-chronological
-if (( $+commands[fzf] )); then
-  _fzf_history_widget() {
-    local selected
-    selected=$(
-      fc -nrl 1 2>/dev/null | LC_ALL=C awk 'length && !seen[$0]++' | \
-      fzf --height=80% --layout=reverse --min-height=20 \
-          --tiebreak=index --no-sort --scheme=history --wrap \
-          --preview='printf "%s\n" {}' --preview-window='down,4,wrap' \
-          --bind='ctrl-/:toggle-preview' \
-          --prompt='History> ' --style=minimal --query="$LBUFFER"
-    ) || return
-    BUFFER=$selected
-    CURSOR=${#BUFFER}
-    zle reset-prompt
-  }
-  zle -N _fzf_history_widget
-  bindkey '^R' _fzf_history_widget
+# -------- fzf-powered history search (Ctrl-R)
+if [[ -o interactive && -t 0 ]] && (( $+commands[fzf] )); then
+  _fzf_ctrl_r_opts="--height=80% --min-height=20 --layout=reverse --wrap --prompt='History> ' --with-nth=2.. --preview='printf \"%s\n\" {2..}' --preview-window='down,4,wrap,hidden' --bind='alt-p:toggle-preview' --header='Ctrl-R sort | Alt-R all | Alt-P preview | Ctrl-/ wrap'"
+  # Prefer fzf's native tmux popup for Ctrl-R, unless local config opts into
+  # fzf-tmux through FZF_TMUX/FZF_TMUX_OPTS.
+  if [[ -n "${TMUX:-}" && "${FZF_TMUX:-0}" == 0 && -z "${FZF_TMUX_OPTS:-}" ]] &&
+    (( $+commands[tmux] )) && fzf --help 2>/dev/null | command grep -q -- '--tmux'; then
+    _tmux_version="${$(tmux -V 2>/dev/null)#tmux }"
+    if [[ "$_tmux_version" =~ '^([4-9]|[1-9][0-9])\.' || "$_tmux_version" =~ '^3\.([3-9]|[1-9][0-9])' ]]; then
+      _fzf_ctrl_r_opts="--tmux=center,90%,70% $_fzf_ctrl_r_opts"
+    fi
+  fi
+  export FZF_CTRL_R_OPTS="$_fzf_ctrl_r_opts${FZF_CTRL_R_OPTS:+ $FZF_CTRL_R_OPTS}"
+
+  _fzf_loaded=0
+  _fzf_restore_ctrl_t=0
+  _fzf_restore_alt_c=0
+  # Load fzf's maintained history widget, but keep other zle bindings at their
+  # defaults unless the user explicitly configured those fzf widgets.
+  if [[ -z "${FZF_CTRL_T_COMMAND+x}" ]]; then
+    FZF_CTRL_T_COMMAND=
+    _fzf_restore_ctrl_t=1
+  fi
+  if [[ -z "${FZF_ALT_C_COMMAND+x}" ]]; then
+    FZF_ALT_C_COMMAND=
+    _fzf_restore_alt_c=1
+  fi
+
+  for _fzf_shell_dir in \
+    "/opt/homebrew/opt/fzf/shell" \
+    "/usr/local/opt/fzf/shell" \
+    "/usr/share/fzf" \
+    "/usr/share/doc/fzf/examples" \
+    "$HOME/.fzf/shell" \
+    "$HOME/.fzf"
+  do
+    if [[ -r "$_fzf_shell_dir/key-bindings.zsh" ]]; then
+      source "$_fzf_shell_dir/key-bindings.zsh"
+      _fzf_loaded=1
+      break
+    fi
+  done
+
+  if (( ! _fzf_loaded )); then
+    _fzf_zsh_integration="$(fzf --zsh 2>/dev/null)"
+    if [[ -n "$_fzf_zsh_integration" ]]; then
+      # `fzf --zsh` also emits completion setup; only Ctrl-R is intended here.
+      eval "${_fzf_zsh_integration%%$'\n### completion.zsh ###'*}"
+      _fzf_loaded=1
+    fi
+  fi
+
+  if (( ! _fzf_loaded )); then
+    _fzf_history_widget_fallback() {
+      local selected
+      selected=$(
+        fc -nrl 1 2>/dev/null | LC_ALL=C awk 'length && !seen[$0]++' | \
+        fzf --height=80% --layout=reverse --min-height=20 \
+            --tiebreak=index --no-sort --scheme=history --wrap \
+            --preview='printf "%s\n" {}' --preview-window='down,4,wrap,hidden' \
+            --bind='ctrl-r:toggle-sort,alt-p:toggle-preview' \
+            --header='Ctrl-R sort | Alt-P preview | Ctrl-/ wrap' \
+            --prompt='History> ' --style=minimal --query="$LBUFFER"
+      ) || return
+      BUFFER=$selected
+      CURSOR=${#BUFFER}
+      zle reset-prompt
+    }
+    zle -N _fzf_history_widget_fallback
+    bindkey '^R' _fzf_history_widget_fallback
+  fi
+  (( _fzf_restore_ctrl_t )) && unset FZF_CTRL_T_COMMAND
+  (( _fzf_restore_alt_c )) && unset FZF_ALT_C_COMMAND
+  unset _fzf_ctrl_r_opts _fzf_loaded _fzf_shell_dir _fzf_zsh_integration _fzf_restore_ctrl_t _fzf_restore_alt_c _tmux_version
 fi
 
 # -------- safer Git defaults where tools may be missing

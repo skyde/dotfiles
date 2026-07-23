@@ -71,17 +71,33 @@ if command -v zoxide >/dev/null 2>&1; then
 fi
 
 # -------- fzf setup
-if command -v fzf >/dev/null 2>&1; then
+if [[ $- == *i* ]] && command -v fzf >/dev/null 2>&1; then
+  _fzf_ctrl_r_opts="--height=80% --min-height=20 --layout=reverse --wrap --prompt='History> ' --with-nth=2.. --preview='printf \"%s\n\" {2..}' --preview-window='down,4,wrap,hidden' --bind='alt-p:toggle-preview' --header='Ctrl-R sort | Alt-R all | Alt-P preview | Ctrl-/ wrap'"
+  # Prefer fzf's native tmux popup for Ctrl-R, unless local config opts into
+  # fzf-tmux through FZF_TMUX/FZF_TMUX_OPTS.
+  if [[ -n "${TMUX:-}" && "${FZF_TMUX:-0}" == 0 && -z "${FZF_TMUX_OPTS:-}" ]] &&
+    command -v tmux >/dev/null 2>&1 && fzf --help 2>/dev/null | grep -q -- '--tmux'; then
+    _tmux_version="$(tmux -V 2>/dev/null)"
+    _tmux_version="${_tmux_version#tmux }"
+    if [[ "$_tmux_version" =~ ^([4-9]|[1-9][0-9])\. ]] || [[ "$_tmux_version" =~ ^3\.([3-9]|[1-9][0-9]) ]]; then
+      _fzf_ctrl_r_opts="--tmux=center,90%,70% $_fzf_ctrl_r_opts"
+    fi
+  fi
+  export FZF_CTRL_R_OPTS="$_fzf_ctrl_r_opts${FZF_CTRL_R_OPTS:+ $FZF_CTRL_R_OPTS}"
+
+  _fzf_loaded=0
   for dir in \
     "/usr/share/fzf" \
     "/usr/local/opt/fzf/shell" \
     "/opt/homebrew/opt/fzf/shell" \
     "/usr/share/doc/fzf/examples" \
+    "$HOME/.fzf/shell" \
     "$HOME/.fzf"
   do
     if [[ -r "$dir/key-bindings.bash" ]]; then
       # shellcheck disable=SC1091
       source "$dir/key-bindings.bash"
+      _fzf_loaded=1
       break
     fi
   done
@@ -91,6 +107,7 @@ if command -v fzf >/dev/null 2>&1; then
     "/usr/local/opt/fzf/shell" \
     "/opt/homebrew/opt/fzf/shell" \
     "/usr/share/doc/fzf/examples" \
+    "$HOME/.fzf/shell" \
     "$HOME/.fzf"
   do
     if [[ -r "$dir/completion.bash" ]]; then
@@ -99,6 +116,11 @@ if command -v fzf >/dev/null 2>&1; then
       break
     fi
   done
+
+  if (( ! _fzf_loaded )) && fzf --bash >/dev/null 2>&1; then
+    eval "$(fzf --bash)"
+    _fzf_loaded=1
+  fi
 
   if command -v fd >/dev/null 2>&1; then
     export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
@@ -114,16 +136,24 @@ if command -v fzf >/dev/null 2>&1; then
     --style=minimal \
     --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f,hl:215,hl+:215"
 
-  __fzf_history_widget() {
-    local selected
-    selected=$(fc -lnr |
-      awk '!seen[$0]++' |
-      fzf --height=80% --reverse --tiebreak=index --no-sort \
-          --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
-    READLINE_LINE=$selected
-    READLINE_POINT=${#selected}
-  }
-  bind -x '"\C-r": "__fzf_history_widget"'
+  if (( ! _fzf_loaded )); then
+    __fzf_history_widget_fallback() {
+      local selected
+      selected=$(builtin fc -lnr -2147483648 2>/dev/null |
+        sed 's/^[[:space:]]*//' |
+        awk 'length && !seen[$0]++' |
+        fzf --height=80% --layout=reverse --min-height=20 \
+            --tiebreak=index --no-sort --scheme=history --wrap \
+            --preview='printf "%s\n" {}' --preview-window='down,4,wrap,hidden' \
+            --bind='ctrl-r:toggle-sort,alt-p:toggle-preview' \
+            --header='Ctrl-R sort | Alt-P preview | Ctrl-/ wrap' \
+            --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
+      READLINE_LINE=$selected
+      READLINE_POINT=${#selected}
+    }
+    bind -x '"\C-r": "__fzf_history_widget_fallback"'
+  fi
+  unset _fzf_ctrl_r_opts _fzf_loaded _tmux_version
 fi
 
 # -------- safer Git defaults where tools may be missing
