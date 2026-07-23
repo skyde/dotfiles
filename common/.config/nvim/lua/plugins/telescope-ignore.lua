@@ -1,5 +1,4 @@
 local ignore_patterns = {
-  -- Files and extensions
   "^%.DS_Store$",
   "%.swp$",
   "%.swo$",
@@ -36,8 +35,8 @@ local ignore_patterns = {
   "%.db$",
 }
 
--- Telescope entries may be relative or absolute. Match ignored directories
--- both at the beginning of a result and as a complete path component.
+-- Match ignored directories at any path depth, whether Telescope returns a
+-- relative or absolute entry.
 local ignored_directories = {
   ".git",
   ".hg",
@@ -74,6 +73,7 @@ end
 local rg_args = { "--hidden" }
 for _, directory in ipairs(ignored_directories) do
   table.insert(rg_args, "--glob=!" .. directory .. "/**")
+  table.insert(rg_args, "--glob=!**/" .. directory .. "/**")
 end
 vim.list_extend(rg_args, {
   "--glob=!*.o",
@@ -119,6 +119,7 @@ end
 return {
   "nvim-telescope/telescope.nvim",
   dependencies = {
+    "nvim-lua/plenary.nvim",
     {
       "nvim-telescope/telescope-live-grep-args.nvim",
       config = function()
@@ -158,7 +159,7 @@ return {
       "<leader>se",
       function()
         local args = vim.deepcopy(rg_args)
-        vim.list_extend(args, { "--type", "cpp", "--type", "py", "--glob=!*.blob.*", "--glob=!blob/**" })
+        vim.list_extend(args, { "--type", "cpp", "--type", "py", "--glob=!*.blob.*", "--glob=!**/blob/**" })
         live_grep_args({
           additional_args = function()
             return args

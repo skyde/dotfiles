@@ -14,6 +14,18 @@ local disabled_lowercase_keys = {
 
 local python_cache = {}
 
+local function cpp_test_file(path)
+  local filename = vim.fs.basename(path):lower()
+  local extension = filename:match("%.([^%.]+)$")
+  if not vim.tbl_contains({ "cc", "cpp", "cxx" }, extension) then
+    return false
+  end
+
+  -- Covers Google/Chromium-style *_unittest.cc and *_browsertest.cc as
+  -- well as the adapter's default *_test.cpp convention.
+  return filename:find("test", 1, true) ~= nil
+end
+
 local function executable(path)
   return path and path ~= "" and vim.fn.executable(path) == 1
 end
@@ -44,13 +56,13 @@ local function python_for_tests(root)
     return python_cache[root]
   end
 
-  local executable_path = LazyVim.is_win() and { "Scripts", "python.exe" } or { "bin", "python" }
+  local parts = LazyVim.is_win() and { "Scripts", "python.exe" } or { "bin", "python" }
   local candidates = {}
   if vim.env.VIRTUAL_ENV then
-    table.insert(candidates, vim.fs.joinpath(vim.env.VIRTUAL_ENV, unpack(executable_path)))
+    table.insert(candidates, vim.fs.joinpath(vim.env.VIRTUAL_ENV, unpack(parts)))
   end
   for _, name in ipairs({ ".venv", "venv" }) do
-    table.insert(candidates, vim.fs.joinpath(root, name, unpack(executable_path)))
+    table.insert(candidates, vim.fs.joinpath(root, name, unpack(parts)))
   end
   table.insert(candidates, pytest_python())
   table.insert(candidates, vim.fn.exepath("python3"))
@@ -128,9 +140,17 @@ return {
   {
     "nvim-neotest/neotest",
     event = "BufReadPre",
+    dependencies = {
+      "orjangj/neotest-ctest",
+    },
     keys = keys,
     opts = function(_, opts)
       opts.adapters = opts.adapters or {}
+      opts.adapters["neotest-ctest"] = opts.adapters["neotest-ctest"]
+        or {
+          dap_adapter = "codelldb",
+          is_test_file = cpp_test_file,
+        }
       opts.adapters["neotest-python"] = opts.adapters["neotest-python"] or {}
       opts.adapters["neotest-python"].python = python_for_tests
     end,

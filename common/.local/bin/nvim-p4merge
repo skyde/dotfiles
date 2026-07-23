@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if (( $# != 4 )); then
+  printf 'usage: nvim-p4merge BASE THEIRS YOURS OUTPUT\n' >&2
+  exit 64
+fi
+
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+
+# P4 passes BASE, THEIRS, YOURS, OUTPUT. Diffview expects
+# OUTPUT, BASE, LEFT (ours), RIGHT (theirs).
+exec "$script_dir/nvim-merge" "$4" "$1" "$3" "$2"

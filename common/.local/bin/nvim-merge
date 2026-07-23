@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if (( $# != 4 )); then
+  printf 'usage: nvim-merge OUTPUT BASE LEFT RIGHT\n' >&2
+  exit 64
+fi
+
+if ! command -v nvim >/dev/null 2>&1; then
+  printf 'nvim-merge: nvim is not available\n' >&2
+  exit 127
+fi
+
+export NVIM_MERGE_OUTPUT=$1
+export NVIM_MERGE_BASE=$2
+export NVIM_MERGE_LEFT=$3
+export NVIM_MERGE_RIGHT=$4
+
+exec nvim -f -c 'lua local escape = vim.fn.fnameescape; vim.api.nvim_cmd({ cmd = "DiffviewMergeFiles", args = { escape(vim.env.NVIM_MERGE_OUTPUT), escape(vim.env.NVIM_MERGE_BASE), escape(vim.env.NVIM_MERGE_LEFT), escape(vim.env.NVIM_MERGE_RIGHT) } }, {})'

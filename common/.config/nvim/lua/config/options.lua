@@ -23,6 +23,11 @@ vim.opt.smartcase = true
 vim.opt.incsearch = true
 vim.opt.startofline = false
 vim.opt.foldenable = false
+vim.opt.number = true
+vim.opt.relativenumber = true
+vim.opt.splitbelow = true
+vim.opt.splitright = true
+vim.g.autoformat = true
 
 vim.g.neovide_cursor_vfx_mode = "none"
 vim.g.neovide_cursor_animation_length = 0

@@ -45,14 +45,39 @@ end
 
 -- TODO: Use the vim.keymap.set style remap for all of these instead of this function call style
 
+map_shift_f(2, function()
+  require("dap").continue()
+end, { mode = { "n", "i" }, desc = "Start Debugging" })
+
+map_shift_f(3, function()
+  Snacks.picker.smart()
+end, { mode = { "n", "i" }, desc = "Quick Open" })
+
 -- Scroll up/down 16 lines
 map_shift_f(4, "<C-u>", { desc = "Scroll Up 16 lines", noremap = true })
 map_shift_f(4, "<C-o><C-u>", { mode = "i", desc = "Scroll Up 16 lines", noremap = true })
 map_shift_f(6, "<C-d>", { desc = "Scroll Down 16 lines", noremap = true })
 map_shift_f(6, "<C-o><C-d>", { mode = "i", desc = "Scroll Down 16 lines", noremap = true })
 
--- Stop current build
-map_shift_f(7, "<cmd>CMakeStop<CR>", { mode = { "n", "i" }, desc = "Stop Build" })
+-- Stop the active debugger first, then fall back to the active build/task.
+map_shift_f(7, function()
+  local ok, dap = pcall(require, "dap")
+  if ok and dap.session() then
+    return dap.terminate()
+  end
+  if vim.fn.exists(":CMakeStop") == 2 then
+    return vim.cmd.CMakeStop()
+  end
+  require("lazy").load({ plugins = { "overseer.nvim" } })
+  local tasks = require("overseer").list_tasks({ recent_first = true })
+  for _, task in ipairs(tasks) do
+    if task:is_running() then
+      task:stop()
+      return
+    end
+  end
+  vim.notify("No debugger, build, or task is running", vim.log.levels.INFO)
+end, { mode = { "n", "i" }, desc = "Stop Debugging / Build" })
 
 -- Go to LSP definition
 map_shift_f(8, vim.lsp.buf.definition, { mode = { "n", "i" }, desc = "Goto Definition" })
@@ -92,8 +117,18 @@ map({ "n", "i" }, "<D-s>", "<cmd>w<CR>", { desc = "Save file" })
 -- Same action via Shift+F5 (sent by kitty Cmd+S)
 map_shift_f(5, "<cmd>w<CR>", { mode = { "n", "i" }, desc = "Save file" })
 
--- Toggle between source and header files (requires clangd)
-map("n", "<A-o>", "<cmd>ClangdSwitchSourceHeader<CR>", { desc = "Switch header/source" })
+local function switch_source_header()
+  if vim.fn.exists(":LspClangdSwitchSourceHeader") == 2 then
+    return vim.cmd.LspClangdSwitchSourceHeader()
+  end
+  if vim.fn.exists(":ClangdSwitchSourceHeader") == 2 then
+    return vim.cmd.ClangdSwitchSourceHeader()
+  end
+  vim.notify("clangd is not attached", vim.log.levels.WARN)
+end
+
+map("n", "<A-o>", switch_source_header, { desc = "Switch header/source" })
+map("n", "gh", switch_source_header, { desc = "Switch header/source" })
 
 -- Navigate jump list with Alt+Left/Right
 map("n", "<D-Left>", "<C-o>", { desc = "Jump backward" })
@@ -120,14 +155,18 @@ map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
 map_shift_f(1, "<cmd>bprevious<CR>", { mode = { "n", "i" }, desc = "Previous buffer" })
 map_shift_f(12, "<cmd>bnext<CR>", { mode = { "n", "i" }, desc = "Next buffer" })
 
--- VS Code tabs correspond to Neovim buffers in this setup. Keep these on the
--- same keys while retaining LazyVim's native tab-page mappings under
--- <leader><tab>.
+-- VS Code tabs correspond to listed Neovim buffers. Native tab-page mappings
+-- remain available through LazyVim's <leader><tab> prefix.
 map("n", "<leader>bn", "<cmd>enew<CR>", { desc = "New buffer" })
 map("n", "<leader>bh", "<cmd>BufferLineMovePrev<CR>", { desc = "Move buffer left" })
 map("n", "<leader>bl", "<cmd>BufferLineMoveNext<CR>", { desc = "Move buffer right" })
+map("n", "<leader>bD", "<cmd>BufferReopenLast<CR>", { desc = "Reopen closed buffer" })
+map("n", "<leader>bp", "<cmd>BufferLineTogglePin<CR>", { desc = "Toggle buffer pin" })
+map("n", "<leader>bu", "<cmd>BufferLineTogglePin<CR>", { desc = "Toggle buffer pin" })
+map("n", "<leader>bP", function()
+  Snacks.bufdelete.other()
+end, { desc = "Delete other buffers" })
 
--- Jump to the visible buffer by number.
 for i = 1, 9 do
   map("n", "<leader>" .. i, "<cmd>BufferLineGoToBuffer " .. i .. "<CR>", {
     desc = "Go to buffer " .. i,
@@ -169,16 +208,47 @@ map({ "n", "v" }, "<leader>fl", function()
   vim.notify("Copied path: " .. p)
 end, { desc = "Copy path of active file" })
 
+local function load_nvim_tree()
+  require("lazy").load({ plugins = { "nvim-tree.lua" } })
+  return require("nvim-tree.api")
+end
+
+local function toggle_sidebar()
+  load_nvim_tree().tree.toggle({ find_file = true, focus = true })
+end
+
+map("n", "<leader>r", toggle_sidebar, { desc = "Toggle sidebar" })
+map("n", "<D-b>", toggle_sidebar, { desc = "Toggle sidebar" })
+map("n", "<leader>fe", function()
+  load_nvim_tree().tree.find_file({ open = true, focus = true })
+end, { desc = "Reveal active file in explorer" })
+
 map("n", "<leader>E", function()
   local path = vim.fn.expand("%:p")
   if path == "" then
     return vim.notify("No file", vim.log.levels.WARN)
   end
-  vim.ui.open(path)
+
+  local system = vim.uv.os_uname().sysname
+  local command
+  if system == "Darwin" then
+    command = { "open", "-R", path }
+  elseif system:find("Windows") then
+    command = { "explorer.exe", "/select," .. path:gsub("/", "\\") }
+  else
+    return vim.ui.open(vim.fs.dirname(path))
+  end
+
+  vim.system(command, { detach = true }, function(result)
+    if result.code ~= 0 then
+      vim.schedule(function()
+        vim.notify("Unable to reveal " .. path, vim.log.levels.ERROR)
+      end)
+    end
+  end)
 end, { desc = "Reveal file in OS" })
 
--- Match the VS Code window-prefix bindings in addition to LazyVim's native
--- <C-w> and <C-hjkl> mappings.
+-- Match VS Code's window prefix alongside the native <C-w> mappings.
 map("n", "<leader>wv", "<C-w>v", { desc = "Split window right", remap = true })
 map("n", "<leader>ws", "<C-w>s", { desc = "Split window below", remap = true })
 for _, direction in ipairs({ "h", "j", "k", "l" }) do
@@ -193,18 +263,24 @@ for _, direction in ipairs({ "H", "J", "K", "L" }) do
     remap = true,
   })
 end
+Snacks.toggle.zoom():map("<leader>wf")
+Snacks.toggle.zen():map("<leader>wF")
 
--- UI and language actions that use the same keys as VS Code.
+-- UI and language actions using the same keys as VS Code.
 Snacks.toggle.option("list", { name = "Whitespace" }):map("<leader>uc")
-map("n", "<leader>cI", vim.lsp.buf.signature_help, { desc = "Signature help" })
+map("n", "<leader>p", function()
+  Snacks.picker.commands()
+end, { desc = "Command palette" })
 map("n", "<leader><BS>", vim.lsp.buf.hover, { desc = "Hover" })
 map("n", "<BS><BS>", vim.lsp.buf.hover, { desc = "Hover" })
-map("i", "<BS><leader>", vim.lsp.buf.signature_help, { desc = "Signature help" })
 
--- Whole-buffer text objects from the VS Code Vim configuration.
+-- Whole-buffer motions from the VS Code Vim configuration.
 map("n", "vig", "ggVG", { desc = "Select whole buffer" })
 map("n", "yig", "<cmd>%yank<CR>", { desc = "Yank whole buffer" })
 map("n", "dig", "ggVGd", { desc = "Delete whole buffer" })
+
+map("n", "<BS>n", "<leader>ft", { desc = "Open terminal", remap = true })
+map("n", "<D-j>", "<C-/>", { desc = "Toggle terminal", remap = true })
 
 local function workspace_session_name()
   if vim.fn.executable("get-workspace-name") == 1 then
@@ -233,9 +309,19 @@ local function switch_tmux_window(index)
   )
 end
 
-map("n", "<leader>a", function()
+map("n", "<leader>aT", function()
   switch_tmux_window(2)
 end, { desc = "Tmux: switch to AI" })
 map("n", "<leader>i", function()
   switch_tmux_window(3)
 end, { desc = "Tmux: switch to terminal" })
+map("n", "<leader>fT", function()
+  if vim.fn.executable("kill-tmux") ~= 1 then
+    return vim.notify("kill-tmux is not available", vim.log.levels.WARN)
+  end
+  vim.ui.select({ "Cancel", "Kill tmux sessions" }, { prompt = "Kill all managed tmux sessions?" }, function(choice)
+    if choice == "Kill tmux sessions" then
+      vim.system({ "kill-tmux" }, { text = true })
+    end
+  end)
+end, { desc = "Tmux: kill sessions" })

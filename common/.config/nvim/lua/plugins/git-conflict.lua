@@ -4,23 +4,23 @@ return {
     version = "*",
     event = "BufReadPre",
     opts = {
-      default_mappings = false,
+      -- These mappings are created only in buffers that contain conflicts, so
+      -- <leader>ca remains the normal LSP code-action key everywhere else.
+      default_mappings = {
+        ours = "<leader>co",
+        theirs = "<leader>ct",
+        both = "<leader>ca",
+        none = "<leader>c0",
+        next = "]x",
+        prev = "[x",
+      },
       default_commands = true,
-      disable_diagnostics = false,
+      disable_diagnostics = true,
       highlights = {
         current = "DiffText",
         incoming = "DiffAdd",
         ancestor = "DiffChange",
       },
-    },
-    keys = {
-      { "<leader>co", "<Plug>(git-conflict-ours)", desc = "Conflict: choose ours" },
-      { "<leader>ct", "<Plug>(git-conflict-theirs)", desc = "Conflict: choose theirs" },
-      { "<leader>ca", "<Plug>(git-conflict-both)", desc = "Conflict: choose both" },
-      { "<leader>cb", "<Plug>(git-conflict-both)", desc = "Conflict: choose both" },
-      { "<leader>c0", "<Plug>(git-conflict-none)", desc = "Conflict: choose none" },
-      { "]x", "<Plug>(git-conflict-next-conflict)", desc = "Next conflict" },
-      { "[x", "<Plug>(git-conflict-prev-conflict)", desc = "Previous conflict" },
     },
   },
 }

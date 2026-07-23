@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if (( $# < 2 || $# > 3 )); then
+  printf 'usage: nvim-diff LEFT RIGHT [OUTPUT]\n' >&2
+  exit 64
+fi
+
+if ! command -v nvim >/dev/null 2>&1; then
+  printf 'nvim-diff: nvim is not available\n' >&2
+  exit 127
+fi
+
+left=$1
+right=$2
+output=${3:-}
+
+export NVIM_DIFF_LEFT="$left"
+export NVIM_DIFF_RIGHT="$right"
+
+if [[ -n "$output" ]]; then
+  export NVIM_DIFF_OUTPUT="$output"
+  export NVIM_DIFFVIEW_COMMAND=DiffviewDiffDirs
+elif [[ -d "$left" && -d "$right" ]]; then
+  unset NVIM_DIFF_OUTPUT || true
+  export NVIM_DIFFVIEW_COMMAND=DiffviewDiffDirs
+else
+  unset NVIM_DIFF_OUTPUT || true
+  export NVIM_DIFFVIEW_COMMAND=DiffviewDiffFiles
+fi
+
+exec nvim -f -c 'lua local escape = vim.fn.fnameescape; local args = { escape(vim.env.NVIM_DIFF_LEFT), escape(vim.env.NVIM_DIFF_RIGHT) }; local output = vim.env.NVIM_DIFF_OUTPUT; if output and output ~= "" then args[#args + 1] = escape(output) end; vim.api.nvim_cmd({ cmd = vim.env.NVIM_DIFFVIEW_COMMAND, args = args }, {})'

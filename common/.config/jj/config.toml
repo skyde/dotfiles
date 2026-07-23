@@ -1,0 +1,11 @@
+[ui]
+editor = "nvim"
+diff-editor = "diffview"
+merge-editor = "diffview"
+
+[merge-tools.diffview]
+program = "nvim"
+edit-args = ["-f", "-c", "DiffviewDiffDirs $left $right $output"]
+merge-args = ["-f", "-c", "DiffviewMergeFiles $output $base $left $right"]
+merge-tool-edits-conflict-markers = true
+conflict-marker-style = "git"

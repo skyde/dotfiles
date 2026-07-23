@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Diffview's Perforce adapter can speak to either the standard p4 client or
+# Google's compatible g4 wrapper. An explicit override always wins.
+if [[ -n "${NVIM_PERFORCE_CMD:-}" ]]; then
+  if ! command -v -- "$NVIM_PERFORCE_CMD" >/dev/null 2>&1; then
+    printf 'vcs-p4: NVIM_PERFORCE_CMD is not executable: %s\n' "$NVIM_PERFORCE_CMD" >&2
+    exit 127
+  fi
+  exec "$NVIM_PERFORCE_CMD" "$@"
+fi
+
+if command -v g4 >/dev/null 2>&1; then
+  exec g4 "$@"
+fi
+
+if command -v p4 >/dev/null 2>&1; then
+  exec p4 "$@"
+fi
+
+printf 'vcs-p4: neither g4 nor p4 is available (set NVIM_PERFORCE_CMD to override)\n' >&2
+exit 127
