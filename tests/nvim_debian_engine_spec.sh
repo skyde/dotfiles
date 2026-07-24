@@ -14,13 +14,16 @@ assert_probe() {
   local command_name=$1
   local expected_kind=$2
   local expected_rootless=$3
-  local expected_security=$4
+  local expected_native_cli=$4
+  local expected_security=$5
 
   nvim_debian_detect_container_engine "$command_name"
   [[ $container_engine_kind == "$expected_kind" ]] ||
     fail "$command_name kind: expected $expected_kind, got $container_engine_kind"
   [[ $podman_rootless == "$expected_rootless" ]] ||
     fail "$command_name rootless: expected $expected_rootless, got $podman_rootless"
+  [[ $podman_native_cli == "$expected_native_cli" ]] ||
+    fail "$command_name native CLI: expected $expected_native_cli, got $podman_native_cli"
   [[ $engine_security_options == "$expected_security" ]] ||
     fail "$command_name security options were not preserved"
 }
@@ -88,12 +91,12 @@ native_docker_rootless() {
 }
 
 assert_probe \
-  native_podman_rootless podman true '["name=selinux","name=rootless"]'
-assert_probe native_podman_rootful podman false '["name=selinux"]'
+  native_podman_rootless podman true true '["name=selinux","name=rootless"]'
+assert_probe native_podman_rootful podman false true '["name=selinux"]'
 assert_probe \
-  docker_cli_podman_rootless podman true '["name=selinux","name=rootless"]'
-assert_probe docker_cli_podman_rootful podman false '["name=selinux"]'
+  docker_cli_podman_rootless podman true false '["name=selinux","name=rootless"]'
+assert_probe docker_cli_podman_rootful podman false false '["name=selinux"]'
 assert_probe \
-  native_docker_rootless docker false '["name=seccomp","name=rootless"]'
+  native_docker_rootless docker false false '["name=seccomp","name=rootless"]'
 
 printf 'nvim Debian container-engine detection tests passed\n'

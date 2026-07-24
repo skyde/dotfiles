@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
-repo_root=${REPO_ROOT:-/workspace/dotfiles}
-artifact_dir=${ARTIFACT_DIR:-/artifacts}
+source_repo_root=${REPO_ROOT:-/workspace/dotfiles}
+durable_artifact_dir=${ARTIFACT_DIR:-/artifacts}
+staging_root=${STAGING_ROOT:-}
+repo_root=$source_repo_root
+artifact_dir=$durable_artifact_dir
 soak_seconds=${SOAK_SECONDS:-0}
 if [[ ${SHORT+x} ]]; then
   short_mode=$SHORT
@@ -18,6 +22,8 @@ setup_timeout_seconds=${SETUP_TIMEOUT_SECONDS:-1800}
 startup_timeout_seconds=${STARTUP_TIMEOUT_SECONDS:-120}
 workload_timeout_seconds=${WORKLOAD_TIMEOUT_SECONDS:-300}
 timeout_kill_after_seconds=${TIMEOUT_KILL_AFTER_SECONDS:-5}
+artifact_sync_seconds=${ARTIFACT_SYNC_SECONDS:-600}
+artifact_sync_timeout_seconds=${ARTIFACT_SYNC_TIMEOUT_SECONDS:-30}
 timeout_selftest=${NVIM_DEBIAN_TIMEOUT_SELFTEST:-0}
 
 case $short_mode in
@@ -42,7 +48,9 @@ for value_name in \
   setup_timeout_seconds \
   startup_timeout_seconds \
   workload_timeout_seconds \
-  timeout_kill_after_seconds
+  timeout_kill_after_seconds \
+  artifact_sync_seconds \
+  artifact_sync_timeout_seconds
 do
   value=${!value_name}
   if [[ ! $value =~ ^[1-9][0-9]*$ ]]; then
@@ -50,6 +58,11 @@ do
     exit 2
   fi
 done
+if ((artifact_sync_seconds < 300)); then
+  printf 'error: ARTIFACT_SYNC_SECONDS must be at least 300 (got %s)\n' \
+    "$artifact_sync_seconds" >&2
+  exit 2
+fi
 case $timeout_selftest in
   0 | 1) ;;
   *)
@@ -67,15 +80,43 @@ if ! command -v timeout >/dev/null 2>&1; then
   exit 127
 fi
 
-mkdir -p -- "$artifact_dir/logs" "$artifact_dir/errors" "$artifact_dir/nvim-state"
-runtime_root=$(mktemp -d /tmp/nvim-debian.XXXXXXXX)
+mkdir -p -- "$durable_artifact_dir"
+if [[ -n $staging_root ]]; then
+  if [[ $staging_root != /* || $staging_root == / ]]; then
+    printf 'error: STAGING_ROOT must be an absolute path other than / (got %s)\n' \
+      "$staging_root" >&2
+    exit 2
+  fi
+  runtime_root=$staging_root
+  if [[ -e $runtime_root ]]; then
+    printf 'error: STAGING_ROOT already exists: %s\n' "$runtime_root" >&2
+    exit 2
+  fi
+  mkdir -p -- "$runtime_root"
+else
+  runtime_root=$(mktemp -d /tmp/nvim-debian.XXXXXXXX)
+fi
+artifact_dir="$runtime_root/artifacts"
+startup_log_root="$runtime_root/startup-logs"
+repo_root="$runtime_root/repo"
 export HOME="$runtime_root/home"
 export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_STATE_HOME="$HOME/.local/state"
 export XDG_CACHE_HOME="$HOME/.cache"
 export TMPDIR="$runtime_root/tmp"
-mkdir -p -- "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME" "$TMPDIR"
+mkdir -p -- \
+  "$HOME" \
+  "$XDG_CONFIG_HOME" \
+  "$XDG_DATA_HOME" \
+  "$XDG_STATE_HOME" \
+  "$XDG_CACHE_HOME" \
+  "$TMPDIR" \
+  "$startup_log_root" \
+  "$artifact_dir/logs" \
+  "$artifact_dir/errors" \
+  "$artifact_dir/nvim-state" \
+  "$repo_root"
 
 startup_attempts=0
 startup_failures=0
@@ -85,6 +126,7 @@ completed_batches=0
 soak_elapsed=0
 resource_samples=0
 timeout_failures=0
+stage_verified=0
 sampler_pid=
 p4d_pid=
 p4d_log=
@@ -234,6 +276,56 @@ run_logged() {
   return "$display_rc"
 }
 
+verify_staged_source_copy() {
+  local source=$1
+  local destination=$2
+  local drift_file=$3
+  # Linux reports every symlink as mode 0777, so ignore only that unrepresentable
+  # macOS-to-Linux metadata difference; targets and all other metadata still match.
+  rsync \
+    -a \
+    --checksum \
+    --delete \
+    --dry-run \
+    --itemize-changes \
+    --omit-dir-times \
+    --out-format='%i %n%L' \
+    -- "$source/" "$destination/" |
+    sed \
+      -e '/ \.\/$/d' \
+      -e '/^\.L\.\.\.p\.\.\.\.\. /d' \
+      >"$drift_file"
+  if [[ -s $drift_file ]]; then
+    printf 'error: staged repository differs from its immutable source copy\n' >&2
+    return 1
+  fi
+}
+
+build_staged_source_manifest() {
+  local root=$1
+  local output_file=$2
+  (
+    cd "$root"
+    while IFS= read -r -d '' relative_path; do
+      local mode
+      mode=$(stat -c '%a' -- "$relative_path")
+      if [[ -L $relative_path ]]; then
+        printf 'link\t%s\t%q\t%q\n' \
+          "$mode" "$relative_path" "$(readlink -- "$relative_path")"
+      elif [[ -f $relative_path ]]; then
+        printf 'file\t%s\t%q\t%s\n' \
+          "$mode" "$relative_path" \
+          "$(sha256sum "$relative_path" | awk '{ print $1 }')"
+      elif [[ -d $relative_path ]]; then
+        printf 'directory\t%s\t%q\n' "$mode" "$relative_path"
+      else
+        printf 'other\t%s\t%q\t%s\n' \
+          "$mode" "$relative_path" "$(stat -c '%F' -- "$relative_path")"
+      fi
+    done < <(find . -mindepth 1 -print0 | sort -z)
+  ) >"$output_file"
+}
+
 run_apply() {
   local root=$1
   shift
@@ -320,22 +412,219 @@ contains_unexpected_error() {
 }
 
 stop_p4_server() {
-  if [[ -z $p4d_pid ]] || ! kill -0 "$p4d_pid" 2>/dev/null; then
+  local candidate=${p4d_pid:-}
+
+  if ! p4d_pid_matches_server "$candidate"; then
+    candidate=$(find_owned_p4d_pid || true)
+  fi
+  if [[ -z $candidate ]]; then
     p4d_pid=
-    return
+    if p4_endpoint_matches_server_root; then
+      printf 'error: owned P4 endpoint is live but its process identity could not be proven\n' >&2
+      return 1
+    fi
+    return 0
   fi
 
-  kill "$p4d_pid" 2>/dev/null
+  # Revalidate the full executable/root/port tuple immediately before every
+  # signal. Never act on a stale pidfile or a PID that has been reused.
+  if p4d_pid_matches_server "$candidate"; then
+    kill -TERM "$candidate" 2>/dev/null || true
+  fi
   for _ in $(seq 1 100); do
-    if ! kill -0 "$p4d_pid" 2>/dev/null; then
-      p4d_pid=
-      return
-    fi
+    p4d_pid_matches_server "$candidate" || break
     sleep 0.02
   done
-
-  kill -KILL "$p4d_pid" 2>/dev/null
+  if p4d_pid_matches_server "$candidate"; then
+    kill -KILL "$candidate" 2>/dev/null || true
+  fi
+  for _ in $(seq 1 100); do
+    p4d_pid_matches_server "$candidate" || break
+    sleep 0.02
+  done
   p4d_pid=
+
+  if p4d_pid_matches_server "$candidate" || p4_endpoint_matches_server_root; then
+    printf 'error: owned P4 server did not stop cleanly: pid=%s port=%s root=%s\n' \
+      "$candidate" "${P4PORT:-unset}" "$p4_server_root" >&2
+    return 1
+  fi
+}
+
+p4d_pid_matches_server() {
+  local pid=$1
+  local arg
+  local index
+  local root_matches=0
+  local port_matches=0
+  local -a command_line=()
+
+  [[ $pid =~ ^[1-9][0-9]*$ ]] || return 1
+  [[ -n ${p4_server_root:-} && -n ${P4PORT:-} ]] || return 1
+  [[ -r /proc/$pid/cmdline ]] || return 1
+  mapfile -d '' -t command_line <"/proc/$pid/cmdline" 2>/dev/null || return 1
+  ((${#command_line[@]} > 0)) || return 1
+  [[ ${command_line[0]##*/} == p4d ]] || return 1
+
+  for ((index = 1; index < ${#command_line[@]}; index++)); do
+    arg=${command_line[index]}
+    if [[ $arg == -r ]] && ((index + 1 < ${#command_line[@]})); then
+      [[ ${command_line[index + 1]} == "$p4_server_root" ]] && root_matches=1
+      index=$((index + 1))
+    elif [[ $arg == -p ]] && ((index + 1 < ${#command_line[@]})); then
+      [[ ${command_line[index + 1]} == "$P4PORT" ]] && port_matches=1
+      index=$((index + 1))
+    fi
+  done
+
+  ((root_matches == 1 && port_matches == 1))
+}
+
+find_owned_p4d_pid() {
+  local pid
+  local proc
+
+  for proc in /proc/[0-9]*; do
+    pid=${proc##*/}
+    if p4d_pid_matches_server "$pid"; then
+      printf '%s\n' "$pid"
+      return 0
+    fi
+  done
+  return 1
+}
+
+p4_endpoint_matches_server_root() {
+  local reported_root
+
+  [[ -n ${p4_server_root:-} && -n ${P4PORT:-} ]] || return 1
+  reported_root=$(
+    timeout --signal=TERM --kill-after=1s 2s \
+      p4 -ztag -p "$P4PORT" info 2>/dev/null \
+      | sed -n 's/^[.][.][.] serverRoot //p'
+  ) || return 1
+  [[ $reported_root == "$p4_server_root" ]]
+}
+
+sync_artifacts() {
+  local attempt
+  local -a invalidated_markers=("$@")
+  if ! chmod -R go-rwx "$artifact_dir"; then
+    printf 'error: could not make staged artifacts private\n' >&2
+    return 1
+  fi
+  for attempt in 1 2 3; do
+    # Marker removal and the following in-place copy share one bounded child.
+    # A previous complete=1 marker can therefore never survive the start of a
+    # newer durable-tree mutation.
+    # shellcheck disable=SC2016 # Positional parameters belong to the child.
+    if timeout \
+      --verbose \
+      --signal=TERM \
+      --kill-after="${timeout_kill_after_seconds}s" \
+      "${artifact_sync_timeout_seconds}s" \
+      /bin/bash -c '
+        set -euo pipefail
+        source_dir=$1
+        destination_dir=$2
+        shift 2
+        for marker_name in "$@"; do
+          rm -f -- \
+            "$destination_dir/$marker_name" \
+            "$destination_dir/.$marker_name.tmp"
+        done
+        exec rsync -a --inplace -- "$source_dir/" "$destination_dir/"
+      ' nvim-durable-sync \
+      "$artifact_dir" \
+      "$durable_artifact_dir" \
+      "${invalidated_markers[@]}"
+    then
+      return 0
+    fi
+    printf 'warning: durable artifact sync attempt %d failed; retrying\n' \
+      "$attempt" >&2
+    sleep 1
+  done
+  printf 'error: could not sync staged artifacts to %s\n' \
+    "$durable_artifact_dir" >&2
+  return 1
+}
+
+publish_durable_marker() {
+  local source=$1
+  local destination_name=$2
+  local attempt
+  for attempt in 1 2 3; do
+    # The positional parameters are expanded by the bounded child shell.
+    # shellcheck disable=SC2016
+    if timeout \
+      --verbose \
+      --signal=TERM \
+      --kill-after="${timeout_kill_after_seconds}s" \
+      "${artifact_sync_timeout_seconds}s" \
+      /bin/bash -c '
+        set -euo pipefail
+        cp -p -- "$1" "$2/.$3.tmp"
+        mv -f -- "$2/.$3.tmp" "$2/$3"
+      ' nvim-durable-marker "$source" "$durable_artifact_dir" "$destination_name"
+    then
+      return 0
+    fi
+    printf 'warning: durable marker attempt %d failed; retrying\n' \
+      "$attempt" >&2
+    sleep 1
+  done
+  printf 'error: could not publish durable marker %s\n' \
+    "$destination_name" >&2
+  return 1
+}
+
+publish_final_export_marker() {
+  local status=$1
+  local marker="$runtime_root/final-export-complete.env"
+  local summary_sha256
+  summary_sha256=$(sha256sum "$artifact_dir/summary.env" | awk '{ print $1 }')
+  {
+    printf 'status=%s\n' "$status"
+    printf 'summary_sha256=%s\n' "$summary_sha256"
+    printf 'repo_commit=%s\n' "${SOURCE_COMMIT:-unknown}"
+    printf 'container_image_id=%s\n' "${SOURCE_IMAGE_ID:-unknown}"
+    printf 'finished_utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    printf 'complete=1\n'
+  } >"$marker"
+  publish_durable_marker "$marker" final-export-complete.env
+}
+
+publish_checkpoint_marker() {
+  local marker="$runtime_root/checkpoint-complete.env"
+  {
+    printf 'batch=%s\n' "$completed_batches"
+    printf 'startup_attempts=%s\n' "$startup_attempts"
+    printf 'startup_failures=%s\n' "$startup_failures"
+    printf 'workload_attempts=%s\n' "$workload_attempts"
+    printf 'workload_failures=%s\n' "$workload_failures"
+    printf 'soak_elapsed_seconds=%s\n' "$soak_elapsed"
+    printf 'checkpointed_utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    printf 'complete=1\n'
+  } >"$marker"
+  publish_durable_marker "$marker" checkpoint-complete.env
+}
+
+checkpoint_artifacts() {
+  local sampler_paused=0
+  local status=0
+  if [[ -n $sampler_pid ]] && kill -0 "$sampler_pid" 2>/dev/null; then
+    kill -STOP "$sampler_pid" 2>/dev/null
+    sampler_paused=1
+  fi
+  sync_artifacts checkpoint-complete.env || status=$?
+  if ((sampler_paused)); then
+    kill -CONT "$sampler_pid" 2>/dev/null || true
+  fi
+  if ((status != 0)); then
+    return "$status"
+  fi
+  publish_checkpoint_marker
 }
 
 collect_artifacts() {
@@ -389,22 +678,70 @@ collect_artifacts() {
     printf 'setup_timeout_seconds=%s\n' "$setup_timeout_seconds"
     printf 'startup_timeout_seconds=%s\n' "$startup_timeout_seconds"
     printf 'workload_timeout_seconds=%s\n' "$workload_timeout_seconds"
+    printf 'artifact_sync_seconds=%s\n' "$artifact_sync_seconds"
+    printf 'artifact_sync_timeout_seconds=%s\n' "$artifact_sync_timeout_seconds"
     printf 'finished_utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   } >"$artifact_dir/summary.env"
 }
 
+verify_staged_source_unchanged() {
+  local before="$artifact_dir/staged-source-manifest-before.txt"
+  local after="$artifact_dir/staged-source-manifest-after.txt"
+  local drift="$artifact_dir/errors/staged-source-drift.log"
+  if ((stage_verified == 0)) || [[ ! -f $before ]]; then
+    return 0
+  fi
+  if ! build_staged_source_manifest "$repo_root" "$after"; then
+    printf 'error: could not build the final staged-source manifest\n' \
+      >"$drift"
+    return 1
+  fi
+  if cmp -s "$before" "$after"; then
+    return 0
+  fi
+  diff -u -- "$before" "$after" >"$drift" || true
+  printf 'error: staged repository changed during validation\n' >&2
+  return 1
+}
+
 cleanup() {
   local status=$?
-  trap - EXIT INT TERM
+  local final_exported=0
+  trap - EXIT
+  trap '' INT TERM
   set +e
   stop_active_phases
   if [[ -n $sampler_pid ]]; then
+    kill -CONT "$sampler_pid" 2>/dev/null || true
     kill "$sampler_pid" 2>/dev/null
     wait "$sampler_pid" 2>/dev/null
   fi
-  stop_p4_server
+  if ! stop_p4_server; then
+    status=1
+  fi
+  if ! verify_staged_source_unchanged; then
+    status=1
+  fi
   collect_artifacts "$status"
-  rm -rf -- "$runtime_root"
+  if ((status == 0 && timeout_selftest == 0)) \
+    && [[ -s $artifact_dir/error-scan.log ]]
+  then
+    status=1
+    collect_artifacts "$status"
+  fi
+  if sync_artifacts checkpoint-complete.env final-export-complete.env \
+    && publish_final_export_marker "$status"
+  then
+    final_exported=1
+  else
+    status=1
+    collect_artifacts "$status"
+  fi
+  if ((final_exported)); then
+    rm -rf -- "$runtime_root"
+  else
+    printf 'error: staged diagnostics retained at %s\n' "$runtime_root" >&2
+  fi
   exit "$status"
 }
 trap cleanup EXIT
@@ -488,6 +825,18 @@ if ((timeout_selftest)); then
   exit 0
 fi
 
+run_logged source-stage rsync -a -- "$source_repo_root/" "$repo_root/"
+run_logged source-stage-verify \
+  verify_staged_source_copy \
+  "$source_repo_root" \
+  "$repo_root" \
+  "$artifact_dir/staged-source-copy-drift.txt"
+run_logged source-stage-manifest \
+  build_staged_source_manifest \
+  "$repo_root" \
+  "$artifact_dir/staged-source-manifest-before.txt"
+stage_verified=1
+
 locale_charmap=$(locale charmap)
 if [[ $locale_charmap != UTF-8 ]]; then
   printf 'error: expected a UTF-8 locale, got %s\n' "$locale_charmap" >&2
@@ -496,7 +845,10 @@ fi
 
 {
   printf 'started_utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  printf 'source_repo_root=%s\n' "$source_repo_root"
   printf 'repo_root=%s\n' "$repo_root"
+  printf 'durable_artifact_dir=%s\n' "$durable_artifact_dir"
+  printf 'staged_artifact_dir=%s\n' "$artifact_dir"
   printf 'home=%s\n' "$HOME"
   printf 'xdg_config_home=%s\n' "$XDG_CONFIG_HOME"
   printf 'xdg_data_home=%s\n' "$XDG_DATA_HOME"
@@ -509,6 +861,8 @@ fi
   printf 'startup_timeout_seconds=%s\n' "$startup_timeout_seconds"
   printf 'workload_timeout_seconds=%s\n' "$workload_timeout_seconds"
   printf 'timeout_kill_after_seconds=%s\n' "$timeout_kill_after_seconds"
+  printf 'artifact_sync_seconds=%s\n' "$artifact_sync_seconds"
+  printf 'artifact_sync_timeout_seconds=%s\n' "$artifact_sync_timeout_seconds"
   printf 'repo_commit=%s\n' "${SOURCE_COMMIT:-unknown}"
   printf 'container_image_id=%s\n' "${SOURCE_IMAGE_ID:-unknown}"
   printf 'lang=%s\n' "${LANG:-}"
@@ -742,7 +1096,7 @@ workload_root="$runtime_root/workloads"
 git_root="$workload_root/git repo ü [*] #%"
 jj_root="$workload_root/jj repo ü [*] #%"
 p4_server_root="$workload_root/p4-server"
-p4d_log="$workload_root/p4d.log"
+p4d_log="$artifact_dir/logs/p4d.log"
 p4_root="$workload_root/p4 workspace ü"
 diff_root="$workload_root/external diff ü [*] #%"
 proxy_bin="$workload_root/proxy-bin"
@@ -1050,15 +1404,21 @@ run_startup_batch() {
   local startup_id
   local output_file
   local nvim_log_file
+  local launch_status
   local startup_failed
+  local -a launch_statuses=()
   local -a pids=()
   local -a outputs=()
 
   for ((slot = 1; slot <= concurrency; slot++)); do
     startup_id=$(printf '%07d-%02d' "$batch" "$slot")
-    output_file="$artifact_dir/logs/startup-$startup_id.log"
-    nvim_log_file="$artifact_dir/logs/nvim-startup-$startup_id.log"
+    # Successful startup logs are ephemeral and are created/deleted thousands
+    # of times during a soak. Keep that churn on the container-local filesystem
+    # instead of the durable host bind mount; only failed logs are copied out.
+    output_file="$startup_log_root/startup-$startup_id.log"
+    nvim_log_file="$startup_log_root/nvim-startup-$startup_id.log"
     bounded_pid=0
+    launch_status=0
     if start_bounded bounded_pid "$timeout_seconds" \
       "startup $batch/$slot" \
       env "NVIM_LOG_FILE=$nvim_log_file" \
@@ -1067,18 +1427,29 @@ run_startup_batch() {
     then
       :
     else
+      launch_status=$?
       bounded_pid=0
     fi
     pids+=("$bounded_pid")
     outputs+=("$output_file")
+    launch_statuses+=("$launch_status")
   done
 
   for ((slot = 0; slot < concurrency; slot++)); do
     startup_attempts=$((startup_attempts + 1))
     startup_failed=0
     startup_id=$(printf '%07d-%02d' "$batch" "$((slot + 1))")
-    nvim_log_file="$artifact_dir/logs/nvim-startup-$startup_id.log"
-    if wait_bounded "${pids[$slot]}" "startup $batch/$((slot + 1))" \
+    nvim_log_file="$startup_log_root/nvim-startup-$startup_id.log"
+    launch_status=${launch_statuses[$slot]}
+    if ((launch_status != 0)); then
+      startup_status=$launch_status
+      if ((startup_status == 124 || startup_status == 137)); then
+        timeout_failures=$((timeout_failures + 1))
+      fi
+      printf 'error: startup %d/%d could not be launched (status %d)\n' \
+        "$batch" "$((slot + 1))" "$startup_status" \
+        >>"${outputs[$slot]}"
+    elif wait_bounded "${pids[$slot]}" "startup $batch/$((slot + 1))" \
       >>"${outputs[$slot]}" 2>&1
     then
       startup_status=0
@@ -1107,6 +1478,7 @@ run_startup_batch() {
 
 stress_started=$(monotonic_seconds)
 stress_started_utc=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+last_artifact_sync=$stress_started
 deadline=$((stress_started + soak_seconds))
 if [[ $short_mode == 0 ]]; then
   # A batch that starts just before the requested duration may finish, but its
@@ -1147,6 +1519,10 @@ while :; do
       "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$batch" "$startup_attempts" \
       "$startup_failures" "$soak_elapsed" \
       >>"$artifact_dir/startup-progress.tsv"
+  fi
+  if (($(monotonic_seconds) - last_artifact_sync >= artifact_sync_seconds)); then
+    checkpoint_artifacts
+    last_artifact_sync=$(monotonic_seconds)
   fi
 done
 

@@ -4,26 +4,124 @@ set -euo pipefail
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 test_root=$(mktemp -d)
 p4d_pid=
+server_root=
+
+p4d_pid_matches_server() {
+  local pid=$1
+  local arg
+  local index
+  local root_matches=0
+  local port_matches=0
+  local -a command_line=()
+
+  [[ $pid =~ ^[1-9][0-9]*$ ]] || return 1
+  [[ -n $server_root && -n ${P4PORT:-} ]] || return 1
+  [[ -r /proc/$pid/cmdline ]] || return 1
+  mapfile -d '' -t command_line <"/proc/$pid/cmdline" 2>/dev/null || return 1
+  ((${#command_line[@]} > 0)) || return 1
+  [[ ${command_line[0]##*/} == p4d ]] || return 1
+
+  for ((index = 1; index < ${#command_line[@]}; index++)); do
+    arg=${command_line[index]}
+    if [[ $arg == -r ]] && ((index + 1 < ${#command_line[@]})); then
+      [[ ${command_line[index + 1]} == "$server_root" ]] && root_matches=1
+      index=$((index + 1))
+    elif [[ $arg == -p ]] && ((index + 1 < ${#command_line[@]})); then
+      [[ ${command_line[index + 1]} == "$P4PORT" ]] && port_matches=1
+      index=$((index + 1))
+    fi
+  done
+
+  ((root_matches == 1 && port_matches == 1))
+}
+
+find_owned_p4d_pid() {
+  local pid
+  local proc
+
+  for proc in /proc/[0-9]*; do
+    pid=${proc##*/}
+    if p4d_pid_matches_server "$pid"; then
+      printf '%s\n' "$pid"
+      return 0
+    fi
+  done
+  return 1
+}
+
+p4_endpoint_matches_server_root() {
+  local reported_root
+
+  [[ -n $server_root && -n ${P4PORT:-} ]] || return 1
+  reported_root=$(
+    timeout --signal=TERM --kill-after=1s 2s \
+      p4 -ztag -p "$P4PORT" info 2>/dev/null \
+      | sed -n 's/^[.][.][.] serverRoot //p'
+  ) || return 1
+  [[ $reported_root == "$server_root" ]]
+}
+
+stop_owned_p4_server() {
+  local candidate=${p4d_pid:-}
+
+  if ! p4d_pid_matches_server "$candidate"; then
+    candidate=$(find_owned_p4d_pid || true)
+  fi
+  if [[ -z $candidate ]]; then
+    p4d_pid=
+    if p4_endpoint_matches_server_root; then
+      printf 'error: owned P4 endpoint is live but its process identity could not be proven\n' >&2
+      return 1
+    fi
+    return 0
+  fi
+
+  # Revalidate the full executable/root/port tuple immediately before each
+  # signal. A stale or reused PID must never receive a cleanup signal.
+  if p4d_pid_matches_server "$candidate"; then
+    kill -TERM "$candidate" 2>/dev/null || true
+  fi
+  for _ in $(seq 1 100); do
+    p4d_pid_matches_server "$candidate" || break
+    sleep 0.02
+  done
+  if p4d_pid_matches_server "$candidate"; then
+    kill -KILL "$candidate" 2>/dev/null || true
+  fi
+  for _ in $(seq 1 100); do
+    p4d_pid_matches_server "$candidate" || break
+    sleep 0.02
+  done
+  p4d_pid=
+
+  if p4d_pid_matches_server "$candidate" || p4_endpoint_matches_server_root; then
+    printf 'error: owned P4 server did not stop cleanly: pid=%s port=%s root=%s\n' \
+      "$candidate" "$P4PORT" "$server_root" >&2
+    return 1
+  fi
+}
 
 cleanup() {
   local status=$?
-  trap - EXIT INT TERM
+  trap - EXIT
+  trap '' INT TERM
   set +e
-  if [[ -n $p4d_pid ]] && kill -0 "$p4d_pid" 2>/dev/null; then
-    kill "$p4d_pid" 2>/dev/null
-    for _ in $(seq 1 100); do
-      kill -0 "$p4d_pid" 2>/dev/null || break
-      sleep 0.02
-    done
-    if kill -0 "$p4d_pid" 2>/dev/null; then
-      kill -KILL "$p4d_pid" 2>/dev/null
-    fi
+  if ! stop_owned_p4_server; then
+    status=1
   fi
   if ((status != 0)) && [[ -s $test_root/p4d.log ]]; then
     printf '%s\n' '--- p4d.log ---' >&2
     tail -200 "$test_root/p4d.log" >&2
   fi
-  rm -rf "$test_root"
+  for _ in $(seq 1 100); do
+    rm -rf "$test_root" 2>/dev/null
+    [[ ! -e $test_root ]] && break
+    sleep 0.02
+  done
+  if [[ -e $test_root ]]; then
+    printf 'error: could not remove P4 test directory: %s\n' "$test_root" >&2
+    status=1
+  fi
   exit "$status"
 }
 trap cleanup EXIT
@@ -48,6 +146,7 @@ encode_p4_filespec() {
 command -v p4 >/dev/null 2>&1 || fail "p4 is not installed"
 command -v p4d >/dev/null 2>&1 || fail "p4d is not installed"
 command -v python3 >/dev/null 2>&1 || fail "python3 is not installed"
+command -v timeout >/dev/null 2>&1 || fail "timeout is not installed"
 
 server_root="$test_root/server"
 workspace="$test_root/workspace ü"
@@ -68,7 +167,15 @@ p4d -q --daemonsafe \
   -J off \
   -L "$test_root/p4d.log" \
   -p "$P4PORT"
+pid_file_deadline=$((SECONDS + 10))
+while [[ ! -s $test_root/p4d.pid ]]; do
+  if ((SECONDS >= pid_file_deadline)); then
+    fail "persistent p4d did not create its pidfile"
+  fi
+  sleep 0.02
+done
 p4d_pid=$(<"$test_root/p4d.pid")
+[[ $p4d_pid =~ ^[1-9][0-9]*$ ]] || fail "persistent p4d wrote an invalid pidfile"
 
 ready=0
 for _ in $(seq 1 100); do
