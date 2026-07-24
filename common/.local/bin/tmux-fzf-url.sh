@@ -14,4 +14,8 @@ fi
 
 chosen=$(echo "$candidates" | fzf --tmux center,80%,40% --exit-0 --no-preview --prompt="Open> " || true)
 
-[[ -n "$chosen" ]] && "$open" "$chosen"
+if [[ -z "$chosen" ]]; then
+  exit 0
+fi
+
+"$open" "$chosen"
