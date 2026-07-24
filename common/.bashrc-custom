@@ -28,8 +28,19 @@ done
 export PATH
 
 # -------- editor
-export EDITOR="nvim"
-export VISUAL="$EDITOR"
+: "${EDITOR:=nvim}"
+: "${VISUAL:=$EDITOR}"
+export EDITOR VISUAL
+
+# -------- Perforce/g4 external diff and merge tools
+if [[ -x "$HOME/.local/bin/nvim-diff" ]]; then
+  : "${P4DIFF:=nvim-diff}"
+  export P4DIFF
+fi
+if [[ -x "$HOME/.local/bin/nvim-p4merge" ]]; then
+  : "${P4MERGE:=nvim-p4merge}"
+  export P4MERGE
+fi
 
 # -------- shell options
 shopt -s autocd dotglob extglob histappend nocaseglob
@@ -127,18 +138,14 @@ if command -v fzf >/dev/null 2>&1; then
 fi
 
 # -------- safer Git defaults where tools may be missing
-if ! command -v delta >/dev/null 2>&1 || ! command -v code >/dev/null 2>&1; then
+if ! command -v delta >/dev/null 2>&1 || ! command -v nvim >/dev/null 2>&1; then
   git() {
     local cfg=()
     if ! command -v delta >/dev/null 2>&1; then
       cfg+=(-c core.pager=less -c interactive.diffFilter=cat)
     fi
-    if ! command -v code >/dev/null 2>&1; then
-      if command -v nvim >/dev/null 2>&1; then
-        cfg+=(-c merge.tool=nvimdiff3 -c difftool.tool=nvimdiff)
-      else
-        cfg+=(-c merge.tool=vimdiff -c difftool.tool=vimdiff)
-      fi
+    if ! command -v nvim >/dev/null 2>&1 && command -v vim >/dev/null 2>&1; then
+      cfg+=(-c merge.tool=vimdiff -c diff.tool=vimdiff)
     fi
     command git "${cfg[@]}" "$@"
   }

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if (( $# != 4 )); then
+  printf 'usage: nvim-merge OUTPUT BASE LEFT RIGHT\n' >&2
+  exit 64
+fi
+
+if ! command -v nvim >/dev/null 2>&1; then
+  printf 'nvim-merge: nvim is not available\n' >&2
+  exit 127
+fi
+
+absolute_path() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -am -- "$1"
+    return
+  fi
+  case $1 in
+    /* | [A-Za-z]:/* | [A-Za-z]:\\* | \\\\*) printf '%s\n' "$1" ;;
+    *) printf '%s/%s\n' "$PWD" "$1" ;;
+  esac
+}
+
+export NVIM_MERGE_OUTPUT
+export NVIM_MERGE_BASE
+export NVIM_MERGE_LEFT
+export NVIM_MERGE_RIGHT
+NVIM_MERGE_OUTPUT=$(absolute_path "$1")
+NVIM_MERGE_BASE=$(absolute_path "$2")
+NVIM_MERGE_LEFT=$(absolute_path "$3")
+NVIM_MERGE_RIGHT=$(absolute_path "$4")
+
+exec nvim -f -c 'lua require("config.diff_tool").open("merge", { vim.env.NVIM_MERGE_OUTPUT, vim.env.NVIM_MERGE_BASE, vim.env.NVIM_MERGE_LEFT, vim.env.NVIM_MERGE_RIGHT })'

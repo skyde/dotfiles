@@ -11,6 +11,35 @@ Set-PSReadLineOption -HistorySavePath "$HOME\.powershell_history"
 Set-PSReadLineKeyHandler -Key Ctrl+RightArrow  -Function ForwardWord
 Set-PSReadLineKeyHandler -Key Ctrl+LeftArrow   -Function BackwardWord
 
+# Prefer Neovim while respecting machine-specific overrides.
+if ([string]::IsNullOrWhiteSpace($env:EDITOR)) {
+    $env:EDITOR = 'nvim'
+}
+if ([string]::IsNullOrWhiteSpace($env:VISUAL)) {
+    $env:VISUAL = $env:EDITOR
+}
+
+# Stow places the cross-platform editor wrappers here. Add the directory once
+# for this session, then expose native batch wrappers to the P4 client.
+$localBin = Join-Path $HOME '.local\bin'
+if (Test-Path -LiteralPath $localBin) {
+    $normalizedLocalBin = $localBin.TrimEnd('\')
+    $pathEntries = @($env:PATH -split ';' | ForEach-Object { $_.TrimEnd('\') })
+    if ($pathEntries -notcontains $normalizedLocalBin) {
+        $env:PATH = "$localBin;$env:PATH"
+    }
+
+    $p4DiffWrapper = Join-Path $localBin 'nvim-diff.cmd'
+    if ([string]::IsNullOrWhiteSpace($env:P4DIFF) -and (Test-Path -LiteralPath $p4DiffWrapper)) {
+        $env:P4DIFF = 'nvim-diff.cmd'
+    }
+
+    $p4MergeWrapper = Join-Path $localBin 'nvim-p4merge.cmd'
+    if ([string]::IsNullOrWhiteSpace($env:P4MERGE) -and (Test-Path -LiteralPath $p4MergeWrapper)) {
+        $env:P4MERGE = 'nvim-p4merge.cmd'
+    }
+}
+
 # Starship prompt (only if installed)
 if (Get-Command starship -ErrorAction SilentlyContinue) {
     Invoke-Expression (& starship init powershell)
@@ -36,4 +65,3 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
 function rg {
     & rg.exe --hidden --smart-case --colors match:fg:yellow --glob '!.git' --glob '!node_modules' @Args
 }
-

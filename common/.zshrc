@@ -2,8 +2,19 @@
 # shellcheck shell=zsh
 
 # -------- editor
-export EDITOR="nvim"
-export VISUAL="$EDITOR"
+: "${EDITOR:=nvim}"
+: "${VISUAL:=$EDITOR}"
+export EDITOR VISUAL
+
+# -------- Perforce/g4 external diff and merge tools
+if [[ -x "$HOME/.local/bin/nvim-diff" ]]; then
+  : "${P4DIFF:=nvim-diff}"
+  export P4DIFF
+fi
+if [[ -x "$HOME/.local/bin/nvim-p4merge" ]]; then
+  : "${P4MERGE:=nvim-p4merge}"
+  export P4MERGE
+fi
 
 # -------- interactive TTY tweaks (skip in non‑tty to avoid extra 'stty' call)
 if [[ -o interactive && -t 0 ]]; then
@@ -86,16 +97,12 @@ if (( $+commands[fzf] )); then
 fi
 
 # -------- safer Git defaults where tools may be missing
-if ((! $+commands[delta] )) || ((! $+commands[code] )); then
+if ((! $+commands[delta] )) || ((! $+commands[nvim] )); then
   git() {
     local -a cfg=()
     ((! $+commands[delta] )) && cfg+=(-c core.pager=less -c interactive.diffFilter=cat)
-    if ((! $+commands[code] )); then
-      if (( $+commands[nvim] )); then
-        cfg+=(-c merge.tool=nvimdiff3 -c difftool.tool=nvimdiff)
-      else
-        cfg+=(-c merge.tool=vimdiff -c difftool.tool=vimdiff)
-      fi
+    if ((! $+commands[nvim] )) && (( $+commands[vim] )); then
+      cfg+=(-c merge.tool=vimdiff -c diff.tool=vimdiff)
     fi
     command git "${cfg[@]}" "$@"
   }

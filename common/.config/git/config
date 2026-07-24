@@ -9,6 +9,7 @@
 
 [core]
     pager = delta
+    editor = nvim
     excludesFile = ~/.config/git/ignore
     commitGraph = true
     autocrlf = false
@@ -19,17 +20,21 @@
     context = 10
     colorMoved = no
     algorithm = histogram
-    tool = vscode
+    tool = nvim
 
 [difftool]
     prompt = false
 
+[difftool "nvim"]
+    cmd = nvim-diff \"$LOCAL\" \"$REMOTE\"
+    trustExitCode = true
+
 [difftool "vscode"]
-    cmd = code --wait --diff $LOCAL $REMOTE
+    cmd = code --wait --diff \"$LOCAL\" \"$REMOTE\"
     trustExitCode = true
 
 [difftool "nvimdiff"]
-    cmd = nvim -f -d "$LOCAL" "$REMOTE"
+    cmd = nvim -f -d \"$LOCAL\" \"$REMOTE\"
 
 [rerere]
     enabled = true                  # remember how you resolved a conflict
@@ -45,17 +50,21 @@
 
 [merge]
     conflictstyle = zdiff3
-    tool = vscode
+    tool = nvim
 
 [mergetool]
     prompt = false
 
+[mergetool "nvim"]
+    cmd = nvim-merge \"$MERGED\" \"$BASE\" \"$LOCAL\" \"$REMOTE\"
+    trustExitCode = true
+
 [mergetool "vscode"]
-    cmd = code --wait --merge $LOCAL $REMOTE $BASE $MERGED
+    cmd = code --wait --merge \"$LOCAL\" \"$REMOTE\" \"$BASE\" \"$MERGED\"
     trustExitCode = true
 
 [mergetool "nvimdiff3"]
-    cmd = nvim -f -d "$LOCAL" "$MERGED" "$REMOTE"
+    cmd = nvim -f -d \"$LOCAL\" \"$MERGED\" \"$REMOTE\"
     trustExitCode = false
 
 # --- Delta styling ---
@@ -166,4 +175,4 @@
     path = ~/.gitconfig-local
 
 [alias]
-	dft = -c diff.external=difft diff
+		dft = difftool --dir-diff --tool=nvim

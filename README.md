@@ -68,6 +68,7 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 - `delta` for modern git diffs (also used in Lazygit)
   - diffs are side-by-side by default, while LazyGit shows inline changes
 - `lazygit` for a simple git TUI
+- `jj` is supported by Neovim's source-control and merge views when installed
 - `starship` for a customizable cross-shell prompt
 
 ## Nvim Version
@@ -145,11 +146,20 @@ Use this since it's nicer than the default PowerShell 5.
 
 ### Perforce
 
-Ensure you set the correct environment variable to allow the diff to work:
+Neovim is configured as the external diff and merge UI for P4-compatible
+clients. The shell profiles set `P4DIFF` and `P4MERGE` to the included wrappers
+when they are installed. Diffview uses `g4` when available and falls back to
+`p4`; set `NVIM_PERFORCE_CMD` to force a particular executable.
 
-```cmd
-P4DIFF="C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe" /Diff %1 %2
-```
+The complete Git, JJ, P4, and G4 workflow and keymap are documented in
+[`docs/neovim-mergetool.md`](docs/neovim-mergetool.md).
+
+### Neovim AI
+
+Neovim uses CodeCompanion with Gemini for chat, inline edits, tools, and an
+optional Gemini CLI agent. Set `GEMINI_API_KEY` outside this repository before
+starting Neovim. Setup and keybindings are documented in
+[`docs/neovim-ai.md`](docs/neovim-ai.md).
 
 ### Visual Studio Code
 

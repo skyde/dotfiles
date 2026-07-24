@@ -13,6 +13,22 @@ vim.o.scroll = 16
 
 vim.opt.fileformats = { "unix", "dos" }
 
+-- Match the editor defaults shared by the VS Code setup.
+vim.opt.expandtab = true
+vim.opt.shiftwidth = 2
+vim.opt.softtabstop = 2
+vim.opt.tabstop = 2
+vim.opt.ignorecase = true
+vim.opt.smartcase = true
+vim.opt.incsearch = true
+vim.opt.startofline = false
+vim.opt.foldenable = false
+vim.opt.number = true
+vim.opt.relativenumber = true
+vim.opt.splitbelow = true
+vim.opt.splitright = true
+vim.g.autoformat = true
+
 vim.g.neovide_cursor_vfx_mode = "none"
 vim.g.neovide_cursor_animation_length = 0
 vim.g.neovide_cursor_trail_length = 0
@@ -62,8 +78,9 @@ vim.diagnostic.config({ underline = false })
 -- Do not highlight the current line
 vim.opt.cursorline = false
 
--- Remove the sign column gutter
-vim.opt.signcolumn = "no"
+-- Keep the layout minimal, but allow breakpoint, test, and Git signs to appear
+-- when they carry information.
+vim.opt.signcolumn = "auto:1"
 
 -- Use a bright orange block cursor in normal mode and a hollow block when inserting
 vim.opt.guicursor = {

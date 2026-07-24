@@ -15,15 +15,38 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source helper functions
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/run_ensure.sh"
+
+nvim_apt_packages=(build-essential cmake curl file ninja-build nodejs npm python3 python3-venv unzip)
+dependency_test=${DOTFILES_INIT_LINUX_DEPENDENCY_TEST:-0}
+if [[ $dependency_test == 1 ]]; then
+  : "${DOTFILES_INIT_LINUX_DEPENDENCY_LOG:?set DOTFILES_INIT_LINUX_DEPENDENCY_LOG in dependency-test mode}"
+  ensure_apt() {
+    printf '%s\n' "$1" >>"$DOTFILES_INIT_LINUX_DEPENDENCY_LOG"
+  }
+fi
 
 echo "Installing Linux-specific packages..."
 
 # Install zsh shell enhancements and fonts not in packages.txt
-ensure_apt zsh
-ensure_apt zsh-autosuggestions
-ensure_apt zsh-syntax-highlighting
-ensure_apt fonts-jetbrains-mono
+if [[ $dependency_test != 1 ]]; then
+  ensure_apt zsh
+  ensure_apt zsh-autosuggestions
+  ensure_apt zsh-syntax-highlighting
+  ensure_apt fonts-jetbrains-mono
+fi
+
+# Runtime dependencies for the Neovim language, formatter, debugger, and AI
+# tooling enabled by the common configuration.
+for package in "${nvim_apt_packages[@]}"; do
+  ensure_apt "$package"
+done
+
+if [[ $dependency_test == 1 ]]; then
+  echo "✅ Linux Neovim dependency test complete!"
+  exit 0
+fi
 
 # Install kitty term info to ensure we can ssh properly
 $SUDO curl -LO https://raw.githubusercontent.com/kovidgoyal/kitty/master/terminfo/kitty.terminfo

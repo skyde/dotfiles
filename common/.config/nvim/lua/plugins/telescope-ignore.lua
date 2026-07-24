@@ -1,178 +1,185 @@
--- lua/plugins/telescope-ignore.lua
+local ignore_patterns = {
+  "^%.DS_Store$",
+  "%.swp$",
+  "%.swo$",
+  "%.o$",
+  "%.obj$",
+  "%.a$",
+  "%.lib$",
+  "%.dll$",
+  "%.so$",
+  "%.dylib$",
+  "%.exe$",
+  "%.pdb$",
+  "%.class$",
+  "%.jar$",
+  "%.zip$",
+  "%.tar$",
+  "%.gz$",
+  "%.7z$",
+  "%.png$",
+  "%.jpe?g$",
+  "%.gif$",
+  "%.webp$",
+  "%.mp3$",
+  "%.wav$",
+  "%.mp4$",
+  "%.mkv$",
+  "%.mov$",
+  "%.pdf$",
+  "%.docx?$",
+  "%.xlsx?$",
+  "%.pptx?$",
+  "%.parquet$",
+  "%.arrow$",
+  "%.db$",
+}
+
+-- Match ignored directories at any path depth, whether Telescope returns a
+-- relative or absolute entry.
+local ignored_directories = {
+  ".git",
+  ".hg",
+  ".svn",
+  ".idea",
+  ".vscode",
+  ".cache",
+  "__pycache__",
+  ".mypy_cache",
+  ".pytest_cache",
+  ".tox",
+  "node_modules",
+  ".pnpm",
+  ".yarn",
+  "vendor",
+  "Pods",
+  "_deps",
+  "build",
+  "out",
+  "bin",
+  "dist",
+  "Debug",
+  "Release",
+  "target",
+  "coverage",
+}
+
+for _, directory in ipairs(ignored_directories) do
+  local escaped = directory:gsub("([^%w])", "%%%1")
+  table.insert(ignore_patterns, "^" .. escaped .. "/")
+  table.insert(ignore_patterns, "/" .. escaped .. "/")
+end
+
+local rg_args = { "--hidden" }
+for _, directory in ipairs(ignored_directories) do
+  table.insert(rg_args, "--glob=!" .. directory .. "/**")
+  table.insert(rg_args, "--glob=!**/" .. directory .. "/**")
+end
+vim.list_extend(rg_args, {
+  "--glob=!*.o",
+  "--glob=!*.obj",
+  "--glob=!*.so",
+  "--glob=!*.dll",
+  "--glob=!*.DS_Store",
+})
+
+local find_command = { "rg", "--files", "--color", "never" }
+vim.list_extend(find_command, rg_args)
+
+local filetype_to_rg_type = {
+  c = "c",
+  cpp = "cpp",
+  javascript = "js",
+  javascriptreact = "js",
+  lua = "lua",
+  python = "py",
+  rust = "rust",
+  typescript = "ts",
+  typescriptreact = "ts",
+}
+
+local function live_grep_args(opts)
+  return require("telescope").extensions.live_grep_args.live_grep_args(opts or {})
+end
+
+local function search_word_for_filetype()
+  local args = vim.deepcopy(rg_args)
+  local rg_type = filetype_to_rg_type[vim.bo.filetype]
+  if rg_type then
+    vim.list_extend(args, { "--type", rg_type })
+  end
+  live_grep_args({
+    default_text = vim.fn.expand("<cword>"),
+    additional_args = function()
+      return args
+    end,
+  })
+end
+
 return {
   "nvim-telescope/telescope.nvim",
+  dependencies = {
+    "nvim-lua/plenary.nvim",
+    {
+      "nvim-telescope/telescope-live-grep-args.nvim",
+      config = function()
+        LazyVim.on_load("telescope.nvim", function()
+          require("telescope").load_extension("live_grep_args")
+        end)
+      end,
+    },
+  },
   opts = function(_, opts)
-    ---------------------------------------------------------------------------
-    -- 1. Global ignore patterns (Lua regexes) ---------------------------------
-    --    • Paths are always relative to the cwd / project root
-    --    • “^” anchors to the start of that relative path
-    --    • “%.ext$” matches a literal dot + extension
-    --    Feel free to slim this down if you *do* want to search any of them.
-    ---------------------------------------------------------------------------
-    local ignore = {
-      --  Version-control & editor cruft
-      "^.git/",
-      "^.hg/",
-      "^.svn/",
-      "^.idea/",
-      "^.vscode/",
-      "^.cache/",
-      "^__pycache__/",
-      "^.tox/",
-      "^.DS_Store$",
-      "%.swp$",
-      "%.swo$",
-      --  Dependency / package managers
-      "^node_modules/",
-      "^.pnpm/",
-      "^.yarn/",
-      "^vendor/",
-      "^Pods/",
-      "^android/app/build/",
-      "^ios/Pods/",
-      "^_deps/",
-      --  Build & artefact directories
-      "^build/",
-      "^out/",
-      "^bin/",
-      "^dist/",
-      "^Debug/",
-      "^Release/",
-      "^target/",
-      --  Coverage & docs
-      "^coverage/",
-      "^docs/_build/",
-      --  Binary/object/library files
-      "%.o$",
-      "%.obj$",
-      "%.a$",
-      "%.lib$",
-      "%.dll$",
-      "%.so$",
-      "%.dylib$",
-      "%.exe$",
-      "%.pdb$",
-      "%.idb$",
-      "%.ilk$",
-      "%.class$",
-      "%.jar$",
-      --  Archives
-      "%.zip$",
-      "%.tar$",
-      "%.gz$",
-      "%.bz2$",
-      "%.xz$",
-      "%.7z$",
-      "%.rar$",
-      --  Media (comment out if you often grep assets)
-      "%.png$",
-      "%.jpe?g$",
-      "%.gif$",
-      "%.bmp$",
-      "%.svg$",
-      "%.webp$",
-      "%.mp3$",
-      "%.wav$",
-      "%.ogg$",
-      "%.flac$",
-      "%.mp4$",
-      "%.mkv$",
-      "%.mov$",
-      --Documents & datasets("%.pdf$"),
-      "%.docx?$",
-      "%.xlsx?$",
-      "%.pptx?$",
-      "%.csv$",
-      "%.tsv$",
-      "%.parquet$",
-      "%.arrow$",
-      "%.dat$",
-      "%.bin$",
-      "%.db$",
-    }
-
-    ---------------------------------------------------------------------------
-    -- 2. Merge with whatever LazyVim already set ------------------------------
-    ---------------------------------------------------------------------------
-    -- Ensure opts and defaults exist
-    opts = opts or {}
     opts.defaults = opts.defaults or {}
-    opts.defaults.file_ignore_patterns = vim.list_extend(opts.defaults.file_ignore_patterns or {}, ignore)
-    opts.defaults.hidden = true
+    opts.defaults.file_ignore_patterns = vim.list_extend(opts.defaults.file_ignore_patterns or {}, ignore_patterns)
 
-    ---------------------------------------------------------------------------
-    -- 3. (Optional) Speed up live_grep even more ------------------------------
-    --    Passing --glob to ripgrep means it never *opens* the file, which is
-    --    faster than post-filtering. You can add or remove globs as needed.
-    ---------------------------------------------------------------------------
-    local speedup_globs = {
-      "--hidden",
-      "--glob=!build/**",
-      "--glob=!out/**",
-      "--glob=!bin/**",
-      "--glob=!dist/**",
-      "--glob=!node_modules/**",
-      "--glob=!*.o",
-      "--glob=!*.obj",
-      "--glob=!*.so",
-      "--glob=!*.dll",
-      -- Add or remove globs here to customize what is excluded for speed
-    }
     opts.pickers = opts.pickers or {}
-    opts.pickers.live_grep = opts.pickers.live_grep or {}
-    opts.pickers.live_grep.additional_args = function()
-      return speedup_globs
-    end
-    -- Ensure `grep_string` also searches hidden files.  LazyVim maps
-    -- <leader>sg to `grep_string`, so we configure it with the same flags
-    -- as `live_grep`.
-    opts.pickers.grep_string = opts.pickers.grep_string or {}
-    opts.pickers.grep_string.additional_args = function()
-      return speedup_globs
-    end
-    opts.pickers.find_files = opts.pickers.find_files or {}
-    -- Include hidden files when searching with Telescope
-    opts.pickers.find_files.hidden = true
-    opts.pickers.find_files.additional_args = function()
-      return speedup_globs
-    end
-  end,
-  config = function()
-    -- Add <leader>se to run live_grep_args with --type=cpp and --type=py, but exclude any *.blob.* files
-    local speedup_globs = {
-      "--hidden",
-      "--glob=!build/**",
-      "--glob=!out/**",
-      "--glob=!bin/**",
-      "--glob=!dist/**",
-      "--glob=!node_modules/**",
-      "--glob=!*.o",
-      "--glob=!*.obj",
-      "--glob=!*.so",
-      "--glob=!*.dll",
-      "--glob=!*.blob.*", -- Exclude any file with .blob. in the name
-      "--glob=!blob/**", -- Exclude any folder named blob
-    }
-    vim.keymap.set("n", "<leader>se", function()
-      require("telescope").extensions.live_grep_args.live_grep_args({
-        additional_args = function()
-          return vim.list_extend({ "--type=cpp", "--type=py" }, speedup_globs)
-        end,
-      })
-    end, { desc = "Grep C++/Python files only" })
+    opts.pickers.find_files = vim.tbl_deep_extend("force", opts.pickers.find_files or {}, {
+      find_command = find_command,
+      hidden = true,
+    })
+    opts.pickers.live_grep = vim.tbl_deep_extend("force", opts.pickers.live_grep or {}, {
+      additional_args = function()
+        return rg_args
+      end,
+    })
+    opts.pickers.grep_string = vim.tbl_deep_extend("force", opts.pickers.grep_string or {}, {
+      additional_args = function()
+        return rg_args
+      end,
+    })
 
-    -- Search files by type using the word under cursor
-    vim.keymap.set("n", "<leader>st", function()
-      local ft = vim.bo.filetype
-      require("telescope").extensions.live_grep_args.live_grep_args({
-        default_text = vim.fn.expand("<cword>"),
-        additional_args = function()
-          if ft ~= "" then
-            return vim.list_extend({ "--type=" .. ft }, speedup_globs)
-          end
-          return speedup_globs
-        end,
-      })
-    end, { desc = "Search word in current filetype" })
+    opts.extensions = opts.extensions or {}
+    opts.extensions.live_grep_args = vim.tbl_deep_extend("force", opts.extensions.live_grep_args or {}, {
+      auto_quoting = true,
+    })
   end,
+  keys = {
+    {
+      "<leader>se",
+      function()
+        local args = vim.deepcopy(rg_args)
+        vim.list_extend(args, { "--type", "cpp", "--type", "py", "--glob=!*.blob.*", "--glob=!**/blob/**" })
+        live_grep_args({
+          additional_args = function()
+            return args
+          end,
+        })
+      end,
+      desc = "Grep C++/Python files",
+    },
+    { "<leader>st", search_word_for_filetype, desc = "Search word in current filetype" },
+    {
+      "<leader>sT",
+      function()
+        live_grep_args({
+          default_text = vim.fn.expand("<cword>"),
+          additional_args = function()
+            return rg_args
+          end,
+        })
+      end,
+      desc = "Search word in all files",
+    },
+  },
 }
