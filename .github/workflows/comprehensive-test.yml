@@ -55,6 +55,10 @@ jobs:
             bash -n "$script"
           done < <(git ls-files -z '*.sh')
 
+          tests/nvim_checkpoint_marker_spec.sh
+          tests/nvim_debian_engine_spec.sh
+          tests/nvim_debian_staging_spec.sh
+
   unix-install:
     name: Install lifecycle (${{ matrix.os }})
     needs: validate

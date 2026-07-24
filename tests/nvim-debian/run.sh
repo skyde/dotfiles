@@ -26,7 +26,7 @@ fi
 concurrency=${CONCURRENCY:-4}
 artifact_sync_seconds=${ARTIFACT_SYNC_SECONDS:-600}
 artifact_sync_timeout_seconds=${ARTIFACT_SYNC_TIMEOUT_SECONDS:-30}
-artifact_finalize_grace_seconds=${ARTIFACT_FINALIZE_GRACE_SECONDS:-300}
+artifact_finalize_grace_seconds=${ARTIFACT_FINALIZE_GRACE_SECONDS:-400}
 timeout_kill_after_seconds=${TIMEOUT_KILL_AFTER_SECONDS:-5}
 artifact_handoff_selftest=${NVIM_DEBIAN_ARTIFACT_HANDOFF_SELFTEST:-0}
 build_image=1
@@ -172,7 +172,7 @@ case $artifact_handoff_selftest in
     exit 2
     ;;
 esac
-minimum_finalize_grace=$((7 * (artifact_sync_timeout_seconds + timeout_kill_after_seconds) + 30))
+minimum_finalize_grace=$((10 * (artifact_sync_timeout_seconds + timeout_kill_after_seconds) + 30))
 if ((artifact_finalize_grace_seconds < minimum_finalize_grace)); then
   printf 'error: ARTIFACT_FINALIZE_GRACE_SECONDS must be at least %d for current timeouts (got %s)\n' \
     "$minimum_finalize_grace" "$artifact_finalize_grace_seconds" >&2

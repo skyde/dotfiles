@@ -25,6 +25,7 @@ timeout_kill_after_seconds=${TIMEOUT_KILL_AFTER_SECONDS:-5}
 artifact_sync_seconds=${ARTIFACT_SYNC_SECONDS:-600}
 artifact_sync_timeout_seconds=${ARTIFACT_SYNC_TIMEOUT_SECONDS:-30}
 timeout_selftest=${NVIM_DEBIAN_TIMEOUT_SELFTEST:-0}
+checkpoint_marker_schema=1
 
 case $short_mode in
   0 | 1) ;;
@@ -71,14 +72,20 @@ case $timeout_selftest in
     exit 2
     ;;
 esac
-if [[ ! -r $repo_root/apply.sh || ! -r $repo_root/common/.config/nvim/lazy-lock.json ]]; then
+if [[ ! -r $repo_root/apply.sh \
+  || ! -r $repo_root/common/.config/nvim/lazy-lock.json \
+  || ! -r $repo_root/tests/nvim-debian/checkpoint_marker.py ]]
+then
   printf 'error: REPO_ROOT does not look like the dotfiles repository: %s\n' "$repo_root" >&2
   exit 2
 fi
-if ! command -v timeout >/dev/null 2>&1; then
-  printf 'error: GNU timeout is required by the Debian harness\n' >&2
-  exit 127
-fi
+for required_command in python3 rsync sync timeout; do
+  if ! command -v "$required_command" >/dev/null 2>&1; then
+    printf 'error: %s is required by the Debian harness\n' \
+      "$required_command" >&2
+    exit 127
+  fi
+done
 
 mkdir -p -- "$durable_artifact_dir"
 if [[ -n $staging_root ]]; then
@@ -508,15 +515,16 @@ p4_endpoint_matches_server_root() {
 
 sync_artifacts() {
   local attempt
-  local -a invalidated_markers=("$@")
+  local checkpoint_marker_helper="$source_repo_root/tests/nvim-debian/checkpoint_marker.py"
   if ! chmod -R go-rwx "$artifact_dir"; then
     printf 'error: could not make staged artifacts private\n' >&2
     return 1
   fi
   for attempt in 1 2 3; do
-    # Marker removal and the following in-place copy share one bounded child.
-    # A previous complete=1 marker can therefore never survive the start of a
-    # newer durable-tree mutation.
+    # Stable-inode checkpoint invalidation and the following in-place copy
+    # share one bounded child. A previous committed marker can therefore never
+    # survive the start of a newer durable-tree mutation. The one-time final
+    # marker remains atomic and is removed before a retry or newer export.
     # shellcheck disable=SC2016 # Positional parameters belong to the child.
     if timeout \
       --verbose \
@@ -527,17 +535,18 @@ sync_artifacts() {
         set -euo pipefail
         source_dir=$1
         destination_dir=$2
-        shift 2
-        for marker_name in "$@"; do
-          rm -f -- \
-            "$destination_dir/$marker_name" \
-            "$destination_dir/.$marker_name.tmp"
-        done
-        exec rsync -a --inplace -- "$source_dir/" "$destination_dir/"
+        checkpoint_marker_helper=$3
+        python3 "$checkpoint_marker_helper" invalidate \
+          "$destination_dir/checkpoint-complete.env"
+        python3 "$checkpoint_marker_helper" retire \
+          "$destination_dir/final-export-complete.env"
+        rm -f -- "$destination_dir/.final-export-complete.env.tmp"
+        rsync -a --inplace -- "$source_dir/" "$destination_dir/"
+        sync -f "$destination_dir"
       ' nvim-durable-sync \
       "$artifact_dir" \
       "$durable_artifact_dir" \
-      "${invalidated_markers[@]}"
+      "$checkpoint_marker_helper"
     then
       return 0
     fi
@@ -550,23 +559,64 @@ sync_artifacts() {
   return 1
 }
 
-publish_durable_marker() {
+publish_durable_checkpoint_marker() {
   local source=$1
-  local destination_name=$2
   local attempt
+  local checkpoint_marker_helper="$source_repo_root/tests/nvim-debian/checkpoint_marker.py"
   for attempt in 1 2 3; do
-    # The positional parameters are expanded by the bounded child shell.
-    # shellcheck disable=SC2016
     if timeout \
       --verbose \
       --signal=TERM \
       --kill-after="${timeout_kill_after_seconds}s" \
       "${artifact_sync_timeout_seconds}s" \
-      /bin/bash -c '
-        set -euo pipefail
-        cp -p -- "$1" "$2/.$3.tmp"
-        mv -f -- "$2/.$3.tmp" "$2/$3"
-      ' nvim-durable-marker "$source" "$durable_artifact_dir" "$destination_name"
+      python3 "$checkpoint_marker_helper" publish \
+      "$source" "$durable_artifact_dir/checkpoint-complete.env"
+    then
+      return 0
+    fi
+    printf 'warning: durable checkpoint marker attempt %d failed; retrying\n' \
+      "$attempt" >&2
+    sleep 1
+  done
+  printf 'error: could not publish durable checkpoint marker\n' >&2
+  return 1
+}
+
+retire_durable_checkpoint_marker() {
+  local attempt
+  local checkpoint_marker_helper="$source_repo_root/tests/nvim-debian/checkpoint_marker.py"
+  for attempt in 1 2 3; do
+    if timeout \
+      --verbose \
+      --signal=TERM \
+      --kill-after="${timeout_kill_after_seconds}s" \
+      "${artifact_sync_timeout_seconds}s" \
+      python3 "$checkpoint_marker_helper" retire \
+      "$durable_artifact_dir/checkpoint-complete.env"
+    then
+      return 0
+    fi
+    printf 'warning: checkpoint marker retirement attempt %d failed; retrying\n' \
+      "$attempt" >&2
+    sleep 1
+  done
+  printf 'error: could not retire durable checkpoint marker\n' >&2
+  return 1
+}
+
+publish_durable_marker() {
+  local source=$1
+  local destination_name=$2
+  local attempt
+  local checkpoint_marker_helper="$source_repo_root/tests/nvim-debian/checkpoint_marker.py"
+  for attempt in 1 2 3; do
+    if timeout \
+      --verbose \
+      --signal=TERM \
+      --kill-after="${timeout_kill_after_seconds}s" \
+      "${artifact_sync_timeout_seconds}s" \
+      python3 "$checkpoint_marker_helper" atomic-publish \
+      "$source" "$durable_artifact_dir/$destination_name"
     then
       return 0
     fi
@@ -592,12 +642,15 @@ publish_final_export_marker() {
     printf 'finished_utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     printf 'complete=1\n'
   } >"$marker"
-  publish_durable_marker "$marker" final-export-complete.env
+  retire_durable_checkpoint_marker \
+    && publish_durable_marker "$marker" final-export-complete.env
 }
 
 publish_checkpoint_marker() {
-  local marker="$runtime_root/checkpoint-complete.env"
+  local marker="$runtime_root/checkpoint-payload.env"
   {
+    printf 'schema=%s\n' "$checkpoint_marker_schema"
+    printf 'generation=%s\n' "$completed_batches"
     printf 'batch=%s\n' "$completed_batches"
     printf 'startup_attempts=%s\n' "$startup_attempts"
     printf 'startup_failures=%s\n' "$startup_failures"
@@ -605,9 +658,8 @@ publish_checkpoint_marker() {
     printf 'workload_failures=%s\n' "$workload_failures"
     printf 'soak_elapsed_seconds=%s\n' "$soak_elapsed"
     printf 'checkpointed_utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-    printf 'complete=1\n'
   } >"$marker"
-  publish_durable_marker "$marker" checkpoint-complete.env
+  publish_durable_checkpoint_marker "$marker"
 }
 
 checkpoint_artifacts() {
@@ -617,7 +669,7 @@ checkpoint_artifacts() {
     kill -STOP "$sampler_pid" 2>/dev/null
     sampler_paused=1
   fi
-  sync_artifacts checkpoint-complete.env || status=$?
+  sync_artifacts || status=$?
   if ((sampler_paused)); then
     kill -CONT "$sampler_pid" 2>/dev/null || true
   fi
@@ -729,7 +781,7 @@ cleanup() {
     status=1
     collect_artifacts "$status"
   fi
-  if sync_artifacts checkpoint-complete.env final-export-complete.env \
+  if sync_artifacts \
     && publish_final_export_marker "$status"
   then
     final_exported=1
