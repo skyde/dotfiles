@@ -11,9 +11,24 @@ if ! command -v nvim >/dev/null 2>&1; then
   exit 127
 fi
 
-export NVIM_MERGE_OUTPUT=$1
-export NVIM_MERGE_BASE=$2
-export NVIM_MERGE_LEFT=$3
-export NVIM_MERGE_RIGHT=$4
+absolute_path() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -am -- "$1"
+    return
+  fi
+  case $1 in
+    /* | [A-Za-z]:/* | [A-Za-z]:\\* | \\\\*) printf '%s\n' "$1" ;;
+    *) printf '%s/%s\n' "$PWD" "$1" ;;
+  esac
+}
 
-exec nvim -f -c 'lua local escape = vim.fn.fnameescape; vim.api.nvim_cmd({ cmd = "DiffviewMergeFiles", args = { escape(vim.env.NVIM_MERGE_OUTPUT), escape(vim.env.NVIM_MERGE_BASE), escape(vim.env.NVIM_MERGE_LEFT), escape(vim.env.NVIM_MERGE_RIGHT) } }, {})'
+export NVIM_MERGE_OUTPUT
+export NVIM_MERGE_BASE
+export NVIM_MERGE_LEFT
+export NVIM_MERGE_RIGHT
+NVIM_MERGE_OUTPUT=$(absolute_path "$1")
+NVIM_MERGE_BASE=$(absolute_path "$2")
+NVIM_MERGE_LEFT=$(absolute_path "$3")
+NVIM_MERGE_RIGHT=$(absolute_path "$4")
+
+exec nvim -f -c 'lua require("config.diff_tool").open("merge", { vim.env.NVIM_MERGE_OUTPUT, vim.env.NVIM_MERGE_BASE, vim.env.NVIM_MERGE_LEFT, vim.env.NVIM_MERGE_RIGHT })'

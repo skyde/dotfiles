@@ -36,6 +36,39 @@ fi
 # Go to script directory
 cd "$(dirname "$0")"
 
+prepare_jj_user_config() {
+    [ -f "common/.config/jj/conf.d/50-neovim-diffview.toml" ] || return 0
+
+    local jj_user_config="$HOME/.config/jj/config.toml"
+    if [ -L "$jj_user_config" ] && [ ! -e "$jj_user_config" ]; then
+        local link_target
+        link_target=$(readlink "$jj_user_config")
+        case "$link_target" in
+            *common/.config/jj/config.toml)
+                if $DRY_RUN; then
+                    echo "  [DRY RUN] Would replace obsolete managed JJ config link $jj_user_config"
+                else
+                    unlink -- "$jj_user_config"
+                fi
+                ;;
+            *)
+                # Preserve unrelated user-managed symlinks, including broken
+                # ones, instead of guessing where they should point.
+                return 0
+                ;;
+        esac
+    fi
+
+    if [ ! -e "$jj_user_config" ] && [ ! -L "$jj_user_config" ]; then
+        if $DRY_RUN; then
+            echo "  [DRY RUN] Would create unmanaged JJ config $jj_user_config"
+        else
+            mkdir -p -- "$(dirname -- "$jj_user_config")"
+            touch -- "$jj_user_config"
+        fi
+    fi
+}
+
 stow_package() {
     local pkg="$1"
     shift
@@ -46,7 +79,7 @@ stow_package() {
     if [ -d "$pkg" ]; then
         echo "  Ensuring directories exist for $pkg..."
         find "$pkg" -mindepth 1 -type d | sort | while read -r dir; do
-            rel_path="${dir#$pkg/}"
+            rel_path="${dir#"$pkg"/}"
             target_path="$HOME/$rel_path"
 
             # If anything already exists at the target path (dir, file, or symlink),
@@ -61,6 +94,14 @@ stow_package() {
                 mkdir -p -- "$target_path"
             fi
         done
+    fi
+
+    # JJ merges user fragments from conf.d, but `jj config set --user` edits
+    # the only user config file it can find. Keep a real, unmanaged primary
+    # file so that command can never write through the managed fragment's
+    # symlink into this repository.
+    if [ "$pkg" = "common" ]; then
+        prepare_jj_user_config
     fi
 
     # Filter out -y/--yes from stow arguments

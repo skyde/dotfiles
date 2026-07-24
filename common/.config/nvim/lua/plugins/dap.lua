@@ -2,17 +2,33 @@ return {
   {
     "mfussenegger/nvim-dap",
     dependencies = {
-      "rcarriga/nvim-dap-ui",
-      "theHamsta/nvim-dap-virtual-text",
-      "jay-babu/mason-nvim-dap.nvim",
+      {
+        "rcarriga/nvim-dap-ui",
+        config = function() end,
+      },
+      {
+        "theHamsta/nvim-dap-virtual-text",
+        config = function() end,
+      },
+      {
+        "jay-babu/mason-nvim-dap.nvim",
+        -- nvim-dap owns the single setup call below. Without this no-op,
+        -- lazy.nvim also auto-configures the dependency from its opts.
+        config = function() end,
+      },
       "nvim-neotest/nvim-nio",
     },
     keys = function()
-      local dap = require("dap")
-      local dapui = require("dapui")
       local disabled_breakpoints = {}
 
+      local function call(module, method)
+        return function(...)
+          return require(module)[method](...)
+        end
+      end
+
       local function conditional_breakpoint()
+        local dap = require("dap")
         vim.ui.input({ prompt = "Breakpoint condition: " }, function(condition)
           if condition and condition ~= "" then
             dap.set_breakpoint(condition)
@@ -21,6 +37,7 @@ return {
       end
 
       local function log_point()
+        local dap = require("dap")
         vim.ui.input({ prompt = "Log point message: " }, function(message)
           if message and message ~= "" then
             dap.set_breakpoint(nil, nil, message)
@@ -34,7 +51,7 @@ return {
         if vim.tbl_isempty(disabled_breakpoints) then
           return vim.notify("No breakpoints to disable", vim.log.levels.INFO)
         end
-        dap.clear_breakpoints()
+        require("dap").clear_breakpoints()
         vim.notify("Breakpoints disabled", vim.log.levels.INFO)
       end
 
@@ -55,6 +72,7 @@ return {
         end
         disabled_breakpoints = {}
 
+        local dap = require("dap")
         local session = dap.session()
         if session then
           session:set_breakpoints(breakpoints.get())
@@ -64,10 +82,11 @@ return {
 
       local function clear_all_breakpoints()
         disabled_breakpoints = {}
-        dap.clear_breakpoints()
+        require("dap").clear_breakpoints()
       end
 
       local function frame_edge(first)
+        local dap = require("dap")
         local session = dap.session()
         local thread = session and session.stopped_thread_id and session.threads[session.stopped_thread_id]
         local frames = thread and thread.frames
@@ -95,30 +114,30 @@ return {
       end
 
       return {
-        { "<leader>db", dap.toggle_breakpoint, desc = "DAP Toggle Breakpoint" },
+        { "<leader>db", call("dap", "toggle_breakpoint"), desc = "DAP Toggle Breakpoint" },
         { "<leader>dBc", conditional_breakpoint, desc = "DAP Conditional Breakpoint" },
         { "<leader>dBd", disable_all_breakpoints, desc = "DAP Disable All Breakpoints" },
         { "<leader>dBe", enable_all_breakpoints, desc = "DAP Enable All Breakpoints" },
         { "<leader>dBr", clear_all_breakpoints, desc = "DAP Remove All Breakpoints" },
         { "<leader>dL", log_point, desc = "DAP Log Point" },
-        { "<leader>dc", dap.continue, desc = "DAP Continue" },
-        { "<leader>dp", dap.pause, desc = "DAP Pause" },
-        { "<leader>dS", dap.terminate, desc = "DAP Stop" },
-        { "<leader>dR", dap.restart, desc = "DAP Restart" },
-        { "<leader>dg", dap.goto_, desc = "DAP Set Next Statement" },
-        { "<leader>dC", dap.run_to_cursor, desc = "DAP Run to Cursor" },
-        { "<leader>tn", dap.step_over, desc = "DAP Step Over" },
-        { "<leader>ti", dap.step_into, desc = "DAP Step Into" },
+        { "<leader>dc", call("dap", "continue"), desc = "DAP Continue" },
+        { "<leader>dp", call("dap", "pause"), desc = "DAP Pause" },
+        { "<leader>dS", call("dap", "terminate"), desc = "DAP Stop" },
+        { "<leader>dR", call("dap", "restart"), desc = "DAP Restart" },
+        { "<leader>dg", call("dap", "goto_"), desc = "DAP Set Next Statement" },
+        { "<leader>dC", call("dap", "run_to_cursor"), desc = "DAP Run to Cursor" },
+        { "<leader>tn", call("dap", "step_over"), desc = "DAP Step Over" },
+        { "<leader>ti", call("dap", "step_into"), desc = "DAP Step Into" },
         {
           "<leader>tI",
           function()
-            dap.step_into({ askForTargets = true })
+            require("dap").step_into({ askForTargets = true })
           end,
           desc = "DAP Step Into Target",
         },
-        { "<leader>to", dap.step_out, desc = "DAP Step Out" },
-        { "<leader>tu", dap.up, desc = "DAP Stack Up" },
-        { "<leader>td", dap.down, desc = "DAP Stack Down" },
+        { "<leader>to", call("dap", "step_out"), desc = "DAP Step Out" },
+        { "<leader>tu", call("dap", "up"), desc = "DAP Stack Up" },
+        { "<leader>td", call("dap", "down"), desc = "DAP Stack Down" },
         {
           "<leader>tU",
           function()
@@ -133,14 +152,20 @@ return {
           end,
           desc = "DAP Stack Bottom",
         },
-        { "<leader>dr", dap.repl.open, desc = "DAP REPL" },
-        { "<leader>dl", dap.run_last, desc = "DAP Run Last" },
-        { "<leader>du", dapui.toggle, desc = "DAP UI Toggle" },
-        { "<leader>de", dapui.eval, mode = { "n", "x" }, desc = "DAP Evaluate" },
+        {
+          "<leader>dr",
+          function()
+            require("dap").repl.open()
+          end,
+          desc = "DAP REPL",
+        },
+        { "<leader>dl", call("dap", "run_last"), desc = "DAP Run Last" },
+        { "<leader>du", call("dapui", "toggle"), desc = "DAP UI Toggle" },
+        { "<leader>de", call("dapui", "eval"), mode = { "n", "x" }, desc = "DAP Evaluate" },
         {
           "<leader>dw",
           function()
-            dapui.elements.watches.add(expression())
+            require("dapui").elements.watches.add(expression())
           end,
           mode = { "n", "x" },
           desc = "DAP Add Watch",
@@ -148,6 +173,7 @@ return {
         {
           "<leader>dx",
           function()
+            local dap = require("dap")
             dap.repl.open()
             dap.repl.execute(expression())
           end,
@@ -157,35 +183,35 @@ return {
         {
           "<leader>tl",
           function()
-            dapui.float_element("scopes", { enter = true })
+            require("dapui").float_element("scopes", { enter = true })
           end,
           desc = "DAP Locals",
         },
         {
           "<leader>tw",
           function()
-            dapui.float_element("watches", { enter = true })
+            require("dapui").float_element("watches", { enter = true })
           end,
           desc = "DAP Watches",
         },
         {
           "<leader>th",
           function()
-            dapui.float_element("repl", { enter = true })
+            require("dapui").float_element("repl", { enter = true })
           end,
           desc = "DAP REPL View",
         },
         {
           "<leader>tb",
           function()
-            dapui.float_element("breakpoints", { enter = true })
+            require("dapui").float_element("breakpoints", { enter = true })
           end,
           desc = "DAP Breakpoints",
         },
         {
           "<leader>tc",
           function()
-            dapui.float_element("stacks", { enter = true })
+            require("dapui").float_element("stacks", { enter = true })
           end,
           desc = "DAP Call Stack",
         },
@@ -202,6 +228,7 @@ return {
     config = function()
       local dap = require("dap")
       local dapui = require("dapui")
+      require("config.dap").setup()
 
       vim.fn.sign_define("DapBreakpoint", { text = "", texthl = "DiagnosticSignError" })
       vim.fn.sign_define("DapBreakpointCondition", { text = "", texthl = "DiagnosticSignWarn" })
@@ -226,12 +253,11 @@ return {
       end
 
       local mason_opts = LazyVim.opts("mason-nvim-dap.nvim")
-      mason_opts.ensure_installed = mason_opts.ensure_installed or {}
-      if not vim.tbl_contains(mason_opts.ensure_installed, "codelldb") then
-        table.insert(mason_opts.ensure_installed, "codelldb")
-      end
-      mason_opts.automatic_installation = mason_opts.automatic_installation == nil and true
-        or mason_opts.automatic_installation
+      -- Global Mason owns adapter installation, including debugpy and
+      -- codelldb. This integration only registers installed adapters, so
+      -- opening DAP in two fresh Neovim processes cannot race installers.
+      mason_opts.ensure_installed = {}
+      mason_opts.automatic_installation = false
       mason_opts.handlers = mason_opts.handlers or {}
       require("mason-nvim-dap").setup(mason_opts)
 
@@ -243,14 +269,12 @@ return {
           return mason_registry.get_package("codelldb")
         end)
         if ok_pkg and codelldb:is_installed() then
-          local install = codelldb:get_install_path()
-          local adapter = install .. "/extension/adapter/codelldb"
+          -- Mason 2.0 removed Package:get_install_path(). Resolve the package
+          -- through its public install-location object so this works with both
+          -- the pinned Mason version and newer releases.
+          local install = require("mason-core.installer.InstallLocation").global():package("codelldb")
           local system = vim.uv.os_uname().sysname
-          local library_extension = system:find("Windows") and "dll" or (system == "Darwin" and "dylib" or "so")
-          if system:find("Windows") then
-            adapter = adapter .. ".exe"
-          end
-          local library = install .. "/extension/lldb/lib/liblldb." .. library_extension
+          local adapter, library = require("config.dap").codelldb_paths(install, system)
           dap.adapters.codelldb = {
             type = "server",
             port = "${port}",

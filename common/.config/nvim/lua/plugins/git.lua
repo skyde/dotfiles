@@ -6,9 +6,11 @@ local function perforce_command()
     return configured
   end
 
-  local shim = vim.fn.exepath("vcs-p4")
-  if shim ~= "" then
-    return shim
+  if vim.fn.has("win32") == 0 then
+    local shim = vim.fn.exepath("vcs-p4")
+    if shim ~= "" then
+      return shim
+    end
   end
   return vim.fn.executable("g4") == 1 and "g4" or "p4"
 end
@@ -18,7 +20,7 @@ local function configured_adapter()
   if adapter == "g4" then
     return "p4"
   end
-  if vim.tbl_contains({ "git", "hg", "jj", "p4" }, adapter) then
+  if vim.tbl_contains({ "git", "jj", "p4" }, adapter) then
     return adapter
   end
   return "jj"
@@ -36,7 +38,7 @@ local vcs_keys = {
   { "<leader>gr", vcs.choose_adapter, desc = "VCS choose repository/adapter" },
   { "<leader>gv", vcs.choose_adapter, desc = "VCS choose adapter" },
   { "<leader>gp", vcs.upstream_patch, desc = "VCS upstream patch" },
-  { "<leader>gA", vcs.branch_diff, desc = "VCS all branch changes" },
+  { "<leader>gA", vcs.all_changes, desc = "VCS all client changes" },
   { "<leader>gy", vcs.copy_diff, desc = "VCS copy branch diff" },
   { "<leader>gw", vcs.worktree_file, desc = "VCS open worktree file" },
   { "<leader>gq", vcs.close, desc = "VCS close diff view" },
@@ -77,6 +79,10 @@ return {
     end,
     opts = function()
       local actions = require("diffview.actions")
+      -- Install the P4 compatibility layer as soon as Diffview itself is on
+      -- the runtimepath. This also covers direct :DiffviewOpen commands,
+      -- restored sessions, and history views opened without a VCS shortcut.
+      vcs.setup_diffview()
 
       local function git_only(action, description)
         return function()
@@ -109,19 +115,22 @@ return {
           default = {
             layout = "diff1_inline",
             disable_diagnostics = true,
-            winbar_info = true,
+            -- Diffview renders this as statusline syntax and does not escape
+            -- legal '%' characters in filenames (E539). The file panel still
+            -- provides path context without making those files unopenable.
+            winbar_info = false,
             focus_diff = false,
           },
           file_history = {
             layout = "diff1_inline",
             disable_diagnostics = true,
-            winbar_info = true,
+            winbar_info = false,
             focus_diff = false,
           },
           merge_tool = {
             layout = "diff4_mixed",
             disable_diagnostics = true,
-            winbar_info = true,
+            winbar_info = false,
             focus_diff = false,
           },
           cycle_layouts = {

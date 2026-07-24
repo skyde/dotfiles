@@ -11,12 +11,12 @@ if errorlevel 1 (
     exit /b 127
 )
 
-set "NVIM_MERGE_OUTPUT=%~1"
-set "NVIM_MERGE_BASE=%~2"
-set "NVIM_MERGE_LEFT=%~3"
-set "NVIM_MERGE_RIGHT=%~4"
+set "NVIM_MERGE_OUTPUT=%~f1"
+set "NVIM_MERGE_BASE=%~f2"
+set "NVIM_MERGE_LEFT=%~f3"
+set "NVIM_MERGE_RIGHT=%~f4"
 
-nvim -f -c "lua local escape = vim.fn.fnameescape; vim.api.nvim_cmd({ cmd = 'DiffviewMergeFiles', args = { escape(vim.env.NVIM_MERGE_OUTPUT), escape(vim.env.NVIM_MERGE_BASE), escape(vim.env.NVIM_MERGE_LEFT), escape(vim.env.NVIM_MERGE_RIGHT) } }, {})"
+nvim -f -c "lua require('config.diff_tool').open('merge', { vim.env.NVIM_MERGE_OUTPUT, vim.env.NVIM_MERGE_BASE, vim.env.NVIM_MERGE_LEFT, vim.env.NVIM_MERGE_RIGHT })"
 set "nvim_merge_status=%ERRORLEVEL%"
 endlocal & exit /b %nvim_merge_status%
 

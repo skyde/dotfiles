@@ -11,22 +11,36 @@ if ! command -v nvim >/dev/null 2>&1; then
   exit 127
 fi
 
-left=$1
-right=$2
-output=${3:-}
+absolute_path() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -am -- "$1"
+    return
+  fi
+  case $1 in
+    /* | [A-Za-z]:/* | [A-Za-z]:\\* | \\\\*) printf '%s\n' "$1" ;;
+    *) printf '%s/%s\n' "$PWD" "$1" ;;
+  esac
+}
+
+left=$(absolute_path "$1")
+right=$(absolute_path "$2")
+output=
+if (($# == 3)); then
+  output=$(absolute_path "$3")
+fi
 
 export NVIM_DIFF_LEFT="$left"
 export NVIM_DIFF_RIGHT="$right"
 
 if [[ -n "$output" ]]; then
   export NVIM_DIFF_OUTPUT="$output"
-  export NVIM_DIFFVIEW_COMMAND=DiffviewDiffDirs
+  export NVIM_DIFFVIEW_COMMAND=dirs
 elif [[ -d "$left" && -d "$right" ]]; then
   unset NVIM_DIFF_OUTPUT || true
-  export NVIM_DIFFVIEW_COMMAND=DiffviewDiffDirs
+  export NVIM_DIFFVIEW_COMMAND=dirs
 else
   unset NVIM_DIFF_OUTPUT || true
-  export NVIM_DIFFVIEW_COMMAND=DiffviewDiffFiles
+  export NVIM_DIFFVIEW_COMMAND=files
 fi
 
-exec nvim -f -c 'lua local escape = vim.fn.fnameescape; local args = { escape(vim.env.NVIM_DIFF_LEFT), escape(vim.env.NVIM_DIFF_RIGHT) }; local output = vim.env.NVIM_DIFF_OUTPUT; if output and output ~= "" then args[#args + 1] = escape(output) end; vim.api.nvim_cmd({ cmd = vim.env.NVIM_DIFFVIEW_COMMAND, args = args }, {})'
+exec nvim -f -c 'lua local args = { vim.env.NVIM_DIFF_LEFT, vim.env.NVIM_DIFF_RIGHT }; local output = vim.env.NVIM_DIFF_OUTPUT; if output and output ~= "" then args[#args + 1] = output end; require("config.diff_tool").open(vim.env.NVIM_DIFFVIEW_COMMAND, args)'

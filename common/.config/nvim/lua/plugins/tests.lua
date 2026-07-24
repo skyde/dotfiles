@@ -13,18 +13,7 @@ local disabled_lowercase_keys = {
 }
 
 local python_cache = {}
-
-local function cpp_test_file(path)
-  local filename = vim.fs.basename(path):lower()
-  local extension = filename:match("%.([^%.]+)$")
-  if not vim.tbl_contains({ "cc", "cpp", "cxx" }, extension) then
-    return false
-  end
-
-  -- Covers Google/Chromium-style *_unittest.cc and *_browsertest.cc as
-  -- well as the adapter's default *_test.cpp convention.
-  return filename:find("test", 1, true) ~= nil
-end
+local cpp_test_file = require("config.testing").cpp_test_file
 
 local function executable(path)
   return path and path ~= "" and vim.fn.executable(path) == 1
@@ -139,7 +128,6 @@ vim.list_extend(keys, {
 return {
   {
     "nvim-neotest/neotest",
-    event = "BufReadPre",
     dependencies = {
       "orjangj/neotest-ctest",
     },

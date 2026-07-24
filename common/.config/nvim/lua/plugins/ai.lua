@@ -35,7 +35,13 @@ return {
       },
       {
         "<leader>aA",
-        "<cmd>CodeCompanionChat adapter=gemini_cli<cr>",
+        function()
+          if vim.fn.executable("gemini") ~= 1 then
+            vim.notify("Gemini CLI is not installed; use <leader>ac for API-key chat", vim.log.levels.WARN)
+            return
+          end
+          vim.cmd("CodeCompanionChat adapter=gemini_cli")
+        end,
         desc = "Gemini agent (CLI)",
       },
       {
@@ -61,11 +67,20 @@ return {
       adapters = {
         http = {
           gemini = function()
-            return require("codecompanion.adapters").extend("gemini", {
+            local adapter = require("codecompanion.adapters").extend("gemini", {
               env = {
                 api_key = "GEMINI_API_KEY",
               },
             })
+            -- The pinned CodeCompanion release predates Gemini 3.6. Register
+            -- its current model metadata so model selection and capabilities
+            -- behave like the built-in Gemini entries.
+            adapter.schema.model.choices["gemini-3.6-flash"] = {
+              formatted_name = "Gemini 3.6 Flash",
+              meta = { context_window = 1048576 },
+              opts = { can_form_structured_outputs = true, can_reason = true, has_vision = true },
+            }
+            return adapter
           end,
         },
         acp = {
@@ -89,7 +104,7 @@ return {
         chat = {
           adapter = {
             name = "gemini",
-            model = "gemini-2.5-pro",
+            model = "gemini-3.1-pro-preview",
           },
           opts = {
             completion_provider = "blink",
@@ -101,19 +116,19 @@ return {
         inline = {
           adapter = {
             name = "gemini",
-            model = "gemini-2.5-pro",
+            model = "gemini-3.1-pro-preview",
           },
         },
         cmd = {
           adapter = {
             name = "gemini",
-            model = "gemini-2.5-flash",
+            model = "gemini-3.6-flash",
           },
         },
         background = {
           adapter = {
             name = "gemini",
-            model = "gemini-2.5-flash",
+            model = "gemini-3.6-flash",
           },
         },
       },

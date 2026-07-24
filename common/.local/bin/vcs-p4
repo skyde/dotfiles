@@ -8,16 +8,33 @@ if [[ -n "${NVIM_PERFORCE_CMD:-}" ]]; then
     printf 'vcs-p4: NVIM_PERFORCE_CMD is not executable: %s\n' "$NVIM_PERFORCE_CMD" >&2
     exit 127
   fi
-  exec "$NVIM_PERFORCE_CMD" "$@"
+  p4_client=$NVIM_PERFORCE_CMD
+elif command -v g4 >/dev/null 2>&1; then
+  p4_client=g4
+elif command -v p4 >/dev/null 2>&1; then
+  p4_client=p4
+else
+  printf 'vcs-p4: neither g4 nor p4 is available (set NVIM_PERFORCE_CMD to override)\n' >&2
+  exit 127
 fi
 
-if command -v g4 >/dev/null 2>&1; then
-  exec g4 "$@"
+# Diffview performs a synchronous `p4 info` while selecting an adapter. Bound
+# that network probe on systems with GNU coreutils so a stale VPN or ticket
+# cannot freeze Neovim. Homebrew exposes the same command as `gtimeout`.
+# Other P4 operations remain unbounded and asynchronous.
+timeout_command=
+if command -v timeout >/dev/null 2>&1; then
+  timeout_command=timeout
+elif command -v gtimeout >/dev/null 2>&1; then
+  timeout_command=gtimeout
 fi
 
-if command -v p4 >/dev/null 2>&1; then
-  exec p4 "$@"
+if [[ ${1:-} == info && -n $timeout_command ]]; then
+  p4_timeout=${NVIM_P4_TIMEOUT_SECONDS:-5}
+  if [[ ! $p4_timeout =~ ^[0-9]+([.][0-9]+)?$ ]] || [[ $p4_timeout == 0 ]]; then
+    p4_timeout=5
+  fi
+  exec "$timeout_command" --foreground "${p4_timeout}s" "$p4_client" "$@"
 fi
 
-printf 'vcs-p4: neither g4 nor p4 is available (set NVIM_PERFORCE_CMD to override)\n' >&2
-exit 127
+exec "$p4_client" "$@"
