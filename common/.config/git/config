@@ -94,7 +94,7 @@
     side-by-side = true
     line-numbers = true
 
-# Tokyo Night-aligned delta styling
+# Tokyo Night Night delta styling
 [delta "tokyonight"]
     # File headers
     file-style = "#c0caf5 bold"
@@ -118,20 +118,22 @@
     zero-style = syntax
     whitespace-error-style = "#db4b4b reverse"
 
-    line-numbers-left-style = "#545c7e"
-    line-numbers-right-style = "#545c7e"
-    line-numbers-zero-style = "#545c7e"
-    line-numbers-plus-style = "#9ece6a dim"   # additions → Tokyo Night green, dimmed
-    line-numbers-minus-style = "#f7768e dim"  # deletions → Tokyo Night red, dimmed
+    line-numbers-left-style = "#3b4261"
+    line-numbers-right-style = "#3b4261"
+    line-numbers-zero-style = "#3b4261"
+    line-numbers-plus-style = "#449dab"
+    line-numbers-minus-style = "#914c54"
     line-numbers-left-format = ""
     line-numbers-right-format = "{np:<4}"
 
-    plus-style = "syntax #20432b"
-    plus-emph-style = "syntax #2c5a3a"
-    plus-non-emph-style = "syntax #17311f"
-    minus-style = "syntax #532727"
-    minus-emph-style = "syntax #683131"
-    minus-non-emph-style = "syntax #3f1f1f"
+    plus-style = "syntax #243e4a"
+    plus-emph-style = "syntax #2c5a66"
+    plus-non-emph-style = "syntax #243e4a"
+    plus-empty-line-marker-style = "syntax #243e4a"
+    minus-style = "syntax #4a272f"
+    minus-emph-style = "syntax #713137"
+    minus-non-emph-style = "syntax #4a272f"
+    minus-empty-line-marker-style = "syntax #4a272f"
 
 [pager]    # keep these for safety even with core.pager
     diff = delta
