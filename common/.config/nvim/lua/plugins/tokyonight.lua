@@ -1,3 +1,6 @@
+local orange = "#ff5000"
+local selection = "#283457"
+
 return {
   {
     "folke/tokyonight.nvim",
@@ -5,33 +8,30 @@ return {
     priority = 1000,
     opts = {
       style = "night",
-      -- transparent = false,
-      -- terminal_colors = true,
-      -- styles = {
-      --   -- comments = { italic = true },
-      --   -- keywords = { italic = true },
-      --   functions = {},
-      --   variables = {},
-      -- },
-      -- on_colors = function(colors)
-      --   colors.bg = "#000000"
-      --   colors.bg_dark = "#000000"
-      --   colors.bg_float = "#0d0d0d"
-      --   colors.bg_highlight = "#111111"
-      -- end,
+      transparent = false,
+      terminal_colors = true,
+      styles = {
+        sidebars = "dark",
+        floats = "dark",
+      },
+      lualine_bold = true,
       on_highlights = function(hl, colors)
-        -- hl.Normal = { bg = colors.bg }
-        -- hl.NormalFloat = { bg = colors.bg_float }
-        -- hl.FloatBorder = { bg = colors.bg_float, fg = colors.fg_dark }
-        hl.Cursor = { fg = "#000000", bg = "#ff5000" }
-        hl.CursorInsert = { fg = "#ff5000", bg = "NONE" }
-        -- hl.CursorLineNr = { fg = "#569cd6" }
+        -- Preserve the high-visibility cursor while keeping the rest of the UI
+        -- on the canonical Tokyo Night Night palette.
+        hl.Cursor = { fg = colors.bg, bg = orange }
+        hl.Visual = { bg = selection }
+        hl.Search = { fg = colors.bg, bg = colors.orange, bold = true }
+        hl.CurSearch = { fg = "#000000", bg = orange, bold = true }
+        hl.IncSearch = hl.CurSearch
+        hl.MatchParen = { fg = orange, bold = true, underline = true }
+        hl.FloatBorder = { fg = colors.blue, bg = colors.bg_float }
+        hl.WinSeparator = { fg = colors.bg_highlight }
+        hl.PmenuSel = { fg = colors.bg_dark, bg = colors.blue, bold = true }
       end,
     },
     config = function(_, opts)
       require("tokyonight").setup(opts)
       vim.cmd.colorscheme("tokyonight")
-      -- use colorscheme defaults for diff highlighting
     end,
   },
 }
