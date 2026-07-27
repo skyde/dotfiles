@@ -31,14 +31,9 @@ fi
 
 if (( $+commands[fzf] )); then
   export FZF_DEFAULT_COMMAND='rg --files --follow'
-  export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS \
-    --reverse \
-    --ansi \
-    --info=inline \
-    --style=minimal \
-    --no-cycle \
-    --style=minimal \
-    --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f,hl:215,hl+:215"
+  if [[ -r "$HOME/.config/fzf/tokyonight.sh" ]]; then
+    source "$HOME/.config/fzf/tokyonight.sh"
+  fi
 fi
 
 # ripgrep: hidden files, smart case, ignore common junk
