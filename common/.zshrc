@@ -72,10 +72,10 @@ if (( $+commands[fzf] )); then
     selected=$(
       fc -nrl 1 2>/dev/null | LC_ALL=C awk 'length && !seen[$0]++' | \
       fzf --height=80% --layout=reverse --min-height=20 \
-          --tiebreak=index --no-sort --scheme=history --wrap \
+          --tiebreak=index --no-sort --scheme=history \
           --preview='printf "%s\n" {}' --preview-window='down,4,wrap' \
           --bind='ctrl-/:toggle-preview' \
-          --prompt='History> ' --style=minimal --query="$LBUFFER"
+          --prompt='History> ' --query="$LBUFFER"
     ) || return
     BUFFER=$selected
     CURSOR=${#BUFFER}
