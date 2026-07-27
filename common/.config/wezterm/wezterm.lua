@@ -9,17 +9,21 @@ config.font = wezterm.font_with_fallback({
 })
 config.font_size = 18.0
 
--- Colors mirrored from common/.config/kitty/themes/tokyonight_night.conf
+-- Tokyo Night Night, mirrored from the checked-in kitty theme.
+-- The orange cursor is an intentional repository-specific accent.
 config.colors = {
   foreground = '#c0caf5',
   background = '#1a1b26',
   cursor_bg = '#FF5000',
   cursor_fg = '#000000',
   cursor_border = '#FF5000',
-  selection_bg = '#2e3c64',
+  selection_bg = '#283457',
   selection_fg = '#c0caf5',
+  split = '#7aa2f7',
+  compose_cursor = '#ff9e64',
+  scrollbar_thumb = '#292e42',
   ansi = {
-    '#1d202f', -- black
+    '#15161e', -- black
     '#f7768e', -- red
     '#9ece6a', -- green
     '#e0af68', -- yellow
@@ -39,6 +43,7 @@ config.colors = {
     '#c0caf5', -- bright white
   },
   tab_bar = {
+    inactive_tab_edge = '#16161e',
     background = '#1a1b26',
     active_tab = {
       bg_color = '#7aa2f7',
@@ -51,17 +56,17 @@ config.colors = {
     },
     inactive_tab_hover = {
       bg_color = '#292e42',
-      fg_color = '#c0caf5',
-      italic = true,
+      fg_color = '#7aa2f7',
+      intensity = 'Bold',
     },
     new_tab = {
       bg_color = '#1a1b26',
-      fg_color = '#c0caf5',
+      fg_color = '#7aa2f7',
     },
     new_tab_hover = {
-      bg_color = '#7aa2f7',
-      fg_color = '#16161e',
-      italic = true,
+      bg_color = '#1a1b26',
+      fg_color = '#7aa2f7',
+      intensity = 'Bold',
     },
   },
 }
