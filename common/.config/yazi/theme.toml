@@ -1,0 +1,98 @@
+# Tokyo Night (night) for yazi
+# Schema: https://yazi-rs.github.io/schemas/theme.json
+# Palette reference: docs/tokyonight.md
+
+[mgr]
+cwd = { fg = "#7dcfff" }
+
+# Hovered row: the selection blue, not a reverse-video flip, so the file icon
+# and git status colours survive underneath the cursor.
+hovered = { fg = "#c0caf5", bg = "#283457" }
+preview_hovered = { underline = true }
+
+find_keyword = { fg = "#ff9e64", bold = true }
+find_position = { fg = "#bb9af7", bg = "reset", italic = true }
+
+# Yank/cut/select markers: the thin bar down the left of a row
+marker_copied = { fg = "#9ece6a", bg = "#9ece6a" }
+marker_cut = { fg = "#f7768e", bg = "#f7768e" }
+marker_marked = { fg = "#7dcfff", bg = "#7dcfff" }
+marker_selected = { fg = "#e0af68", bg = "#e0af68" }
+
+count_copied = { fg = "#16161e", bg = "#9ece6a" }
+count_cut = { fg = "#16161e", bg = "#f7768e" }
+count_selected = { fg = "#16161e", bg = "#e0af68" }
+
+border_symbol = "│"
+border_style = { fg = "#292e42" }
+
+[tabs]
+active = { fg = "#16161e", bg = "#7aa2f7", bold = true }
+inactive = { fg = "#545c7e", bg = "#292e42" }
+
+[mode]
+normal_main = { fg = "#16161e", bg = "#7aa2f7", bold = true }
+normal_alt = { fg = "#7aa2f7", bg = "#292e42" }
+
+select_main = { fg = "#16161e", bg = "#9ece6a", bold = true }
+select_alt = { fg = "#9ece6a", bg = "#292e42" }
+
+unset_main = { fg = "#16161e", bg = "#bb9af7", bold = true }
+unset_alt = { fg = "#bb9af7", bg = "#292e42" }
+
+[status]
+progress_label = { fg = "#c0caf5", bold = true }
+progress_normal = { fg = "#7aa2f7", bg = "#292e42" }
+progress_error = { fg = "#f7768e", bg = "#292e42" }
+
+[which]
+mask = { bg = "#1f2335" }
+cand = { fg = "#7dcfff" }
+rest = { fg = "#565f89" }
+desc = { fg = "#bb9af7" }
+separator = "  "
+separator_style = { fg = "#3b4261" }
+
+[confirm]
+border = { fg = "#7aa2f7" }
+title = { fg = "#7aa2f7" }
+content = {}
+list = { fg = "#7dcfff" }
+btn_yes = { fg = "#16161e", bg = "#9ece6a", bold = true }
+btn_no = { fg = "#16161e", bg = "#f7768e", bold = true }
+
+[spot]
+border = { fg = "#7aa2f7" }
+title = { fg = "#7aa2f7" }
+tbl_col = { fg = "#7aa2f7", bold = true }
+tbl_cell = { fg = "#ff9e64", bg = "#283457" }
+
+[notify]
+title_info = { fg = "#9ece6a" }
+title_warn = { fg = "#e0af68" }
+title_error = { fg = "#f7768e" }
+
+[pick]
+border = { fg = "#7aa2f7" }
+active = { fg = "#bb9af7", bold = true }
+inactive = {}
+
+[input]
+border = { fg = "#7aa2f7" }
+title = {}
+value = {}
+selected = { bg = "#283457" }
+
+[cmp]
+border = { fg = "#7aa2f7" }
+
+[tasks]
+border = { fg = "#7aa2f7" }
+title = {}
+hovered = { fg = "#bb9af7", underline = true }
+
+[help]
+on = { fg = "#7dcfff" }
+run = { fg = "#bb9af7" }
+hovered = { bg = "#283457", bold = true }
+footer = { fg = "#16161e", bg = "#c0caf5" }

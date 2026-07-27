@@ -7,12 +7,34 @@ command_timeout = 1000
 format = "$username$hostname${custom.cloud_workspace}${custom.git_workspace}$directory$git_branch${custom.git_cl}$git_commit$git_state$git_status$cmd_duration\n$character"
 right_format = "$time"
 
+# Tokyo Night (night) — palette reference: docs/tokyonight.md
+palette = "tokyonight"
+
+[palettes.tokyonight]
+bg = "#1a1b26"
+bg_highlight = "#292e42"
+fg = "#c0caf5"
+fg_dark = "#a9b1d6"
+comment = "#565f89"
+dark3 = "#545c7e"
+dark5 = "#737aa2"
+red = "#f7768e"
+green = "#9ece6a"
+yellow = "#e0af68"
+blue = "#7aa2f7"
+magenta = "#bb9af7"
+cyan = "#7dcfff"
+orange = "#ff9e64"
+purple = "#9d7cd8"
+teal = "#1abc9c"
+
 [fill]
 symbol = ' '
 
 # Replace the '❯' symbol in the prompt with '➜'
 [character] # The name of the module we are configuring is 'character'
-success_symbol = '[➜](bold green)' # The 'success_symbol' segment is being set to '➜' with the color 'bold green'
+success_symbol = '[➜](bold green)'
+error_symbol = '[➜](bold red)'
 
 # Disable the package module, hiding it from the prompt completely
 [package]
@@ -23,26 +45,36 @@ disabled = true
 min_time = 1000
 show_milliseconds = true
 
+# Default is 'bold cyan'; blue keeps the path from competing with git info.
+[directory]
+style = 'bold blue'
+
+# Default is 'bold yellow', which collides with cmd_duration.
+[username]
+style_user = 'bold teal'
+style_root = 'bold red'
+
 [line_break]
 disabled = true
 
 [time]
 disabled = false
 format = '[$time ]($style)'
-style = 'fg:#5c7080 dimmed'
+style = 'fg:comment'
 use_12hr = true
 time_format = '%-I:%M %p'
 
 [git_branch]
 format = "on [$symbol$branch]($style) "
 symbol = " "
-style = "bold purple"
+style = "bold magenta"
 
 [git_commit]
 disabled = false
 
 [git_state]
 disabled = false
+style = 'bold orange'
 
 [git_status]
 disabled = true
@@ -64,7 +96,7 @@ description = "Cloud workspace name"
 when = 'echo "$PWD" | grep -q "^/google/src/cloud/[^/]*/[^/]*"'
 command = 'echo "$PWD" | cut -d/ -f6'
 format = '[$output]($style) '
-style = 'bold #af87ff'
+style = 'bold purple'
 
 [custom.git_workspace]
 description = "Chromium workspace name (chrome/chrome2/etc)"
@@ -85,7 +117,7 @@ echo "${parent##*/}"
 
 # No leading/trailing spaces; add "/" so it glues to $directory
 format = '[$output/]($style)'
-style  = 'cyan bold'
+style  = 'bold cyan'
 
 [custom.git_cl]
 description = "Chromium CL number"

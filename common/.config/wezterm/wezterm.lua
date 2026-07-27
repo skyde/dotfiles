@@ -9,15 +9,19 @@ config.font = wezterm.font_with_fallback({
 })
 config.font_size = 18.0
 
--- Colors mirrored from common/.config/kitty/themes/tokyonight_night.conf
+-- Colors mirrored from common/.config/kitty/themes/tokyonight_night.conf.
+-- If you change a value here, change it there too. Palette: docs/tokyonight.md
 config.colors = {
   foreground = '#c0caf5',
   background = '#1a1b26',
   cursor_bg = '#FF5000',
   cursor_fg = '#000000',
   cursor_border = '#FF5000',
+  compose_cursor = '#ff9e64',
   selection_bg = '#2e3c64',
   selection_fg = '#c0caf5',
+  scrollbar_thumb = '#292e42',
+  split = '#292e42',
   ansi = {
     '#1d202f', -- black
     '#f7768e', -- red
@@ -29,7 +33,9 @@ config.colors = {
     '#a9b1d6', -- white
   },
   brights = {
-    '#414868', -- bright black
+    -- Lightened from Tokyo Night's #414868 to match kitty's color8: the
+    -- upstream value is near-unreadable for de-emphasised CLI output.
+    '#85899c', -- bright black
     '#ff899d', -- bright red
     '#9fe044', -- bright green
     '#faba4a', -- bright yellow
@@ -49,6 +55,7 @@ config.colors = {
       bg_color = '#292e42',
       fg_color = '#545c7e',
     },
+    inactive_tab_edge = '#16161e',
     inactive_tab_hover = {
       bg_color = '#292e42',
       fg_color = '#c0caf5',
@@ -64,6 +71,23 @@ config.colors = {
       italic = true,
     },
   },
+  -- Copy mode / quick select, the rough equivalents of kitty's mark colours
+  copy_mode_active_highlight_bg = { Color = '#ff9e64' },
+  copy_mode_active_highlight_fg = { Color = '#16161e' },
+  copy_mode_inactive_highlight_bg = { Color = '#3d59a1' },
+  copy_mode_inactive_highlight_fg = { Color = '#c0caf5' },
+  quick_select_label_bg = { Color = '#ff5000' },
+  quick_select_label_fg = { Color = '#000000' },
+  quick_select_match_bg = { Color = '#3d59a1' },
+  quick_select_match_fg = { Color = '#c0caf5' },
+}
+
+-- Match kitty's tab bar chrome
+config.tab_bar_at_bottom = false
+config.use_fancy_tab_bar = false
+config.window_frame = {
+  active_titlebar_bg = '#16161e',
+  inactive_titlebar_bg = '#16161e',
 }
 
 -- Cursor behavior to match kitty (no blink)

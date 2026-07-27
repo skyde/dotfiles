@@ -59,8 +59,13 @@ vim.opt.clipboard:append("unnamedplus")
 
 vim.diagnostic.config({ underline = false })
 
--- Do not highlight the current line
-vim.opt.cursorline = false
+-- Do not highlight the current line itself, but do highlight its line number.
+-- 'cursorlineopt = number' means CursorLine (the row background) is never drawn;
+-- only CursorLineNr is, which the theme paints in the cursor orange. Without
+-- 'cursorline' at all, CursorLineNr is dead config and there is no position cue
+-- left, since signcolumn is off below.
+vim.opt.cursorline = true
+vim.opt.cursorlineopt = "number"
 
 -- Remove the sign column gutter
 vim.opt.signcolumn = "no"
