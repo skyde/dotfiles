@@ -105,21 +105,17 @@ if command -v fzf >/dev/null 2>&1; then
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
   fi
 
-  export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS \
-    --reverse \
-    --ansi \
-    --info=inline \
-    --style=minimal \
-    --no-cycle \
-    --style=minimal \
-    --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f,hl:215,hl+:215"
+  if [[ -r "$HOME/.config/fzf/tokyonight.sh" ]]; then
+    # shellcheck disable=SC1090
+    source "$HOME/.config/fzf/tokyonight.sh"
+  fi
 
   __fzf_history_widget() {
     local selected
     selected=$(fc -lnr |
       awk '!seen[$0]++' |
       fzf --height=80% --reverse --tiebreak=index --no-sort \
-          --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
+          --prompt='History> ' --query "$READLINE_LINE") || return
     READLINE_LINE=$selected
     READLINE_POINT=${#selected}
   }
