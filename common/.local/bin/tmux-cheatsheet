@@ -1,0 +1,27 @@
+#!/usr/bin/env sh
+set -eu
+
+cat <<'HELP'
+ tmux quick sheet
+ ────────────────
+ prefix r        reload ~/.tmux.conf
+ prefix h/j/k/l  move between panes
+ prefix C        new window in the current path
+ prefix </>      move window left/right
+ prefix t        open a floating shell in the current path
+ prefix g        open lazygit in a floating popup
+ prefix s        fuzzy-switch sessions with fzf
+
+ copy mode
+ prefix [        enter copy mode
+ v               begin selection
+ C-v             block selection
+ y               copy and leave copy mode
+ S-F4/S-F6       scroll 16 lines up/down
+
+ local tweaks can live in ~/.tmux.conf.local
+HELP
+
+printf '\nPress Enter to close… '
+# Use /dev/tty so the prompt works even if stdin is redirected.
+IFS= read -r _ </dev/tty || true
