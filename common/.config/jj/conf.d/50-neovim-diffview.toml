@@ -1,0 +1,24 @@
+[ui]
+editor = "nvim"
+diff-editor = "diffview"
+merge-editor = "diffview-merge"
+
+[merge-tools.diffview]
+program = "nvim-diff"
+diff-args = ["$left", "$right"]
+edit-args = ["$left", "$right", "$output"]
+
+[merge-tools.diffview-merge]
+program = "nvim-merge"
+merge-args = ["$output", "$base", "$left", "$right"]
+merge-tool-edits-conflict-markers = true
+conflict-marker-style = "git"
+
+[[--scope]]
+--when.platforms = ["windows"]
+
+[--scope.merge-tools.diffview]
+program = "nvim-diff.cmd"
+
+[--scope.merge-tools.diffview-merge]
+program = "nvim-merge.cmd"

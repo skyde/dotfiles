@@ -9,8 +9,9 @@ promptToOpenMergeTool: false
 scrollOffBehavior: margin
 os:
   editPreset: nvim
-  open: "code --reuse-window {{filename}}"
-  openDirInEditor: "code --reuse-window {{dir}}"
+  # Ctrl-T uses Git's diff.tool, which is configured to call nvim-diff.
+  open: 'nvim -- "{{filename}}"'
+  openDirInEditor: 'nvim -- "{{dir}}"'
   copyToClipboardCmd: "printf '%s' {{text}} | osc-copy"
 gui:
   scrollHeight: 32

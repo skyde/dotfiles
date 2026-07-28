@@ -55,6 +55,9 @@ jobs:
             bash -n "$script"
           done < <(git ls-files -z '*.sh')
 
+          tests/nvim_checkpoint_marker_spec.sh
+          tests/nvim_debian_engine_spec.sh
+          tests/nvim_debian_staging_spec.sh
           python3 -m unittest discover -s tests -p 'test_*.py'
 
   unix-install:
