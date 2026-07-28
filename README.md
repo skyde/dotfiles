@@ -68,6 +68,7 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 - `delta` for modern git diffs (also used in Lazygit)
   - diffs are side-by-side by default, while LazyGit shows inline changes
 - `lazygit` for a simple git TUI
+- `lazyjj` for a lazygit-style TUI for [jj](https://jj-vcs.github.io) (custom script in `common/.local/bin`, requires `jj` and `fzf`)
 - `starship` for a customizable cross-shell prompt
 
 ## Nvim Version
