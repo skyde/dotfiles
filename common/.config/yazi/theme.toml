@@ -8,7 +8,11 @@ cwd = { fg = "#7dcfff" }
 # Hovered row: the selection blue, not a reverse-video flip, so the file icon
 # and git status colours survive underneath the cursor.
 hovered = { fg = "#c0caf5", bg = "#283457" }
-preview_hovered = { underline = true }
+
+# The hovered row in the preview pane. Yazi's default is `underline = true`,
+# which cuts a hard rule across an unfocused pane. A muted fill reads as the
+# same gesture as `hovered` above, just quieter because the pane isn't focused.
+preview_hovered = { fg = "#c0caf5", bg = "#292e42" }
 
 find_keyword = { fg = "#ff9e64", bold = true }
 find_position = { fg = "#bb9af7", bg = "reset", italic = true }
@@ -41,7 +45,9 @@ unset_main = { fg = "#16161e", bg = "#bb9af7", bold = true }
 unset_alt = { fg = "#bb9af7", bg = "#292e42" }
 
 [status]
-overall = { fg = "#c0caf5", bg = "#16161e" }
+# The bottom bar sits on the page background rather than a darker strip, so it
+# reads as part of the pane instead of a separate chrome band.
+overall = { fg = "#c0caf5", bg = "#1a1b26" }
 
 # Permission bits, coloured per column so drwxr-xr-x is scannable at a glance
 perm_sep = { fg = "#3b4261" }
@@ -100,7 +106,8 @@ inactive = { fg = "#a9b1d6" }
 [tasks]
 border = { fg = "#7aa2f7" }
 title = {}
-hovered = { fg = "#bb9af7", underline = true }
+# Same treatment as preview_hovered: a fill rather than a hard underline.
+hovered = { fg = "#bb9af7", bg = "#292e42" }
 
 [help]
 on = { fg = "#7dcfff" }
