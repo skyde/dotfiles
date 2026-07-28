@@ -20,12 +20,19 @@ gui:
   showFileIcons: true
   theme:
     lightTheme: false
-    # Tokyo Night Moon-ish accents
-    activeBorderColor: ["#82aaff"]
-    inactiveBorderColor: ["#444a73"]
-    selectedLineBgColor: ["#2d3f76"]
-    optionsTextColor: ["#ffc777"]
-    defaultFgColor: ["#c8d3f5"]
+    # Tokyo Night (night) — palette reference: docs/tokyonight.md
+    activeBorderColor: ["#7aa2f7", "bold"]
+    inactiveBorderColor: ["#292e42"]
+    searchingActiveBorderColor: ["#ff9e64", "bold"]
+    selectedLineBgColor: ["#283457"]
+    inactiveViewSelectedLineBgColor: ["#1f2335"]
+    optionsTextColor: ["#e0af68"]
+    defaultFgColor: ["#c0caf5"]
+    cherryPickedCommitBgColor: ["#3d59a1"]
+    cherryPickedCommitFgColor: ["#c0caf5"]
+    markedBaseCommitBgColor: ["#ff9e64"]
+    markedBaseCommitFgColor: ["#16161e"]
+    unstagedChangesColor: ["#f7768e"]
 keybinding:
   universal:
     undo: u

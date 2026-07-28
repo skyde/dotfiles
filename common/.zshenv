@@ -31,14 +31,9 @@ fi
 
 if (( $+commands[fzf] )); then
   export FZF_DEFAULT_COMMAND='rg --files --follow'
-  export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS \
-    --reverse \
-    --ansi \
-    --info=inline \
-    --style=minimal \
-    --no-cycle \
-    --style=minimal \
-    --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f,hl:215,hl+:215"
+  # Layout + Tokyo Night colours, shared with bash. See docs/tokyonight.md.
+  # shellcheck disable=SC1091
+  [ -r "$HOME/.config/shell/theme.sh" ] && . "$HOME/.config/shell/theme.sh"
 fi
 
 # ripgrep: hidden files, smart case, ignore common junk

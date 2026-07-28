@@ -105,20 +105,19 @@ if command -v fzf >/dev/null 2>&1; then
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
   fi
 
-  export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS \
-    --reverse \
-    --ansi \
-    --info=inline \
-    --style=minimal \
-    --no-cycle \
-    --style=minimal \
-    --color=prompt:#80a0ff,pointer:#ff5000,marker:#afff5f,hl:215,hl+:215"
+  # Layout + Tokyo Night colours, shared with zsh. See docs/tokyonight.md.
+  # shellcheck disable=SC1091
+  [ -r "$HOME/.config/shell/theme.sh" ] && . "$HOME/.config/shell/theme.sh"
 
   __fzf_history_widget() {
     local selected
+    # --ansi is explicit here for the same reason as in .zshrc: it is what makes
+    # fzf hand back the plain command rather than the highlighted one.
     selected=$(fc -lnr |
       awk '!seen[$0]++' |
-      fzf --height=80% --reverse --tiebreak=index --no-sort \
+      fzf_history_highlight |
+      fzf --height=80% --reverse --ansi --tiebreak=index --no-sort \
+          --preview="$FZF_HISTORY_PREVIEW" --preview-window='down,4,wrap' \
           --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
     READLINE_LINE=$selected
     READLINE_POINT=${#selected}

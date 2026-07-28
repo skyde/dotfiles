@@ -69,11 +69,15 @@ fi
 if (( $+commands[fzf] )); then
   _fzf_history_widget() {
     local selected
+    # --ansi is passed explicitly, not just inherited from FZF_DEFAULT_OPTS:
+    # without it fzf would hand back the highlighted line *including* the escape
+    # sequences and paste those onto the command line.
     selected=$(
       fc -nrl 1 2>/dev/null | LC_ALL=C awk 'length && !seen[$0]++' | \
-      fzf --height=80% --layout=reverse --min-height=20 \
+      fzf_history_highlight | \
+      fzf --height=80% --layout=reverse --min-height=20 --ansi \
           --tiebreak=index --no-sort --scheme=history --wrap \
-          --preview='printf "%s\n" {}' --preview-window='down,4,wrap' \
+          --preview="$FZF_HISTORY_PREVIEW" --preview-window='down,4,wrap' \
           --bind='ctrl-/:toggle-preview' \
           --prompt='History> ' --style=minimal --query="$LBUFFER"
     ) || return

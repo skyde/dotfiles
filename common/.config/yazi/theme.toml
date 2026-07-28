@@ -1,0 +1,214 @@
+# Tokyo Night (night) for yazi
+# Schema: https://yazi-rs.github.io/schemas/theme.json
+# Palette reference: docs/tokyonight.md
+
+[mgr]
+cwd = { fg = "#7dcfff" }
+
+# Hovered row: the selection blue, not a reverse-video flip, so the file icon
+# and git status colours survive underneath the cursor.
+hovered = { fg = "#c0caf5", bg = "#283457" }
+
+# The hovered row in the preview pane. Yazi's default is `underline = true`,
+# which cuts a hard rule across an unfocused pane. A muted fill reads as the
+# same gesture as `hovered` above, just quieter because the pane isn't focused.
+preview_hovered = { fg = "#c0caf5", bg = "#292e42" }
+
+find_keyword = { fg = "#ff9e64", bold = true }
+find_position = { fg = "#bb9af7", bg = "reset", italic = true }
+
+# Yank/cut/select markers: the thin bar down the left of a row
+marker_copied = { fg = "#9ece6a", bg = "#9ece6a" }
+marker_cut = { fg = "#f7768e", bg = "#f7768e" }
+marker_marked = { fg = "#7dcfff", bg = "#7dcfff" }
+marker_selected = { fg = "#e0af68", bg = "#e0af68" }
+
+count_copied = { fg = "#16161e", bg = "#9ece6a" }
+count_cut = { fg = "#16161e", bg = "#f7768e" }
+count_selected = { fg = "#16161e", bg = "#e0af68" }
+
+border_symbol = "│"
+border_style = { fg = "#292e42" }
+
+[tabs]
+active = { fg = "#16161e", bg = "#7aa2f7", bold = true }
+inactive = { fg = "#545c7e", bg = "#292e42" }
+
+[mode]
+normal_main = { fg = "#16161e", bg = "#7aa2f7", bold = true }
+normal_alt = { fg = "#7aa2f7", bg = "#292e42" }
+
+select_main = { fg = "#16161e", bg = "#9ece6a", bold = true }
+select_alt = { fg = "#9ece6a", bg = "#292e42" }
+
+unset_main = { fg = "#16161e", bg = "#bb9af7", bold = true }
+unset_alt = { fg = "#bb9af7", bg = "#292e42" }
+
+[status]
+# The bottom bar sits on the page background rather than a darker strip, so it
+# reads as part of the pane instead of a separate chrome band.
+overall = { fg = "#c0caf5", bg = "#1a1b26" }
+
+# Permission bits, coloured per column so drwxr-xr-x is scannable at a glance
+perm_sep = { fg = "#3b4261" }
+perm_type = { fg = "#7aa2f7" }
+perm_read = { fg = "#e0af68" }
+perm_write = { fg = "#f7768e" }
+perm_exec = { fg = "#9ece6a" }
+
+progress_label = { fg = "#c0caf5", bold = true }
+progress_normal = { fg = "#7aa2f7", bg = "#292e42" }
+progress_error = { fg = "#f7768e", bg = "#292e42" }
+
+[which]
+mask = { bg = "#1f2335" }
+cand = { fg = "#7dcfff" }
+rest = { fg = "#565f89" }
+desc = { fg = "#bb9af7" }
+separator = "  "
+separator_style = { fg = "#3b4261" }
+
+[confirm]
+border = { fg = "#7aa2f7" }
+title = { fg = "#7aa2f7" }
+content = {}
+list = { fg = "#7dcfff" }
+btn_yes = { fg = "#16161e", bg = "#9ece6a", bold = true }
+btn_no = { fg = "#16161e", bg = "#f7768e", bold = true }
+
+[spot]
+border = { fg = "#7aa2f7" }
+title = { fg = "#7aa2f7" }
+tbl_col = { fg = "#7aa2f7", bold = true }
+tbl_cell = { fg = "#ff9e64", bg = "#283457" }
+
+[notify]
+title_info = { fg = "#9ece6a" }
+title_warn = { fg = "#e0af68" }
+title_error = { fg = "#f7768e" }
+
+[pick]
+border = { fg = "#7aa2f7" }
+active = { fg = "#bb9af7", bold = true }
+inactive = {}
+
+[input]
+border = { fg = "#7aa2f7" }
+title = {}
+value = {}
+selected = { bg = "#283457" }
+
+[cmp]
+border = { fg = "#7aa2f7" }
+active = { fg = "#bb9af7", bold = true }
+inactive = { fg = "#a9b1d6" }
+
+[tasks]
+border = { fg = "#7aa2f7" }
+title = {}
+# Same treatment as preview_hovered: a fill rather than a hard underline.
+hovered = { fg = "#bb9af7", bg = "#292e42" }
+
+[help]
+on = { fg = "#7dcfff" }
+run = { fg = "#bb9af7" }
+desc = { fg = "#a9b1d6" }
+hovered = { bg = "#283457", bold = true }
+footer = { fg = "#16161e", bg = "#c0caf5" }
+
+# Filetype colours. These mirror common/.config/lf/colors so the two file
+# managers agree on what a .zip or a broken symlink looks like.
+#
+# Order matters and follows yazi's own convention: specific mime/name patterns
+# first, then the catch-all `is = ...` rules and the directory glob last. The
+# valid `is` values are exactly: none, hidden, link, orphan, dummy, block,
+# char, fifo, sock, exec, sticky (yazi rejects anything else, including "dir" —
+# directories are matched with the name glob "*/").
+[filetype]
+rules = [
+  # --- archives → red ---
+  { name = "*.tar", fg = "#f7768e" },
+  { name = "*.tgz", fg = "#f7768e" },
+  { name = "*.gz", fg = "#f7768e" },
+  { name = "*.bz2", fg = "#f7768e" },
+  { name = "*.xz", fg = "#f7768e" },
+  { name = "*.zst", fg = "#f7768e" },
+  { name = "*.zip", fg = "#f7768e" },
+  { name = "*.7z", fg = "#f7768e" },
+  { name = "*.rar", fg = "#f7768e" },
+  { name = "*.deb", fg = "#f7768e" },
+  { name = "*.rpm", fg = "#f7768e" },
+  { name = "*.dmg", fg = "#f7768e" },
+
+  # --- media → magenta, audio → purple ---
+  { mime = "image/*", fg = "#bb9af7" },
+  { mime = "video/*", fg = "#bb9af7" },
+  { mime = "audio/*", fg = "#9d7cd8" },
+
+  # --- documents → orange ---
+  { mime = "application/pdf", fg = "#ff9e64" },
+  { mime = "application/epub+zip", fg = "#ff9e64" },
+  { name = "*.docx", fg = "#ff9e64" },
+  { name = "*.xlsx", fg = "#ff9e64" },
+  { name = "*.pptx", fg = "#ff9e64" },
+
+  # --- source code → green ---
+  { name = "*.c", fg = "#9ece6a" },
+  { name = "*.h", fg = "#9ece6a" },
+  { name = "*.cc", fg = "#9ece6a" },
+  { name = "*.cpp", fg = "#9ece6a" },
+  { name = "*.hpp", fg = "#9ece6a" },
+  { name = "*.cs", fg = "#9ece6a" },
+  { name = "*.go", fg = "#9ece6a" },
+  { name = "*.rs", fg = "#9ece6a" },
+  { name = "*.py", fg = "#9ece6a" },
+  { name = "*.rb", fg = "#9ece6a" },
+  { name = "*.js", fg = "#9ece6a" },
+  { name = "*.ts", fg = "#9ece6a" },
+  { name = "*.tsx", fg = "#9ece6a" },
+  { name = "*.jsx", fg = "#9ece6a" },
+  { name = "*.lua", fg = "#9ece6a" },
+  { name = "*.sh", fg = "#9ece6a" },
+  { name = "*.zsh", fg = "#9ece6a" },
+  { name = "*.bash", fg = "#9ece6a" },
+  { name = "*.ps1", fg = "#9ece6a" },
+
+  # --- config and data → yellow ---
+  { name = "*.json", fg = "#e0af68" },
+  { name = "*.toml", fg = "#e0af68" },
+  { name = "*.yaml", fg = "#e0af68" },
+  { name = "*.yml", fg = "#e0af68" },
+  { name = "*.ini", fg = "#e0af68" },
+  { name = "*.conf", fg = "#e0af68" },
+  { name = "*.cfg", fg = "#e0af68" },
+  { name = "*.xml", fg = "#e0af68" },
+
+  # --- prose → foreground ---
+  { name = "*.md", fg = "#c0caf5" },
+  { name = "*.txt", fg = "#c0caf5" },
+  { name = "*.rst", fg = "#c0caf5" },
+
+  # --- build noise → comment grey ---
+  { name = "*.log", fg = "#565f89" },
+  { name = "*.bak", fg = "#565f89" },
+  { name = "*.tmp", fg = "#565f89" },
+  { name = "*.swp", fg = "#565f89" },
+  { name = "*.o", fg = "#565f89" },
+  { name = "*.pyc", fg = "#565f89" },
+  { name = "*.lock", fg = "#565f89" },
+
+  # --- special file kinds, checked after the patterns above ---
+  { name = "*", is = "orphan", fg = "#f7768e", bold = true },
+  { name = "*", is = "link", fg = "#7dcfff" },
+  { name = "*", is = "block", fg = "#e0af68" },
+  { name = "*", is = "char", fg = "#e0af68" },
+  { name = "*", is = "fifo", fg = "#bb9af7" },
+  { name = "*", is = "sock", fg = "#bb9af7" },
+  { name = "*", is = "sticky", fg = "#c0caf5", bg = "#7aa2f7" },
+  { name = "*", is = "exec", fg = "#9ece6a" },
+  { name = "*", is = "dummy", fg = "#565f89" },
+
+  # --- directories, and finally everything else ---
+  { name = "*/", fg = "#7aa2f7", bold = true },
+  { name = "*", fg = "#c0caf5" },
+]

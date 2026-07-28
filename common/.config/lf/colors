@@ -1,0 +1,113 @@
+# vim:ft=conf
+#
+# Tokyo Night (night) for lf.
+# Palette reference: docs/tokyonight.md
+#
+# Format is LS_COLORS, one "pattern  ansi" pair per line. Truecolor is written
+# as 38;2;R;G;B (foreground) and 48;2;R;G;B (background); lf falls back to the
+# terminal's ANSI palette when truecolor is unavailable, and those 16 colours
+# are already Tokyo Night via kitty/wezterm, so it degrades cleanly.
+
+# --- file type defaults ---
+ln      38;2;125;207;255           # symlink            → cyan   #7dcfff
+or      38;2;247;118;142;1         # broken symlink     → red    #f7768e bold
+mh      38;2;125;207;255           # multi-hardlink     → cyan
+di      38;2;122;162;247;1         # directory          → blue   #7aa2f7 bold
+ex      38;2;158;206;106           # executable         → green  #9ece6a
+fi      38;2;192;202;245           # regular file       → fg     #c0caf5
+pi      38;2;224;175;104           # named pipe         → yellow #e0af68
+so      38;2;187;154;247           # socket             → magenta #bb9af7
+bd      38;2;224;175;104;48;2;41;46;66   # block device
+cd      38;2;224;175;104;48;2;41;46;66   # char device
+su      38;2;22;22;30;48;2;247;118;142   # setuid
+sg      38;2;22;22;30;48;2;224;175;104   # setgid
+tw      38;2;22;22;30;48;2;158;206;106   # sticky + other-writable
+ow      38;2;122;162;247;48;2;40;52;87   # other-writable
+st      38;2;192;202;245;48;2;122;162;247 # sticky
+
+# --- archives → red ---
+*.tar   38;2;247;118;142
+*.tgz   38;2;247;118;142
+*.gz    38;2;247;118;142
+*.bz2   38;2;247;118;142
+*.xz    38;2;247;118;142
+*.zst   38;2;247;118;142
+*.zip   38;2;247;118;142
+*.7z    38;2;247;118;142
+*.rar   38;2;247;118;142
+*.deb   38;2;247;118;142
+*.rpm   38;2;247;118;142
+*.dmg   38;2;247;118;142
+
+# --- images and video → magenta ---
+*.png   38;2;187;154;247
+*.jpg   38;2;187;154;247
+*.jpeg  38;2;187;154;247
+*.gif   38;2;187;154;247
+*.webp  38;2;187;154;247
+*.svg   38;2;187;154;247
+*.ico   38;2;187;154;247
+*.mp4   38;2;187;154;247
+*.mkv   38;2;187;154;247
+*.mov   38;2;187;154;247
+*.webm  38;2;187;154;247
+
+# --- audio → purple ---
+*.mp3   38;2;157;124;216
+*.flac  38;2;157;124;216
+*.wav   38;2;157;124;216
+*.m4a   38;2;157;124;216
+*.ogg   38;2;157;124;216
+
+# --- documents → orange ---
+*.pdf   38;2;255;158;100
+*.epub  38;2;255;158;100
+*.djvu  38;2;255;158;100
+*.docx  38;2;255;158;100
+*.xlsx  38;2;255;158;100
+*.pptx  38;2;255;158;100
+
+# --- source code → green ---
+*.c     38;2;158;206;106
+*.h     38;2;158;206;106
+*.cc    38;2;158;206;106
+*.cpp   38;2;158;206;106
+*.hpp   38;2;158;206;106
+*.cs    38;2;158;206;106
+*.go    38;2;158;206;106
+*.rs    38;2;158;206;106
+*.py    38;2;158;206;106
+*.rb    38;2;158;206;106
+*.js    38;2;158;206;106
+*.ts    38;2;158;206;106
+*.tsx   38;2;158;206;106
+*.jsx   38;2;158;206;106
+*.lua   38;2;158;206;106
+*.sh    38;2;158;206;106
+*.zsh   38;2;158;206;106
+*.bash  38;2;158;206;106
+*.ps1   38;2;158;206;106
+
+# --- config and data → yellow ---
+*.json  38;2;224;175;104
+*.toml  38;2;224;175;104
+*.yaml  38;2;224;175;104
+*.yml   38;2;224;175;104
+*.ini   38;2;224;175;104
+*.conf  38;2;224;175;104
+*.cfg   38;2;224;175;104
+*.xml   38;2;224;175;104
+
+# --- docs and notes → foreground ---
+*.md    38;2;192;202;245
+*.txt   38;2;192;202;245
+*.rst   38;2;192;202;245
+
+# --- noise → comment grey ---
+*.log   38;2;86;95;137
+*.bak   38;2;86;95;137
+*.tmp   38;2;86;95;137
+*.swp   38;2;86;95;137
+*.o     38;2;86;95;137
+*.pyc   38;2;86;95;137
+*.lock  38;2;86;95;137

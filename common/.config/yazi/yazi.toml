@@ -10,6 +10,23 @@ sort_reverse = true
 [preview]
 wrap = "yes"
 
+# Preview code through bat so the right-hand pane uses the same syntax theme
+# (BAT_THEME) and the same custom syntaxes as bat, delta and VS Code.
+# See plugins/bat-preview.yazi/main.lua for why this beats mgr.syntect_theme.
+[[plugin.prepend_previewers]]
+mime = "text/*"
+run = "bat-preview"
+
+[[plugin.prepend_previewers]]
+mime = "application/{json,xml,javascript,x-javascript,x-sh,x-shellscript,toml,x-yaml,x-toml}"
+run = "bat-preview"
+
+# Extensionless dotfiles and anything `file` reports as generic data but that
+# is really text (.zshrc, Dockerfile, Makefile, ...).
+[[plugin.prepend_previewers]]
+name = "*.{zsh,zshrc,bashrc,conf,cfg,ini,lua,rs,go,py,rb,ts,tsx,js,jsx,cs,cpp,hpp,cc,h,md,yml,yaml,toml,json}"
+run = "bat-preview"
+
 # [[plugin.prepend_fetchers]]
 # id = "git"
 # name = "*"
