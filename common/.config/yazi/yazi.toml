@@ -9,6 +9,22 @@ sort_reverse = true
 
 [preview]
 wrap = "yes"
+image_delay = 0
+
+# Yazi clears an asynchronous preview before its replacement is ready. Use a
+# bounded synchronous renderer for text so cursor moves commit atomically and
+# large files cannot leave the preview pane empty between frames.
+[[plugin.prepend_previewers]]
+mime = "text/*"
+run = "sync-text-preview"
+
+[[plugin.prepend_previewers]]
+mime = "application/{json,xml,javascript,x-javascript,x-sh,x-shellscript,toml,x-yaml,x-toml}"
+run = "sync-text-preview"
+
+[[plugin.prepend_previewers]]
+name = "*.{txt,log,csv,tsv,zsh,zshrc,bashrc,sh,conf,cfg,ini,lua,rs,go,py,rb,ts,tsx,js,jsx,cs,cpp,hpp,cc,h,md,xml,yml,yaml,toml,json}"
+run = "sync-text-preview"
 
 # Preview code through bat so the right-hand pane uses the same syntax theme
 # (BAT_THEME) and the same custom syntaxes as bat, delta and VS Code.
