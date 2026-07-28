@@ -72,6 +72,22 @@ Bright ANSI variants (9–15) are the accents lightened:
 | `change`  | `#6183bb` |
 | `delete`  | `#914c54` |
 
+### Gotcha: yazi ignores unknown keys
+
+Yazi validates colour *values* but silently ignores unknown section and key
+names, so "it loaded without an error" does not mean a key is doing anything.
+To check a key is really wired up, break its colour on purpose and confirm yazi
+reports `invalid color`:
+
+```bash
+YAZI_CONFIG_HOME=/tmp/probe yazi --debug 2>&1 | grep "invalid color"
+```
+
+Silence there means the key name is wrong. The same trick enumerates the real
+schema. For `[filetype]` rules, `is` accepts exactly `none`, `hidden`, `link`,
+`orphan`, `dummy`, `block`, `char`, `fifo`, `sock`, `exec`, `sticky` — there is
+no `dir`; directories are matched with the name glob `*/`.
+
 ### Gotcha: delta feature sections
 
 Delta's colours must sit in the plain `[delta]` section, **not** in a named
