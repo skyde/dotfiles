@@ -116,6 +116,23 @@ silently downgrades to the 256-colour cube — the preview still looks
 If bat is missing the plugin falls back to uncoloured plain text rather than
 erroring.
 
+The same `BAT_THEME` highlighting is applied to the Ctrl-R history picker, via
+`fzf_history_highlight` in `common/.config/shell/theme.sh`. Two constraints
+there are load-bearing: bat must run with `--wrap=never` (a wrapped long
+command would reach fzf as several separate, unrunnable candidates), and fzf
+must get `--ansi` explicitly (that is what makes it hand back the plain command
+instead of one full of escape sequences).
+
+### Scrolling the yazi preview
+
+`skip` counts **screen rows**, not source lines, because bat does the wrapping.
+That is what lets J/K scroll a file that is only a handful of lines long but
+wraps into a tall block — counting source lines would let one very long line
+swallow the pane with nothing left to scroll. Note `job.skip` exists only on
+the peek job; in `seek` the live offset is `cx.active.preview.skip`, and
+reading the wrong one throws silently, which looks exactly like J/K doing
+nothing.
+
 ### Gotcha: delta feature sections
 
 Delta's colours must sit in the plain `[delta]` section, **not** in a named

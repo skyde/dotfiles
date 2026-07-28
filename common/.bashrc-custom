@@ -111,9 +111,13 @@ if command -v fzf >/dev/null 2>&1; then
 
   __fzf_history_widget() {
     local selected
+    # --ansi is explicit here for the same reason as in .zshrc: it is what makes
+    # fzf hand back the plain command rather than the highlighted one.
     selected=$(fc -lnr |
       awk '!seen[$0]++' |
-      fzf --height=80% --reverse --tiebreak=index --no-sort \
+      fzf_history_highlight |
+      fzf --height=80% --reverse --ansi --tiebreak=index --no-sort \
+          --preview="$FZF_HISTORY_PREVIEW" --preview-window='down,4,wrap' \
           --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
     READLINE_LINE=$selected
     READLINE_POINT=${#selected}
