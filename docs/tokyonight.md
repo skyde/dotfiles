@@ -6,8 +6,13 @@ source of truth: when you touch a colour in any config below, take the hex from
 this table rather than eyeballing a new one.
 
 Note that *syntax highlighting* is deliberately **not** Tokyo Night — `bat`,
-`delta`, and VS Code all use `Visual Studio Dark+`. Tokyo Night is the UI chrome
-(backgrounds, borders, status bars, selections); Dark+ is the code itself.
+`delta`, VS Code and yazi's preview pane all use `Visual Studio Dark+`. Tokyo
+Night is the UI chrome (backgrounds, borders, status bars, selections); Dark+ is
+the code itself.
+
+`BAT_THEME` in `~/.zshenv` is the single source of truth for that syntax theme.
+It is read directly by `bat`, and indirectly by `delta` (which uses bat's theme
+set) and by yazi (see below). Change it there and all three follow.
 
 ## Palette
 
@@ -88,6 +93,29 @@ schema. For `[filetype]` rules, `is` accepts exactly `none`, `hidden`, `link`,
 `orphan`, `dummy`, `block`, `char`, `fifo`, `sock`, `exec`, `sticky` — there is
 no `dir`; directories are matched with the name glob `*/`.
 
+### Why yazi previews through bat, not `syntect_theme`
+
+Yazi has a `mgr.syntect_theme` setting, but it wants a path to a `.tmTheme`
+file, and `Visual Studio Dark+` only exists compiled inside bat — there is no
+such file on disk to point at. Vendoring one would also mean yazi's preview
+drifts from bat the next time `BAT_THEME` changes.
+
+So `plugins/bat-preview.yazi` shells out to `bat` instead. The preview then
+inherits both things that are already maintained elsewhere:
+
+- **`BAT_THEME`**, so yazi, bat, delta and VS Code agree on what code looks
+  like, from one setting.
+- **The custom syntaxes in `~/.config/bat/syntaxes`** (C#, C++, JSON, TOML,
+  YAML), compiled into bat's cache. Yazi's built-in previewer carries its own
+  syntax set and has no idea those exist.
+
+The plugin forces `COLORTERM=truecolor` on the bat subprocess. Without it bat
+silently downgrades to the 256-colour cube — the preview still looks
+*plausible*, just not the same colours as VS Code.
+
+If bat is missing the plugin falls back to uncoloured plain text rather than
+erroring.
+
 ### Gotcha: delta feature sections
 
 Delta's colours must sit in the plain `[delta]` section, **not** in a named
@@ -115,6 +143,6 @@ accent chosen to be instantly findable against the blue-violet palette. Keep it.
 | delta    | `common/.config/git/config` (`[delta]`)               |
 | starship | `common/.config/starship.toml` (`[palettes.tokyonight]`) |
 | fzf      | `common/.config/shell/theme.sh`                       |
-| yazi     | `common/.config/yazi/theme.toml`                      |
+| yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
 | lf       | `common/.config/lf/colors`                            |
 | btop     | `common/.config/btop/themes/tokyo-night.theme`        |
