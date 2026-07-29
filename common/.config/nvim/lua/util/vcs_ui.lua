@@ -32,6 +32,7 @@ local ns = vim.api.nvim_create_namespace("vcs_ui")
 ---@field files VcsFile[]
 ---@field first_line integer
 ---@field inline boolean
+---@field base_cache table<string, string[]>
 local state = nil
 
 local STATUS = {
@@ -159,16 +160,29 @@ end
 -- rendering one file
 --------------------------------------------------------------------------
 
+---Base content for a file, memoised for the lifetime of the current listing.
+---Fetching costs a subprocess (tens of milliseconds, and a good deal more on a
+---large file), which is worth paying once per file rather than once per visit.
+local function base_content(file)
+  -- Added and untracked files have no previous version to ask for.
+  if file.status == "A" or file.status == "?" then
+    return {}
+  end
+  local key = state.rev .. "\0" .. file.path
+  local hit = state.base_cache[key]
+  if hit then
+    return hit
+  end
+  local content = state.backend.show(state.root, state.rev, file.path) or {}
+  state.base_cache[key] = content
+  return content
+end
+
 ---Side-by-side: base on the left as a read-only scratch buffer, the working
 ---copy on the right as the real file so edits and `do`/`dp` land on disk.
 local function render_side_by_side(file)
   local full = state.root .. "/" .. file.path
-  -- Added and untracked files have no previous version to ask for, and asking
-  -- anyway costs a failed subprocess per keystroke while scrubbing the list.
-  local base = {}
-  if file.status ~= "A" and file.status ~= "?" then
-    base = state.backend.show(state.root, state.rev, file.path) or {}
-  end
+  local base = base_content(file)
 
   vim.api.nvim_set_current_win(state.panel_win)
 
@@ -270,11 +284,39 @@ end
 -- panel construction
 --------------------------------------------------------------------------
 
+-- Rendering a diff costs a subprocess and a window rebuild. Doing that on every
+-- keystroke makes holding `j` through a large changelist unusable, so cursor
+-- movement is immediate and the diff catches up once the keys stop.
+local SCRUB_DELAY_MS = 80
+local scrub_timer = nil
+
+local function cancel_scrub()
+  if scrub_timer then
+    scrub_timer:stop()
+    scrub_timer:close()
+    scrub_timer = nil
+  end
+end
+
 local function move(delta)
   local row = vim.api.nvim_win_get_cursor(state.panel_win)[1] + delta
   row = math.max(state.first_line, math.min(row, state.first_line + math.max(#state.files, 1) - 1))
   vim.api.nvim_win_set_cursor(state.panel_win, { row, 0 })
-  show(false)
+
+  cancel_scrub()
+  scrub_timer = vim.uv.new_timer()
+  scrub_timer:start(
+    SCRUB_DELAY_MS,
+    0,
+    vim.schedule_wrap(function()
+      cancel_scrub()
+      -- If focus moved on in the meantime — into the diff, another tab, a
+      -- picker — a late render would yank it back to the panel.
+      if valid() and vim.api.nvim_get_current_win() == state.panel_win then
+        show(false)
+      end
+    end)
+  )
 end
 
 local function setup_panel_keys(buf)
@@ -381,8 +423,10 @@ function M.open(opts)
     return
   end
 
+  cancel_scrub()
   ensure_tab()
   state.backend, state.root, state.scope, state.rev = backend, root, scope, rev
+  state.base_cache = {}
   state.files = backend.changed(root, rev)
   table.sort(state.files, function(a, b)
     return a.path < b.path
@@ -400,6 +444,7 @@ function M.refresh()
 end
 
 function M.close()
+  cancel_scrub()
   if valid() then
     vim.api.nvim_set_current_tabpage(state.tab)
     vim.cmd("tabclose")

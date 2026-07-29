@@ -49,6 +49,12 @@ disk. `<leader>ci` switches to the inline rendering, the unified patch piped
 through `delta`, matching `diffEditor.renderSideBySide: false` in the VS Code
 config.
 
+Rendering a diff costs a subprocess, so `j` / `k` move the cursor immediately
+and the diff follows once the keys stop (80 ms). Holding `j` through a
+400-file changelist costs one render rather than four hundred. Base content is
+cached for the lifetime of the listing, so going back over files you have
+already looked at is free. `<CR>` pre-empts the wait and renders at once.
+
 Neovim's `diffopt` is set in `lua/config/options.lua` to the same algorithm and
 context as `common/.config/git/config`, so a diff reads the same in the editor
 as in the terminal.
@@ -167,19 +173,59 @@ unchanged.
   `<leader>gc` for git while something else owned it for jj and p4 would mean
   two different review UIs. One UI for every backend was the better trade.
 
+## Tests
+
+```bash
+tests/run-nvim-specs.sh
+```
+
+Three specs, no plugins needed, each self-contained:
+
+* `nvim_vcs_spec.lua` — the backends, against throwaway git and jj
+  repositories: renames, paths with spaces and non-ASCII characters, deleted and
+  untracked files, an empty repository, detached HEAD. Perforce runs against a
+  stub `p4` binary that speaks the real `-ztag` protocol, which is how that
+  backend is covered without a server.
+* `nvim_conflict_spec.lua` — every conflict shape and choice, including
+  `merge` style with no base section, multiple and adjacent conflicts,
+  conflicts spanning the whole file, unlabelled markers, and near-miss text
+  (C++ templates full of angle brackets) that must *not* parse as a marker.
+* `nvim_vcs_ui_spec.lua` — window layout, which buffer lands in which pane,
+  scrubbing, the inline toggle, the diff-tab lifecycle, and the degenerate cases
+  (no changes, no repository).
+
+```bash
+tests/check-nvim-keymaps.sh
+```
+
+Invokes every binding against the real config inside a throwaway repository.
+Callback maps must not raise even with no language server and no debug session
+attached — degrading with a message is fine, throwing is not.
+
+Neither is wired into CI; they are run by hand, like `nvim_clipboard_spec.lua`.
+
 ## Backend notes
 
 * **git** — the "fork point" base is the merge base with `@{upstream}`, then
   `origin/HEAD`, then `origin/main` / `origin/master` / `main` / `master`,
   matching what `common/.local/bin/git-diff-from-last-branch` does in the shell.
-* **jj** — every read-only call passes `--ignore-working-copy`, so opening a
-  diff never snapshots the working copy behind your back. The fork-point base is
-  `latest(::@ & trunk())`, falling back to `@-` when the repo has no trunk.
+* **jj** — calls that ask what the working copy looks like *now* (`diff`,
+  `log`) let jj snapshot, because in jj the working copy is a commit and
+  `jj status` snapshots as a matter of course. Suppressing it with
+  `--ignore-working-copy` means every edit made since the last jj command is
+  invisible, which is a correctness bug, not a courtesy — an earlier version did
+  this and reported "no changes" for work that was right there. Calls that only
+  read committed history (`root`, `show`, trunk resolution) still skip the
+  snapshot, which keeps scrubbing cheap. The fork-point base is
+  `latest(::@ & trunk())`, falling back to `@-` when the repo has no trunk or
+  when trunk degrades to the root commit.
 * **Perforce** — `p4` and `g4` are the same code path; `g4` is tried first. The
   root comes from `$P4CONFIG` if set, otherwise `p4 info`'s client root. Every
   scope compares against each file's synced (`#have`) revision, since Perforce
-  has no fork-point notion. **This backend is written to the documented p4 CLI
-  but has not been exercised against a live server** — the git and jj paths
-  have.
+  has no fork-point notion. `p4 where` is asked once for the whole changelist,
+  not once per file, which on a real changelist is the difference between one
+  round trip and hundreds. **This backend has no live server to test against**,
+  so the spec drives it through a stub that speaks the documented `-ztag`
+  protocol; the git and jj paths are tested against real repositories.
 * **Mercurial** — included because it was nearly free once the interface
   existed.

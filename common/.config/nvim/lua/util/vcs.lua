@@ -222,14 +222,23 @@ end
 
 local jj = { name = "jj", bin = "jj" }
 
--- Every read-only jj call gets --ignore-working-copy so that opening a diff
--- never snapshots the working copy behind the user's back.
+---Calls that ask "what does the working copy look like right now" must let jj
+---snapshot first. In jj the working copy *is* a commit, and `jj status` /
+---`jj diff` snapshot as a matter of course; suppressing it means `<leader>gc`
+---reports whatever the last snapshot said and silently misses every edit made
+---since. That is a correctness bug, not a courtesy.
 local function jj_cmd(...)
+  return vim.list_extend({ "jj", "--color=never", "--quiet" }, { ... })
+end
+
+---Calls that only read committed history do not need a snapshot, and skipping
+---it keeps scrubbing the file list from spawning a snapshot per keystroke.
+local function jj_read(...)
   return vim.list_extend({ "jj", "--ignore-working-copy", "--color=never", "--quiet" }, { ... })
 end
 
 function jj.root(dir)
-  return one(sh(jj_cmd("root"), dir))
+  return one(sh(jj_read("root"), dir))
 end
 
 function jj.rev(root, scope)
@@ -238,7 +247,7 @@ function jj.rev(root, scope)
     -- configured, trunk() degrades to the root commit, and diffing against the
     -- root reports the entire repository as added — so treat the all-zeros id
     -- as "no trunk here" and fall back to the parent commit.
-    local base = one(sh(jj_cmd("log", "--no-graph", "-r", "latest(::@ & trunk())", "-T", "commit_id"), root))
+    local base = one(sh(jj_read("log", "--no-graph", "-r", "latest(::@ & trunk())", "-T", "commit_id"), root))
     if not base or base:match("^0+$") then
       return "@-"
     end
@@ -264,7 +273,7 @@ function jj.changed(root, rev)
 end
 
 function jj.show(root, rev, path)
-  local res = sh(jj_cmd("file", "show", "-r", rev, path), root)
+  local res = sh(jj_read("file", "show", "-r", rev, path), root)
   if not res or res.code ~= 0 then
     return nil
   end
@@ -368,21 +377,39 @@ local function perforce(bin)
   end
 
   function p4.changed(root, _)
+    local opened = ztag({ "opened" }, root)
+    local depots = {}
+    for _, rec in ipairs(opened) do
+      if rec.depotFile then
+        table.insert(depots, rec.depotFile)
+      end
+    end
+    if #depots == 0 then
+      return {}
+    end
+
+    -- One `where` for the whole changelist. Asking per file meant a server
+    -- round trip each, so a few hundred opened files took as many seconds.
+    local locals = {}
+    local where_args = vim.list_extend({ "where" }, depots)
+    for _, rec in ipairs(ztag(where_args, root)) do
+      if rec.depotFile and rec.path then
+        locals[rec.depotFile] = rec.path
+      end
+    end
+
+    local prefix = root:gsub("/*$", "") .. "/"
     local out = {}
-    for _, rec in ipairs(ztag({ "opened" }, root)) do
-      local depot = rec.depotFile
-      if depot then
-        local where = ztag({ "where", depot }, root)[1]
-        local local_path = where and where.path
-        if local_path then
-          local rel = local_path
-          if local_path:sub(1, #root) == root then
-            rel = local_path:sub(#root + 2)
-          end
-          local action = rec.action or "edit"
-          local status = ({ edit = "M", add = "A", delete = "D", integrate = "M", branch = "A", move_add = "R" })[action]
-          table.insert(out, { path = rel, status = status or "M", depot = depot })
+    for _, rec in ipairs(opened) do
+      local local_path = locals[rec.depotFile]
+      if local_path then
+        local rel = local_path
+        if local_path:sub(1, #prefix) == prefix then
+          rel = local_path:sub(#prefix + 1)
         end
+        local action = rec.action or "edit"
+        local status = ({ edit = "M", add = "A", delete = "D", integrate = "M", branch = "A", move_add = "R" })[action]
+        table.insert(out, { path = rel, status = status or "M", depot = rec.depotFile })
       end
     end
     return out
