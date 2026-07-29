@@ -38,6 +38,9 @@ if [ -f "packages.txt" ]; then
   if [[ "$(uname)" == "Linux" ]]; then
     packages="${packages//fd/fd-find}"
     packages="${packages//delta/git-delta}"
+    # Debian/Ubuntu do not ship lazygit; install-lazygit.sh fetches the latest
+    # release instead, and leaving it here fails the whole apt transaction.
+    packages="${packages//lazygit/}"
   fi
 
   install_apps=$(get_user_confirmation "Install packages ($packages)? (y/N): ")
@@ -94,14 +97,25 @@ else
   echo "VS Code not found, skipping extensions"
 fi
 
-# Optional: Install Neovim AppImage (Linux only)
+# Optional: Install the latest Neovim release (Linux only)
 if [ -f "install-nvim.sh" ] && [[ "$(uname)" == "Linux" ]]; then
-  install_nvim=$(get_user_confirmation "Install Neovim AppImage to ~/.local/bin? (y/N): ")
+  install_nvim=$(get_user_confirmation "Install the latest Neovim to ~/.local/bin? (y/N): ")
   if [[ "$install_nvim" =~ ^[Yy] ]]; then
     echo "Running Neovim installation script..."
     ./install-nvim.sh
   else
     echo "Skipping Neovim installation"
+  fi
+fi
+
+# Optional: Install the latest lazygit (Neovim's git UI, via snacks)
+if [ -f "install-lazygit.sh" ]; then
+  install_lazygit=$(get_user_confirmation "Install the latest lazygit to ~/.local/bin? (y/N): ")
+  if [[ "$install_lazygit" =~ ^[Yy] ]]; then
+    echo "Running lazygit installation script..."
+    ./install-lazygit.sh
+  else
+    echo "Skipping lazygit installation"
   fi
 fi
 
