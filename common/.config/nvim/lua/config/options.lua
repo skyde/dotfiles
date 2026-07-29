@@ -88,3 +88,20 @@ vim.opt.wrap = true
 vim.opt.fillchars:append({
   diff = " ",
 })
+
+-- Diff behaviour, matched to the git config in common/.config/git/config so a
+-- diff looks the same in Neovim as it does in the terminal:
+--   histogram    same algorithm as diff.algorithm
+--   context:10   same as diff.context
+--   linematch    lines up moved/edited pairs inside a hunk instead of showing
+--                two solid blocks, which is what makes a side-by-side diff
+--                readable on real code
+vim.opt.diffopt = {
+  "internal",
+  "filler",
+  "closeoff",
+  "algorithm:histogram",
+  "indent-heuristic",
+  "linematch:60",
+  "context:10",
+}

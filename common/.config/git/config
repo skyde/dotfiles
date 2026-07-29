@@ -19,7 +19,9 @@
     context = 10
     colorMoved = no
     algorithm = histogram
-    tool = vscode
+    # Neovim is the default now; `git difftool -g` still reaches VS Code.
+    tool = nvim
+    guitool = vscode
 
 [difftool]
     prompt = false
@@ -27,6 +29,9 @@
 [difftool "vscode"]
     cmd = code --wait --diff $LOCAL $REMOTE
     trustExitCode = true
+
+[difftool "nvim"]
+    cmd = nvim -f -d "$LOCAL" "$REMOTE"
 
 [difftool "nvimdiff"]
     cmd = nvim -f -d "$LOCAL" "$REMOTE"
@@ -45,14 +50,26 @@
 
 [merge]
     conflictstyle = zdiff3
-    tool = vscode
+    tool = nvim
+    guitool = vscode
 
 [mergetool]
     prompt = false
+    # $MERGED already carries the conflict markers, so there is nothing to
+    # clean up and no *.orig litter to leave behind.
+    keepBackup = false
 
 [mergetool "vscode"]
     cmd = code --wait --merge $LOCAL $REMOTE $BASE $MERGED
     trustExitCode = true
+
+# Opens the conflicted file itself rather than a three-pane split. The conflict
+# keys in lua/config/vcs.lua (<leader>co/ct/cb, ]x/[x, <leader>cm for the
+# three-way view) all work off the markers, so this is the richer starting
+# point — and <leader>cq refuses to close while markers remain.
+[mergetool "nvim"]
+    cmd = nvim -f "$MERGED"
+    trustExitCode = false
 
 [mergetool "nvimdiff3"]
     cmd = nvim -f -d "$LOCAL" "$MERGED" "$REMOTE"

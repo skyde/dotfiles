@@ -1,56 +1,62 @@
-# Neovim as a Git Mergetool – Efficient Merge Conflict Resolution Guide
+# Resolving merge conflicts in Neovim
 
-## Setting Up Neovim as Your Git Mergetool
+`common/.config/git/config` sets `merge.tool = nvim` and `diff.tool = nvim`, so
+`git mergetool` and `git difftool` open Neovim. `git mergetool -g` and
+`git difftool -g` still open VS Code via the `guitool` settings.
 
-Current state: Fugitive and Diffview are not enabled in this Neovim config, and git-conflict.nvim is commented out. The instructions below use stock Neovim diff mode and work without plugins.
+Conflict handling lives in `lua/util/conflict.lua` and is driven off the
+`<<<<<<< / ||||||| / ======= / >>>>>>>` markers rather than off git, so the same
+keys work under jj and Perforce, and on a file some other tool left conflicted.
+`merge.conflictstyle = zdiff3` means the base section is usually present, which
+is why "take the base" is one of the choices.
 
-Add this minimal mergetool config to `~/.gitconfig` to use plain diff mode:
+## The loop
 
-```ini
-[mergetool "nvim"]
-    cmd = nvim -f -d "$LOCAL" "$MERGED" "$REMOTE"
-[merge]
-    tool = nvim
-[mergetool]
-    prompt = false
+```bash
+git mergetool
 ```
 
-This opens the MERGED buffer and shows LOCAL and REMOTE in diff splits. If you later enable Fugitive, you can switch to `Gdiffsplit!` in the cmd above.
+Neovim opens on `$MERGED` — the file with the markers in it. Conflict regions
+are highlighted as you edit: ours in the add colour, base in the change colour,
+theirs in the text colour.
 
-## 3-Way Merge Workflow with Diff Mode (no plugins)
+| Key | Action |
+| --- | --- |
+| `]x` / `[x` | next / previous conflict (wraps) |
+| `<leader>co` / `<leader>cO` | take ours, here / everywhere in the file |
+| `<leader>ct` / `<leader>cT` | take theirs, here / everywhere |
+| `<leader>cb` / `<leader>cB` | take both, here / everywhere |
+| `<leader>c0` | take neither |
+| `<leader>cm` | open the three-way view |
+| `<leader>cq` | save and close |
 
-1. Open the diff splits via `git mergetool`.
-2. Jump between changes with `]c` and `[c`.
-3. To take a hunk from a side into MERGED:
-    - Focus the side window (LOCAL or REMOTE) and press `dp` to put that hunk into MERGED, or
-    - From MERGED, focus a side window briefly, then return to MERGED and press `do` to get the hunk from the last focused side.
-4. Repeat until all conflict markers are gone, then save and quit (`:wq`).
-5. To accept an entire side, in the side window do `ggVG` then `:diffput` to replace MERGED with that version.
-6. Stage and commit the file when done.
+Each resolution reports how many conflicts are left. `<leader>cq` refuses to
+close while any remain, so you cannot commit a file with markers still in it by
+accident.
 
-## Resolving Conflict Markers Inline
+## The three-way view
 
-Optional: `git-conflict.nvim` can provide single-key choices, but it is currently disabled in this config. If enabled, you’ll get mappings like:
+`<leader>cm` splits the file into **ours │ working │ theirs**, all in diff mode.
+The outer panes are reconstructions — the file as it would read if every
+conflict went that way — so they need no index access and work in any backend.
 
-- Ours – `<leader>co`
-- Theirs – `<leader>ct`
-- Both – `<leader>cb`
-- None – `<leader>c0`
+The middle pane is the real buffer. Resolve there with the keys above, or pull
+a hunk across from a side pane with `dp`, or from the middle with `do`. `]c` /
+`[c` move between hunks. `<leader>cc` jumps to the other side.
 
-Plus navigation: `[x` and `]x`.
+`<leader>cq` saves and closes the view.
 
-## Visual Merge Workflow with Diffview.nvim
+## Reviewing before you commit
 
-Diffview is not enabled right now. If you enable `sindrets/diffview.nvim`, you can use `:DiffviewOpen` for a richer UI.
+`<leader>gc` opens the changed-files view; `s` inside it cycles between
+uncommitted changes, everything since the fork point, and the last commit. See
+[`nvim-vscode-parity.md`](nvim-vscode-parity.md) for the full set.
 
-## Best Practices
+## If you would rather have three windows from the start
 
-- Consider enabling Git's `diff3` style for more context.
-- Disable LSP diagnostics while merging to reduce noise.
-- Customize highlights so conflict regions stand out.
-- Use quickfix lists or Diffview's file panel to manage many files.
-- Create custom keymaps that suit your workflow.
-- Practice on mock conflicts to learn the commands.
-- Review changes with `git diff --staged` before committing.
+```bash
+git mergetool -t nvimdiff3
+```
 
-Using Neovim with these plugins makes resolving merge conflicts fast and efficient entirely within the editor.
+That opens `LOCAL | MERGED | REMOTE` as separate files in diff mode — the
+classic layout, with `dp` / `do` and no marker keys.

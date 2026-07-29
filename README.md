@@ -70,7 +70,20 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 - `lazygit` for a simple git TUI
 - `starship` for a customizable cross-shell prompt
 
-## Nvim Version
+## Neovim
+
+LazyVim, configured to match the VS Code setup key-for-key — see
+[`docs/nvim-vscode-parity.md`](docs/nvim-vscode-parity.md) for the full table
+and the handful of deliberate differences.
+
+Source control is backend-agnostic: `<leader>gc` opens a changed-files list with
+a live diff, and the same key works in git, jj, Perforce (`p4` / `g4`) and
+Mercurial repositories. Conflict resolution
+([`docs/neovim-mergetool.md`](docs/neovim-mergetool.md)) works off the markers,
+so it is backend-agnostic too. `git mergetool` and `git difftool` open Neovim by
+default; `-g` still reaches VS Code.
+
+### Nvim Version
 
 If Nvim is using a version that is too old it can be made to use the newest version by running this
 
@@ -161,7 +174,9 @@ I'm using a few plugins:
 
 Extensions listed in `vscode_extensions.txt` will be installed automatically
 when these dotfiles are applied. Custom keybindings are documented in
-[`docs/vscode-keybindings.md`](docs/vscode-keybindings.md).
+[`docs/vscode-keybindings.md`](docs/vscode-keybindings.md); the Neovim
+equivalents of each one are in
+[`docs/nvim-vscode-parity.md`](docs/nvim-vscode-parity.md).
 On macOS, the init script falls back to
 `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` if the
 `code` command isn't in your `PATH`.
