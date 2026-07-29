@@ -92,28 +92,33 @@
     "__unicode__" "__xor__"))
 
 ;; ---------------------------------------------------------------------------
-;; MagicPython's context rules
+;; Structure, coloured the way C++ is
 ;; ---------------------------------------------------------------------------
 
-;; A built-in type that is itself being subscripted (`list[int]`, `dict[str,
-;; int]`) is not coloured -- only the names inside the brackets are. In an
-;; annotation the grammar calls the same shape a generic_type.
-(subscript
-  value: (identifier) @variable)
-
-(generic_type
-  (identifier) @variable)
-
-;; `...` inside a subscript is plain text, not punctuation.
-(ellipsis) @variable
-
 ;; A dotted name is never a built-in, matching the (?<!\.) lookbehind on
-;; MagicPython's name lists. Dunder methods are the exception: their rule has
-;; no lookbehind, so `x.__len__()` stays coloured.
+;; MagicPython's name lists -- `asyncio.TimeoutError` is an attribute, not the
+;; exception type. Dunder methods are the exception: their rule has no
+;; lookbehind, so `x.__len__()` stays coloured.
 ((attribute attribute: (identifier) @variable.member)
   (#not-lua-match? @variable.member "^__"))
 
-;; `self` and `cls` are variable.language.special in an expression...
+;; ...but a method call is still a call. C++ colours `verts.size()` as a
+;; function, and only `v.x` as a member, so re-promote the call form after the
+;; demotion above.
+(call
+  function: (attribute attribute: (identifier) @function.method.call))
+
+;; The object on the left of an attribute access, as in C++'s `obj.field`.
+(attribute
+  object: (identifier) @variable.object)
+
+;; Call parentheses are their own colour in C++ (punctuation.section.arguments);
+;; the parentheses of a `def` are not, matching a C++ parameter list.
+(call
+  arguments: (argument_list ["(" ")"] @punctuation.arguments))
+
+;; `self` and `cls` are variable.language.special in an expression, the way
+;; `this` is in C++. Placed after the object rule so `self.x` keeps this colour.
 ((identifier) @variable.builtin
   (#any-of? @variable.builtin "self" "cls"))
 

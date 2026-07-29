@@ -1,8 +1,13 @@
 -- Code colours matched to VS Code.
 --
--- The editor chrome stays Tokyo Night (see tokyonight.lua); only the colours of
--- the code itself are replaced, so a buffer in Neovim reads the same as the same
--- file in VS Code.
+-- Applied through tokyonight's `on_highlights` hook (see plugins/tokyonight.lua),
+-- which runs on every highlight build. That matters: LazyVim's default
+-- colorscheme setting is a function calling `require("tokyonight").load()`, which
+-- re-applies every highlight *without* firing ColorScheme, so an autocmd-based
+-- approach silently loses the palette at startup.
+--
+-- The editor chrome stays Tokyo Night; only the colours of the code itself are
+-- replaced, so a buffer in Neovim reads the same as the same file in VS Code.
 --
 -- The reference is the exact pair the VS Code config uses:
 --   * theme      "Visual Studio Dark - C++"  (ms-vscode.cpptools-themes)
@@ -127,31 +132,26 @@ local by_lang = {
     ["@operator.reference"] = c.reference, -- & and * as declarator modifiers
   },
 
-  -- MagicPython leaves most identifiers unclassified, so plain Python code is
-  -- the `source` colour rather than the variable blue that C++ gets.
+  -- Python follows the C++ colours role for role. VS Code's own Python grammar
+  -- (MagicPython) classifies almost nothing -- annotations, calls and locals all
+  -- come out as plain text -- which would leave Python a flat grey next to C++.
+  -- These entries give each construct the colour its C++ counterpart has, so a
+  -- type reads as a type and a call reads as a call in both languages.
   python = {
-    ["@variable"] = c.text,
-    ["@variable.member"] = c.text,
-    ["@constant"] = c.text,
-    ["@module"] = c.text,
-    ["@module.builtin"] = c.variable,
-    ["@type"] = c.text, -- annotations are plain text in VS Code
-    ["@type.definition"] = c.type, -- but `class Foo(Base)` names are not
+    ["@type"] = c.type, -- annotations, like a C++ type name
+    ["@type.definition"] = c.type, -- `class Foo(Base)`
+    ["@type.builtin"] = c.storage, -- str/int/list, like C++ `int`
+    ["@variable.member"] = c.property, -- `self.name`, like a C++ member access
+    ["@constant"] = c.variable, -- ALL_CAPS is a variable, as `constexpr` is in C++
     ["@keyword"] = c.control, -- with / as / assert / yield / del
     ["@keyword.import"] = c.control,
     ["@keyword.function"] = c.storage, -- def, lambda, async def
     ["@keyword.type"] = c.storage, -- class
     ["@keyword.directive"] = c.comment, -- the shebang line is a comment
-    ["@function.builtin"] = c.fn,
-    ["@type.builtin"] = c.storage,
-    ["@attribute"] = c.fn,
+    ["@attribute"] = c.fn, -- a decorator is a callable
     ["@punctuation.special"] = c.language, -- f-string { }
     ["@function.macro"] = c.storage, -- f-string !r / !s conversion
     ["@variable.magic"] = c.variable, -- __name__, __slots__, ...
-    -- MagicPython leaves an ordinary call uncoloured; only the built-in name
-    -- lists and `def` names keep a colour.
-    ["@function.call"] = c.text,
-    ["@function.method.call"] = c.text,
   },
 
   -- Format specifiers inside a printf-style string are injected as their own
@@ -162,9 +162,11 @@ local by_lang = {
 }
 by_lang.c = by_lang.cpp
 
-local function apply()
+--- Write every group into a tokyonight highlight table.
+---@param hl table map of highlight group name to attributes
+local function apply(hl)
   local set = function(group, fg)
-    vim.api.nvim_set_hl(0, group, { fg = fg })
+    hl[group] = { fg = fg }
   end
   for group, fg in pairs(shared) do
     set(group, fg)
@@ -235,7 +237,7 @@ local function apply()
       if override then
         set("@lsp.typemod." .. type_name .. "." .. mod, override)
       else
-        vim.api.nvim_set_hl(0, "@lsp.typemod." .. type_name .. "." .. mod, {})
+        hl["@lsp.typemod." .. type_name .. "." .. mod] = {}
       end
     end
   end
@@ -253,34 +255,13 @@ local function apply()
     "functionScope", "globalScope", "usedAsMutablePointer",
     "usedAsMutableReference", "virtual",
   }) do
-    vim.api.nvim_set_hl(0, "@lsp.mod." .. mod, {})
+    hl["@lsp.mod." .. mod] = {}
   end
 
-  -- MagicPython leaves ordinary Python names uncoloured, so a Python language
-  -- server attaching must not repaint them blue.
-  vim.api.nvim_set_hl(0, "@lsp.type.variable.python", { fg = c.text })
-  vim.api.nvim_set_hl(0, "@lsp.type.property.python", { fg = c.text })
-  vim.api.nvim_set_hl(0, "@lsp.type.function.python", { fg = c.text })
-  vim.api.nvim_set_hl(0, "@lsp.type.method.python", { fg = c.text })
-  vim.api.nvim_set_hl(0, "@lsp.type.class.python", { fg = c.text })
+  -- A Python language server reports `property` for an attribute access, which
+  -- C++ paints as a member rather than as the variable blue the shared table
+  -- would give it.
+  hl["@lsp.type.property.python"] = { fg = c.property }
 end
 
-return {
-  {
-    "folke/tokyonight.nvim",
-    optional = true,
-    -- `init` runs before tokyonight's own config calls :colorscheme, so the
-    -- autocmd is in place for that first switch as well as any later one --
-    -- :colorscheme clears every highlight, so these have to be re-applied.
-    init = function()
-      local group = vim.api.nvim_create_augroup("vscode_syntax", { clear = true })
-      vim.api.nvim_create_autocmd("ColorScheme", { group = group, callback = apply })
-      -- lazy.nvim gives no ordering guarantee between this and tokyonight's own
-      -- config, so the colorscheme may already be in place (no ColorScheme event
-      -- left to catch) or may still be coming. Applying now and once more when
-      -- startup has settled covers both.
-      apply()
-      vim.api.nvim_create_autocmd("VimEnter", { group = group, once = true, callback = apply })
-    end,
-  },
-}
+return { apply = apply }

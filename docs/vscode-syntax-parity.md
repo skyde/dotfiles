@@ -7,11 +7,19 @@ colours of the code itself are replaced.
 
 Two files do the work:
 
-- `common/.config/nvim/lua/plugins/vscode-syntax.lua` — the palette and the
+- `common/.config/nvim/lua/util/vscode_syntax.lua` — the palette and the
   capture → colour mapping.
 - `common/.config/nvim/after/queries/{cpp,python}/highlights.scm` — extra
   tree-sitter captures for distinctions VS Code's grammars make that
   nvim-treesitter's defaults do not.
+
+The mapping is applied from tokyonight's `on_highlights` hook, called from
+`lua/plugins/tokyonight.lua`. That is deliberate, and the only thing that
+works: LazyVim's default `colorscheme` setting is a *function* that calls
+`require("tokyonight").load()`, which rebuilds every highlight **without**
+firing `ColorScheme`. A `ColorScheme` autocmd therefore applies the palette
+during startup and then silently loses it again a moment later. `on_highlights`
+runs on every build, event or no event.
 
 ## Where the colours come from
 
@@ -55,24 +63,46 @@ matters combined with a type. So every combination VS Code has no opinion about
 is cleared, leaving the type's colour, or the one meaningful override, as the
 only thing that paints.
 
-## Per-language colours
+## C++ is the reference; Python follows it
 
-The same theme produces different results per language because the grammars
-differ, so some groups are set per language via `@capture.<lang>`:
+VS Code's C++ setup is the ground truth, and Python is matched to it **role for
+role** rather than to VS Code's own Python output.
 
-| | C++ (`better-cpp-syntax`) | Python (MagicPython) |
+That is a deliberate divergence. VS Code's Python grammar, MagicPython,
+classifies almost nothing: annotations, calls and locals are all plain
+`source.python`, and with no Python extension installed there is no language
+server to repaint them. Reproducing that faithfully left Python a flat grey
+next to C++ — `Sequence[CustomClass]` was a single undifferentiated run. So
+each Python construct instead gets the colour its C++ counterpart has:
+
+| Construct | Colour | C++ counterpart |
 | --- | --- | --- |
-| plain identifier | `#9CDCFE` | `#D4D4D4` — MagicPython classifies almost nothing |
-| type annotation | n/a | `#D4D4D4` — only a `class` name and its bases get a type colour |
-| ordinary call | `#DCDCAA` | `#D4D4D4` — only the built-in name lists keep a colour |
-| `#include` / `import` | `#9A9A9A` (directive) | `#ECBC6F` (control flow) |
+| type in an annotation | `#4EC9B0` | `entity.name.type` |
+| built-in type (`str`, `list`) | `#ECB763` | `int`, `size_t` |
+| local variable | `#9CDCFE` | `variable` |
+| parameter | `#9A9A9A` | `variable.parameter` |
+| `self.attr` — the attribute | `#DADADA` | `v.x` member access |
+| `obj` in `obj.attr` | `#DD9DC2` | `variable.other.object` |
+| function, method call | `#DCDCAA` | `entity.name.function` |
+| call parentheses | `#F89500` | `punctuation.section.arguments` |
+| `self` | `#569CD6` | `this` |
+
+`tests/check-nvim-syntax-roles.lua` asserts this: it opens a C++ and a Python
+sample and checks that all 21 roles resolve to the same colour in both.
+
+The palette itself is still entirely VS Code's — no new colours were invented,
+only applied to more of Python.
 
 The Python built-in **type** list (`str`, `int`, `list`, `super`, …), the
 built-in **function** list (`len`, `print`, `sorted`, …) and the dunder
-name lists are transcribed from MagicPython itself, as is the C++ built-in
-integral typedef list (`size_t`, `uint64_t`, `pthread_t`, …) from
-better-cpp-syntax. They are colour distinctions those grammars make, so
-reproducing them needs the same lists.
+name lists are still transcribed from MagicPython itself, as is the C++
+built-in integral typedef list (`size_t`, `uint64_t`, `pthread_t`, …) from
+better-cpp-syntax — those are real distinctions the grammars make.
+
+One limit worth knowing: Python's `.` is member access to tree-sitter whatever
+is on the left, so `asyncio.TimeoutError` colours like `obj.field` rather than
+like C++'s `std::runtime_error`. C++ can tell them apart because `::` and `.`
+are different operators; Python has only the one.
 
 ## How it was checked
 
@@ -85,30 +115,34 @@ Each sample file was tokenized twice and compared character by character:
   then `vim.inspect_pos()` at every cell to read back the highlight that
   actually wins, resolved to its foreground colour.
 
-Result across four samples — everyday and awkward C++ and Python, 4,461
-coloured characters:
+Result for C++, across an everyday and an awkward sample:
 
 | Sample | Characters | Differing | Match |
 | --- | --- | --- | --- |
 | `sample.cpp` | 902 | 7 | 99.2% |
 | `hard.cpp` | 1,380 | 29 | 97.9% |
-| `sample.py` | 814 | 1 | 99.9% |
-| `hard.py` | 1,365 | 2 | 99.9% |
-| **total** | **4,461** | **39** | **99.1%** |
+| **total** | **2,282** | **36** | **98.4%** |
+
+Python is not scored this way, because it deliberately no longer follows VS
+Code's Python output — see the section above. What is checked for Python is
+role consistency with C++, all 21 roles.
 
 The semantic-token layer was checked separately by attaching clangd 18.1.3 and
 resolving each token's type and modifiers through the same VS Code rules: 132
 of 132 semantic-token characters match.
 
-## What still differs
+All of this is measured with `User VeryLazy` fired, so the editor is in the
+state it is in during real use — without it, LazyVim's `load()` call has not
+happened yet and the measurement flatters the result.
 
-The remaining 39 characters fall into three groups, none of them fixable by
+## What still differs in C++
+
+The remaining 36 characters fall into three groups, none of them fixable by
 configuration:
 
 **One tree-sitter token, two VS Code scopes.** Tree-sitter lexes `#include` as
 a single token, so the `#` cannot take the punctuation colour separately; the
-same goes for a `<system>` include path, the exponent in `1.5e-3`, and an
-f-string's prefix and opening quote.
+same goes for a `<system>` include path and the exponent in `1.5e-3`.
 
 **VS Code's grammar gets it wrong.** `noexcept` on a lambda falls out of
 better-cpp-syntax's rules and ends up uncoloured, and a declaration following
