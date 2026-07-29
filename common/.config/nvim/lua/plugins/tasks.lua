@@ -3,7 +3,7 @@ return {
     "stevearc/overseer.nvim",
     cmd = { "OverseerRun", "OverseerToggle", "OverseerQuickAction", "OverseerRunCmd" },
     dependencies = { "mfussenegger/nvim-dap" },
-  opts = function()
+    opts = function()
       local ok, overseer = pcall(require, "overseer")
       if not ok then
         return {}
@@ -11,8 +11,8 @@ return {
       overseer.setup({
         -- Use a simple terminal buffer for portability; toggleterm is optional
         strategy = "terminal",
-    templates = { "builtin" },
-    dap = true, -- enable preLaunchTask/postDebugTask with nvim-dap
+        templates = { "builtin" },
+        dap = true, -- enable preLaunchTask/postDebugTask with nvim-dap
       })
 
       -- Preload VS Code tasks for the current workspace to reduce first-run delay

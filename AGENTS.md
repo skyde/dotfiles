@@ -15,6 +15,9 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 - Run ShellCheck on modified shell scripts if available: `shellcheck <changed .sh files>`
 - Run Stylua on modified Neovim Lua files if available: `stylua common/nvim/.config/nvim`
+- Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`
+  (self-contained, no plugins required), and `./tests/check-nvim-keymaps.sh` to
+  invoke every binding against the real config.
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines

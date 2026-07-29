@@ -1,6 +1,34 @@
 -- lua/plugins/telescope-ignore.lua
+
+-- Passing --glob to ripgrep means it never *opens* the file, which is faster
+-- than post-filtering. Shared by the pickers configured in `opts` and the
+-- live_grep_args keys below.
+local speedup_globs = {
+  "--hidden",
+  "--glob=!build/**",
+  "--glob=!out/**",
+  "--glob=!bin/**",
+  "--glob=!dist/**",
+  "--glob=!node_modules/**",
+  "--glob=!*.o",
+  "--glob=!*.obj",
+  "--glob=!*.so",
+  "--glob=!*.dll",
+}
+
+-- The typed searches additionally skip generated blob payloads, which are
+-- large enough to dominate results without ever being what you wanted.
+local typed_globs = vim.list_extend(vim.list_extend({}, speedup_globs), {
+  "--glob=!*.blob.*",
+  "--glob=!blob/**",
+})
+
 return {
   "nvim-telescope/telescope.nvim",
+  -- <leader>se and <leader>st below call into live_grep_args, so it has to be
+  -- installed and registered or those keys raise.
+  dependencies = { "nvim-telescope/telescope-live-grep-args.nvim" },
+  cmd = "Telescope",
   opts = function(_, opts)
     ---------------------------------------------------------------------------
     -- 1. Global ignore patterns (Lua regexes) ---------------------------------
@@ -102,22 +130,8 @@ return {
 
     ---------------------------------------------------------------------------
     -- 3. (Optional) Speed up live_grep even more ------------------------------
-    --    Passing --glob to ripgrep means it never *opens* the file, which is
-    --    faster than post-filtering. You can add or remove globs as needed.
+    --    See `speedup_globs` at the top of this file.
     ---------------------------------------------------------------------------
-    local speedup_globs = {
-      "--hidden",
-      "--glob=!build/**",
-      "--glob=!out/**",
-      "--glob=!bin/**",
-      "--glob=!dist/**",
-      "--glob=!node_modules/**",
-      "--glob=!*.o",
-      "--glob=!*.obj",
-      "--glob=!*.so",
-      "--glob=!*.dll",
-      -- Add or remove globs here to customize what is excluded for speed
-    }
     opts.pickers = opts.pickers or {}
     opts.pickers.live_grep = opts.pickers.live_grep or {}
     opts.pickers.live_grep.additional_args = function()
@@ -137,42 +151,41 @@ return {
       return speedup_globs
     end
   end,
-  config = function()
-    -- Add <leader>se to run live_grep_args with --type=cpp and --type=py, but exclude any *.blob.* files
-    local speedup_globs = {
-      "--hidden",
-      "--glob=!build/**",
-      "--glob=!out/**",
-      "--glob=!bin/**",
-      "--glob=!dist/**",
-      "--glob=!node_modules/**",
-      "--glob=!*.o",
-      "--glob=!*.obj",
-      "--glob=!*.so",
-      "--glob=!*.dll",
-      "--glob=!*.blob.*", -- Exclude any file with .blob. in the name
-      "--glob=!blob/**", -- Exclude any folder named blob
-    }
-    vim.keymap.set("n", "<leader>se", function()
-      require("telescope").extensions.live_grep_args.live_grep_args({
-        additional_args = function()
-          return vim.list_extend({ "--type=cpp", "--type=py" }, speedup_globs)
-        end,
-      })
-    end, { desc = "Grep C++/Python files only" })
-
-    -- Search files by type using the word under cursor
-    vim.keymap.set("n", "<leader>st", function()
-      local ft = vim.bo.filetype
-      require("telescope").extensions.live_grep_args.live_grep_args({
-        default_text = vim.fn.expand("<cword>"),
-        additional_args = function()
-          if ft ~= "" then
-            return vim.list_extend({ "--type=" .. ft }, speedup_globs)
-          end
-          return speedup_globs
-        end,
-      })
-    end, { desc = "Search word in current filetype" })
+  config = function(_, opts)
+    -- Defining `config` suppresses lazy.nvim's automatic setup call, so the
+    -- opts built above have to be handed over explicitly or every ignore
+    -- pattern in this file is silently dropped.
+    require("telescope").setup(opts)
+    require("telescope").load_extension("live_grep_args")
   end,
+  keys = {
+    {
+      "<leader>se",
+      function()
+        require("telescope").extensions.live_grep_args.live_grep_args({
+          additional_args = function()
+            return vim.list_extend({ "--type=cpp", "--type=py" }, typed_globs)
+          end,
+        })
+      end,
+      desc = "Grep C++/Python files only",
+    },
+    {
+      -- Search files by type using the word under cursor
+      "<leader>st",
+      function()
+        local ft = vim.bo.filetype
+        require("telescope").extensions.live_grep_args.live_grep_args({
+          default_text = vim.fn.expand("<cword>"),
+          additional_args = function()
+            if ft ~= "" then
+              return vim.list_extend({ "--type=" .. ft }, typed_globs)
+            end
+            return typed_globs
+          end,
+        })
+      end,
+      desc = "Search word in current filetype",
+    },
+  },
 }
