@@ -32,6 +32,14 @@ end
 
 ---Map a command to both <S-Fn> and <F(n+12)> so the binding works across
 ---different terminal/OS combinations.
+---
+---Both halves are load-bearing, and which one fires depends on the stack:
+---  * bare kitty and the VS Code terminal send terminfo's kf13..kf24, so
+---    Neovim sees <F13>..<F24>;
+---  * inside tmux (extended-keys on) the key is re-encoded and Neovim sees a
+---    real <S-Fn>;
+---  * a GUI such as Neovide delivers <S-Fn> directly.
+---tests/check-footpedal-keys.py checks all three.
 ---@param n integer Function key number (1..12)
 ---@param rhs string|function Command or callback
 ---@param opts table|nil Additional options for `vim.keymap.set`
@@ -45,14 +53,56 @@ end
 
 -- TODO: Use the vim.keymap.set style remap for all of these instead of this function call style
 
--- Scroll up/down 16 lines
-map_shift_f(4, "<C-u>", { desc = "Scroll Up 16 lines", noremap = true })
-map_shift_f(4, "<C-o><C-u>", { mode = "i", desc = "Scroll Up 16 lines", noremap = true })
-map_shift_f(6, "<C-d>", { desc = "Scroll Down 16 lines", noremap = true })
-map_shift_f(6, "<C-o><C-d>", { mode = "i", desc = "Scroll Down 16 lines", noremap = true })
+---Wrap an action so it behaves the same from insert mode. The footpedal turns
+---every key into a macro key, so these get pressed mid-typing as often as not.
+---@param fn function
+local function anywhere(fn)
+  return function()
+    if vim.fn.mode():sub(1, 1) == "i" then
+      vim.cmd("stopinsert")
+    end
+    fn()
+  end
+end
+
+-- The footpedal macro keys, as listed under "Macro Bindings" in README.md.
+-- Shift+F10 is deliberately absent: it is the tmux prefix (see .tmux.conf).
+
+-- Build and run
+map_shift_f(
+  2,
+  anywhere(function()
+    require("config.vscode_debug").start()
+  end),
+  { mode = { "n", "i" }, desc = "Build and Run (debug start)" }
+)
+
+-- Find class / file by name, i.e. VS Code's quick open
+map_shift_f(
+  3,
+  anywhere(function()
+    Snacks.picker.smart()
+  end),
+  { mode = { "n", "i" }, desc = "Find class / file" }
+)
+
+-- Scroll up/down 16 lines.
+-- Spelled out as 16k/16j rather than <C-u>/<C-d>: these are noremap, so <C-u>
+-- would reach the builtin half-page scroll instead of the 16-line mapping set
+-- above, and a half page is not what the VS Code binding does.
+map_shift_f(4, "16k", { desc = "Scroll Up 16 lines", noremap = true })
+map_shift_f(4, "<C-o>16k", { mode = "i", desc = "Scroll Up 16 lines", noremap = true })
+map_shift_f(6, "16j", { desc = "Scroll Down 16 lines", noremap = true })
+map_shift_f(6, "<C-o>16j", { mode = "i", desc = "Scroll Down 16 lines", noremap = true })
 
 -- Stop current build
-map_shift_f(7, "<cmd>CMakeStop<CR>", { mode = { "n", "i" }, desc = "Stop Build" })
+map_shift_f(
+  7,
+  anywhere(function()
+    require("config.vscode_debug").stop()
+  end),
+  { mode = { "n", "i" }, desc = "Stop Build" }
+)
 
 -- Go to LSP definition
 map_shift_f(8, vim.lsp.buf.definition, { mode = { "n", "i" }, desc = "Goto Definition" })

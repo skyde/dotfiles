@@ -113,15 +113,18 @@
     }
   },
   // Build
+  // !terminalFocus so the footpedal key reaches Neovim in the integrated
+  // terminal instead of being swallowed here. Same reason as shift+f4/f6 below.
   {
     "key": "shift+f2",
     "command": "workbench.action.debug.start",
-    "when": "taskCommandsRegistered"
+    "when": "taskCommandsRegistered && !terminalFocus"
   },
   // Fuzzy find class / file by name
   {
     "key": "shift+f3",
-    "command": "workbench.action.quickOpen"
+    "command": "workbench.action.quickOpen",
+    "when": "!terminalFocus"
   },
 
   // Scroll up 16 Lines
@@ -314,6 +317,7 @@
   {
     "key": "shift+f7",
     "command": "runCommands",
+    "when": "!terminalFocus",
     "args": {
       "commands": [
         // "workbench.action.tasks.terminate",

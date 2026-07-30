@@ -26,6 +26,11 @@ This document lists the custom shortcuts I use in VS Code. The same keybindings 
 - `Shift+F11` – toggle comment for the current line.
 - `Shift+F7` – stop build or debugging.
 
+These are the keyboard's macro keys, so every one of them is scoped off the
+integrated terminal — via `!terminalFocus` or an `editorTextFocus`-style
+context — so that the key reaches Neovim when a terminal has focus instead of
+being handled here. See [footpedal-keys.md](footpedal-keys.md).
+
 ## Debugging
 - `Alt+Down` – step over.
 - `Alt+Up` – step into.

@@ -174,6 +174,13 @@ local keys = {
   "<BS><BS>",
   "<BS> ",
   " <BS>",
+  -- footpedal macro keys. A terminal delivers Shift+Fn as <F(n+12)>, so that is
+  -- the half that has to work; tests/check-footpedal-keys.py covers the
+  -- transport, this just makes sure the callbacks do not throw.
+  "<F14>", -- Shift+F2, build and run
+  "<F15>", -- Shift+F3, find class / file
+  "<F19>", -- Shift+F7, stop build
+  "<F20>", -- Shift+F8, goto definition
 }
 
 local ok, err = xpcall(function()
