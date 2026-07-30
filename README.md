@@ -83,6 +83,11 @@ Mercurial repositories. Conflict resolution
 so it is backend-agnostic too. `git mergetool` and `git difftool` open Neovim by
 default; `-g` still reaches VS Code.
 
+C/C++ intelligence (goto definition, references, rename) needs no per-machine
+setup, including in a Chromium checkout: clangd finds the checkout's own binary
+and `out/` compilation database by itself. `:ClangdStatus` shows what it picked;
+see [`docs/chromium-nvim-lsp.md`](docs/chromium-nvim-lsp.md).
+
 ### Nvim Version
 
 Distro packages lag badly, so on Linux install the current release straight from

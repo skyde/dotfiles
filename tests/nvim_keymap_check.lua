@@ -170,6 +170,9 @@ local keys = {
   " dw",
   " dx",
   " db",
+  -- C/C++ source/header switch, with no language server attached.
+  -- Neovim normalises Alt to Meta, so <A-o> is reported as <M-o>.
+  "<M-o>",
   -- hover cluster
   "<BS><BS>",
   "<BS> ",
