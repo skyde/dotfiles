@@ -44,6 +44,13 @@ return {
 
         -- Make the split separator readable; the default is close to bg.
         hl.WinSeparator = { fg = c.bg_highlight, bold = true }
+
+        -- Code itself is coloured to match VS Code rather than Tokyo Night; the
+        -- chrome above stays. Applied here, rather than from a ColorScheme
+        -- autocmd, because LazyVim re-applies the colorscheme by calling
+        -- `require("tokyonight").load()`, which fires no event -- this hook runs
+        -- on every build either way. See docs/vscode-syntax-parity.md.
+        require("util.vscode_syntax").apply(hl)
       end,
     },
     config = function(_, opts)

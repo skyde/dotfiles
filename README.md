@@ -177,6 +177,9 @@ when these dotfiles are applied. Custom keybindings are documented in
 [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md); the Neovim
 equivalents of each one are in
 [`docs/nvim-vscode-parity.md`](docs/nvim-vscode-parity.md).
+Neovim also draws code in the same colours VS Code does — how that mapping was
+built and verified is in
+[`docs/vscode-syntax-parity.md`](docs/vscode-syntax-parity.md).
 On macOS, the init script falls back to
 `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` if the
 `code` command isn't in your `PATH`.
