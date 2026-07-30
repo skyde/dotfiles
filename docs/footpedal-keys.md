@@ -20,8 +20,10 @@ Sent by the Kinesis macro layer, one key per pedal-modified key.
 | `Shift+F10` | tmux prefix | — | consumed by tmux, never reaches Neovim |
 | `Shift+F11` | toggle comment | `editor.action.commentLine` | `gcc` / `gc` |
 
-`Shift+F9` ("toggle search" in the older Visual Studio cheat sheet) is not bound
-in either editor.
+`Shift+F9` is listed as "toggle search" in the older Visual Studio cheat sheet
+but was bound in neither editor, so it now carries jump-forward — see below. If
+the Kinesis layer is ever given a real "toggle search" macro again, that
+collides.
 
 ## Terminal-translated Cmd shortcuts
 
@@ -31,11 +33,39 @@ Not pedal keys. These are Cmd shortcuts the terminal rewrites into the same
 | Pressed | Rewritten to | Neovim | Rewritten by |
 | --- | --- | --- | --- |
 | `Cmd+S` | `Shift+F5` | `:w` | kitty (`send_key`) and VS Code (`sendSequence`) |
+| `Cmd+Left` | `Ctrl+O` | previous location | kitty and VS Code |
+| `Cmd+Right` | `Shift+F9` | next location | kitty and VS Code |
 | `Cmd+Shift+[` | `Shift+F1` | `:bprevious` | kitty only |
 | `Cmd+Shift+]` | `Shift+F12` | `:bnext` | kitty only |
 
 In the VS Code terminal `Cmd+Shift+[` / `Cmd+Shift+]` still switch VS Code
 editors rather than Neovim buffers, which is usually what you want there.
+
+### Why jump-forward is not on Ctrl+I
+
+`Ctrl+O` carries jump-backward fine — it is a plain control byte that every
+terminal and tmux pass straight through. Its pair does not work that way:
+
+- `Ctrl+I` and `Tab` are the same byte, `0x09`.
+- Neovim collapses them into one key. `vim.keycode("<C-i>") == vim.keycode("<Tab>")`,
+  and this holds **even when the terminal disambiguates them** — sending kitty's
+  `CSI 105;5u` form still arrives as `<Tab>`.
+- `config/keymaps.lua` maps normal-mode `<Tab>` to `>>`, so `Ctrl+I` indents the
+  line instead of jumping.
+
+So there is no terminal-side encoding that fixes it, and the key has to be
+something other than Tab. `Shift+F9` was the one unused slot in the Shift+F
+space this repo already uses for exactly this purpose, and it survives kitty,
+tmux and the VS Code terminal alike. Neovim maps it with `noremap` to `<C-i>`,
+so the right-hand side reaches the builtin rather than the indent mapping.
+
+Two things worth knowing about the `ctrl+o` / `ctrl+i` keys themselves: in VS
+Code they are bound to `navigateBack`/`navigateForward` with `!terminalFocus`,
+so pressing them in the integrated terminal reaches Neovim instead of moving
+VS Code's editor history. And in kitty these were previously written as
+`map cmd+left ctrl-o`, which looks plausible but is not a kitty action — kitty
+drops unknown actions silently, so `Cmd+Left` did nothing at all until it was
+changed to `send_key`.
 
 Everything except the scroll keys is mapped in insert mode too, since with the
 pedal held these get pressed mid-typing.
@@ -73,10 +103,17 @@ and `shift+f11`).
 tests/check-footpedal-keys.py
 ```
 
-Drives the real keys into a real Neovim through all three transports — a pty
-with the VS Code terminal's escape sequences, tmux, and a real kitty window
-driven over its remote-control socket — and asserts the actual effect (cursor
-moved 16 lines, buffer switched, line commented, file saved, picker opened).
+Drives the real keys into a real Neovim through four transports — a pty with the
+VS Code terminal's escape sequences, tmux, a real kitty window driven over its
+remote-control socket, and kitty with tmux inside it — and asserts the actual
+effect (cursor moved 16 lines, buffer switched, line commented, file saved,
+picker opened, jumplist moved).
+
+The four are genuinely different, which is the reason for testing all of them:
+tmux delivers a different key spelling than bare kitty, and tmux picks its
+`default-terminal` from the host terminal, so `kitty+tmux` and
+`vscode-terminal+tmux` are not the same path either. Pass a name to run just
+one: `kitty`, `kitty+tmux`, `tmux`, `vscode`.
 
 `tests/check-nvim-keymaps.sh` additionally invokes the callbacks directly, which
 is faster but does not cover the transport.

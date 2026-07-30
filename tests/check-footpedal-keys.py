@@ -47,6 +47,7 @@ LABELS = {
     6: "scroll down 16",
     7: "stop build",
     8: "goto definition",
+    9: "next location",
     11: "toggle comment",
     12: "next buffer",
 }
@@ -120,6 +121,18 @@ class KittyTransport(Transport):
     def send(self, n):
         self._kitty("send-key", "shift+f%d" % n)
 
+    # Printable keys go as text; modified keys go through send-key so kitty
+    # encodes them exactly as it would a physical press.
+    AS_TEXT = {"g": "g", "shift+g": "G"}
+
+    def press(self, *specs):
+        for s in specs:
+            if s in self.AS_TEXT:
+                self._kitty("send-text", self.AS_TEXT[s])
+            else:
+                self._kitty("send-key", s)
+            time.sleep(0.15)
+
     def escape(self):
         self._kitty("send-key", "escape")
 
@@ -171,6 +184,16 @@ class VscodeTransport(Transport):
     def send(self, n):
         os.write(self.fd, VSCODE_SEQS[n].encode())
 
+    # What VS Code puts on the wire for the few plain keys the jumplist check
+    # needs. Cmd+Left/Cmd+Right are rewritten to Ctrl+O/Ctrl+I by the
+    # sendSequence bindings in keybindings.json, so they arrive as these bytes.
+    PLAIN = {"g": b"g", "shift+g": b"G", "ctrl+o": b"\x0f", "ctrl+i": b"\x09"}
+
+    def press(self, *specs):
+        for s in specs:
+            os.write(self.fd, self.PLAIN[s])
+            time.sleep(0.12)
+
     def escape(self):
         os.write(self.fd, b"\x1b")
 
@@ -184,6 +207,49 @@ class VscodeTransport(Transport):
             os.waitpid(self.pid, 0)
         except (ProcessLookupError, ChildProcessError):
             pass
+
+
+class KittyTmuxTransport(KittyTransport):
+    """kitty with tmux in the middle. This is the everyday setup, and it is not
+    the same as either half on its own: tmux picks default-terminal from the
+    host terminal (xterm-kitty here, xterm-256color under VS Code), and it is
+    tmux rather than kitty that ends up encoding the key for Neovim.
+
+    Runs on a private tmux server socket so the real one is untouched.
+    """
+
+    name = "kitty+tmux"
+    SERVER = "footpedal-check-kitty"
+
+    def start(self, workdir, files, sock, env):
+        env = dict(env)
+        env.pop("TMUX", None)
+        conf = os.path.join(REPO, "common/.tmux.conf")
+        self.proc = subprocess.Popen(
+            [
+                "kitty",
+                "--listen-on", KITTY_SOCK,
+                "-o", "allow_remote_control=yes",
+                "-o", "confirm_os_window_close=0",
+                "-o", "font_size=9",
+                "--directory", workdir,
+                "tmux", "-L", self.SERVER, "-f", conf,
+                "new-session", "-A", "-s", "fpk",
+                "nvim", "--listen", sock, *files,
+            ],
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        for _ in range(120):
+            if self._kitty("ls").returncode == 0 and os.path.exists(sock):
+                return True
+            time.sleep(0.5)
+        return False
+
+    def stop(self, keep=False):
+        run(["tmux", "-L", self.SERVER, "kill-server"])
+        super().stop(keep=keep)
 
 
 class TmuxTransport(VscodeTransport):
@@ -413,6 +479,40 @@ def check_transport(transport, keep=False):
             clean = not errs.strip() or errs.startswith("<ERR")
             check(n, arrived(n) and clean,
                   "arrived, raised nothing" if clean else "raised: %s" % errs[:120])
+
+        # --- jumplist: go to the previous location, and back forward again ---
+        # Not a macro key. Ctrl+O / Ctrl+I are what kitty and the VS Code
+        # terminal rewrite Cmd+Left / Cmd+Right to, since Neovim cannot see Cmd.
+        def jump_check(name, ok, detail):
+            if ok:
+                print("  PASS  %-25s %s" % (name, detail))
+            else:
+                print("  FAIL  %-25s %s" % (name, detail))
+                failures.append("%s %s: %s" % (transport.name, name, detail))
+
+        reset()
+        lua("vim.cmd('edit! %s') return 1" % sample)
+        time.sleep(0.4)
+        # gg then G puts a real entry on the jumplist.
+        transport.press("g", "g")
+        time.sleep(0.4)
+        transport.press("shift+g")
+        time.sleep(0.5)
+        top = int(expr("line('.')"))
+        transport.press("ctrl+o")
+        time.sleep(0.7)
+        back = int(expr("line('.')"))
+        jump_check("Ctrl+O previous location", top > 1 and back == 1,
+                   "line %d -> %d (want 1)" % (top, back))
+
+        # Forward goes on Shift+F9, not Ctrl+I: Neovim cannot tell Ctrl+I from
+        # Tab even when the terminal disambiguates them, and normal-mode <Tab>
+        # is mapped to indent, so Ctrl+I indents instead of jumping.
+        transport.send(9)
+        time.sleep(0.7)
+        fwd = int(expr("line('.')"))
+        jump_check("S-F9 next location", fwd == top,
+                   "line %d -> %d (want %d)" % (back, fwd, top))
         return failures
     finally:
         transport.stop(keep=keep)
@@ -421,7 +521,7 @@ def check_transport(transport, keep=False):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("which", nargs="?", default="all",
-                    choices=["all", "kitty", "vscode", "tmux"])
+                    choices=["all", "kitty", "vscode", "tmux", "kitty+tmux"])
     ap.add_argument("--keep", action="store_true", help="leave the kitty window open")
     args = ap.parse_args()
 
@@ -440,14 +540,17 @@ def main():
             return 1
         else:
             print("tmux not found, skipping that transport")
-    if args.which in ("all", "kitty"):
-        if shutil.which("kitty") and shutil.which("kitten"):
-            transports.append(KittyTransport())
-        elif args.which == "kitty":
+    have_kitty = shutil.which("kitty") and shutil.which("kitten")
+    for want, cls in (("kitty", KittyTransport), ("kitty+tmux", KittyTmuxTransport)):
+        if args.which not in ("all", want):
+            continue
+        if have_kitty:
+            transports.append(cls())
+        elif args.which == want:
             print("kitty not found", file=sys.stderr)
             return 1
         else:
-            print("kitty not found, skipping that transport")
+            print("kitty not found, skipping the %s transport" % want)
 
     failures = []
     for t in transports:

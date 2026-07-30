@@ -181,6 +181,7 @@ local keys = {
   "<F15>", -- Shift+F3, find class / file
   "<F19>", -- Shift+F7, stop build
   "<F20>", -- Shift+F8, goto definition
+  "<F21>", -- Shift+F9, jump forward
 }
 
 local ok, err = xpcall(function()

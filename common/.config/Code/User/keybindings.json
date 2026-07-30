@@ -7,10 +7,29 @@
   { "key": "ctrl+i", "command": "-editor.action.triggerSuggest", "when": "editorHasCompletionItemProvider && editorTextFocus && !editorReadonly" },
 
   // Navigate backward/forward through editor history.
+  // !terminalFocus on the ctrl+ pair so Neovim in the integrated terminal gets
+  // its own jumplist keys instead of these being handled here.
   { "key": "cmd+o", "command": "workbench.action.navigateBack" },
   { "key": "cmd+i", "command": "workbench.action.navigateForward" },
-  { "key": "ctrl+o", "command": "workbench.action.navigateBack" },
-  { "key": "ctrl+i", "command": "workbench.action.navigateForward" },
+  { "key": "ctrl+o", "command": "workbench.action.navigateBack", "when": "!terminalFocus" },
+  { "key": "ctrl+i", "command": "workbench.action.navigateForward", "when": "!terminalFocus" },
+
+  // Cmd+Left/Right in a terminal: same jumplist keys, matching what kitty
+  // rewrites them to, since Neovim cannot see Cmd itself.
+  {
+    "key": "cmd+left",
+    "command": "workbench.action.terminal.sendSequence",
+    "when": "terminalFocus",
+    "args": { "text": "\u000F" } // Ctrl+O
+  },
+  {
+    // Shift+F9 rather than Ctrl+I: Neovim cannot tell Ctrl+I from Tab, and
+    // normal-mode Tab is mapped to indent. Matches kitty.
+    "key": "cmd+right",
+    "command": "workbench.action.terminal.sendSequence",
+    "when": "terminalFocus",
+    "args": { "text": "\u001B[20;2~" } // Shift+F9
+  },
 
   // Disable line move shortcuts
   { "key": "alt+down", "command": "-editor.action.moveLinesDownAction" },

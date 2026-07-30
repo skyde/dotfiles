@@ -107,6 +107,13 @@ map_shift_f(
 -- Go to LSP definition
 map_shift_f(8, vim.lsp.buf.definition, { mode = { "n", "i" }, desc = "Goto Definition" })
 
+-- Jump forward in the jumplist, i.e. the pair of <C-o>. Sent by kitty's
+-- Cmd+Right and the VS Code terminal's Cmd+Right, because Ctrl+I cannot carry
+-- it: Neovim sees Ctrl+I and Tab as one key -- even when the terminal
+-- disambiguates them -- and <Tab> is mapped to indent below. noremap so the rhs
+-- reaches the builtin, which is what actually jumps.
+map_shift_f(9, "<C-i>", { noremap = true, desc = "Jump forward (next location)" })
+
 -- Leader-based toggle for key print debugging
 vim.keymap.set("n", "<leader>uk", print_keys.toggle, {
   desc = "Toggle Key Print",
