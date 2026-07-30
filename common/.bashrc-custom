@@ -113,11 +113,14 @@ if command -v fzf >/dev/null 2>&1; then
     local selected
     # --ansi is explicit here for the same reason as in .zshrc: it is what makes
     # fzf hand back the plain command rather than the highlighted one.
+    # Ranking matches .zshrc: match score first, recency only as the tiebreak.
+    # See the comment there for why --no-sort is deliberately absent.
     selected=$(fc -lnr |
       awk '!seen[$0]++' |
       fzf_history_highlight |
-      fzf --height=80% --reverse --ansi --tiebreak=index --no-sort \
+      fzf --height=80% --reverse --ansi --scheme=history --tiebreak=index \
           --preview="$FZF_HISTORY_PREVIEW" --preview-window='down,4,wrap' \
+          --bind='ctrl-s:toggle-sort' \
           --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
     READLINE_LINE=$selected
     READLINE_POINT=${#selected}

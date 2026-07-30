@@ -123,6 +123,18 @@ command would reach fzf as several separate, unrunnable candidates), and fzf
 must get `--ansi` explicitly (that is what makes it hand back the plain command
 instead of one full of escape sequences).
 
+### Why matches are inverted, not just recoloured
+
+`hl`/`hl+` are `#e0af68`/`#faba4a` with `bold:reverse`, so what you typed shows
+up as a solid yellow block. This is not a style preference, it is the only thing
+that survives the picker above: fzf replaces just the *foreground* of the
+matched characters, and in the history list those characters are already
+syntax-coloured by bat, so the old `hl:#7aa2f7` was a blue fg dropped into a
+line that was already blue, grey and cyan. Inverting fg and bg gives a match
+that reads the same whatever the syntax theme did underneath, and the two
+different yellows keep the contrast even on the current line, which sits on
+`bg+` (`#283457`) instead of the terminal background.
+
 ### Scrolling the yazi preview
 
 `skip` counts **screen rows**, not source lines, because bat does the wrapping.
