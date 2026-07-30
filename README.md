@@ -70,6 +70,12 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 - `lazygit` for a simple git TUI
 - `starship` for a customizable cross-shell prompt
 
+`json-view` browses every JSON file under a directory with a readable preview,
+and `json-pretty` is the renderer behind it: escaped `\n` become real line
+breaks, JSON embedded in a string is expanded, long values wrap, and the colours
+match bat and VS Code. The same rendering is used for JSON previews in yazi and
+lf. See [`docs/json-viewer.md`](docs/json-viewer.md).
+
 ## Neovim
 
 LazyVim, configured to match the VS Code setup key-for-key — see

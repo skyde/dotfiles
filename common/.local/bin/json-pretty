@@ -1,0 +1,574 @@
+#!/usr/bin/env python3
+"""json-pretty — a readable, colourful JSON renderer for the terminal.
+
+`jq .` already indents JSON, so why another pretty printer? Because the thing
+that actually makes real-world JSON unreadable is not the indentation, it is
+what is *inside the strings*:
+
+  * a stack trace, a diff or a log message arrives as one string with `\\n`
+    escapes in it, and every tool prints it as a single 4000-character line;
+  * a nested payload arrives as a *string of JSON*, so it is one opaque blob of
+    backslash-escaped quotes;
+  * long values run off the right edge of the pane instead of wrapping.
+
+This renderer fixes those three things: escaped newlines become real line
+breaks, JSON embedded in a string is parsed and rendered as a block, and long
+values wrap at the pane width. A dim `⏎` marks where a break came from a real
+`\\n` in the data, so an expanded string can never be confused with a value that
+happened to be short.
+
+The output is display-oriented, not valid JSON — except with `--plain
+--raw-strings`, which turns every display flourish off and round-trips.
+
+Colours follow the split documented in docs/tokyonight.md: the JSON *tokens*
+use Visual Studio Dark+ (the same BAT_THEME that bat, delta and VS Code use, so
+a .json file looks the same here as it does anywhere else), while the *chrome*
+— indent rails, glyphs, headers, line numbers — uses Tokyo Night night, like
+every other TUI in these dotfiles.
+
+Usage: json-pretty [OPTIONS] [FILE...]   (no FILE, or "-", reads stdin)
+"""
+
+from __future__ import annotations
+
+import argparse
+import contextlib
+import json
+import os
+import shutil
+import sys
+import unicodedata
+
+# --- palette ---------------------------------------------------------------
+
+# Visual Studio Dark+ — the JSON tokens.
+KEY = "\033[38;2;156;220;254m"  # #9cdcfe
+STRING = "\033[38;2;206;145;120m"  # #ce9178
+NUMBER = "\033[38;2;181;206;168m"  # #b5cea8
+KEYWORD = "\033[38;2;86;156;214m"  # #569cd6 — true / false / null
+PUNCT = "\033[38;2;212;212;212m"  # #d4d4d4 — braces, brackets, commas, quotes
+
+# Tokyo Night night — the chrome.
+RAIL = "\033[38;2;59;66;97m"  # #3b4261 fg_gutter — indent rails
+MUTED = "\033[38;2;86;95;137m"  # #565f89 comment — glyphs, line numbers, notes
+HEADER = "\033[38;2;122;162;247m"  # #7aa2f7 blue — file names
+ERROR = "\033[38;2;247;118;142m"  # #f7768e red — parse failures
+
+RESET = "\033[0m"
+PLAIN = ""  # spans that carry no colour of their own
+
+INDENT = 2
+RAIL_GLYPH = "│ "
+BREAK_GLYPH = "⏎"
+NUMBER_WIDTH = 4  # digits in the -n gutter; +3 for the " │ " that follows it
+GUTTER_WIDTH = NUMBER_WIDTH + 3
+
+
+# --- values that survive a round trip through the parser -------------------
+
+
+class Num:
+    """A number kept as the text the file actually contained.
+
+    `json.loads` turns 1.50 into the float 1.5 and 1e3 into 1000.0, so a
+    renderer built on the parsed value silently rewrites the user's numbers.
+    Holding the original token means what is displayed is what is in the file,
+    including precision no float can represent.
+    """
+
+    __slots__ = ("text",)
+
+    def __init__(self, text):
+        self.text = text
+
+
+class Obj:
+    """An object as an ordered list of pairs, duplicate keys included.
+
+    A dict would drop `{"a": 1, "a": 2}` down to one entry — and a duplicate key
+    is exactly the kind of thing you open a viewer to find.
+    """
+
+    __slots__ = ("pairs",)
+
+    def __init__(self, pairs):
+        self.pairs = list(pairs)
+
+
+def parse_documents(text):
+    """Parse one JSON value, or a stream of them (JSON Lines / concatenated)."""
+    decoder = json.JSONDecoder(
+        object_pairs_hook=Obj,
+        parse_float=Num,
+        parse_int=Num,
+        parse_constant=Num,  # NaN / Infinity / -Infinity
+    )
+    documents = []
+    index = 0
+    length = len(text)
+    while True:
+        while index < length and text[index] in " \t\r\n":
+            index += 1
+        if index >= length:
+            return documents
+        value, index = decoder.raw_decode(text, index)
+        documents.append(value)
+
+
+# --- width helpers ---------------------------------------------------------
+
+
+def display_width(text):
+    """Columns `text` occupies, counting CJK and emoji cells as two.
+
+    Wrapping and the header rule both need real column counts; `len()` would
+    make a line of Japanese twice as wide as the pane.
+    """
+    width = 0
+    for char in text:
+        if unicodedata.combining(char):
+            continue
+        width += 2 if unicodedata.east_asian_width(char) in "WF" else 1
+    return width
+
+
+def wrap_text(text, width):
+    """Greedy wrap, preferring a space near the end of the line.
+
+    Returns at least one chunk so an empty string still produces an empty row
+    (a blank line inside a string is content, and dropping it would misrepresent
+    the data).
+    """
+    if width < 8:  # too narrow to wrap usefully; let the terminal deal with it
+        return [text]
+    chunks = []
+    remaining = text
+    while display_width(remaining) > width:
+        # Walk out to the column limit one character at a time — a slice by
+        # index would cut in the wrong place as soon as the text has wide chars.
+        cut = 0
+        used = 0
+        for index, char in enumerate(remaining):
+            step = display_width(char)
+            if used + step > width:
+                break
+            used += step
+            cut = index + 1
+        space = remaining.rfind(" ", max(1, int(cut * 0.6)), cut)
+        if space > 0:
+            chunks.append(remaining[:space])
+            remaining = remaining[space + 1 :]
+        else:
+            chunks.append(remaining[:cut])
+            remaining = remaining[cut:]
+    chunks.append(remaining)
+    return chunks
+
+
+# --- rendering -------------------------------------------------------------
+
+
+class Truncated(Exception):
+    """Raised to abandon rendering once --max-rows rows exist."""
+
+
+class Renderer:
+    """Turns a parsed value into rows of (style, text) spans.
+
+    Colour is applied only when the rows are written out, so every width
+    decision here is made on plain text and can never be thrown off by an
+    escape sequence.
+    """
+
+    def __init__(self, width=100, raw_strings=False, embedded=True, plain=False, max_rows=0):
+        self.width = max(20, width)
+        self.raw_strings = raw_strings
+        self.embedded = embedded and not raw_strings
+        self.plain = plain
+        self.max_rows = max_rows
+        self.rows = []
+        # Indent columns that currently sit inside an expanded string, drawn as
+        # a rail instead of blank space. Deliberately *not* every nesting level:
+        # a rail per level turns deep JSON into a picket fence, and braces
+        # already show container nesting. What braces cannot show is where an
+        # expanded string starts and stops — a stack trace broken across ten
+        # lines is ten lines that look exactly like document structure. The rail
+        # is the left edge of that value, so "still inside the string" is never
+        # in doubt.
+        self.rails = set()
+
+    # -- row plumbing
+    def emit(self, depth, spans):
+        if self.max_rows and len(self.rows) >= self.max_rows:
+            raise Truncated
+        self.rows.append(self.gutter(depth) + spans)
+
+    def gutter(self, depth):
+        spans = []
+        for level in range(depth):
+            if level in self.rails and not self.plain:
+                spans.append((RAIL, RAIL_GLYPH))
+            else:
+                spans.append((PLAIN, " " * INDENT))
+        return spans
+
+    def indent_width(self, depth):
+        return INDENT * depth
+
+    @contextlib.contextmanager
+    def rail(self, column):
+        """Draw a rail in indent column `column` for everything emitted inside."""
+        already = column in self.rails
+        self.rails.add(column)
+        try:
+            yield
+        finally:
+            if not already:
+                self.rails.discard(column)
+
+    # -- values
+    def value(self, value, depth, prefix, suffix):
+        if isinstance(value, Obj):
+            self.container(value.pairs, depth, prefix, suffix, "{", "}", is_object=True)
+        elif isinstance(value, list):
+            self.container(value, depth, prefix, suffix, "[", "]", is_object=False)
+        elif isinstance(value, str):
+            self.string(value, depth, prefix, suffix)
+        else:
+            self.emit(depth, prefix + [self.scalar_span(value)] + suffix)
+
+    @staticmethod
+    def scalar_span(value):
+        if isinstance(value, Num):
+            return (NUMBER, value.text)
+        if value is True:
+            return (KEYWORD, "true")
+        if value is False:
+            return (KEYWORD, "false")
+        if value is None:
+            return (KEYWORD, "null")
+        # Only reachable for a float that arrived without going through Num
+        # (e.g. a caller handing us Python data rather than parsed text).
+        return (NUMBER, json.dumps(value))
+
+    def container(self, items, depth, prefix, suffix, open_ch, close_ch, is_object):
+        if not items:
+            self.emit(depth, prefix + [(PUNCT, open_ch + close_ch)] + suffix)
+            return
+        self.emit(depth, prefix + [(PUNCT, open_ch)])
+        last = len(items) - 1
+        for index, item in enumerate(items):
+            comma = [] if index == last else [(PUNCT, ",")]
+            if is_object:
+                key, child = item
+                child_prefix = [
+                    (KEY, json.dumps(key, ensure_ascii=False)),
+                    (PUNCT, ":"),
+                    (PLAIN, " "),
+                ]
+            else:
+                child, child_prefix = item, []
+            self.value(child, depth + 1, child_prefix, comma)
+        self.emit(depth, [(PUNCT, close_ch)] + suffix)
+
+    def string(self, value, depth, prefix, suffix):
+        if self.raw_strings:
+            self.emit(depth, prefix + [(STRING, json.dumps(value, ensure_ascii=False))] + suffix)
+            return
+
+        embedded = self.parse_embedded(value) if self.embedded else None
+        if embedded is not None:
+            # A string that is itself JSON: show it as a block, tagged so it is
+            # obvious the braces came out of a string rather than the document.
+            note = [] if self.plain else [(MUTED, " ⟨json⟩")]
+            self.emit(depth, prefix + [(PUNCT, '"')] + note)
+            with self.rail(depth):
+                self.value(embedded, depth + 1, [], [])
+            self.emit(depth, [(PUNCT, '"')] + suffix)
+            return
+
+        lines = [sanitize(line) for line in value.split("\n")]
+        if len(lines) == 1:
+            inline = json.dumps(value, ensure_ascii=False)
+            used = self.indent_width(depth) + spans_width(prefix) + spans_width(suffix)
+            if used + display_width(inline) <= self.width:
+                self.emit(depth, prefix + [(STRING, inline)] + suffix)
+                return
+
+        # Block form: opening quote stays on the key's line, the content is
+        # indented one level, the closing quote lines back up with the key. The
+        # closing quote is never buried at the end of a wrapped line, so the
+        # extent of a long value is always obvious.
+        self.emit(depth, prefix + [(PUNCT, '"')])
+        body_width = max(8, self.width - self.indent_width(depth + 1))
+        with self.rail(depth):
+            for index, line in enumerate(lines):
+                hard_break = index != len(lines) - 1
+                chunks = wrap_text(line, body_width)
+                for chunk_index, chunk in enumerate(chunks):
+                    spans = [(STRING, chunk)] if chunk else []
+                    # The glyph only ever marks a break that was a real \n in the
+                    # data. A break with no glyph is this renderer wrapping a long
+                    # line, so the two can always be told apart.
+                    if hard_break and chunk_index == len(chunks) - 1 and not self.plain:
+                        spans.append((MUTED, BREAK_GLYPH))
+                    self.emit(depth + 1, spans)
+        self.emit(depth, [(PUNCT, '"')] + suffix)
+
+    @staticmethod
+    def parse_embedded(value):
+        """Return the parsed value if `value` is a string holding one JSON container.
+
+        Only objects and arrays qualify. Bare scalars are excluded on purpose:
+        the string "123" is a string, and quietly repainting it as a number
+        would be a lie about the data.
+        """
+        stripped = value.strip()
+        if len(stripped) < 2 or stripped[0] not in "{[":
+            return None
+        try:
+            documents = parse_documents(stripped)
+        except json.JSONDecodeError:
+            return None
+        if len(documents) != 1:
+            return None
+        parsed = documents[0]
+        # An empty container gains nothing from a three-row block: "{}" reads
+        # better inline than as a tagged, indented block containing {}.
+        if isinstance(parsed, Obj) and not parsed.pairs:
+            return None
+        if isinstance(parsed, list) and not parsed:
+            return None
+        return parsed
+
+
+def sanitize(line):
+    """Make one display line safe to print.
+
+    Tabs become spaces and other control characters become escapes: a raw tab
+    would jump the cursor to the next tab stop and shear the indent rails, and a
+    stray CR or bell would overwrite the row.
+    """
+    line = line.rstrip("\r").replace("\t", " " * INDENT)
+    if not any(char < " " or char == "\x7f" for char in line):
+        return line
+    return "".join(
+        char if (char >= " " and char != "\x7f") else "\\u%04x" % ord(char) for char in line
+    )
+
+
+def spans_width(spans):
+    return sum(display_width(text) for _, text in spans)
+
+
+def render_rows(rows, color, numbers, start_number=1):
+    """Write rows out, adding colour and the line-number gutter."""
+    out = []
+    for offset, spans in enumerate(rows):
+        line = []
+        if numbers:
+            number = "%*d" % (NUMBER_WIDTH, start_number + offset)
+            line.append(colorize(MUTED, number, color))
+            line.append(colorize(RAIL, " " + RAIL_GLYPH, color))
+        for style, text in spans:
+            line.append(colorize(style, text, color))
+        out.append("".join(line).rstrip())
+    return out
+
+
+def colorize(style, text, color):
+    if not color or not style or not text:
+        return text
+    return style + text + RESET
+
+
+def header_rows(label, note, width, color):
+    """A dim rule naming the file, for when more than one is on screen."""
+    left = "── "
+    text = "".join(
+        [
+            colorize(RAIL, left, color),
+            colorize(HEADER, label, color),
+            colorize(MUTED, "  " + note if note else "", color),
+        ]
+    )
+    used = display_width(left + label) + (display_width("  " + note) if note else 0)
+    fill = "─" * max(2, width - used - 1)
+    return [text + " " + colorize(RAIL, fill, color)]
+
+
+def error_rows(label, exc, text, color):
+    """Explain a parse failure and point at the byte that caused it."""
+    where = "line %d column %d" % (exc.lineno, exc.colno)
+    rows = [colorize(ERROR, "✗ %s: %s (%s)" % (label, exc.msg, where), color)]
+    lines = text.splitlines()
+    if 1 <= exc.lineno <= len(lines):
+        source = sanitize(lines[exc.lineno - 1])
+        rows.append(colorize(MUTED, "  " + source[:400], color))
+        caret_column = display_width(sanitize(lines[exc.lineno - 1][: exc.colno - 1]))
+        rows.append(colorize(ERROR, "  " + " " * caret_column + "^", color))
+    rows.append(colorize(MUTED, "  showing the file unparsed:", color))
+    return rows
+
+
+# --- driving ---------------------------------------------------------------
+
+
+def render_text(text, opts, label, color):
+    """Render one file's worth of text into finished output lines."""
+    # The line-number gutter is part of the pane too: wrapping to the full
+    # terminal width and *then* prepending seven columns would push every
+    # wrapped line past the right edge.
+    body_width = opts.width - (GUTTER_WIDTH if opts.numbers else 0)
+    renderer = Renderer(
+        width=body_width,
+        raw_strings=opts.raw_strings,
+        embedded=not opts.no_embedded,
+        plain=opts.plain,
+        max_rows=opts.max_rows,
+    )
+    try:
+        documents = parse_documents(text)
+    except json.JSONDecodeError as exc:
+        return error_rows(label, exc, text, color) + text.splitlines(), 1
+
+    lines = []
+    numbered = 0  # rows that consumed a line number, so numbering stays contiguous
+    truncated = False
+    for index, document in enumerate(documents):
+        if index:
+            # JSON Lines / concatenated documents: a dim rule and the record
+            # number, so a 500-record log does not become one wall of braces.
+            if opts.plain:
+                lines.append("")
+            else:
+                pad = " " * GUTTER_WIDTH if opts.numbers else ""
+                rule = "── record %d " % (index + 1)
+                fill = "─" * max(2, body_width - display_width(rule))
+                lines.append(pad + colorize(MUTED, rule, color) + colorize(RAIL, fill, color))
+        renderer.rows = []
+        try:
+            renderer.value(document, 0, [], [])
+        except Truncated:
+            truncated = True
+        lines.extend(render_rows(renderer.rows, color, opts.numbers, start_number=numbered + 1))
+        numbered += len(renderer.rows)
+        if truncated:
+            lines.append(colorize(MUTED, "  … output truncated at %d rows" % opts.max_rows, color))
+            break
+    return lines, 0
+
+
+def read_source(path):
+    if path in ("-", None):
+        return sys.stdin.read()
+    with open(path, "r", encoding="utf-8", errors="replace") as handle:
+        return handle.read()
+
+
+def size_note(path, text):
+    parts = []
+    try:
+        size = os.path.getsize(path)
+        for unit in ("B", "KB", "MB", "GB"):
+            if size < 1024 or unit == "GB":
+                parts.append("%g %s" % (round(size, 1), unit))
+                break
+            size /= 1024.0
+    except OSError:
+        pass
+    parts.append("%d chars" % len(text))
+    return " · ".join(parts)
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        prog="json-pretty",
+        description="Render JSON readably: escaped newlines become real ones, "
+        "embedded JSON is expanded, long values wrap.",
+    )
+    parser.add_argument("files", nargs="*", metavar="FILE", help='file(s) to render ("-" is stdin)')
+    parser.add_argument(
+        "-w", "--width", type=int, default=0, help="wrap width (default: terminal width)"
+    )
+    parser.add_argument(
+        "-c",
+        "--color",
+        choices=("auto", "always", "never"),
+        default="auto",
+        help="colourise output (default: auto — only when stdout is a terminal)",
+    )
+    parser.add_argument("-n", "--numbers", action="store_true", help="show a line-number gutter")
+    parser.add_argument(
+        "--raw-strings",
+        action="store_true",
+        help="leave strings escaped instead of breaking them into lines",
+    )
+    parser.add_argument(
+        "--no-embedded", action="store_true", help="do not expand JSON found inside strings"
+    )
+    parser.add_argument(
+        "--plain",
+        action="store_true",
+        help="drop indent rails, glyphs and record rules "
+        "(with --raw-strings the output is valid JSON)",
+    )
+    parser.add_argument(
+        "--max-rows", type=int, default=0, help="stop after N rows (0 = unlimited)"
+    )
+    header = parser.add_mutually_exclusive_group()
+    header.add_argument(
+        "--header", dest="header", action="store_true", default=None, help="always print a file header"
+    )
+    header.add_argument("--no-header", dest="header", action="store_false", help="never print one")
+    return parser
+
+
+def main(argv):
+    opts = build_parser().parse_args(argv)
+
+    if opts.width <= 0:
+        opts.width = shutil.get_terminal_size((100, 24)).columns
+    color = opts.color == "always" or (
+        opts.color == "auto" and sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+    )
+
+    files = opts.files or ["-"]
+    show_header = opts.header if opts.header is not None else len(files) > 1
+
+    status = 0
+    for index, path in enumerate(files):
+        try:
+            text = read_source(path)
+        except OSError as exc:
+            print(colorize(ERROR, "✗ %s: %s" % (path, exc.strerror or exc), color), file=sys.stderr)
+            status = 2
+            continue
+
+        label = "stdin" if path in ("-", None) else path
+        if index:
+            print()
+        if show_header:
+            for line in header_rows(label, size_note(path, text), opts.width, color):
+                print(line)
+        if not text.strip():
+            print(colorize(MUTED, "  (empty)", color))
+            continue
+        lines, file_status = render_text(text, opts, label, color)
+        status = status or file_status
+        for line in lines:
+            print(line)
+    return status
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except BrokenPipeError:
+        # Normal when the reader is `head` or a pager that was quit early.
+        # Point stdout at devnull so the interpreter's own flush at exit does
+        # not report the same broken pipe again on the way out.
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        sys.exit(0)
+    except KeyboardInterrupt:
+        sys.exit(130)

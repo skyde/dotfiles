@@ -10,6 +10,18 @@ sort_reverse = true
 [preview]
 wrap = "yes"
 
+# JSON is previewed by json-pretty instead of bat: escaped newlines become real
+# line breaks, JSON embedded in a string is expanded, and long values wrap to the
+# pane. bat can only show what is on disk, which for a log dump is one enormous
+# line per record. Same rendering as the `json-view` picker.
+#
+# This has to stay *above* the bat-preview rules below: previewers are tried in
+# order and the first rule that matches wins, and both the `application/json`
+# mime rule and the catch-all name rule would otherwise claim .json first.
+[[plugin.prepend_previewers]]
+name = "*.{json,jsonl,ndjson,geojson}"
+run = "json-preview"
+
 # Preview code through bat so the right-hand pane uses the same syntax theme
 # (BAT_THEME) and the same custom syntaxes as bat, delta and VS Code.
 # See plugins/bat-preview.yazi/main.lua for why this beats mgr.syntect_theme.

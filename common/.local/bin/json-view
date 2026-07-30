@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+# json-view — browse every JSON file under a directory, with a readable preview.
+#
+# The list on the left is every .json/.jsonl/.ndjson/.geojson file below the
+# given paths; the pane on the right is that file rendered by `json-pretty`, so
+# escaped newlines are real line breaks, JSON embedded in strings is expanded,
+# and long values wrap to the pane instead of running off it. Enter opens the
+# same rendering full-screen in a pager and comes back to the list afterwards,
+# which is the loop you want when reading through a directory of log dumps or
+# fixtures.
+#
+# Usage:
+#   json-view [--code] [PATH ...]     PATH defaults to the current directory
+#   json-view FILE                    view one file directly, no picker
+#   ... | json-view                   render whatever arrives on stdin
+#
+# Keys inside the picker are listed in the fzf header.
+# Requires: fzf, python3 (for json-pretty). bat is used for the raw view if
+# present, and less for paging.
+
+set -euo pipefail
+
+self="$0"
+if command -v realpath >/dev/null 2>&1; then
+  self="$(realpath "$0")"
+fi
+
+# Prefer the json-pretty sitting next to this script, so running either one
+# straight out of a git checkout works before the dotfiles are stowed.
+pretty="$(dirname "$self")/json-pretty"
+if [[ ! -x "$pretty" ]]; then
+  pretty="$(command -v json-pretty || true)"
+fi
+if [[ -z "$pretty" ]]; then
+  echo "error: json-pretty not found next to json-view or in PATH" >&2
+  exit 1
+fi
+
+usage() {
+  sed -n '2,/^set -euo/p' "$self" | sed -e '/^set -euo/d' -e 's/^# \{0,1\}//'
+}
+
+# Full-screen view of a single file: rendered with line numbers and paged.
+# Reached from the picker via `enter`, which is why it lives in this script
+# rather than inline in an fzf binding — the binding runs in a fresh shell that
+# has no access to anything defined here.
+page() {
+  local file="$1" columns
+  columns="$(tput cols 2>/dev/null || echo 100)"
+  # --header names the file and gives its size: in the full-screen view there is
+  # no list on the left saying which file this is.
+  if [[ ! -t 1 ]]; then
+    "$pretty" --color=auto --header --numbers --width "$columns" -- "$file"
+    return
+  fi
+  if command -v less >/dev/null 2>&1; then
+    # --quit-if-one-screen so short files behave like `cat`; --no-init keeps
+    # less from wiping the screen on the way in and out, which matters when the
+    # picker is underneath it.
+    #
+    # LESSCHARSET is not cosmetic here: the rendering leans on ⏎ and │, and less
+    # decides printability from the locale. On a box where LANG is unset (a bare
+    # ssh session, a container) it would escape every one of those bytes into
+    # <E2><8F><8E> and shred the layout.
+    "$pretty" --color=always --header --numbers --width "$columns" -- "$file" |
+      LESSCHARSET=utf-8 less --RAW-CONTROL-CHARS --tabs=2 --quit-if-one-screen --no-init
+  else
+    "$pretty" --color=always --header --numbers --width "$columns" -- "$file"
+  fi
+}
+
+case "${1:-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  --page) # internal: used by the picker's enter binding
+    page "$2"
+    exit 0
+    ;;
+esac
+
+open_with_editor=(--bind "ctrl-o:become(${EDITOR:-nvim} {})")
+if [[ "${1:-}" == "--code" ]]; then
+  # Keep the picker alive when handing files to VS Code — reviewing a directory
+  # usually means opening several.
+  open_with_editor=(--bind "ctrl-o:execute-silent(code -r {})")
+  shift
+fi
+
+if [[ $# -eq 0 ]] && [[ ! -t 0 ]]; then
+  # Piped input: nothing to browse, just render it.
+  if [[ -t 1 ]] && command -v less >/dev/null 2>&1; then
+    "$pretty" --color=always --width "$(tput cols 2>/dev/null || echo 100)" -- - |
+      LESSCHARSET=utf-8 less --RAW-CONTROL-CHARS --tabs=2 --quit-if-one-screen --no-init
+  else
+    "$pretty" -- -
+  fi
+  exit 0
+fi
+
+paths=("$@")
+[[ ${#paths[@]} -eq 0 ]] && paths=(.)
+
+# fd is much faster on a big tree and honours .gitignore, but it is `fdfind` on
+# Debian and Ubuntu and missing on plenty of boxes, so find is a first-class
+# fallback rather than an error path.
+fd_bin="$(command -v fd || command -v fdfind || true)"
+
+collect() {
+  local path
+  for path in "${paths[@]}"; do
+    if [[ -f "$path" ]]; then
+      printf '%s\n' "$path"
+    elif [[ -d "$path" ]]; then
+      if [[ -n "$fd_bin" ]]; then
+        "$fd_bin" --type f --hidden --exclude .git \
+          -e json -e jsonl -e ndjson -e geojson . "$path"
+      else
+        find "$path" -type f \( -name '*.json' -o -name '*.jsonl' \
+          -o -name '*.ndjson' -o -name '*.geojson' \) -not -path '*/.git/*'
+      fi
+    else
+      echo "warning: no such file or directory: $path" >&2
+    fi
+  done
+}
+
+# ./ prefixes come from find and would make the same file sort and read
+# differently depending on which finder ran.
+mapfile -t files < <(collect | sed 's|^\./||' | sort -u)
+
+if [[ ${#files[@]} -eq 0 ]]; then
+  echo "no JSON files found in: ${paths[*]}" >&2
+  exit 1
+fi
+
+# One file is not a choice: skip the picker and read it. This covers both
+# `json-view some.json` and a directory that happens to hold a single file.
+if [[ ${#files[@]} -eq 1 ]]; then
+  page "${files[0]}"
+  exit 0
+fi
+
+# Only the picker needs fzf; reading a single named file, or stdin, does not.
+command -v fzf >/dev/null 2>&1 || {
+  echo "error: fzf not found in PATH (needed to pick between ${#files[@]} files)" >&2
+  exit 1
+}
+
+# --max-rows keeps a 200 MB log from rendering a million rows into a pane that
+# can show forty; fzf's preview is capped anyway, but the work would still be
+# done on every cursor move.
+preview_pretty="COLORTERM=truecolor $(printf %q "$pretty") --color=always --max-rows 400"
+preview_pretty="$preview_pretty --width \${FZF_PREVIEW_COLUMNS:-80} -- {}"
+
+if command -v bat >/dev/null 2>&1; then
+  preview_raw="COLORTERM=truecolor bat --color=always --language=json --style=numbers"
+  preview_raw="$preview_raw --paging=never --wrap=character"
+  preview_raw="$preview_raw --terminal-width=\${FZF_PREVIEW_COLUMNS:-80} -- {}"
+else
+  preview_raw="$(printf %q "$pretty") --color=always --raw-strings --plain"
+  preview_raw="$preview_raw --max-rows 400 --width \${FZF_PREVIEW_COLUMNS:-80} -- {}"
+fi
+
+copy_path="printf '%s' {} | (osc-copy 2>/dev/null || pbcopy 2>/dev/null || xclip -selection clipboard 2>/dev/null || true)"
+
+exec fzf \
+  --ansi \
+  --tiebreak=index \
+  --prompt='JSON> ' \
+  --header='enter view · ctrl-o edit · ctrl-r raw · ctrl-p pretty · ctrl-y copy path · ctrl-/ preview' \
+  --preview "$preview_pretty" \
+  --preview-window 'right,64%,nowrap' \
+  --bind "enter:execute($(printf %q "$self") --page {})" \
+  --bind "ctrl-r:change-preview($preview_raw)" \
+  --bind "ctrl-p:change-preview($preview_pretty)" \
+  --bind "ctrl-y:execute-silent($copy_path)" \
+  --bind 'ctrl-/:toggle-preview' \
+  "${open_with_editor[@]}" \
+  < <(printf '%s\n' "${files[@]}")
