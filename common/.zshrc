@@ -72,13 +72,24 @@ if (( $+commands[fzf] )); then
     # --ansi is passed explicitly, not just inherited from FZF_DEFAULT_OPTS:
     # without it fzf would hand back the highlighted line *including* the escape
     # sequences and paste those onto the command line.
+    # Ranking: match quality first, recency second. --scheme=history keeps the
+    # scoring tuned for command lines, and --tiebreak=index breaks ties by
+    # position in the input, which is reverse-chronological — so equally good
+    # matches are still newest-first.
+    #
+    # There is deliberately no --no-sort here. That flag threw the match score
+    # away entirely and kept pure reverse-chronological order, which meant a
+    # recent line with the query's letters scattered through it outranked an
+    # older line containing the query verbatim. Ctrl-S toggles sorting off for
+    # the times when walking back through history is what you actually want, and
+    # fzf's own 'foo (exact), ^foo, foo$ operators still apply on top.
     selected=$(
       fc -nrl 1 2>/dev/null | LC_ALL=C awk 'length && !seen[$0]++' | \
       fzf_history_highlight | \
       fzf --height=80% --layout=reverse --min-height=20 --ansi \
-          --tiebreak=index --no-sort --scheme=history --wrap \
+          --scheme=history --tiebreak=index --wrap \
           --preview="$FZF_HISTORY_PREVIEW" --preview-window='down,4,wrap' \
-          --bind='ctrl-/:toggle-preview' \
+          --bind='ctrl-/:toggle-preview' --bind='ctrl-s:toggle-sort' \
           --prompt='History> ' --style=minimal --query="$LBUFFER"
     ) || return
     BUFFER=$selected
