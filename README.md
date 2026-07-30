@@ -85,14 +85,33 @@ default; `-g` still reaches VS Code.
 
 ### Nvim Version
 
-If Nvim is using a version that is too old it can be made to use the newest version by running this
+Distro packages lag badly, so on Linux install the current release straight from
+upstream (`init.sh` offers to do this too):
 
+```sh
+./install-nvim.sh                        # latest release into ~/.local/bin
+NVIM_VERSION=v0.11.5 ./install-nvim.sh   # pin a specific tag
 ```
-curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage
-chmod u+x nvim-linux-x86_64.appimage
-mkdir -p ~/.local/bin
-mv nvim-linux-x86_64.appimage ~/.local/bin/nvim
+
+The tarball is preferred (no FUSE needed); the AppImage is the fallback and gets
+unpacked automatically when FUSE is missing. On macOS use `brew install neovim`.
+
+### Lazygit Version
+
+`<leader>gg` opens lazygit inside Neovim, and
+`common/.config/lazygit/config.yml` uses recent options, so lazygit needs to be
+current as well. Debian and Ubuntu do not package it at all, so grab the release
+binary (`init.sh` offers this too):
+
+```sh
+./install-lazygit.sh                          # latest release into ~/.local/bin
+LAZYGIT_VERSION=v0.54.2 ./install-lazygit.sh  # pin a specific tag
 ```
+
+### Plugin Versions
+
+Plugin commits are pinned in `common/.config/nvim/lazy-lock.json`. Refresh them
+with `:Lazy sync` inside Neovim and commit the updated lockfile.
 
 ## Mac
 
