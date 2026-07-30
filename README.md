@@ -219,6 +219,10 @@ toggle comment - Shift F11
 
 ```
 
+These all work in Neovim too, in the kitty terminal and in the VS Code
+integrated terminal. See [docs/footpedal-keys.md](docs/footpedal-keys.md) for
+what each one maps to and how to check them.
+
 ## Kinesis
 
 Press Pgrm 1 to activate Mac layout

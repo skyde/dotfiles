@@ -124,3 +124,5 @@ toggle search   – Shift+F9
 toggle eye      – Shift+F10
 toggle comment  – Shift+F11
 ```
+
+For how these reach Neovim, see [footpedal-keys.md](footpedal-keys.md).
