@@ -174,10 +174,11 @@ class TmuxDownloadPickerTest(unittest.TestCase):
             self.run_helper(scrollback),
         )
 
-    def test_picker_shows_and_selects_newest_path(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            bin_dir = root / 'bin'
+    def run_picker(self, scrollback_text, client_width=None):
+        """Run the picker in a sandbox and report what fzf and the copier saw."""
+        with tempfile.TemporaryDirectory() as sandbox_dir:
+            sandbox = Path(sandbox_dir)
+            bin_dir = sandbox / 'bin'
             bin_dir.mkdir()
 
             picker = bin_dir / PICKER.name
@@ -187,33 +188,13 @@ class TmuxDownloadPickerTest(unittest.TestCase):
             make_executable(picker)
             make_executable(helper)
 
-            old_path = root / 'old.txt'
-            middle_path = root / 'middle.txt'
-            newest_path = root / 'newest.txt'
-            for path in (old_path, middle_path, newest_path):
-                path.touch()
+            scrollback = sandbox / 'scrollback.txt'
+            scrollback.write_text(scrollback_text, encoding='utf-8')
 
-            newest = str(newest_path)
-            newest_split = newest.index('newest') + len('new')
-            scrollback = root / 'scrollback.txt'
-            scrollback.write_text(
-                '\n'.join(
-                    [
-                        f'old {old_path}',
-                        f'middle {middle_path}',
-                        f'old repeated later {old_path}',
-                        f'newest {newest[:newest_split]}',
-                        f'  {newest[newest_split:]}',
-                    ]
-                )
-                + '\n',
-                encoding='utf-8',
-            )
-
-            fzf_input = root / 'fzf-input.txt'
-            fzf_args = root / 'fzf-args.txt'
-            tmux_args = root / 'tmux-args.txt'
-            copied_path = root / 'copied-path.txt'
+            fzf_input = sandbox / 'fzf-input.txt'
+            fzf_args = sandbox / 'fzf-args.txt'
+            tmux_args = sandbox / 'tmux-args.txt'
+            copied_path = sandbox / 'copied-path.txt'
 
             fake_tmux = bin_dir / 'tmux'
             fake_tmux.write_text(
@@ -221,10 +202,14 @@ class TmuxDownloadPickerTest(unittest.TestCase):
                     '''\
                     #!/usr/bin/env bash
                     set -euo pipefail
-                    printf '%s\n' "$@" > "$FAKE_TMUX_ARGS"
+                    printf '%s\n' "$*" >> "$FAKE_TMUX_ARGS"
                     case "${1:-}" in
                       capture-pane) cat "$FAKE_SCROLLBACK" ;;
-                      display-message) ;;
+                      display-message)
+                        if [[ "${2:-}" == '-p' ]]; then
+                          printf '%s\n' "${FAKE_CLIENT_WIDTH:-80}"
+                        fi
+                        ;;
                       *) exit 2 ;;
                     esac
                     '''
@@ -272,6 +257,8 @@ class TmuxDownloadPickerTest(unittest.TestCase):
                     'FAKE_COPIED_PATH': str(copied_path),
                 }
             )
+            if client_width is not None:
+                env['FAKE_CLIENT_WIDTH'] = str(client_width)
 
             result = subprocess.run(
                 [str(picker)],
@@ -282,19 +269,80 @@ class TmuxDownloadPickerTest(unittest.TestCase):
             )
 
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertEqual(
-                [str(newest_path), str(old_path), str(middle_path)],
-                fzf_input.read_text(encoding='utf-8').splitlines(),
-            )
-            self.assertEqual(str(newest_path), copied_path.read_text(encoding='utf-8'))
-            self.assertEqual(
-                ['capture-pane', '-J', '-p', '-S', '-2000'],
-                tmux_args.read_text(encoding='utf-8').splitlines(),
+
+            return {
+                'fzf_input': fzf_input.read_text(encoding='utf-8').splitlines(),
+                'fzf_args': fzf_args.read_text(encoding='utf-8').splitlines(),
+                'tmux_calls': tmux_args.read_text(encoding='utf-8').splitlines(),
+                'copied': copied_path.read_text(encoding='utf-8'),
+            }
+
+    def test_picker_shows_and_selects_newest_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            old_path = root / 'old.txt'
+            middle_path = root / 'middle.txt'
+            newest_path = root / 'newest.txt'
+            for path in (old_path, middle_path, newest_path):
+                path.touch()
+
+            newest = str(newest_path)
+            newest_split = newest.index('newest') + len('new')
+            scrollback = (
+                '\n'.join(
+                    [
+                        f'old {old_path}',
+                        f'middle {middle_path}',
+                        f'old repeated later {old_path}',
+                        f'newest {newest[:newest_split]}',
+                        f'  {newest[newest_split:]}',
+                    ]
+                )
+                + '\n'
             )
 
-            arguments = fzf_args.read_text(encoding='utf-8').splitlines()
+            outcome = self.run_picker(scrollback, client_width=200)
+
+            self.assertEqual(
+                [
+                    f'{newest_path}\t{newest_path}',
+                    f'{old_path}\t{old_path}',
+                    f'{middle_path}\t{middle_path}',
+                ],
+                outcome['fzf_input'],
+            )
+            self.assertEqual(str(newest_path), outcome['copied'])
+            self.assertIn('capture-pane -J -p -S -2000', outcome['tmux_calls'])
+
+            arguments = outcome['fzf_args']
             self.assertIn('--no-sort', arguments)
             self.assertIn('--layout=reverse', arguments)
+            self.assertIn('--with-nth=1', arguments)
+            self.assertIn('--nth=2', arguments)
+
+    def test_overlong_path_is_truncated_on_the_left(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            long_path = root.joinpath(*[f'directory-{index}' for index in range(8)])
+            long_path.mkdir(parents=True)
+            long_path = long_path / 'artifact-with-a-long-name.txt'
+            long_path.touch()
+
+            client_width = 100
+            display_width = client_width * 80 // 100 - 8
+            full = str(long_path)
+            self.assertGreater(len(full), display_width)
+
+            outcome = self.run_picker(f"wrote {full}\n", client_width=client_width)
+
+            display, _, value = outcome['fzf_input'][0].partition('\t')
+            self.assertEqual(f'…{full[len(full) - display_width + 1:]}', display)
+            self.assertEqual(display_width, len(display))
+            self.assertTrue(display.endswith('artifact-with-a-long-name.txt'))
+            self.assertEqual(full, value)
+            self.assertEqual(full, outcome['copied'])
 
 
 if __name__ == '__main__':
