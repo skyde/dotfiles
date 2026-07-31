@@ -24,6 +24,7 @@ local M = {}
 ---@field path string  repo-relative path
 ---@field status string  one of M A D R ? C
 ---@field orig string|nil  pre-rename path, when status is R
+---@field rev string|nil  per-file base revision, when the backend tracks one (p4's haveRev)
 
 ---@class VcsBackend
 ---@field name string
@@ -180,11 +181,13 @@ function git.rev(root, scope)
     -- No trunk to fork from (a fresh repo, or trunk *is* the branch) still has
     -- a sensible answer: everything since the first commit is not useful, so
     -- fall back to HEAD and let it read as "uncommitted".
-    return git_fork_point(root) or "HEAD"
-  elseif scope == "head" then
-    return "HEAD~1"
+    return git_fork_point(root) or one(sh({ "git", "rev-parse", "--verify", "--quiet", "HEAD" }, root)) or "HEAD"
   end
-  return "HEAD"
+  local ref = scope == "head" and "HEAD~1" or "HEAD"
+  -- Resolved to the hash, not left symbolic: cached base content is keyed by
+  -- this string, and "HEAD" would keep meaning the old content after a
+  -- commit, amend or rebase moved it.
+  return one(sh({ "git", "rev-parse", "--verify", "--quiet", ref }, root)) or ref
 end
 
 function git.changed(root, rev)
@@ -289,20 +292,23 @@ function jj.root(dir)
 end
 
 function jj.rev(root, scope)
+  local ref
   if scope == "branch" then
     -- The newest ancestor of @ that is also on trunk. With no remote bookmarks
     -- configured, trunk() degrades to the root commit, and diffing against the
     -- root reports the entire repository as added — so treat the all-zeros id
     -- as "no trunk here" and fall back to the parent commit.
     local base = one(sh(jj_read("log", "--no-graph", "-r", "latest(::@ & trunk())", "-T", "commit_id"), root))
-    if not base or base:match("^0+$") then
-      return "@-"
+    if base and not base:match("^0+$") then
+      return base
     end
-    return base
-  elseif scope == "head" then
-    return "@--"
+    ref = "@-"
+  else
+    ref = scope == "head" and "@--" or "@-"
   end
-  return "@-"
+  -- Resolved to the commit id for the same reason git resolves "HEAD": cached
+  -- base content keyed by "@-" would survive the parent commit moving.
+  return one(sh(jj_read("log", "--no-graph", "-r", ref, "-T", "commit_id"), root)) or ref
 end
 
 function jj.changed(root, rev)
@@ -456,7 +462,10 @@ local function perforce(bin)
         end
         local action = rec.action or "edit"
         local status = ({ edit = "M", add = "A", delete = "D", integrate = "M", branch = "A", move_add = "R" })[action]
-        table.insert(out, { path = rel, status = status or "M", depot = rec.depotFile })
+        -- The synced revision per file: "#have" as a base-cache key would keep
+        -- meaning the old content after a sync, "#12" cannot.
+        local rev = rec.haveRev and rec.haveRev ~= "none" and ("#" .. rec.haveRev) or nil
+        table.insert(out, { path = rel, status = status or "M", depot = rec.depotFile, rev = rev })
       end
     end
     return out
@@ -509,8 +518,10 @@ function hg.root(dir)
   return one(sh({ "hg", "root" }, dir))
 end
 
-function hg.rev(_, scope)
-  return scope == "head" and ".^" or "."
+function hg.rev(root, scope)
+  local ref = scope == "head" and ".^" or "."
+  -- Resolved to the node for the same reason git resolves "HEAD".
+  return one(sh({ "hg", "log", "-r", ref, "--template", "{node}" }, root)) or ref
 end
 
 function hg.changed(root, rev)

@@ -122,8 +122,11 @@ do
   local none = select(1, vcs.detect(temp))
   eq("git: no backend outside a repo", nil, none and none.name)
 
-  eq("git: rev(working)", "HEAD", b.rev(root, "working"))
-  eq("git: rev(head)", "HEAD~1", b.rev(root, "head"))
+  -- Revisions come back resolved to hashes, never symbolic: cached base
+  -- content is keyed by these, and "HEAD" would keep meaning the old content
+  -- after a commit moved it.
+  eq("git: rev(working) resolves the HEAD hash", vim.trim(git(git_root, "rev-parse", "HEAD")), b.rev(root, "working"))
+  eq("git: rev(head) resolves the parent hash", vim.trim(git(git_root, "rev-parse", "HEAD~1")), b.rev(root, "head"))
   local fork = b.rev(root, "branch")
   truthy("git: rev(branch) resolves a sha", fork and fork:match("^%x%x%x%x%x%x%x"), tostring(fork))
   eq("git: rev(branch) is the merge base", vim.trim(git(git_root, "rev-parse", "origin/main")), fork)
@@ -255,11 +258,16 @@ if vim.fn.executable("jj") == 1 then
   eq("jj: detected", "jj", b and b.name)
   eq("jj: root path", vim.fn.resolve(root), vim.fn.resolve(detected_root or ""))
 
-  eq("jj: rev(working)", "@-", b.rev(detected_root, "working"))
-  eq("jj: rev(head)", "@--", b.rev(detected_root, "head"))
+  -- Revisions come back as commit ids, never symbolic, for the same reason
+  -- git's resolve to hashes: "@-" moves, a cached base keyed by it must not.
+  local wrev = b.rev(detected_root, "working")
+  truthy("jj: rev(working) resolves a commit id", wrev and wrev:match("^%x+$"), tostring(wrev))
+  local hrev = b.rev(detected_root, "head")
+  truthy("jj: rev(head) resolves a commit id", hrev and hrev:match("^%x+$"), tostring(hrev))
+  check("jj: rev(head) is not rev(working)", hrev ~= wrev)
   -- With no trunk configured, trunk() degrades to the root commit; falling back
   -- to @- is what keeps `branch` scope from reporting the whole repo as added.
-  eq("jj: rev(branch) falls back to @- without a trunk", "@-", b.rev(detected_root, "branch"))
+  eq("jj: rev(branch) falls back to the working base without a trunk", wrev, b.rev(detected_root, "branch"))
 
   local files = status_map(b.changed(detected_root, "@-"))
   eq("jj: modified", "M", files["keep.txt"])

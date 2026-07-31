@@ -77,6 +77,10 @@ local refresh_gen = 0
 local render_gen = 0
 local prefetch_gen = 0
 local prefetch_busy = false
+local render_busy = 0
+-- The newest revalidation in flight per listing key. A newer one supersedes
+-- an older one's result; merely closing the view does not.
+local refresh_inflight = {} ---@type table<string, integer>
 
 local STATUS = {
   M = { icon = "M", hl = "DiffChange", label = "modified" },
@@ -92,7 +96,10 @@ local STATUS = {
 --------------------------------------------------------------------------
 
 local function valid()
-  return state ~= nil and vim.api.nvim_tabpage_is_valid(state.tab) and vim.api.nvim_win_is_valid(state.panel_win)
+  return state ~= nil
+    and vim.api.nvim_tabpage_is_valid(state.tab)
+    and vim.api.nvim_win_is_valid(state.panel_win)
+    and vim.api.nvim_buf_is_valid(state.panel_buf)
 end
 
 ---Windows in the diff tab other than the file list.
@@ -159,6 +166,10 @@ local function base_key(root, rev, path)
   return root .. "\0" .. rev .. "\0" .. path
 end
 
+-- Bumped whenever cached bases are declared untrustworthy, so a fetch that
+-- was already in flight when that happened cannot re-insert stale content.
+local base_epoch = 0
+
 local function store_base(key, content)
   if base_cache[key] == nil then
     if base_count >= BASE_CACHE_MAX then
@@ -171,6 +182,7 @@ end
 
 ---Forget every base fetched for `root`, in any revision.
 local function drop_bases(root)
+  base_epoch = base_epoch + 1
   local prefix = root .. "\0"
   for key in pairs(base_cache) do
     if key:sub(1, #prefix) == prefix then
@@ -317,6 +329,13 @@ local function has_base(file)
   return file.status ~= "A" and file.status ~= "?"
 end
 
+---The revision a file's base comes from: per-file when the backend tracks one
+---(p4's haveRev — "#have" is the same string before and after a sync, "#12"
+---is not), the listing revision otherwise.
+local function base_rev(file)
+  return file.rev or state.rev
+end
+
 ---Base content for a file, memoised across opens of the view. Fetching costs
 ---a subprocess (tens of milliseconds, and a good deal more on a large file or
 ---a remote Perforce server), which is worth paying once, not once per visit.
@@ -326,19 +345,19 @@ local function base_content(file)
   end
   -- A renamed file's base lives at its old path.
   local base_path = file.orig or file.path
-  local key = base_key(state.root, state.rev, base_path)
+  local key = base_key(state.root, base_rev(file), base_path)
   local hit = base_cache[key]
   if hit then
     return hit
   end
-  local content = state.backend.show(state.root, state.rev, base_path) or {}
+  local content = state.backend.show(state.root, base_rev(file), base_path) or {}
   store_base(key, content)
   return content
 end
 
 ---True when rendering `file` would have to shell out for its base first.
 local function base_missing(file)
-  return has_base(file) and base_cache[base_key(state.root, state.rev, file.orig or file.path)] == nil
+  return has_base(file) and base_cache[base_key(state.root, base_rev(file), file.orig or file.path)] == nil
 end
 
 ---Diff panes share one look: native diff, folds open, hybrid line numbers —
@@ -554,21 +573,34 @@ local function show(focus, opts)
   end
 
   if file and opts and opts.async and base_missing(file) then
-    local backend, root, rev = state.backend, state.root, state.rev
+    local backend, root, rev = state.backend, state.root, base_rev(file)
     local base_path = file.orig or file.path
+    local epoch = base_epoch
+    render_busy = render_busy + 1
     vcs.async(function()
-      local key = base_key(root, rev, base_path)
-      if not base_cache[key] then
-        store_base(key, backend.show(root, rev, base_path) or {})
+      local ok, err = pcall(function()
+        local key = base_key(root, rev, base_path)
+        if not base_cache[key] then
+          local content = backend.show(root, rev, base_path) or {}
+          -- The world may have moved while the subprocess ran; a result from
+          -- before drop_bases must not re-poison the cache it just emptied.
+          if epoch == base_epoch and not base_cache[key] then
+            store_base(key, content)
+          end
+        end
+        if gen ~= render_gen or not valid() or current_file() ~= file then
+          return
+        end
+        -- Same guard as the debounce: never yank focus back to the panel.
+        if not focus and vim.api.nvim_get_current_win() ~= state.panel_win then
+          return
+        end
+        render_file(file, focus)
+      end)
+      render_busy = render_busy - 1
+      if not ok then
+        vim.notify("vcs render: " .. tostring(err), vim.log.levels.ERROR)
       end
-      if gen ~= render_gen or not valid() or current_file() ~= file then
-        return
-      end
-      -- Same guard as the debounce: never yank focus back to the panel.
-      if not focus and vim.api.nvim_get_current_win() ~= state.panel_win then
-        return
-      end
-      render_file(file, focus)
     end)
     return
   end
@@ -617,23 +649,33 @@ local function prefetch_bases()
 
   prefetch_busy = true
   vcs.async(function()
-    for _, file in ipairs(ordered) do
-      if gen ~= prefetch_gen then
-        return
-      end
-      if has_base(file) then
-        local base_path = file.orig or file.path
-        local key = base_key(root, rev, base_path)
-        if not base_cache[key] then
-          local content = backend.show(root, rev, base_path)
-          if gen ~= prefetch_gen then
-            return
+    local ok, err = pcall(function()
+      for _, file in ipairs(ordered) do
+        if gen ~= prefetch_gen then
+          return
+        end
+        if has_base(file) then
+          local base_path = file.orig or file.path
+          local file_rev = file.rev or rev
+          local key = base_key(root, file_rev, base_path)
+          if not base_cache[key] then
+            local content = backend.show(root, file_rev, base_path)
+            if gen ~= prefetch_gen then
+              return
+            end
+            store_base(key, content or {})
           end
-          store_base(key, content or {})
         end
       end
+    end)
+    -- Only the newest prefetch owns the flag; and it must clear it on error
+    -- too, or busy() would report a prefetch that no longer exists.
+    if gen == prefetch_gen then
+      prefetch_busy = false
     end
-    prefetch_busy = false
+    if not ok then
+      vim.notify("vcs prefetch: " .. tostring(err), vim.log.levels.ERROR)
+    end
   end)
 end
 
@@ -703,6 +745,9 @@ end
 ---Half-page the diff pane from the panel, so a file can be skimmed without
 ---moving focus into it.
 local function scroll_diff(dir)
+  if not valid() then
+    return
+  end
   local win = state.diff_win
   if not (win and vim.api.nvim_win_is_valid(win)) then
     win = diff_wins()[1]
@@ -844,7 +889,9 @@ local function same_listing(a, b)
     return false
   end
   for i = 1, #a do
-    if a[i].path ~= b[i].path or a[i].status ~= b[i].status or a[i].orig ~= b[i].orig then
+    -- rev too: a p4 sync moves a file's haveRev without changing the set of
+    -- opened files, and that must read as "the world moved".
+    if a[i].path ~= b[i].path or a[i].status ~= b[i].status or a[i].orig ~= b[i].orig or a[i].rev ~= b[i].rev then
       return false
     end
   end
@@ -861,64 +908,79 @@ local function refresh_listing()
   refresh_gen = refresh_gen + 1
   local gen = refresh_gen
   local backend, root, scope = state.backend, state.root, state.scope
+  local key = listing_key(root, scope)
+  refresh_inflight[key] = gen
   state.refreshing = true
   render_panel()
 
   vcs.async(function()
-    local rev = backend.rev(root, scope)
-    local files = rev and backend.changed(root, rev) or nil
-    if gen ~= refresh_gen then
-      return
-    end
-    local fresh = false
-    if files then
-      table.sort(files, function(a, b)
-        return a.path < b.path
-      end)
-      local key = listing_key(root, scope)
-      local prev = listing_cache[key]
-      fresh = not (prev and rev == prev.rev and same_listing(files, prev.files))
-      if fresh then
-        -- The world moved; bases fetched against the old listing cannot be
-        -- trusted (a commit or a sync changes what a symbolic revision means).
-        drop_bases(root)
+    local ok, err = pcall(function()
+      local rev = backend.rev(root, scope)
+      local files = rev and backend.changed(root, rev) or nil
+      -- A newer revalidation of this same listing owns the truth now. The
+      -- view merely having closed is not that: its result is still worth
+      -- keeping, since the warmed cache is what makes the next open instant.
+      if refresh_inflight[key] ~= gen then
+        return
       end
-      -- Worth storing even if the view has since closed: the next open paints
-      -- from it.
-      listing_cache[key] = { rev = rev, files = files }
-    end
-    if not valid() or state.root ~= root or state.scope ~= scope then
-      return
-    end
-    state.refreshing = nil
-    if not files or not fresh then
-      render_panel() -- just drops the refreshing marker
-      return
-    end
+      refresh_inflight[key] = nil
+      local fresh = false
+      if files then
+        table.sort(files, function(a, b)
+          return a.path < b.path
+        end)
+        local prev = listing_cache[key]
+        fresh = not (prev and rev == prev.rev and same_listing(files, prev.files))
+        if fresh then
+          -- The world moved; bases fetched against the old listing cannot be
+          -- trusted (a commit or a sync changes what a revision string means).
+          drop_bases(root)
+        end
+        listing_cache[key] = { rev = rev, files = files }
+      end
+      if gen ~= refresh_gen or not valid() or state.root ~= root or state.scope ~= scope then
+        return
+      end
+      state.refreshing = nil
+      if not files or not fresh then
+        render_panel() -- just drops the refreshing marker
+        return
+      end
 
-    local selected = current_file()
-    state.rev, state.files = rev, files
-    state.rows = build_rows(files)
-    render_panel()
+      local selected = current_file()
+      state.rev, state.files = rev, files
+      state.rows = build_rows(files)
+      render_panel()
 
-    -- Keep the cursor on the file it was on; if that file left the listing,
-    -- fall back to the first one.
-    local lnum
-    if selected then
-      for i, row in ipairs(state.rows) do
-        if row.kind == "file" and row.file.path == selected.path then
-          lnum = state.first_line + i - 1
-          break
+      -- Keep the cursor on the file it was on; if that file left the listing,
+      -- fall back to the first one.
+      local lnum
+      if selected then
+        for i, row in ipairs(state.rows) do
+          if row.kind == "file" and row.file.path == selected.path then
+            lnum = state.first_line + i - 1
+            break
+          end
         end
       end
+      pcall(vim.api.nvim_win_set_cursor, state.panel_win, { lnum or first_file_lnum(), 0 })
+      -- Redraw the diff for the (possibly moved) selection, but never yank
+      -- focus away from wherever the user is working.
+      if vim.api.nvim_get_current_win() == state.panel_win then
+        show(false, { async = true })
+      end
+      prefetch_bases()
+    end)
+    if not ok then
+      -- The marker must not survive the refresh that owned it dying.
+      if state and state.refreshing and gen == refresh_gen then
+        state.refreshing = nil
+        if valid() then
+          pcall(render_panel)
+        end
+      end
+      vim.notify("vcs refresh: " .. tostring(err), vim.log.levels.ERROR)
     end
-    pcall(vim.api.nvim_win_set_cursor, state.panel_win, { lnum or first_file_lnum(), 0 })
-    -- Redraw the diff for the (possibly moved) selection, but never yank
-    -- focus away from wherever the user is working.
-    if vim.api.nvim_get_current_win() == state.panel_win then
-      show(false, { async = true })
-    end
-    prefetch_bases()
   end)
 end
 
@@ -977,10 +1039,11 @@ function M.open(opts)
   prefetch_bases()
 end
 
----True while a background revalidation of the listing or a prefetch is in
----flight. The tests settle on this; nothing else should need it.
+---True while background work is in flight — a listing revalidation, a base
+---prefetch, an async render. The tests settle on this; nothing else should
+---need it.
 function M.busy()
-  return (state ~= nil and state.refreshing == true) or prefetch_busy
+  return (state ~= nil and state.refreshing == true) or prefetch_busy or render_busy > 0
 end
 
 function M.refresh()
@@ -990,6 +1053,9 @@ function M.refresh()
   -- An explicit refresh distrusts everything remembered about this repository:
   -- a p4 sync or a rebase can change base content without changing the listing.
   refresh_gen = refresh_gen + 1
+  -- An in-flight revalidation predates the distrust; its result must not
+  -- overwrite the fresh listing fetched below.
+  refresh_inflight[listing_key(state.root, state.scope)] = nil
   listing_cache[listing_key(state.root, state.scope)] = nil
   drop_bases(state.root)
   M.open({ scope = state.scope })
@@ -1058,7 +1124,13 @@ function M.toggle_inline()
   if valid() then
     state.inline = not state.inline
     remembered_inline = state.inline
-    show(false)
+    -- On a directory or header row show() would keep the previous rendering;
+    -- redraw that file explicitly so the toggle is never silently deferred.
+    if current_file() or #state.files == 0 then
+      show(false)
+    elseif state.shown then
+      render_file(state.shown, false)
+    end
     return
   end
   -- Outside the diff tab this is still the natural "show me the other layout"
@@ -1092,23 +1164,27 @@ function M.change_position()
     return nil
   end
   local cur = vim.api.nvim_get_current_win()
-  local others = {}
+  local other
   for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
     if w ~= cur and vim.wo[w].diff then
-      table.insert(others, w)
+      other = w
+      break
     end
   end
-  -- With three sides (the merge view) "change n of m" against one arbitrary
-  -- side would mislead; only a two-pane diff has one honest answer.
-  if #others ~= 1 then
+  if not other then
     return nil
   end
-  local other = others[1]
   local function text(win)
     local lines = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, -1, false)
     return table.concat(lines, "\n") .. "\n"
   end
-  local hunks = vim.diff(text(other), text(cur), { result_type = "indices" }) or {}
+  -- Match the settings native diff mode is using, or the count disagrees with
+  -- where ]c actually stops.
+  local hunks = vim.diff(text(other), text(cur), {
+    result_type = "indices",
+    algorithm = vim.o.diffopt:match("algorithm:(%w+)") or "myers",
+    indent_heuristic = vim.o.diffopt:find("indent%-heuristic") ~= nil,
+  }) or {}
   local row = vim.api.nvim_win_get_cursor(0)[1]
   local line_count = vim.api.nvim_buf_line_count(0)
   local index = 0
