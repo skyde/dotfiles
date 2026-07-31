@@ -38,6 +38,10 @@ local ns = vim.api.nvim_create_namespace("vcs_ui")
 ---@field previews table<integer, true>  buffers this view opened and unlisted
 local state = nil
 
+-- The inline / side-by-side choice outlives the view, the way VS Code's
+-- renderSideBySide is a setting rather than something you re-toggle per diff.
+local remembered_inline = false
+
 local STATUS = {
   M = { icon = "~", hl = "DiffChange", label = "modified" },
   A = { icon = "+", hl = "DiffAdd", label = "added" },
@@ -327,6 +331,8 @@ local function render_inline(file)
     inline_diff.attach(buf, base)
     vim.wo[win].number = true
     vim.wo[win].relativenumber = false
+    -- So scrolling up can reveal virtual lines hanging above line 1.
+    vim.wo[win].smoothscroll = true
     vim.api.nvim_win_call(win, function()
       inline_diff.goto_first(buf)
     end)
@@ -492,7 +498,9 @@ local function ensure_tab()
   state.panel_win = win
   state.panel_buf = buf
   state.origin_tab = origin
-  state.inline = state.inline or false
+  if state.inline == nil then
+    state.inline = remembered_inline
+  end
   state.previews = state.previews or {}
 
   setup_panel_keys(buf)
@@ -595,6 +603,7 @@ end
 function M.toggle_inline()
   if valid() then
     state.inline = not state.inline
+    remembered_inline = state.inline
     show(false)
     return
   end

@@ -95,12 +95,32 @@ function M.has(buf)
   return states[resolve(buf)] ~= nil
 end
 
----The hunk whose new side contains `row`, or nil.
-local function hunk_at(st, row)
+---Where a hunk lives for the cursor. A pure deletion occupies no buffer
+---lines; its red virtual text hangs above line start_b + 1 (or below the last
+---line), so both neighbouring rows count as "on" it.
+local function hunk_range(h, line_count)
+  local start_b, count_b = h[3], h[4]
+  if count_b > 0 then
+    return start_b, start_b + count_b - 1
+  end
+  local first = math.max(start_b, 1)
+  return first, math.min(start_b + 1, line_count)
+end
+
+---The row to land on when jumping to a hunk: its first real line, or for a
+---pure deletion the line its virtual text hangs above.
+local function hunk_anchor(h, line_count)
+  local start_b, count_b = h[3], h[4]
+  if count_b > 0 then
+    return start_b
+  end
+  return math.max(math.min(start_b + 1, line_count), 1)
+end
+
+---The hunk under `row`, or nil.
+local function hunk_at(st, row, line_count)
   for _, h in ipairs(st.hunks) do
-    local start_b, count_b = h[3], h[4]
-    local first = count_b > 0 and start_b or math.max(start_b, 1)
-    local until_ = count_b > 0 and (start_b + count_b - 1) or math.max(start_b, 1)
+    local first, until_ = hunk_range(h, line_count)
     if row >= first and row <= until_ then
       return h
     end
@@ -117,9 +137,10 @@ function M.goto_hunk(buf, dir)
     return false
   end
   local row = vim.api.nvim_win_get_cursor(0)[1]
+  local line_count = vim.api.nvim_buf_line_count(buf)
   local starts = {}
   for _, h in ipairs(st.hunks) do
-    starts[#starts + 1] = h[4] > 0 and h[3] or math.max(h[3], 1)
+    starts[#starts + 1] = hunk_anchor(h, line_count)
   end
   local target
   if dir > 0 then
@@ -149,8 +170,14 @@ function M.goto_first(buf)
   local st = states[buf]
   local h = st and st.hunks[1]
   if h then
-    local row = h[4] > 0 and h[3] or math.max(h[3], 1)
-    pcall(vim.api.nvim_win_set_cursor, 0, { math.min(row, vim.api.nvim_buf_line_count(buf)), 0 })
+    local row = hunk_anchor(h, vim.api.nvim_buf_line_count(buf))
+    pcall(vim.api.nvim_win_set_cursor, 0, { row, 0 })
+    -- A deletion above line 1 draws above the first line, which a window
+    -- parked exactly at line 1 does not show; nudge it into view.
+    if h[3] == 0 and h[4] == 0 then
+      vim.wo.smoothscroll = true
+      pcall(vim.cmd, "normal! \25")
+    end
   end
 end
 
@@ -163,7 +190,7 @@ function M.revert_hunk(buf)
     return false
   end
   local row = vim.api.nvim_win_get_cursor(0)[1]
-  local h = hunk_at(st, row)
+  local h = hunk_at(st, row, vim.api.nvim_buf_line_count(buf))
   if not h then
     return false
   end

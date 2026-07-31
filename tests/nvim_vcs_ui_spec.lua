@@ -395,6 +395,54 @@ do
   eq("inline: an untracked file shows as a whole-file add", { 1 }, uadded)
   eq("inline: an untracked file has no old lines", {}, uvirt)
 
+  -- Unsaved edits survive scrubbing away and back: the buffer is reused, not
+  -- reloaded.
+  vim.api.nvim_win_set_cursor(layout()[1], { 5, 0 })
+  scrub("k")
+  feed("\r")
+  local abuf = vim.api.nvim_get_current_buf()
+  vim.api.nvim_buf_set_lines(abuf, 0, 0, false, { "unsaved edit" })
+  vim.api.nvim_set_current_win(layout()[1])
+  scrub("j")
+  scrub("k")
+  eq(
+    "inline: unsaved edits survive scrubbing away and back",
+    "unsaved edit",
+    vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(layout()[2]), 0, 1, false)[1]
+  )
+  vim.api.nvim_buf_call(abuf, function()
+    vim.cmd("edit!")
+  end)
+
+  -- Scope cycling keeps the rendering mode.
+  scrub("s")
+  eq("inline: scope cycling stays inline", 2, #layout())
+  check("inline: the pane is still not a diff", not vim.wo[layout()[2]].diff)
+  scrub("s")
+  scrub("s")
+
+  -- There are no sides to switch here; it must say so without moving focus.
+  local before_win = vim.api.nvim_get_current_win()
+  eq("inline: switch_side reports no diff", false, ui.switch_side())
+  eq("inline: switch_side does not move focus", before_win, vim.api.nvim_get_current_win())
+
+  -- goto_file from the inline pane closes the whole view, like from a pane of
+  -- the side-by-side.
+  vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
+  feed("\r")
+  vim.api.nvim_win_set_cursor(0, { 2, 0 })
+  local tabs_before = #vim.api.nvim_list_tabpages()
+  ui.goto_file()
+  eq("inline: goto_file closes the view", tabs_before - 1, #vim.api.nvim_list_tabpages())
+  eq("inline: goto_file lands on the real file", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  eq("inline: goto_file keeps the line", 2, vim.api.nvim_win_get_cursor(0)[1])
+  check("inline: goto_file leaves no overlay behind", not inline.has(0))
+
+  -- The rendering choice is remembered for the next open, the way VS Code's
+  -- renderSideBySide is a setting rather than a per-diff toggle.
+  ui.open({ scope = "working" })
+  eq("inline: the mode is remembered across close and reopen", 2, #layout())
+
   scrub("i")
   eq("inline: toggling back restores two diff panes", 3, #layout())
   check("inline: back in diff mode", vim.wo[layout()[2]].diff)
