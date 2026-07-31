@@ -22,8 +22,8 @@ so a jj repo colocated with git is treated as jj; override with
 | `<leader>gR` | refresh SCM | refresh the list |
 | `<leader>gd` | `git.openChange` | diff the current file against its last committed version |
 | `<leader>ga` | `git.viewChanges` | diff the current file against the fork point |
-| `<leader>gp` | `git upstream-diff` in a terminal | uncommitted patch, delta-coloured |
-| `<leader>gA` | `diff-branch` in a terminal | full patch since the fork point, delta-coloured |
+| `<leader>gp` | `git upstream-diff` in a terminal | uncommitted patch, delta-coloured, `q` closes it |
+| `<leader>gA` | `diff-branch` in a terminal | full patch since the fork point, delta-coloured, `q` closes it |
 | `<leader>gy` | Copy Git Diff task | copy that patch to the clipboard |
 | `<leader>gl` | `git log -p` on the file | revision history of the current file; pick one to diff against |
 | `<leader>gw` | `git.openFile` | from a diff, open the real file on disk at the same line |
@@ -47,7 +47,14 @@ The right-hand side has two renderings. Side-by-side is native diff mode, so
 `]c` / `[c` / `do` / `dp` work and the right pane is the real file — edits go to
 disk. `<leader>ci` switches to the inline rendering, the unified patch piped
 through `delta`, matching `diffEditor.renderSideBySide: false` in the VS Code
-config.
+config. Inside the inline rendering `q` closes the view and `i` toggles back.
+The diff opens scrolled to the first change, renamed files diff against their
+old path rather than reading as wholly added, and every diff pane uses
+absolute line numbers whatever the buffer would normally show.
+
+Files opened by scrubbing behave like VS Code's preview editors: they stay out
+of the buffer list, and are dropped again when the view closes. The moment one
+is edited it becomes a real buffer and survives.
 
 Rendering a diff costs a subprocess, so `j` / `k` move the cursor immediately
 and the diff follows once the keys stop (80 ms). Holding `j` through a
@@ -67,6 +74,7 @@ it works in every backend and on files handed over by any other tool.
 | Key | VS Code | Neovim |
 | --- | --- | --- |
 | `]c` / `[c` | next/prev change | next/prev change — diff hunk, conflict, or gitsigns hunk, whichever the buffer has |
+| `]k` / `[k` | — | next/prev class (was `]c` in stock LazyVim, which shadowed next-change in every treesitter buffer) |
 | `<leader>cn` / `<leader>cp` | same | same |
 | `]x` / `[x` | next/prev unhandled conflict | next/prev conflict |
 | `<leader>co` / `<leader>cO` | accept ours / all ours | take ours, here / everywhere in the file |

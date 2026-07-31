@@ -136,6 +136,21 @@ do
   eq("git: untracked file", "?", working["untracked.txt"])
   eq("git: rename reports the new path", "R", working["renamed-to.txt"])
   eq("git: rename does not also report the old path", nil, working["renamed-from.txt"])
+
+  -- The old path rides along on the record, so the diff UI can fetch the base
+  -- content that actually existed instead of treating a rename as an add.
+  local records = {}
+  for _, f in ipairs(b.changed(root, b.rev(root, "working"))) do
+    records[f.path] = f
+  end
+  eq("git: rename carries the old path", "renamed-from.txt", records["renamed-to.txt"] and records["renamed-to.txt"].orig)
+  eq("git: a plain modification carries no old path", nil, records["src/ünïcode.c"] and records["src/ünïcode.c"].orig)
+  local rename_patch = b.raw_diff(root, b.rev(root, "working"), "renamed-to.txt", "renamed-from.txt")
+  truthy(
+    "git: raw_diff given both paths reports a rename, not delete-plus-add",
+    rename_patch:find("rename from renamed-from.txt", 1, true),
+    rename_patch:sub(1, 200)
+  )
   eq("git: unmodified file absent", nil, working["deep/a/b/c/nested.txt"])
   eq("git: working scope excludes the branch commit", nil, working["src/main.c"])
 

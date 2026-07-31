@@ -106,7 +106,9 @@ root = vim.fn.resolve(root)
 git(root, "init", "-q", "-b", "main")
 write(root .. "/a_modified.txt", "one\ntwo\nthree\n")
 write(root .. "/b_deleted.txt", "gone soon\n")
-write(root .. "/c_untouched.txt", "stable\n")
+-- Enough identical lines that git still scores the later rename as a rename
+-- once a line is added; a one-line file falls below the similarity threshold.
+write(root .. "/c_untouched.txt", string.rep("stable\n", 8))
 write(root .. "/committed_on_branch.txt", "before\n")
 git(root, "add", "-A")
 git(root, "commit", "-qm", "initial")
@@ -418,6 +420,98 @@ do
   eq("history: right pane holds the working copy", { "after" }, win_lines(layout()[2]))
   vim.cmd("tabclose")
   vim.ui.select = original
+end
+
+--------------------------------------------------------------------------
+-- renames
+--------------------------------------------------------------------------
+
+do
+  git(root, "mv", "c_untouched.txt", "c_renamed.txt")
+  write(root .. "/c_renamed.txt", string.rep("stable\n", 8) .. "plus a change\n")
+  ui.open({ scope = "working" })
+
+  local lines = panel_lines()
+  local row
+  for i, l in ipairs(lines) do
+    if l:find("c_renamed.txt", 1, true) then
+      row = i
+    end
+  end
+  check("rename: listed under the new name", row ~= nil, vim.inspect(lines))
+  check("rename: the old name is not listed separately", not vim.tbl_contains(lines, " -  c_untouched.txt"))
+
+  vim.api.nvim_set_current_win(layout()[1])
+  vim.api.nvim_win_set_cursor(layout()[1], { row, 0 })
+  feed("\r")
+  eq(
+    "rename: base pane holds the old path's content",
+    vim.split(string.rep("stable\n", 8), "\n", { trimempty = true }),
+    win_lines(layout()[2])
+  )
+  check(
+    "rename: base pane is named after the old path",
+    win_name(layout()[2]):find("c_untouched.txt", 1, true),
+    win_name(layout()[2])
+  )
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- preview buffers: scrubbing must not fill the buffer list
+--------------------------------------------------------------------------
+
+do
+  for _, n in ipairs({ "a_modified.txt", "c_renamed.txt", "d_untracked.txt" }) do
+    local b = vim.fn.bufnr(root .. "/" .. n)
+    if b ~= -1 then
+      pcall(vim.cmd, "bwipeout! " .. b)
+    end
+  end
+
+  ui.open({ scope = "working" })
+  local a = vim.fn.bufnr(root .. "/a_modified.txt")
+  check("preview: opening loads the first file", a ~= -1)
+  eq("preview: the first file stays out of the buffer list", 0, vim.fn.buflisted(a))
+
+  scrub("jjj")
+  local d = vim.fn.bufnr(root .. "/d_untracked.txt")
+  check("preview: scrubbed-to file is loaded", d ~= -1)
+  eq("preview: scrubbed-to file stays out of the buffer list", 0, vim.fn.buflisted(d))
+
+  vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
+  feed("\r")
+  eq("preview: focus lands on the working copy", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  eq("preview: the diff opens at the first change", 2, vim.api.nvim_win_get_cursor(0)[1])
+  vim.cmd("normal! Ox")
+  eq("preview: editing re-lists the buffer", 1, vim.fn.buflisted(vim.api.nvim_get_current_buf()))
+  vim.cmd("silent! undo")
+
+  ui.close()
+  eq("close: unedited previews are dropped", -1, vim.fn.bufnr(root .. "/d_untracked.txt"))
+  check("close: the edited buffer survives", vim.fn.bufnr(root .. "/a_modified.txt") ~= -1)
+end
+
+--------------------------------------------------------------------------
+-- goto_file from an ad-hoc diff tab
+--------------------------------------------------------------------------
+
+do
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+  vim.api.nvim_win_set_cursor(0, { 2, 0 })
+  vim.wo.relativenumber = true
+  local tabs = #vim.api.nvim_list_tabpages()
+  ui.file_diff("working")
+  local wins = layout()
+  check(
+    "file_diff: absolute line numbers in both panes",
+    vim.wo[wins[1]].number and vim.wo[wins[2]].number and not vim.wo[wins[1]].relativenumber and not vim.wo[wins[2]].relativenumber
+  )
+  ui.goto_file()
+  eq("goto_file from file_diff: closes the ad-hoc tab", tabs, #vim.api.nvim_list_tabpages())
+  eq("goto_file from file_diff: lands on the real file", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  check("goto_file from file_diff: no diff mode left behind", not vim.wo.diff)
+  vim.wo.relativenumber = false
 end
 
 --------------------------------------------------------------------------
