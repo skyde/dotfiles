@@ -106,7 +106,9 @@ root = vim.fn.resolve(root)
 git(root, "init", "-q", "-b", "main")
 write(root .. "/a_modified.txt", "one\ntwo\nthree\n")
 write(root .. "/b_deleted.txt", "gone soon\n")
-write(root .. "/c_untouched.txt", "stable\n")
+-- Enough identical lines that git still scores the later rename as a rename
+-- once a line is added; a one-line file falls below the similarity threshold.
+write(root .. "/c_untouched.txt", string.rep("stable\n", 8))
 write(root .. "/committed_on_branch.txt", "before\n")
 git(root, "add", "-A")
 git(root, "commit", "-qm", "initial")
@@ -318,6 +320,129 @@ do
   eq("inline: panel keeps its width", 42, vim.api.nvim_win_get_width(wins[1]))
   check("inline: the pane is not in diff mode", not vim.wo[wins[2]].diff)
 
+  local inline = require("util.inline_diff")
+  local overlay_ns = vim.api.nvim_create_namespace("vcs_inline_diff")
+
+  ---The overlay, reduced to what a reader sees: which buffer lines are
+  ---highlighted as new, and which old lines are drawn as virtual text.
+  local function overlay(buf)
+    local virt, added = {}, {}
+    for _, m in ipairs(vim.api.nvim_buf_get_extmarks(buf, overlay_ns, 0, -1, { details = true })) do
+      local d = m[4]
+      if d.virt_lines then
+        for _, vl in ipairs(d.virt_lines) do
+          virt[#virt + 1] = vl[1][1]
+        end
+      end
+      if d.line_hl_group == "DiffAdd" then
+        added[#added + 1] = m[2] + 1
+      end
+    end
+    table.sort(added)
+    return virt, added
+  end
+
+  local buf = vim.api.nvim_win_get_buf(wins[2])
+  eq("inline: the pane holds the real file", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(buf))
+  check("inline: the buffer is editable", vim.bo[buf].modifiable)
+  check("inline: the overlay is attached", inline.has(buf))
+  eq("inline: cursor sits on the first change", 2, vim.api.nvim_win_get_cursor(wins[2])[1])
+
+  local virt, added = overlay(buf)
+  eq("inline: the old line is drawn as virtual text", { "two" }, virt)
+  eq("inline: the new lines are highlighted", { 2, 4 }, added)
+
+  -- The whole point: it is editable, and the overlay follows the edit.
+  feed("\r")
+  eq("inline: <CR> focuses the file itself", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  buf = vim.api.nvim_get_current_buf()
+  vim.api.nvim_win_set_cursor(0, { 2, 0 })
+  vim.cmd("normal! oinserted")
+  inline.render(buf)
+  local _, added2 = overlay(buf)
+  eq("inline: editing extends the overlay", { 2, 3, 5 }, added2)
+
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+  inline.goto_hunk(0, 1)
+  eq("inline: next hunk from the top", 2, vim.api.nvim_win_get_cursor(0)[1])
+  inline.goto_hunk(0, 1)
+  eq("inline: next hunk again", 5, vim.api.nvim_win_get_cursor(0)[1])
+
+  check("inline: revert replaces the hunk with the base lines", inline.revert_hunk(0))
+  eq(
+    "inline: the reverted tail matches the base",
+    { "one", "TWO", "inserted", "three" },
+    vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  )
+  vim.cmd("edit!")
+  inline.render(buf)
+
+  -- A deleted file has nothing on disk to edit; its content shows struck red.
+  vim.api.nvim_set_current_win(layout()[1])
+  vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
+  scrub("j")
+  check(
+    "inline: a deleted file shows the base content",
+    vim.tbl_contains(win_lines(layout()[2]), "gone soon"),
+    vim.inspect(win_lines(layout()[2]))
+  )
+
+  -- An untracked file is all additions, and still editable.
+  scrub("j")
+  local ubuf = vim.api.nvim_win_get_buf(layout()[2])
+  eq("inline: an untracked file is the real file", root .. "/d_untracked.txt", vim.api.nvim_buf_get_name(ubuf))
+  local uvirt, uadded = overlay(ubuf)
+  eq("inline: an untracked file shows as a whole-file add", { 1 }, uadded)
+  eq("inline: an untracked file has no old lines", {}, uvirt)
+
+  -- Unsaved edits survive scrubbing away and back: the buffer is reused, not
+  -- reloaded.
+  vim.api.nvim_win_set_cursor(layout()[1], { 5, 0 })
+  scrub("k")
+  feed("\r")
+  local abuf = vim.api.nvim_get_current_buf()
+  vim.api.nvim_buf_set_lines(abuf, 0, 0, false, { "unsaved edit" })
+  vim.api.nvim_set_current_win(layout()[1])
+  scrub("j")
+  scrub("k")
+  eq(
+    "inline: unsaved edits survive scrubbing away and back",
+    "unsaved edit",
+    vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(layout()[2]), 0, 1, false)[1]
+  )
+  vim.api.nvim_buf_call(abuf, function()
+    vim.cmd("edit!")
+  end)
+
+  -- Scope cycling keeps the rendering mode.
+  scrub("s")
+  eq("inline: scope cycling stays inline", 2, #layout())
+  check("inline: the pane is still not a diff", not vim.wo[layout()[2]].diff)
+  scrub("s")
+  scrub("s")
+
+  -- There are no sides to switch here; it must say so without moving focus.
+  local before_win = vim.api.nvim_get_current_win()
+  eq("inline: switch_side reports no diff", false, ui.switch_side())
+  eq("inline: switch_side does not move focus", before_win, vim.api.nvim_get_current_win())
+
+  -- goto_file from the inline pane closes the whole view, like from a pane of
+  -- the side-by-side.
+  vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
+  feed("\r")
+  vim.api.nvim_win_set_cursor(0, { 2, 0 })
+  local tabs_before = #vim.api.nvim_list_tabpages()
+  ui.goto_file()
+  eq("inline: goto_file closes the view", tabs_before - 1, #vim.api.nvim_list_tabpages())
+  eq("inline: goto_file lands on the real file", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  eq("inline: goto_file keeps the line", 2, vim.api.nvim_win_get_cursor(0)[1])
+  check("inline: goto_file leaves no overlay behind", not inline.has(0))
+
+  -- The rendering choice is remembered for the next open, the way VS Code's
+  -- renderSideBySide is a setting rather than a per-diff toggle.
+  ui.open({ scope = "working" })
+  eq("inline: the mode is remembered across close and reopen", 2, #layout())
+
   scrub("i")
   eq("inline: toggling back restores two diff panes", 3, #layout())
   check("inline: back in diff mode", vim.wo[layout()[2]].diff)
@@ -418,6 +543,98 @@ do
   eq("history: right pane holds the working copy", { "after" }, win_lines(layout()[2]))
   vim.cmd("tabclose")
   vim.ui.select = original
+end
+
+--------------------------------------------------------------------------
+-- renames
+--------------------------------------------------------------------------
+
+do
+  git(root, "mv", "c_untouched.txt", "c_renamed.txt")
+  write(root .. "/c_renamed.txt", string.rep("stable\n", 8) .. "plus a change\n")
+  ui.open({ scope = "working" })
+
+  local lines = panel_lines()
+  local row
+  for i, l in ipairs(lines) do
+    if l:find("c_renamed.txt", 1, true) then
+      row = i
+    end
+  end
+  check("rename: listed under the new name", row ~= nil, vim.inspect(lines))
+  check("rename: the old name is not listed separately", not vim.tbl_contains(lines, " -  c_untouched.txt"))
+
+  vim.api.nvim_set_current_win(layout()[1])
+  vim.api.nvim_win_set_cursor(layout()[1], { row, 0 })
+  feed("\r")
+  eq(
+    "rename: base pane holds the old path's content",
+    vim.split(string.rep("stable\n", 8), "\n", { trimempty = true }),
+    win_lines(layout()[2])
+  )
+  check(
+    "rename: base pane is named after the old path",
+    win_name(layout()[2]):find("c_untouched.txt", 1, true),
+    win_name(layout()[2])
+  )
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- preview buffers: scrubbing must not fill the buffer list
+--------------------------------------------------------------------------
+
+do
+  for _, n in ipairs({ "a_modified.txt", "c_renamed.txt", "d_untracked.txt" }) do
+    local b = vim.fn.bufnr(root .. "/" .. n)
+    if b ~= -1 then
+      pcall(vim.cmd, "bwipeout! " .. b)
+    end
+  end
+
+  ui.open({ scope = "working" })
+  local a = vim.fn.bufnr(root .. "/a_modified.txt")
+  check("preview: opening loads the first file", a ~= -1)
+  eq("preview: the first file stays out of the buffer list", 0, vim.fn.buflisted(a))
+
+  scrub("jjj")
+  local d = vim.fn.bufnr(root .. "/d_untracked.txt")
+  check("preview: scrubbed-to file is loaded", d ~= -1)
+  eq("preview: scrubbed-to file stays out of the buffer list", 0, vim.fn.buflisted(d))
+
+  vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
+  feed("\r")
+  eq("preview: focus lands on the working copy", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  eq("preview: the diff opens at the first change", 2, vim.api.nvim_win_get_cursor(0)[1])
+  vim.cmd("normal! Ox")
+  eq("preview: editing re-lists the buffer", 1, vim.fn.buflisted(vim.api.nvim_get_current_buf()))
+  vim.cmd("silent! undo")
+
+  ui.close()
+  eq("close: unedited previews are dropped", -1, vim.fn.bufnr(root .. "/d_untracked.txt"))
+  check("close: the edited buffer survives", vim.fn.bufnr(root .. "/a_modified.txt") ~= -1)
+end
+
+--------------------------------------------------------------------------
+-- goto_file from an ad-hoc diff tab
+--------------------------------------------------------------------------
+
+do
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+  vim.api.nvim_win_set_cursor(0, { 2, 0 })
+  vim.wo.relativenumber = true
+  local tabs = #vim.api.nvim_list_tabpages()
+  ui.file_diff("working")
+  local wins = layout()
+  check(
+    "file_diff: absolute line numbers in both panes",
+    vim.wo[wins[1]].number and vim.wo[wins[2]].number and not vim.wo[wins[1]].relativenumber and not vim.wo[wins[2]].relativenumber
+  )
+  ui.goto_file()
+  eq("goto_file from file_diff: closes the ad-hoc tab", tabs, #vim.api.nvim_list_tabpages())
+  eq("goto_file from file_diff: lands on the real file", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  check("goto_file from file_diff: no diff mode left behind", not vim.wo.diff)
+  vim.wo.relativenumber = false
 end
 
 --------------------------------------------------------------------------

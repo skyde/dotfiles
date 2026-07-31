@@ -23,6 +23,7 @@ local M = {}
 ---@class VcsFile
 ---@field path string  repo-relative path
 ---@field status string  one of M A D R ? C
+---@field orig string|nil  pre-rename path, when status is R
 
 ---@class VcsBackend
 ---@field name string
@@ -31,7 +32,7 @@ local M = {}
 ---@field rev fun(root: string, scope: string): string|nil
 ---@field changed fun(root: string, rev: string): VcsFile[]
 ---@field show fun(root: string, rev: string, path: string): string[]|nil
----@field raw_diff fun(root: string, rev: string, path: string|nil): string
+---@field raw_diff fun(root: string, rev: string, path: string|nil, orig: string|nil): string
 ---@field log fun(root: string, path: string): table[]
 
 --------------------------------------------------------------------------
@@ -155,12 +156,14 @@ function git.changed(root, rev)
     for _, line in ipairs(lines(res.stdout)) do
       local status, path = line:match("^(%a)%d*\t(.+)$")
       if status then
-        -- Renames arrive as "R100\told\tnew"; the new path is what we can open.
-        local _, new = path:match("^(.-)\t(.+)$")
+        -- Renames arrive as "R100\told\tnew". The new path is what we can
+        -- open; the old one is what the base content has to be fetched as,
+        -- otherwise a rename diffs as a wholly added file.
+        local old, new = path:match("^(.-)\t(.+)$")
         path = new or path
         if not seen[path] then
           seen[path] = true
-          table.insert(out, { path = path, status = status })
+          table.insert(out, { path = path, status = status, orig = old })
         end
       end
     end
@@ -185,10 +188,15 @@ function git.show(root, rev, path)
   return lines(res.stdout)
 end
 
-function git.raw_diff(root, rev, path)
-  local cmd = { "git", "diff", "--no-color", rev }
+function git.raw_diff(root, rev, path, orig)
+  local cmd = { "git", "diff", "--no-color", "--find-renames", rev }
   if path then
+    -- For a renamed file both paths must be in the pathspec, or the rename
+    -- pair is split and the diff degenerates into a delete plus an add.
     vim.list_extend(cmd, { "--", path })
+    if orig then
+      table.insert(cmd, orig)
+    end
   end
   local res = sh(cmd, root)
   return res and res.stdout or ""

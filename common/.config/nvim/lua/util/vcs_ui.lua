@@ -14,6 +14,7 @@
 -- Only one diff tab exists at a time; asking for another reuses it.
 
 local vcs = require("util.vcs")
+local inline_diff = require("util.inline_diff")
 
 local M = {}
 
@@ -32,8 +33,14 @@ local ns = vim.api.nvim_create_namespace("vcs_ui")
 ---@field files VcsFile[]
 ---@field first_line integer
 ---@field inline boolean
+---@field inline_buf integer|nil  buffer currently carrying the inline overlay
 ---@field base_cache table<string, string[]>
+---@field previews table<integer, true>  buffers this view opened and unlisted
 local state = nil
+
+-- The inline / side-by-side choice outlives the view, the way VS Code's
+-- renderSideBySide is a setting rather than something you re-toggle per diff.
+local remembered_inline = false
 
 local STATUS = {
   M = { icon = "~", hl = "DiffChange", label = "modified" },
@@ -168,14 +175,68 @@ local function base_content(file)
   if file.status == "A" or file.status == "?" then
     return {}
   end
-  local key = state.rev .. "\0" .. file.path
+  -- A renamed file's base lives at its old path.
+  local base_path = file.orig or file.path
+  local key = state.rev .. "\0" .. base_path
   local hit = state.base_cache[key]
   if hit then
     return hit
   end
-  local content = state.backend.show(state.root, state.rev, file.path) or {}
+  local content = state.backend.show(state.root, state.rev, base_path) or {}
   state.base_cache[key] = content
   return content
+end
+
+---Diff panes share one look: native diff, folds open, absolute line numbers.
+---Splits inherit whatever the window they came from had (the panel has no
+---numbers at all, an editing window may have relative ones), and relative
+---numbers in a diff make the two sides impossible to line up by eye.
+local function diff_pane(w)
+  vim.api.nvim_win_call(w, function()
+    vim.cmd("diffthis")
+    vim.wo.foldlevel = 99
+    vim.wo.number = true
+    vim.wo.relativenumber = false
+  end)
+end
+
+---Put the cursor on the first change, the way the VS Code diff editor opens
+---scrolled to the first difference rather than the top of the file.
+local function goto_first_change(win)
+  vim.api.nvim_win_call(win, function()
+    if not vim.wo.diff then
+      return
+    end
+    vim.cmd("normal! gg")
+    -- `]c` would skip ahead when line 1 is already inside the first hunk.
+    if vim.fn.diff_hlID(1, 1) == 0 then
+      pcall(vim.cmd, "normal! ]c")
+    end
+  end)
+end
+
+---`edit` a file the way VS Code's preview editors do: scrubbing past a file
+---in the changed list must not make it a permanent resident of the buffer
+---list. A buffer that was not already open stays unlisted until it is
+---actually edited, at which point it earns its place.
+local function edit_preview(full)
+  local existing = vim.fn.bufnr(full)
+  local fresh = existing == -1 or vim.fn.buflisted(existing) == 0
+  vim.cmd("edit " .. vim.fn.fnameescape(full))
+  local buf = vim.api.nvim_get_current_buf()
+  if fresh and not state.previews[buf] then
+    state.previews[buf] = true
+    vim.bo[buf].buflisted = false
+    vim.api.nvim_create_autocmd("BufModifiedSet", {
+      buffer = buf,
+      callback = function()
+        if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].modified then
+          vim.bo[buf].buflisted = true
+          return true
+        end
+      end,
+    })
+  end
 end
 
 ---Side-by-side: base on the left as a read-only scratch buffer, the working
@@ -183,72 +244,107 @@ end
 local function render_side_by_side(file)
   local full = state.root .. "/" .. file.path
   local base = base_content(file)
+  local base_path = file.orig or file.path
 
   vim.api.nvim_set_current_win(state.panel_win)
 
   vim.cmd("vertical rightbelow split")
   local left = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_buf(left, scratch(("vcs://%s/%s"):format(state.rev:sub(1, 12), file.path), base, file.path))
+  vim.api.nvim_win_set_buf(left, scratch(("vcs://%s/%s"):format(state.rev:sub(1, 12), base_path), base, base_path))
 
   vim.cmd("vertical rightbelow split")
   local right = vim.api.nvim_get_current_win()
   if vim.fn.filereadable(full) == 1 then
-    vim.cmd("edit " .. vim.fn.fnameescape(full))
+    edit_preview(full)
   else
     vim.api.nvim_win_set_buf(right, scratch(("vcs://deleted/%s"):format(file.path), {}, file.path))
   end
 
-  for _, w in ipairs({ left, right }) do
-    vim.api.nvim_win_call(w, function()
-      vim.cmd("diffthis")
-      vim.wo.foldlevel = 99
-      -- Both panes were split off the panel, which has numbers turned off.
-      -- Without them the two sides are much harder to line up by eye.
-      vim.wo.number = true
-      vim.wo.relativenumber = false
-    end)
-  end
+  diff_pane(left)
+  diff_pane(right)
+  goto_first_change(right)
 
   balance(left, right)
   return right
 end
 
----Inline: one buffer with the unified patch, coloured by delta when it is
----installed so it matches what `git diff` looks like in the terminal.
-local function render_inline(file)
-  local patch = state.backend.raw_diff(state.root, state.rev, file and file.path or nil)
+---Fill `win` with a unified patch, coloured by delta when it is installed so
+---it matches what `git diff` looks like in the terminal. Delta's output is
+---captured and replayed into a terminal-emulator buffer rather than run as a
+---live job: same colours, but no process to accidentally feed keys to and no
+---"[Process exited 0]" tail. `keys` adds buffer-local normal-mode maps, so
+---each caller decides what q does there.
+local function patch_buf(win, text, cwd, keys)
+  local buf
+  if vim.fn.executable("delta") == 1 then
+    local width = vim.api.nvim_win_get_width(win)
+    local res = vim
+      .system({ "delta", "--paging=never", "--width", tostring(width) }, { stdin = text, cwd = cwd })
+      :wait()
+    buf = vim.api.nvim_create_buf(false, true)
+    vim.bo[buf].bufhidden = "wipe"
+    vim.api.nvim_win_set_buf(win, buf)
+    local chan = vim.api.nvim_open_term(buf, {})
+    -- The emulator needs carriage returns, not bare line feeds. The extra
+    -- parentheses drop gsub's second return value.
+    vim.api.nvim_chan_send(chan, ((res.stdout or ""):gsub("\n", "\r\n")))
+    -- The emulator processes the bytes asynchronously and follows the output;
+    -- put the view back at the top of the patch once it has.
+    vim.schedule(function()
+      if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == buf then
+        pcall(vim.api.nvim_win_set_cursor, win, { 1, 0 })
+      end
+    end)
+  else
+    buf = scratch("vcs://patch", vim.split(text, "\n", { plain = true }))
+    vim.bo[buf].filetype = "diff"
+    vim.api.nvim_win_set_buf(win, buf)
+  end
+  for lhs, fn in pairs(keys or {}) do
+    vim.keymap.set("n", lhs, fn, { buffer = buf, nowait = true, silent = true })
+  end
+  return buf
+end
 
+---Inline: the real file with the base version overlaid — deleted lines drawn
+---between the lines as virtual text, new lines highlighted. Unlike a rendered
+---patch the buffer stays editable, matching what VS Code's diff editor is
+---with renderSideBySide off.
+local function render_inline(file)
   vim.api.nvim_set_current_win(state.panel_win)
   vim.cmd("vertical rightbelow split")
   local win = vim.api.nvim_get_current_win()
 
-  if patch == "" then
-    vim.api.nvim_win_set_buf(win, scratch("vcs://patch", { "(no changes)" }))
-  elseif vim.fn.executable("delta") == 1 then
-    local tmp = vim.fn.tempname()
-    local fd = io.open(tmp, "w")
-    if fd then
-      fd:write(patch)
-      fd:close()
-    end
-    local buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_win_set_buf(win, buf)
-    vim.fn.jobstart({
-      "sh",
-      "-c",
-      ("delta --paging=never < %s"):format(vim.fn.shellescape(tmp)),
-    }, {
-      term = true,
-      cwd = state.root,
-      on_exit = function()
-        os.remove(tmp)
-      end,
-    })
-    vim.bo[buf].bufhidden = "wipe"
+  if not file then
+    vim.api.nvim_win_set_buf(win, scratch("vcs://empty", { "(no changes)" }))
+    balance(win)
+    return win
+  end
+
+  local full = state.root .. "/" .. file.path
+  local base = base_content(file)
+
+  if vim.fn.filereadable(full) == 1 then
+    edit_preview(full)
+    local buf = vim.api.nvim_get_current_buf()
+    state.inline_buf = buf
+    inline_diff.attach(buf, base)
+    vim.wo[win].number = true
+    vim.wo[win].relativenumber = false
+    -- So scrolling up can reveal virtual lines hanging above line 1.
+    vim.wo[win].smoothscroll = true
+    vim.api.nvim_win_call(win, function()
+      inline_diff.goto_first(buf)
+    end)
   else
-    local buf = scratch("vcs://patch", vim.split(patch, "\n", { plain = true }))
-    vim.bo[buf].filetype = "diff"
+    -- Deleted: nothing on disk to edit, so show what was there, struck red.
+    local buf = scratch(("vcs://deleted/%s"):format(file.path), base, file.path)
     vim.api.nvim_win_set_buf(win, buf)
+    for row = 0, #base - 1 do
+      vim.api.nvim_buf_set_extmark(buf, ns, row, 0, { line_hl_group = "DiffDelete", priority = 50 })
+    end
+    vim.wo[win].number = true
+    vim.wo[win].relativenumber = false
   end
 
   balance(win)
@@ -262,6 +358,10 @@ local function show(focus)
     return
   end
   local file = current_file()
+  if state.inline_buf then
+    inline_diff.detach(state.inline_buf)
+    state.inline_buf = nil
+  end
   close_diff_wins()
 
   local target
@@ -398,7 +498,10 @@ local function ensure_tab()
   state.panel_win = win
   state.panel_buf = buf
   state.origin_tab = origin
-  state.inline = state.inline or false
+  if state.inline == nil then
+    state.inline = remembered_inline
+  end
+  state.previews = state.previews or {}
 
   setup_panel_keys(buf)
 end
@@ -445,11 +548,23 @@ end
 
 function M.close()
   cancel_scrub()
+  local previews = state and state.previews or {}
+  if state and state.inline_buf then
+    inline_diff.detach(state.inline_buf)
+    state.inline_buf = nil
+  end
   if valid() then
     vim.api.nvim_set_current_tabpage(state.tab)
     vim.cmd("tabclose")
   end
   state = nil
+  -- Drop the buffers that only existed because they were scrubbed past.
+  -- Anything the user actually touched has been re-listed and is kept.
+  for buf in pairs(previews) do
+    if vim.api.nvim_buf_is_valid(buf) and not vim.bo[buf].modified and vim.fn.buflisted(buf) == 0 then
+      pcall(vim.api.nvim_buf_delete, buf, {})
+    end
+  end
 end
 
 ---Diff just the current buffer's file, without the file list.
@@ -478,12 +593,8 @@ function M.file_diff(scope)
   local left = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(left, scratch(("vcs://%s/%s"):format(rev:sub(1, 12), path), base, path))
 
-  for _, w in ipairs({ left, right }) do
-    vim.api.nvim_win_call(w, function()
-      vim.cmd("diffthis")
-      vim.wo.foldlevel = 99
-    end)
-  end
+  diff_pane(left)
+  diff_pane(right)
   vim.api.nvim_set_current_win(right)
   pcall(vim.api.nvim_win_set_cursor, right, { line, 0 })
 end
@@ -492,6 +603,7 @@ end
 function M.toggle_inline()
   if valid() then
     state.inline = not state.inline
+    remembered_inline = state.inline
     show(false)
     return
   end
@@ -535,10 +647,16 @@ function M.goto_file()
     return
   end
 
-  local origin = state and state.origin_tab
-  M.close()
-  if origin and vim.api.nvim_tabpage_is_valid(origin) then
-    vim.api.nvim_set_current_tabpage(origin)
+  if valid() and vim.api.nvim_get_current_tabpage() == state.tab then
+    local origin = state.origin_tab
+    M.close()
+    if origin and vim.api.nvim_tabpage_is_valid(origin) then
+      vim.api.nvim_set_current_tabpage(origin)
+    end
+  elseif vim.wo.diff and vim.fn.tabpagenr("$") > 1 then
+    -- An ad-hoc diff tab (<leader>gd, history): leave the whole tab, not just
+    -- this half of the diff.
+    vim.cmd("tabclose")
   end
   vim.cmd("edit " .. vim.fn.fnameescape(full))
   pcall(vim.api.nvim_win_set_cursor, 0, { line, 0 })
@@ -561,32 +679,15 @@ function M.patch(scope)
   vim.cmd("tabnew")
   local win = vim.api.nvim_get_current_win()
   local leftover = vim.api.nvim_get_current_buf()
-  if vim.fn.executable("delta") == 1 then
-    local tmp = vim.fn.tempname()
-    local fd = io.open(tmp, "w")
-    if fd then
-      fd:write(text)
-      fd:close()
-    end
-    local buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_win_set_buf(win, buf)
-    vim.fn.jobstart({
-      "sh",
-      "-c",
-      ("delta --paging=never < %s"):format(vim.fn.shellescape(tmp)),
-    }, {
-      term = true,
-      cwd = root,
-      on_exit = function()
-        os.remove(tmp)
-      end,
-    })
-    vim.bo[buf].bufhidden = "wipe"
-  else
-    local buf = scratch("vcs://patch", vim.split(text, "\n", { plain = true }))
-    vim.bo[buf].filetype = "diff"
-    vim.api.nvim_win_set_buf(win, buf)
-  end
+  patch_buf(win, text, root, {
+    q = function()
+      if vim.fn.tabpagenr("$") > 1 then
+        vim.cmd("tabclose")
+      else
+        vim.cmd("enew")
+      end
+    end,
+  })
   -- Drop the empty buffer `tabnew` left behind, so it does not sit in the
   -- bufferline as "[No Name]".
   if vim.api.nvim_buf_is_valid(leftover) and vim.api.nvim_buf_get_name(leftover) == "" then
@@ -643,12 +744,14 @@ function M.history()
       return
     end
     vim.cmd("tab split")
+    local right = vim.api.nvim_get_current_win()
     vim.cmd("leftabove vertical split")
     local left = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(left, scratch(("vcs://%s/%s"):format(choice.rev:sub(1, 10), path), base, path))
-    vim.cmd("diffthis")
-    vim.cmd("wincmd l")
-    vim.cmd("diffthis")
+    diff_pane(left)
+    diff_pane(right)
+    vim.api.nvim_set_current_win(right)
+    goto_first_change(right)
   end)
 end
 

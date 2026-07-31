@@ -106,12 +106,16 @@ map("n", "<leader>gg", ui.tui, { desc = "Source control TUI" })
 --------------------------------------------------------------------------
 
 ---`]c` / `[c` should always mean "next change", whatever kind of change the
----buffer actually has: diff-mode hunks in a diff, conflict markers in a
----conflicted file, gitsigns hunks in an ordinary buffer.
+---buffer actually has: diff-mode hunks in a diff, the overlay's hunks in the
+---inline view, conflict markers in a conflicted file, gitsigns hunks in an
+---ordinary buffer.
 ---@param dir 1|-1
 local function next_change(dir)
+  local inline = require("util.inline_diff")
   if vim.wo.diff then
     vim.cmd("normal! " .. (dir > 0 and "]c" or "[c"))
+  elseif inline.has(0) then
+    inline.goto_hunk(0, dir)
   elseif conflict.has_conflicts(0) then
     conflict.goto_conflict(dir)
   else
@@ -184,10 +188,16 @@ end, { desc = "Diff: other side / Line diagnostics" })
 map("n", "<leader>ci", ui.toggle_inline, { desc = "Diff: toggle inline / side-by-side" })
 
 -- Revert. In diff mode `do` already pulls the other side's hunk in, which is
--- exactly `diffEditor.revert`; these just give it the VS Code names.
+-- exactly `diffEditor.revert`; these just give it the VS Code names. The
+-- inline overlay has its own revert, since there is no second window there.
 map("n", "<leader>cv", function()
+  local inline = require("util.inline_diff")
   if vim.wo.diff then
     vim.cmd("normal! do")
+  elseif inline.has(0) then
+    if not inline.revert_hunk(0) then
+      vim.notify("Cursor is not on a change", vim.log.levels.INFO)
+    end
   else
     local ok, gs = pcall(require, "gitsigns")
     if ok then

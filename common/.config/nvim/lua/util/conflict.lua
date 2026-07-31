@@ -250,6 +250,9 @@ function M.merge_view()
     vim.api.nvim_win_call(w, function()
       vim.cmd("diffthis")
       vim.wo.foldlevel = 99
+      -- Relative numbers make three diffed panes impossible to line up.
+      vim.wo.number = true
+      vim.wo.relativenumber = false
     end)
   end
   vim.api.nvim_set_current_win(middle)
