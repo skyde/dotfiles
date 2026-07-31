@@ -320,26 +320,80 @@ do
   eq("inline: panel keeps its width", 42, vim.api.nvim_win_get_width(wins[1]))
   check("inline: the pane is not in diff mode", not vim.wo[wins[2]].diff)
 
-  -- The delta rendering replays captured output into a terminal-emulator
-  -- buffer, which processes bytes asynchronously — hence the waits.
-  local function pane_text()
-    return table.concat(win_lines(layout()[2]), "\n")
-  end
-  vim.wait(2000, function()
-    return pane_text():find("TWO", 1, true) ~= nil
-  end, 50)
-  check("inline: shows the selected file's patch", pane_text():find("TWO", 1, true), pane_text():sub(1, 200))
+  local inline = require("util.inline_diff")
+  local overlay_ns = vim.api.nvim_create_namespace("vcs_inline_diff")
 
-  scrub("jj")
-  vim.wait(2000, function()
-    return pane_text():find("brand new", 1, true) ~= nil
-  end, 50)
-  check(
-    "inline: an untracked file shows as a whole-file add",
-    pane_text():find("brand new", 1, true),
-    pane_text():sub(1, 200)
+  ---The overlay, reduced to what a reader sees: which buffer lines are
+  ---highlighted as new, and which old lines are drawn as virtual text.
+  local function overlay(buf)
+    local virt, added = {}, {}
+    for _, m in ipairs(vim.api.nvim_buf_get_extmarks(buf, overlay_ns, 0, -1, { details = true })) do
+      local d = m[4]
+      if d.virt_lines then
+        for _, vl in ipairs(d.virt_lines) do
+          virt[#virt + 1] = vl[1][1]
+        end
+      end
+      if d.line_hl_group == "DiffAdd" then
+        added[#added + 1] = m[2] + 1
+      end
+    end
+    table.sort(added)
+    return virt, added
+  end
+
+  local buf = vim.api.nvim_win_get_buf(wins[2])
+  eq("inline: the pane holds the real file", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(buf))
+  check("inline: the buffer is editable", vim.bo[buf].modifiable)
+  check("inline: the overlay is attached", inline.has(buf))
+  eq("inline: cursor sits on the first change", 2, vim.api.nvim_win_get_cursor(wins[2])[1])
+
+  local virt, added = overlay(buf)
+  eq("inline: the old line is drawn as virtual text", { "two" }, virt)
+  eq("inline: the new lines are highlighted", { 2, 4 }, added)
+
+  -- The whole point: it is editable, and the overlay follows the edit.
+  feed("\r")
+  eq("inline: <CR> focuses the file itself", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  buf = vim.api.nvim_get_current_buf()
+  vim.api.nvim_win_set_cursor(0, { 2, 0 })
+  vim.cmd("normal! oinserted")
+  inline.render(buf)
+  local _, added2 = overlay(buf)
+  eq("inline: editing extends the overlay", { 2, 3, 5 }, added2)
+
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+  inline.goto_hunk(0, 1)
+  eq("inline: next hunk from the top", 2, vim.api.nvim_win_get_cursor(0)[1])
+  inline.goto_hunk(0, 1)
+  eq("inline: next hunk again", 5, vim.api.nvim_win_get_cursor(0)[1])
+
+  check("inline: revert replaces the hunk with the base lines", inline.revert_hunk(0))
+  eq(
+    "inline: the reverted tail matches the base",
+    { "one", "TWO", "inserted", "three" },
+    vim.api.nvim_buf_get_lines(buf, 0, -1, false)
   )
-  check("inline: no terminal exit banner", not pane_text():find("Process exited", 1, true))
+  vim.cmd("edit!")
+  inline.render(buf)
+
+  -- A deleted file has nothing on disk to edit; its content shows struck red.
+  vim.api.nvim_set_current_win(layout()[1])
+  vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
+  scrub("j")
+  check(
+    "inline: a deleted file shows the base content",
+    vim.tbl_contains(win_lines(layout()[2]), "gone soon"),
+    vim.inspect(win_lines(layout()[2]))
+  )
+
+  -- An untracked file is all additions, and still editable.
+  scrub("j")
+  local ubuf = vim.api.nvim_win_get_buf(layout()[2])
+  eq("inline: an untracked file is the real file", root .. "/d_untracked.txt", vim.api.nvim_buf_get_name(ubuf))
+  local uvirt, uadded = overlay(ubuf)
+  eq("inline: an untracked file shows as a whole-file add", { 1 }, uadded)
+  eq("inline: an untracked file has no old lines", {}, uvirt)
 
   scrub("i")
   eq("inline: toggling back restores two diff panes", 3, #layout())

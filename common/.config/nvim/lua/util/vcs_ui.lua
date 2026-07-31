@@ -14,6 +14,7 @@
 -- Only one diff tab exists at a time; asking for another reuses it.
 
 local vcs = require("util.vcs")
+local inline_diff = require("util.inline_diff")
 
 local M = {}
 
@@ -32,6 +33,7 @@ local ns = vim.api.nvim_create_namespace("vcs_ui")
 ---@field files VcsFile[]
 ---@field first_line integer
 ---@field inline boolean
+---@field inline_buf integer|nil  buffer currently carrying the inline overlay
 ---@field base_cache table<string, string[]>
 ---@field previews table<integer, true>  buffers this view opened and unlisted
 local state = nil
@@ -300,50 +302,43 @@ local function patch_buf(win, text, cwd, keys)
   return buf
 end
 
----An untracked or newly added file has no committed side for the backends to
----diff, but "the whole file is new" is still a perfectly good patch — it is
----what the VS Code diff editor shows for one.
----@param file VcsFile
-local function synthetic_add_patch(file)
-  local ok, content = pcall(vim.fn.readfile, state.root .. "/" .. file.path)
-  if not ok or #content == 0 then
-    return ""
-  end
-  local out = {
-    ("diff --git a/%s b/%s"):format(file.path, file.path),
-    "new file mode 100644",
-    "--- /dev/null",
-    ("+++ b/%s"):format(file.path),
-    ("@@ -0,0 +1,%d @@"):format(#content),
-  }
-  for _, line in ipairs(content) do
-    table.insert(out, "+" .. line)
-  end
-  return table.concat(out, "\n") .. "\n"
-end
-
----Inline: one buffer with the unified patch for the selected file.
+---Inline: the real file with the base version overlaid — deleted lines drawn
+---between the lines as virtual text, new lines highlighted. Unlike a rendered
+---patch the buffer stays editable, matching what VS Code's diff editor is
+---with renderSideBySide off.
 local function render_inline(file)
-  local patch = state.backend.raw_diff(state.root, state.rev, file and file.path or nil, file and file.orig or nil)
-  if patch == "" and file and (file.status == "?" or file.status == "A") then
-    patch = synthetic_add_patch(file)
-  end
-
   vim.api.nvim_set_current_win(state.panel_win)
   vim.cmd("vertical rightbelow split")
   local win = vim.api.nvim_get_current_win()
 
-  if patch == "" then
-    vim.api.nvim_win_set_buf(win, scratch("vcs://patch", { "(no changes)" }))
+  if not file then
+    vim.api.nvim_win_set_buf(win, scratch("vcs://empty", { "(no changes)" }))
+    balance(win)
+    return win
+  end
+
+  local full = state.root .. "/" .. file.path
+  local base = base_content(file)
+
+  if vim.fn.filereadable(full) == 1 then
+    edit_preview(full)
+    local buf = vim.api.nvim_get_current_buf()
+    state.inline_buf = buf
+    inline_diff.attach(buf, base)
+    vim.wo[win].number = true
+    vim.wo[win].relativenumber = false
+    vim.api.nvim_win_call(win, function()
+      inline_diff.goto_first(buf)
+    end)
   else
-    patch_buf(win, patch, state.root, {
-      q = function()
-        M.close()
-      end,
-      i = function()
-        M.toggle_inline()
-      end,
-    })
+    -- Deleted: nothing on disk to edit, so show what was there, struck red.
+    local buf = scratch(("vcs://deleted/%s"):format(file.path), base, file.path)
+    vim.api.nvim_win_set_buf(win, buf)
+    for row = 0, #base - 1 do
+      vim.api.nvim_buf_set_extmark(buf, ns, row, 0, { line_hl_group = "DiffDelete", priority = 50 })
+    end
+    vim.wo[win].number = true
+    vim.wo[win].relativenumber = false
   end
 
   balance(win)
@@ -357,6 +352,10 @@ local function show(focus)
     return
   end
   local file = current_file()
+  if state.inline_buf then
+    inline_diff.detach(state.inline_buf)
+    state.inline_buf = nil
+  end
   close_diff_wins()
 
   local target
@@ -542,6 +541,10 @@ end
 function M.close()
   cancel_scrub()
   local previews = state and state.previews or {}
+  if state and state.inline_buf then
+    inline_diff.detach(state.inline_buf)
+    state.inline_buf = nil
+  end
   if valid() then
     vim.api.nvim_set_current_tabpage(state.tab)
     vim.cmd("tabclose")

@@ -45,13 +45,15 @@ Commands do the same without leader keys: `:VcsChanges [working|branch|head]`,
 
 The right-hand side has two renderings. Side-by-side is native diff mode, so
 `]c` / `[c` / `do` / `dp` work and the right pane is the real file — edits go to
-disk. `<leader>ci` switches to the inline rendering, the unified patch piped
-through `delta`, matching `diffEditor.renderSideBySide: false` in the VS Code
-config. Inside the inline rendering `q` closes the view and `i` toggles back.
-Untracked and newly added files render inline as a whole-file add, the way the
-VS Code diff editor shows them, and delta's output is replayed into a
-terminal-emulator buffer, so there is no live process and no
-"[Process exited 0]" tail.
+disk. `<leader>ci` switches to the inline rendering, matching
+`diffEditor.renderSideBySide: false` in the VS Code config — and like that
+editor it is the **real, editable file**: the base version's missing lines are
+drawn between the lines in red, new lines are highlighted green, and the
+overlay follows as you type. `]c` / `[c` walk the changes, `<leader>cv` reverts
+the change under the cursor, `i` in the panel (or `<leader>ci` anywhere)
+toggles back. Untracked files read as a whole-file add, deleted files show
+their old content struck red. The delta-rendered unified patch is still there
+on `<leader>gp` / `<leader>gA`.
 The diff opens scrolled to the first change, renamed files diff against their
 old path rather than reading as wholly added, and every diff pane uses
 absolute line numbers whatever the buffer would normally show.
