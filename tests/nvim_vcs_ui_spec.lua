@@ -137,6 +137,17 @@ local function unnamed_buffers()
   return n
 end
 
+-- The default rendering is inline, matching `diffEditor.renderSideBySide:
+-- false` in the VS Code config. The bulk of this spec drives the side-by-side
+-- layout, so assert the default once and switch.
+do
+  ui.open({ scope = "working" })
+  eq("default: the view opens inline", 2, #layout())
+  check("default: the inline pane is not a diff window", not vim.wo[layout()[2]].diff)
+  ui.toggle_inline()
+  ui.close()
+end
+
 do
   local tabs_before = #vim.api.nvim_list_tabpages()
   local unnamed_before = unnamed_buffers()

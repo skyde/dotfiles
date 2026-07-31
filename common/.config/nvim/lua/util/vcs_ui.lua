@@ -40,7 +40,9 @@ local state = nil
 
 -- The inline / side-by-side choice outlives the view, the way VS Code's
 -- renderSideBySide is a setting rather than something you re-toggle per diff.
-local remembered_inline = false
+-- Inline is the default, matching `diffEditor.renderSideBySide: false` in the
+-- VS Code config this mirrors.
+local remembered_inline = true
 
 local STATUS = {
   M = { icon = "~", hl = "DiffChange", label = "modified" },

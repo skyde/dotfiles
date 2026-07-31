@@ -43,16 +43,16 @@ Commands do the same without leader keys: `:VcsChanges [working|branch|head]`,
 | `R` | refresh |
 | `q` | close |
 
-The right-hand side has two renderings. Side-by-side is native diff mode, so
-`]c` / `[c` / `do` / `dp` work and the right pane is the real file — edits go to
-disk. `<leader>ci` switches to the inline rendering, matching
-`diffEditor.renderSideBySide: false` in the VS Code config — and like that
-editor it is the **real, editable file**: the base version's missing lines are
-drawn between the lines in red, new lines are highlighted green, and the
-overlay follows as you type. `]c` / `[c` walk the changes, `<leader>cv` reverts
-the change under the cursor, `i` in the panel (or `<leader>ci` anywhere)
-toggles back. Untracked files read as a whole-file add, deleted files show
-their old content struck red. The delta-rendered unified patch is still there
+The right-hand side has two renderings, and the choice is remembered across
+opens. **Inline is the default**, matching `diffEditor.renderSideBySide:
+false` in the VS Code config — and like that editor it is the **real,
+editable file**: the base version's missing lines are drawn between the lines
+in red, new lines are highlighted green, and the overlay follows as you type.
+`]c` / `[c` walk the changes, `<leader>cv` reverts the change under the
+cursor. Untracked files read as a whole-file add, deleted files show their
+old content struck red. `i` in the panel (or `<leader>ci` anywhere) switches
+to side-by-side: native diff mode, so `]c` / `[c` / `do` / `dp` work and the
+right pane is the real file. The delta-rendered unified patch is still there
 on `<leader>gp` / `<leader>gA`.
 The diff opens scrolled to the first change, renamed files diff against their
 old path rather than reading as wholly added, and every diff pane uses
