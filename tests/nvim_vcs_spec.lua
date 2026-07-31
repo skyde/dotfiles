@@ -464,6 +464,32 @@ else
 end
 
 --------------------------------------------------------------------------
+-- async: the same backends, off the UI thread
+--------------------------------------------------------------------------
+
+do
+  local done, async_files, async_base
+  vcs.async(function()
+    local backend = vcs.backends.git
+    local rev = backend.rev(git_root, "working")
+    async_files = backend.changed(git_root, rev)
+    async_base = backend.show(git_root, rev, "src/main.c")
+    done = true
+  end)
+  check("async: the coroutine completes", vim.wait(4000, function()
+    return done == true
+  end))
+  local backend = vcs.backends.git
+  local rev = backend.rev(git_root, "working")
+  eq(
+    "async: changed() answers the same as the blocking path",
+    status_map(backend.changed(git_root, rev)),
+    status_map(async_files or {})
+  )
+  eq("async: show() answers the same as the blocking path", backend.show(git_root, rev, "src/main.c"), async_base)
+end
+
+--------------------------------------------------------------------------
 
 vim.fn.delete(temp, "rf")
 

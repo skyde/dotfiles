@@ -75,6 +75,15 @@ local function scrub(keys)
   end)
 end
 
+---Open the view and let the background revalidation and prefetch land, so
+---assertions see fresh data rather than the cached paint.
+local function open_settled(opts)
+  ui.open(opts)
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+end
+
 ---Panel window plus the diff windows, left to right.
 local function layout()
   local wins = vim.api.nvim_tabpage_list_wins(0)
@@ -173,9 +182,9 @@ do
   for i = 4, #lines do
     table.insert(listed, lines[i])
   end
-  eq("open: lists every changed file, sorted, with status icons", {
-    " ~  a_modified.txt",
-    " -  b_deleted.txt",
+  eq("open: lists every changed file, sorted, with status letters", {
+    " M  a_modified.txt",
+    " D  b_deleted.txt",
     " ?  d_untracked.txt",
   }, listed)
 
@@ -309,7 +318,7 @@ do
   scrub("s")
   local lines = panel_lines()
   check("s: scope cycles to the fork point", lines[1]:find("since fork point"), lines[1])
-  check("s: the branch commit now appears", vim.tbl_contains(lines, " ~  committed_on_branch.txt"), vim.inspect(lines))
+  check("s: the branch commit now appears", vim.tbl_contains(lines, " M  committed_on_branch.txt"), vim.inspect(lines))
   check("s: header counts four files", lines[2]:find("4 files"), lines[2])
 
   scrub("s")
@@ -563,7 +572,9 @@ end
 do
   git(root, "mv", "c_untouched.txt", "c_renamed.txt")
   write(root .. "/c_renamed.txt", string.rep("stable\n", 8) .. "plus a change\n")
-  ui.open({ scope = "working" })
+  -- The cached listing predates the rename; the background revalidation has to
+  -- land before the new name can be asserted.
+  open_settled({ scope = "working" })
 
   local lines = panel_lines()
   local row
@@ -573,7 +584,7 @@ do
     end
   end
   check("rename: listed under the new name", row ~= nil, vim.inspect(lines))
-  check("rename: the old name is not listed separately", not vim.tbl_contains(lines, " -  c_untouched.txt"))
+  check("rename: the old name is not listed separately", not vim.tbl_contains(lines, " D  c_untouched.txt"))
 
   vim.api.nvim_set_current_win(layout()[1])
   vim.api.nvim_win_set_cursor(layout()[1], { row, 0 })
@@ -627,6 +638,29 @@ do
 end
 
 --------------------------------------------------------------------------
+-- preview buffers: cleanup runs however the view dies, not just on q
+--------------------------------------------------------------------------
+
+do
+  ui.open({ scope = "working" })
+  scrub("jjj")
+  check("external close: the scrubbed-to preview is loaded", vim.fn.bufnr(root .. "/d_untracked.txt") ~= -1)
+
+  -- Close the tab out from under the UI, the way :tabclose or :q on its last
+  -- window would; the deferred cleanup must still drop the previews.
+  vim.cmd("tabclose")
+  vim.wait(300, function()
+    return vim.fn.bufnr(root .. "/d_untracked.txt") == -1
+  end)
+  eq("external close: previews are dropped anyway", -1, vim.fn.bufnr(root .. "/d_untracked.txt"))
+  check("external close: the edited buffer survives", vim.fn.bufnr(root .. "/a_modified.txt") ~= -1)
+
+  local ok = pcall(ui.open, { scope = "working" })
+  check("external close: the view reopens cleanly afterwards", ok)
+  ui.close()
+end
+
+--------------------------------------------------------------------------
 -- goto_file from an ad-hoc diff tab
 --------------------------------------------------------------------------
 
@@ -638,14 +672,197 @@ do
   ui.file_diff("working")
   local wins = layout()
   check(
-    "file_diff: absolute line numbers in both panes",
-    vim.wo[wins[1]].number and vim.wo[wins[2]].number and not vim.wo[wins[1]].relativenumber and not vim.wo[wins[2]].relativenumber
+    "file_diff: relative line numbers in both panes",
+    vim.wo[wins[1]].number and vim.wo[wins[2]].number and vim.wo[wins[1]].relativenumber and vim.wo[wins[2]].relativenumber
   )
   ui.goto_file()
   eq("goto_file from file_diff: closes the ad-hoc tab", tabs, #vim.api.nvim_list_tabpages())
   eq("goto_file from file_diff: lands on the real file", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
   check("goto_file from file_diff: no diff mode left behind", not vim.wo.diff)
   vim.wo.relativenumber = false
+end
+
+--------------------------------------------------------------------------
+-- tree view: nested paths group into directories
+--------------------------------------------------------------------------
+
+do
+  write(root .. "/deep/nested/dir/one.txt", "1\n")
+  write(root .. "/deep/nested/dir/two.txt", "2\n")
+  write(root .. "/deep/other.txt", "other\n")
+  -- The first open paints the cached, pre-tree listing with the cursor on its
+  -- first file; the revalidation that discovers the new files must keep the
+  -- selection on that same file even though its row moved.
+  open_settled({ scope = "working" })
+  check(
+    "tree: revalidation keeps the selection on the same file",
+    panel_lines()[vim.api.nvim_win_get_cursor(layout()[1])[1]]:find("a_modified", 1, true) ~= nil,
+    vim.inspect(panel_lines()) .. " cursor " .. vim.api.nvim_win_get_cursor(layout()[1])[1]
+  )
+  -- Reopen so the paint itself is the tree being asserted.
+  ui.close()
+  open_settled({ scope = "working" })
+
+  local lines = panel_lines()
+  local listed = {}
+  for i = 4, #lines do
+    table.insert(listed, lines[i])
+  end
+  eq("tree: directories group, single-child chains compact, filenames stay whole", {
+    "    deep/",
+    "      nested/dir/",
+    " ?      one.txt",
+    " ?      two.txt",
+    " ?    other.txt",
+    " M  a_modified.txt",
+    " D  b_deleted.txt",
+    " R  c_renamed.txt",
+    " ?  d_untracked.txt",
+  }, listed)
+
+  local panel = layout()[1]
+  eq("tree: cursor starts on the first file, past directory rows", 6, vim.api.nvim_win_get_cursor(panel)[1])
+
+  scrub("j")
+  eq("tree: j moves to the next file", 7, vim.api.nvim_win_get_cursor(panel)[1])
+  scrub("k")
+  eq("tree: k moves back", 6, vim.api.nvim_win_get_cursor(panel)[1])
+  scrub("k")
+  eq("tree: k stops at the first file, not a directory row", 6, vim.api.nvim_win_get_cursor(panel)[1])
+
+  vim.api.nvim_win_set_cursor(panel, { 6, 0 })
+  feed("\r")
+  eq("tree: <CR> on a nested file opens it", root .. "/deep/nested/dir/one.txt", vim.api.nvim_buf_get_name(0))
+
+  -- A directory row selects nothing; <CR> just moves into the diff already up.
+  vim.api.nvim_set_current_win(panel)
+  vim.api.nvim_win_set_cursor(panel, { 4, 0 })
+  feed("\r")
+  eq(
+    "tree: <CR> on a directory row keeps the previous file",
+    root .. "/deep/nested/dir/one.txt",
+    vim.api.nvim_buf_get_name(0)
+  )
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- panel keys: l / <Right> open the diff, J/K scroll it from the list
+--------------------------------------------------------------------------
+
+do
+  -- A long file so the preview has somewhere to scroll.
+  write(root .. "/long.txt", string.rep("line\n", 200))
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+
+  local row
+  for i, l in ipairs(panel_lines()) do
+    if l:find("long.txt", 1, true) then
+      row = i
+    end
+  end
+  check("panel: the long file is listed", row ~= nil, vim.inspect(panel_lines()))
+  vim.api.nvim_win_set_cursor(panel, { row - 1, 0 })
+  scrub("j")
+  eq("panel: j lands on the long file", row, vim.api.nvim_win_get_cursor(panel)[1])
+
+  feed("<Right>")
+  eq("panel: <Right> focuses the diff", root .. "/long.txt", vim.api.nvim_buf_get_name(0))
+  vim.api.nvim_set_current_win(panel)
+  feed("l")
+  eq("panel: l focuses the diff too", root .. "/long.txt", vim.api.nvim_buf_get_name(0))
+  vim.api.nvim_set_current_win(panel)
+
+  local right = layout()[#layout()]
+  local function topline()
+    return vim.api.nvim_win_call(right, function()
+      return vim.fn.line("w0")
+    end)
+  end
+  local before = topline()
+  feed("J")
+  local down = topline()
+  check("panel: J scrolls the preview down", down > before, string.format("%d -> %d", before, down))
+  feed("K")
+  check("panel: K scrolls it back up", topline() < down, string.format("%d after K", topline()))
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- caching: reopening paints from the cache, then revalidates in the background
+--------------------------------------------------------------------------
+
+do
+  open_settled({ scope = "working" })
+  ui.close()
+
+  -- A change made while the view is closed is not in the cached paint, and is
+  -- there once the background revalidation lands.
+  write(root .. "/e_new.txt", "fresh\n")
+  ui.open({ scope = "working" })
+  check(
+    "cache: reopening paints instantly from the cached listing",
+    not vim.tbl_contains(panel_lines(), " ?  e_new.txt"),
+    vim.inspect(panel_lines())
+  )
+  check("cache: the header says it is refreshing", panel_lines()[2]:find("refreshing", 1, true) ~= nil, panel_lines()[2])
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+  check(
+    "cache: the background refresh picks up the new file",
+    vim.tbl_contains(panel_lines(), " ?  e_new.txt"),
+    vim.inspect(panel_lines())
+  )
+  check("cache: the refresh marker clears", not panel_lines()[2]:find("refreshing", 1, true), panel_lines()[2])
+
+  -- Base content survives close and reopen: rendering a file seen before must
+  -- not shell out for it again.
+  local backend = vcs.backends.git
+  local real_show = backend.show
+  local shows = {}
+  backend.show = function(r, rv, p)
+    shows[p] = (shows[p] or 0) + 1
+    return real_show(r, rv, p)
+  end
+  ui.close()
+  ui.open({ scope = "working" })
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+  backend.show = real_show
+  eq("cache: a previously fetched base is not re-fetched", nil, shows["a_modified.txt"])
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- change_position: which change is the cursor on
+--------------------------------------------------------------------------
+
+do
+  write(root .. "/hunky.txt", "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\n")
+  git(root, "add", "hunky.txt")
+  git(root, "commit", "-qm", "hunky")
+  write(root .. "/hunky.txt", "a\nB\nc\nd\ne\nF\ng\nh\ni\nJ\n")
+
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/hunky.txt"))
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+  ui.file_diff("working")
+  local idx, total = ui.change_position()
+  eq("change_position: counts every hunk", 3, total)
+  eq("change_position: 0 above the first change", 0, idx)
+  vim.cmd("normal! ]c")
+  eq("change_position: first change", 1, (ui.change_position()))
+  vim.cmd("normal! ]c")
+  eq("change_position: second change", 2, (ui.change_position()))
+  vim.cmd("normal! ]c")
+  eq("change_position: third change", 3, (ui.change_position()))
+  ui.switch_side()
+  local _, t2 = ui.change_position()
+  eq("change_position: the base pane counts the same hunks", 3, t2)
+  vim.cmd("tabclose")
+  check("change_position: nil outside a diff", ui.change_position() == nil)
 end
 
 --------------------------------------------------------------------------

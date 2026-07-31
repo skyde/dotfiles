@@ -128,6 +128,27 @@ local function hunk_at(st, row, line_count)
   return nil
 end
 
+---Which change the cursor is on: the index of the hunk at (or the last hunk
+---above) the cursor, and the total. Index 0 means the cursor sits before the
+---first hunk.
+---@return integer index, integer total
+function M.hunk_position(buf)
+  buf = resolve(buf)
+  local st = states[buf]
+  if not st then
+    return 0, 0
+  end
+  local row = vim.api.nvim_win_get_cursor(0)[1]
+  local line_count = vim.api.nvim_buf_line_count(buf)
+  local index = 0
+  for i, h in ipairs(st.hunks) do
+    if hunk_anchor(h, line_count) <= row then
+      index = i
+    end
+  end
+  return index, #st.hunks
+end
+
 ---Jump to the next/previous hunk, wrapping like `n` does.
 ---@param dir 1|-1
 function M.goto_hunk(buf, dir)

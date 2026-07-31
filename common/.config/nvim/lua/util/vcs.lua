@@ -39,14 +39,42 @@ local M = {}
 -- helpers
 --------------------------------------------------------------------------
 
+---Coroutines created by M.async. Inside one of these, sh() suspends while its
+---subprocess runs instead of blocking the editor.
+local async_threads = setmetatable({}, { __mode = "k" })
+
+local function resume(co, ...)
+  local ok, err = coroutine.resume(co, ...)
+  if not ok then
+    vim.notify("vcs: " .. tostring(err), vim.log.levels.ERROR)
+  end
+end
+
 ---Run a command and return the completed vim.system result, or nil if the
 ---binary is missing entirely. Callers check `.code` themselves; a non-zero exit
 ---is normal (e.g. `git show` on a path that did not exist at that revision).
+---
+---Blocking by default. Inside an M.async coroutine the same call yields while
+---the subprocess runs, so every backend works asynchronously without a second
+---callback-shaped implementation of itself.
 ---@param cmd string[]
 ---@param cwd string|nil
 local function sh(cmd, cwd)
   if vim.fn.executable(cmd[1]) ~= 1 then
     return nil
+  end
+  local co = coroutine.running()
+  if co and async_threads[co] then
+    local ok = pcall(vim.system, cmd, { cwd = cwd, text = true }, function(res)
+      -- on_exit arrives off the main loop; API calls are only legal back on it.
+      vim.schedule(function()
+        resume(co, res)
+      end)
+    end)
+    if not ok then
+      return nil
+    end
+    return coroutine.yield()
   end
   local ok, res = pcall(function()
     return vim.system(cmd, { cwd = cwd, text = true }):wait()
@@ -55,6 +83,17 @@ local function sh(cmd, cwd)
     return nil
   end
   return res
+end
+
+---Run `fn` on a coroutine where every backend call yields to the event loop
+---while its subprocess runs, instead of freezing the UI. `fn` still executes on
+---the main thread between calls and may use the API freely; it just has to
+---tolerate the world having changed across any backend call.
+---@param fn fun()
+function M.async(fn)
+  local co = coroutine.create(fn)
+  async_threads[co] = true
+  resume(co)
 end
 
 ---Split command output into lines, dropping the trailing blank that every

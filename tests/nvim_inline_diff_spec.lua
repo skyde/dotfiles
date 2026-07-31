@@ -161,6 +161,28 @@ do
 end
 
 --------------------------------------------------------------------------
+-- position
+--------------------------------------------------------------------------
+
+do
+  local buf = mkbuf({ "one", "TWO", "three", "four", "five" })
+  inline.attach(buf, { "one", "two", "three", "five" })
+  -- Hunks: line 2 (change), line 4 (addition).
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+  local idx, total = inline.hunk_position(buf)
+  eq("position: total counts every hunk", 2, total)
+  eq("position: 0 above the first hunk", 0, idx)
+  vim.api.nvim_win_set_cursor(0, { 2, 0 })
+  eq("position: on the first hunk", 1, (inline.hunk_position(buf)))
+  vim.api.nvim_win_set_cursor(0, { 3, 0 })
+  eq("position: between hunks counts the one above", 1, (inline.hunk_position(buf)))
+  vim.api.nvim_win_set_cursor(0, { 5, 0 })
+  eq("position: past the last hunk", 2, (inline.hunk_position(buf)))
+  eq("position: an unattached buffer reports zero", 0, (inline.hunk_position(mkbuf({ "x" }))))
+  inline.detach(buf)
+end
+
+--------------------------------------------------------------------------
 -- revert
 --------------------------------------------------------------------------
 
