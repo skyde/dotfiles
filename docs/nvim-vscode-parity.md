@@ -48,6 +48,10 @@ The right-hand side has two renderings. Side-by-side is native diff mode, so
 disk. `<leader>ci` switches to the inline rendering, the unified patch piped
 through `delta`, matching `diffEditor.renderSideBySide: false` in the VS Code
 config. Inside the inline rendering `q` closes the view and `i` toggles back.
+Untracked and newly added files render inline as a whole-file add, the way the
+VS Code diff editor shows them, and delta's output is replayed into a
+terminal-emulator buffer, so there is no live process and no
+"[Process exited 0]" tail.
 The diff opens scrolled to the first change, renamed files diff against their
 old path rather than reading as wholly added, and every diff pane uses
 absolute line numbers whatever the buffer would normally show.

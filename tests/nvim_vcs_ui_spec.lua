@@ -320,6 +320,27 @@ do
   eq("inline: panel keeps its width", 42, vim.api.nvim_win_get_width(wins[1]))
   check("inline: the pane is not in diff mode", not vim.wo[wins[2]].diff)
 
+  -- The delta rendering replays captured output into a terminal-emulator
+  -- buffer, which processes bytes asynchronously — hence the waits.
+  local function pane_text()
+    return table.concat(win_lines(layout()[2]), "\n")
+  end
+  vim.wait(2000, function()
+    return pane_text():find("TWO", 1, true) ~= nil
+  end, 50)
+  check("inline: shows the selected file's patch", pane_text():find("TWO", 1, true), pane_text():sub(1, 200))
+
+  scrub("jj")
+  vim.wait(2000, function()
+    return pane_text():find("brand new", 1, true) ~= nil
+  end, 50)
+  check(
+    "inline: an untracked file shows as a whole-file add",
+    pane_text():find("brand new", 1, true),
+    pane_text():sub(1, 200)
+  )
+  check("inline: no terminal exit banner", not pane_text():find("Process exited", 1, true))
+
   scrub("i")
   eq("inline: toggling back restores two diff panes", 3, #layout())
   check("inline: back in diff mode", vim.wo[layout()[2]].diff)

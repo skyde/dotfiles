@@ -263,34 +263,32 @@ local function render_side_by_side(file)
 end
 
 ---Fill `win` with a unified patch, coloured by delta when it is installed so
----it matches what `git diff` looks like in the terminal. `keys` adds
----buffer-local normal-mode maps, so each caller decides what q does there.
+---it matches what `git diff` looks like in the terminal. Delta's output is
+---captured and replayed into a terminal-emulator buffer rather than run as a
+---live job: same colours, but no process to accidentally feed keys to and no
+---"[Process exited 0]" tail. `keys` adds buffer-local normal-mode maps, so
+---each caller decides what q does there.
 local function patch_buf(win, text, cwd, keys)
   local buf
   if vim.fn.executable("delta") == 1 then
-    local tmp = vim.fn.tempname()
-    local fd = io.open(tmp, "w")
-    if fd then
-      fd:write(text)
-      fd:close()
-    end
+    local width = vim.api.nvim_win_get_width(win)
+    local res = vim
+      .system({ "delta", "--paging=never", "--width", tostring(width) }, { stdin = text, cwd = cwd })
+      :wait()
     buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_win_set_buf(win, buf)
-    vim.api.nvim_win_call(win, function()
-      -- term = true turns the *current* buffer into the terminal.
-      vim.fn.jobstart({
-        "sh",
-        "-c",
-        ("delta --paging=never < %s"):format(vim.fn.shellescape(tmp)),
-      }, {
-        term = true,
-        cwd = cwd,
-        on_exit = function()
-          os.remove(tmp)
-        end,
-      })
-    end)
     vim.bo[buf].bufhidden = "wipe"
+    vim.api.nvim_win_set_buf(win, buf)
+    local chan = vim.api.nvim_open_term(buf, {})
+    -- The emulator needs carriage returns, not bare line feeds. The extra
+    -- parentheses drop gsub's second return value.
+    vim.api.nvim_chan_send(chan, ((res.stdout or ""):gsub("\n", "\r\n")))
+    -- The emulator processes the bytes asynchronously and follows the output;
+    -- put the view back at the top of the patch once it has.
+    vim.schedule(function()
+      if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == buf then
+        pcall(vim.api.nvim_win_set_cursor, win, { 1, 0 })
+      end
+    end)
   else
     buf = scratch("vcs://patch", vim.split(text, "\n", { plain = true }))
     vim.bo[buf].filetype = "diff"
@@ -302,9 +300,34 @@ local function patch_buf(win, text, cwd, keys)
   return buf
 end
 
+---An untracked or newly added file has no committed side for the backends to
+---diff, but "the whole file is new" is still a perfectly good patch — it is
+---what the VS Code diff editor shows for one.
+---@param file VcsFile
+local function synthetic_add_patch(file)
+  local ok, content = pcall(vim.fn.readfile, state.root .. "/" .. file.path)
+  if not ok or #content == 0 then
+    return ""
+  end
+  local out = {
+    ("diff --git a/%s b/%s"):format(file.path, file.path),
+    "new file mode 100644",
+    "--- /dev/null",
+    ("+++ b/%s"):format(file.path),
+    ("@@ -0,0 +1,%d @@"):format(#content),
+  }
+  for _, line in ipairs(content) do
+    table.insert(out, "+" .. line)
+  end
+  return table.concat(out, "\n") .. "\n"
+end
+
 ---Inline: one buffer with the unified patch for the selected file.
 local function render_inline(file)
   local patch = state.backend.raw_diff(state.root, state.rev, file and file.path or nil, file and file.orig or nil)
+  if patch == "" and file and (file.status == "?" or file.status == "A") then
+    patch = synthetic_add_patch(file)
+  end
 
   vim.api.nvim_set_current_win(state.panel_win)
   vim.cmd("vertical rightbelow split")
