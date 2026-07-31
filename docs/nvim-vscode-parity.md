@@ -34,13 +34,19 @@ Commands do the same without leader keys: `:VcsChanges [working|branch|head]`,
 
 ### Inside the changed-files view
 
+The list is a tree, VS Code explorer style: directories first, chains of
+single-child directories compacted onto one line (`a/b/c/`), and every
+filename shown whole instead of a full path truncated against the panel
+edge. Status letters (`M` `A` `D` `R` `?` `!`) sit in the left column.
+
 | Key | Action |
 | --- | --- |
-| `j` / `k` | move through files, re-rendering the diff as you go |
-| `<CR>` / `o` / `<Tab>` | move focus into the diff |
+| `j` / `k` | move through files (stepping over directory rows), re-rendering the diff as you go |
+| `<CR>` / `o` / `l` / `<Right>` / `<Tab>` | move focus into the diff (`<Space>` stays leader, so it cannot be the select key) |
+| `J` / `K` | scroll the diff half a page from the list, for skimming a file without leaving it |
 | `s` | cycle scope: uncommitted → since fork point → last commit |
 | `i` | toggle inline / side-by-side |
-| `R` | refresh |
+| `R` | hard refresh: re-ask the backend for everything |
 | `q` | close |
 
 The right-hand side has two renderings, and the choice is remembered across
@@ -55,18 +61,30 @@ to side-by-side: native diff mode, so `]c` / `[c` / `do` / `dp` work and the
 right pane is the real file. The delta-rendered unified patch is still there
 on `<leader>gp` / `<leader>gA`.
 The diff opens scrolled to the first change, renamed files diff against their
-old path rather than reading as wholly added, and every diff pane uses
-absolute line numbers whatever the buffer would normally show.
+old path rather than reading as wholly added, and every diff pane uses hybrid
+line numbers — absolute on the cursor line, relative everywhere else — so a
+`3j` between changes reads straight off the margin. `]c` / `[c` also echo
+"Change 2 of 5", the way the VS Code diff editor numbers its changes.
 
 Files opened by scrubbing behave like VS Code's preview editors: they stay out
-of the buffer list, and are dropped again when the view closes. The moment one
-is edited it becomes a real buffer and survives.
+of the buffer list, and are dropped again when the view closes — however it
+closes, `q` or an external `:tabclose` alike. The moment one is edited it
+becomes a real buffer and survives.
 
 Rendering a diff costs a subprocess, so `j` / `k` move the cursor immediately
 and the diff follows once the keys stop (80 ms). Holding `j` through a
-400-file changelist costs one render rather than four hundred. Base content is
-cached for the lifetime of the listing, so going back over files you have
-already looked at is free. `<CR>` pre-empts the wait and renders at once.
+400-file changelist costs one render rather than four hundred. `<CR>`
+pre-empts the wait and renders at once.
+
+Everything the backend says is remembered across opens of the view: the
+listing per scope and the base content per file. Reopening `<leader>gc` in a
+large or server-backed repository (Perforce especially) paints instantly from
+the last known state, the header shows "refreshing…" while a background pass
+revalidates, and the panel only redraws if something actually changed. Base
+content for listed files is prefetched in the background — one subprocess at
+a time, starting from the cursor — so scrubbing lands on warm content; a file
+whose base is still cold renders asynchronously instead of freezing the list.
+`R` distrusts all of it and re-asks the backend from scratch.
 
 Neovim's `diffopt` is set in `lua/config/options.lua` to the same algorithm and
 context as `common/.config/git/config`, so a diff reads the same in the editor

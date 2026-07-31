@@ -1,7 +1,7 @@
 -- The diff UI that sits on top of util.vcs.
 --
 -- Layout mirrors the VS Code source-control view that these keys replace: a
--- narrow list of changed files on the left, the diff for the selected file on
+-- narrow tree of changed files on the left, the diff for the selected file on
 -- the right. Moving the cursor in the list re-renders the diff, so `<leader>gc`
 -- then j/k is the whole review loop.
 --
@@ -10,6 +10,11 @@
 --                   copy is a real editable buffer
 --   * inline        the unified patch piped through delta, matching
 --                   `diffEditor.renderSideBySide: false` from the VS Code setup
+--
+-- Everything a backend says is remembered across opens of the view (the
+-- listing per scope, base content per file), so `<leader>gc` in a large or
+-- server-backed repository paints instantly from the last known state and
+-- revalidates in the background instead of blocking on subprocesses.
 --
 -- Only one diff tab exists at a time; asking for another reuses it.
 
@@ -21,6 +26,12 @@ local M = {}
 local PANEL_WIDTH = 42
 local ns = vim.api.nvim_create_namespace("vcs_ui")
 
+---@class PanelRow
+---@field kind "dir"|"file"
+---@field depth integer
+---@field name string  directory label (possibly a compacted a/b/c chain) or the file's basename
+---@field file VcsFile|nil
+
 ---@class VcsState
 ---@field tab integer
 ---@field panel_win integer
@@ -31,10 +42,13 @@ local ns = vim.api.nvim_create_namespace("vcs_ui")
 ---@field scope string
 ---@field rev string
 ---@field files VcsFile[]
+---@field rows PanelRow[]  files grouped into a directory tree, one entry per panel line
 ---@field first_line integer
 ---@field inline boolean
 ---@field inline_buf integer|nil  buffer currently carrying the inline overlay
----@field base_cache table<string, string[]>
+---@field diff_win integer|nil  the pane J/K scroll and <CR> focuses
+---@field shown VcsFile|nil  the selection the diff windows currently render
+---@field refreshing boolean|nil  a background revalidation is in flight
 ---@field previews table<integer, true>  buffers this view opened and unlisted
 local state = nil
 
@@ -44,11 +58,35 @@ local state = nil
 -- VS Code config this mirrors.
 local remembered_inline = true
 
+-- What the backends said, remembered across opens (and closes) of the view.
+-- Reopening paints from here instantly; a background pass revalidates.
+--   listing_cache: root \0 scope        -> { rev, files }
+--   base_cache:    root \0 rev \0 path  -> file content at that revision
+local listing_cache = {} ---@type table<string, {rev: string, files: VcsFile[]}>
+local base_cache = {} ---@type table<string, string[]>
+local base_count = 0
+
+-- The base cache is a speed tool, not a database: past the point where it
+-- could matter in memory, starting over beats managing it.
+local BASE_CACHE_MAX = 512
+
+-- Generation counters orphan background work that outlived its usefulness: a
+-- revalidation from a previous open, a prefetch for a replaced listing, a
+-- render for a file the cursor has already left.
+local refresh_gen = 0
+local render_gen = 0
+local prefetch_gen = 0
+local prefetch_busy = false
+local render_busy = 0
+-- The newest revalidation in flight per listing key. A newer one supersedes
+-- an older one's result; merely closing the view does not.
+local refresh_inflight = {} ---@type table<string, integer>
+
 local STATUS = {
-  M = { icon = "~", hl = "DiffChange", label = "modified" },
-  A = { icon = "+", hl = "DiffAdd", label = "added" },
-  D = { icon = "-", hl = "DiffDelete", label = "deleted" },
-  R = { icon = "»", hl = "DiffChange", label = "renamed" },
+  M = { icon = "M", hl = "DiffChange", label = "modified" },
+  A = { icon = "A", hl = "DiffAdd", label = "added" },
+  D = { icon = "D", hl = "DiffDelete", label = "deleted" },
+  R = { icon = "R", hl = "DiffChange", label = "renamed" },
   C = { icon = "!", hl = "DiffText", label = "conflict" },
   ["?"] = { icon = "?", hl = "Comment", label = "untracked" },
 }
@@ -58,7 +96,10 @@ local STATUS = {
 --------------------------------------------------------------------------
 
 local function valid()
-  return state ~= nil and vim.api.nvim_tabpage_is_valid(state.tab) and vim.api.nvim_win_is_valid(state.panel_win)
+  return state ~= nil
+    and vim.api.nvim_tabpage_is_valid(state.tab)
+    and vim.api.nvim_win_is_valid(state.panel_win)
+    and vim.api.nvim_buf_is_valid(state.panel_buf)
 end
 
 ---Windows in the diff tab other than the file list.
@@ -114,8 +155,96 @@ local function scratch(name, content, path)
 end
 
 --------------------------------------------------------------------------
+-- the caches
+--------------------------------------------------------------------------
+
+local function listing_key(root, scope)
+  return root .. "\0" .. scope
+end
+
+local function base_key(root, rev, path)
+  return root .. "\0" .. rev .. "\0" .. path
+end
+
+-- Bumped whenever cached bases are declared untrustworthy, so a fetch that
+-- was already in flight when that happened cannot re-insert stale content.
+local base_epoch = 0
+
+local function store_base(key, content)
+  if base_cache[key] == nil then
+    if base_count >= BASE_CACHE_MAX then
+      base_cache, base_count = {}, 0
+    end
+    base_count = base_count + 1
+  end
+  base_cache[key] = content
+end
+
+---Forget every base fetched for `root`, in any revision.
+local function drop_bases(root)
+  base_epoch = base_epoch + 1
+  local prefix = root .. "\0"
+  for key in pairs(base_cache) do
+    if key:sub(1, #prefix) == prefix then
+      base_cache[key] = nil
+      base_count = base_count - 1
+    end
+  end
+end
+
+--------------------------------------------------------------------------
 -- the file list panel
 --------------------------------------------------------------------------
+
+---Group the flat path list into a tree, VS Code explorer style: directories
+---first, then files, and chains of single-child directories compacted onto
+---one line — so a deeply nested repository shows every filename instead of
+---truncating full paths against the panel edge.
+---@param files VcsFile[]
+---@return PanelRow[]
+local function build_rows(files)
+  local tree = { dirs = {}, files = {} }
+  for _, file in ipairs(files) do
+    local node = tree
+    local dir = file.path:match("^(.*)/")
+    if dir then
+      for part in dir:gmatch("[^/]+") do
+        node.dirs[part] = node.dirs[part] or { dirs = {}, files = {} }
+        node = node.dirs[part]
+      end
+    end
+    table.insert(node.files, file)
+  end
+
+  local rows = {}
+  local function emit(node, depth)
+    local names = vim.tbl_keys(node.dirs)
+    table.sort(names)
+    for _, name in ipairs(names) do
+      local child = node.dirs[name]
+      local label = name
+      -- a/b/c on one line while the chain has nothing of its own to show
+      while #child.files == 0 do
+        local only, count = nil, 0
+        for dir_name in pairs(child.dirs) do
+          only, count = dir_name, count + 1
+        end
+        if count ~= 1 then
+          break
+        end
+        label = label .. "/" .. only
+        child = child.dirs[only]
+      end
+      table.insert(rows, { kind = "dir", depth = depth, name = label })
+      emit(child, depth + 1)
+    end
+    for _, file in ipairs(node.files) do
+      table.insert(rows, { kind = "file", depth = depth, name = file.path:match("[^/]+$"), file = file })
+    end
+  end
+  emit(tree, 0)
+  return rows
+end
 
 local function render_panel()
   local buf = state.panel_buf
@@ -123,15 +252,25 @@ local function render_panel()
     or state.scope
   local header = {
     ("%s · %s"):format(state.backend.name, scope_label),
-    ("%s · %d file%s"):format(state.rev:sub(1, 12), #state.files, #state.files == 1 and "" or "s"),
+    ("%s · %d file%s%s"):format(
+      state.rev:sub(1, 12),
+      #state.files,
+      #state.files == 1 and "" or "s",
+      state.refreshing and " · refreshing…" or ""
+    ),
     "",
   }
   state.first_line = #header + 1
 
   local lines = vim.list_extend({}, header)
-  for _, file in ipairs(state.files) do
-    local meta = STATUS[file.status] or STATUS.M
-    table.insert(lines, (" %s  %s"):format(meta.icon, file.path))
+  for _, row in ipairs(state.rows) do
+    local indent = ("  "):rep(row.depth)
+    if row.kind == "dir" then
+      table.insert(lines, ("    %s%s/"):format(indent, row.name))
+    else
+      local meta = STATUS[row.file.status] or STATUS.M
+      table.insert(lines, (" %s  %s%s"):format(meta.icon, indent, row.name))
+    end
   end
   if #state.files == 0 then
     table.insert(lines, " (no changes)")
@@ -144,61 +283,92 @@ local function render_panel()
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
   vim.api.nvim_buf_set_extmark(buf, ns, 0, 0, { end_col = #lines[1], hl_group = "Title" })
   vim.api.nvim_buf_set_extmark(buf, ns, 1, 0, { end_col = #lines[2], hl_group = "Comment" })
-  for i, file in ipairs(state.files) do
-    local meta = STATUS[file.status] or STATUS.M
-    local row = state.first_line - 1 + i - 1
-    vim.api.nvim_buf_set_extmark(buf, ns, row, 0, { end_col = 3, hl_group = meta.hl })
-    -- Dim the directory part so the filename is what the eye lands on.
-    local dir = file.path:match("^(.*/)")
-    if dir then
-      vim.api.nvim_buf_set_extmark(buf, ns, row, 4, { end_col = 4 + #dir, hl_group = "Comment" })
+  for i, row in ipairs(state.rows) do
+    local lnum = state.first_line - 1 + i - 1
+    if row.kind == "dir" then
+      vim.api.nvim_buf_set_extmark(buf, ns, lnum, 0, { end_col = #lines[lnum + 1], hl_group = "Directory" })
+    else
+      local meta = STATUS[row.file.status] or STATUS.M
+      vim.api.nvim_buf_set_extmark(buf, ns, lnum, 0, { end_col = 3, hl_group = meta.hl })
     end
   end
 end
 
----The file under the cursor in the panel, or nil on a header line.
-local function current_file()
+---The panel row under the cursor, or nil on a header line.
+local function row_at_cursor()
   if not valid() then
     return nil
   end
-  local row = vim.api.nvim_win_get_cursor(state.panel_win)[1]
-  return state.files[row - state.first_line + 1]
+  local lnum = vim.api.nvim_win_get_cursor(state.panel_win)[1]
+  return state.rows[lnum - state.first_line + 1]
+end
+
+---The file under the cursor in the panel; nil on a header or directory line.
+local function current_file()
+  local row = row_at_cursor()
+  return row and row.file or nil
+end
+
+---Panel line of the first file row (directories can come before it).
+local function first_file_lnum()
+  for i, row in ipairs(state.rows) do
+    if row.kind == "file" then
+      return state.first_line + i - 1
+    end
+  end
+  return state.first_line
 end
 
 --------------------------------------------------------------------------
 -- rendering one file
 --------------------------------------------------------------------------
 
----Base content for a file, memoised for the lifetime of the current listing.
----Fetching costs a subprocess (tens of milliseconds, and a good deal more on a
----large file), which is worth paying once per file rather than once per visit.
-local function base_content(file)
+---Does `file` have a base version to fetch at all?
+local function has_base(file)
   -- Added and untracked files have no previous version to ask for.
-  if file.status == "A" or file.status == "?" then
+  return file.status ~= "A" and file.status ~= "?"
+end
+
+---The revision a file's base comes from: per-file when the backend tracks one
+---(p4's haveRev — "#have" is the same string before and after a sync, "#12"
+---is not), the listing revision otherwise.
+local function base_rev(file)
+  return file.rev or state.rev
+end
+
+---Base content for a file, memoised across opens of the view. Fetching costs
+---a subprocess (tens of milliseconds, and a good deal more on a large file or
+---a remote Perforce server), which is worth paying once, not once per visit.
+local function base_content(file)
+  if not has_base(file) then
     return {}
   end
   -- A renamed file's base lives at its old path.
   local base_path = file.orig or file.path
-  local key = state.rev .. "\0" .. base_path
-  local hit = state.base_cache[key]
+  local key = base_key(state.root, base_rev(file), base_path)
+  local hit = base_cache[key]
   if hit then
     return hit
   end
-  local content = state.backend.show(state.root, state.rev, base_path) or {}
-  state.base_cache[key] = content
+  local content = state.backend.show(state.root, base_rev(file), base_path) or {}
+  store_base(key, content)
   return content
 end
 
----Diff panes share one look: native diff, folds open, absolute line numbers.
----Splits inherit whatever the window they came from had (the panel has no
----numbers at all, an editing window may have relative ones), and relative
----numbers in a diff make the two sides impossible to line up by eye.
+---True when rendering `file` would have to shell out for its base first.
+local function base_missing(file)
+  return has_base(file) and base_cache[base_key(state.root, base_rev(file), file.orig or file.path)] == nil
+end
+
+---Diff panes share one look: native diff, folds open, hybrid line numbers —
+---absolute on the cursor line, relative everywhere else, so a `3j` between
+---changes reads straight off the margin.
 local function diff_pane(w)
   vim.api.nvim_win_call(w, function()
     vim.cmd("diffthis")
     vim.wo.foldlevel = 99
     vim.wo.number = true
-    vim.wo.relativenumber = false
+    vim.wo.relativenumber = true
   end)
 end
 
@@ -332,7 +502,7 @@ local function render_inline(file)
     state.inline_buf = buf
     inline_diff.attach(buf, base)
     vim.wo[win].number = true
-    vim.wo[win].relativenumber = false
+    vim.wo[win].relativenumber = true
     -- So scrolling up can reveal virtual lines hanging above line 1.
     vim.wo[win].smoothscroll = true
     vim.api.nvim_win_call(win, function()
@@ -346,20 +516,16 @@ local function render_inline(file)
       vim.api.nvim_buf_set_extmark(buf, ns, row, 0, { line_hl_group = "DiffDelete", priority = 50 })
     end
     vim.wo[win].number = true
-    vim.wo[win].relativenumber = false
+    vim.wo[win].relativenumber = true
   end
 
   balance(win)
   return win
 end
 
----Draw the currently selected file. `focus` moves the cursor into the diff;
----leaving it false keeps the cursor in the list so j/k keeps scrubbing.
-local function show(focus)
-  if not valid() then
-    return
-  end
-  local file = current_file()
+---Draw `file` in the right-hand side. Assumes any base content it needs is
+---already cached; everything here is buffer and window work.
+local function render_file(file, focus)
   if state.inline_buf then
     inline_diff.detach(state.inline_buf)
     state.inline_buf = nil
@@ -379,7 +545,138 @@ local function show(focus)
     balance(target)
   end
 
+  state.diff_win = target
+  state.shown = file
   vim.api.nvim_set_current_win(focus and target or state.panel_win)
+end
+
+---Render whatever the panel cursor is on. `focus` moves the cursor into the
+---diff; leaving it false keeps it in the list so j/k keeps scrubbing. On a
+---directory or header line the previous diff stays up (focus still moves).
+---
+---When the base content is not cached yet and `opts.async` allows it, the
+---fetch runs off the UI and the render lands once it is done — unless the
+---cursor has moved on by then, in which case the fetch just warms the cache.
+local function show(focus, opts)
+  if not valid() then
+    return
+  end
+  render_gen = render_gen + 1
+  local gen = render_gen
+
+  local file = current_file()
+  if not file and #state.files > 0 then
+    if focus and state.diff_win and vim.api.nvim_win_is_valid(state.diff_win) then
+      vim.api.nvim_set_current_win(state.diff_win)
+    end
+    return
+  end
+
+  if file and opts and opts.async and base_missing(file) then
+    local backend, root, rev = state.backend, state.root, base_rev(file)
+    local base_path = file.orig or file.path
+    local epoch = base_epoch
+    render_busy = render_busy + 1
+    vcs.async(function()
+      local ok, err = pcall(function()
+        local key = base_key(root, rev, base_path)
+        if not base_cache[key] then
+          local content = backend.show(root, rev, base_path) or {}
+          -- The world may have moved while the subprocess ran; a result from
+          -- before drop_bases must not re-poison the cache it just emptied.
+          if epoch == base_epoch and not base_cache[key] then
+            store_base(key, content)
+          end
+        end
+        if gen ~= render_gen or not valid() or current_file() ~= file then
+          return
+        end
+        -- Same guard as the debounce: never yank focus back to the panel.
+        if not focus and vim.api.nvim_get_current_win() ~= state.panel_win then
+          return
+        end
+        render_file(file, focus)
+      end)
+      render_busy = render_busy - 1
+      if not ok then
+        vim.notify("vcs render: " .. tostring(err), vim.log.levels.ERROR)
+      end
+    end)
+    return
+  end
+
+  render_file(file, focus)
+end
+
+---Warm the base cache for the listed files in the background, starting from
+---the cursor and wrapping, so scrubbing lands on content that is already
+---there. One coroutine, one subprocess at a time: gentle on a loaded server,
+---and the UI never waits on any of it. A file the cursor reaches first is
+---fetched by the render path instead; whoever gets there first fills the
+---cache for both.
+local PREFETCH_MAX = 256
+
+local function prefetch_bases()
+  prefetch_gen = prefetch_gen + 1
+  prefetch_busy = false
+  if not valid() or #state.files == 0 then
+    return
+  end
+  local gen = prefetch_gen
+  local backend, root, rev = state.backend, state.root, state.rev
+
+  local in_view = {}
+  local from = 1
+  local at = row_at_cursor()
+  for _, row in ipairs(state.rows) do
+    if row.kind == "file" then
+      table.insert(in_view, row.file)
+      if row == at then
+        from = #in_view
+      end
+    end
+  end
+  local ordered = {}
+  for i = from, math.min(#in_view, from + PREFETCH_MAX - 1) do
+    table.insert(ordered, in_view[i])
+  end
+  for i = 1, from - 1 do
+    if #ordered >= PREFETCH_MAX then
+      break
+    end
+    table.insert(ordered, in_view[i])
+  end
+
+  prefetch_busy = true
+  vcs.async(function()
+    local ok, err = pcall(function()
+      for _, file in ipairs(ordered) do
+        if gen ~= prefetch_gen then
+          return
+        end
+        if has_base(file) then
+          local base_path = file.orig or file.path
+          local file_rev = file.rev or rev
+          local key = base_key(root, file_rev, base_path)
+          if not base_cache[key] then
+            local content = backend.show(root, file_rev, base_path)
+            if gen ~= prefetch_gen then
+              return
+            end
+            store_base(key, content or {})
+          end
+        end
+      end
+    end)
+    -- Only the newest prefetch owns the flag; and it must clear it on error
+    -- too, or busy() would report a prefetch that no longer exists.
+    if gen == prefetch_gen then
+      prefetch_busy = false
+    end
+    if not ok then
+      vim.notify("vcs prefetch: " .. tostring(err), vim.log.levels.ERROR)
+    end
+  end)
 end
 
 --------------------------------------------------------------------------
@@ -400,11 +697,10 @@ local function cancel_scrub()
   end
 end
 
-local function move(delta)
-  local row = vim.api.nvim_win_get_cursor(state.panel_win)[1] + delta
-  row = math.max(state.first_line, math.min(row, state.first_line + math.max(#state.files, 1) - 1))
-  vim.api.nvim_win_set_cursor(state.panel_win, { row, 0 })
-
+---Ask for the selection to be rendered once the cursor settles. Every cursor
+---motion in the panel funnels through here — the j/k maps and the CursorMoved
+---autocmd alike.
+local function schedule_show()
   cancel_scrub()
   scrub_timer = vim.uv.new_timer()
   scrub_timer:start(
@@ -415,10 +711,52 @@ local function move(delta)
       -- If focus moved on in the meantime — into the diff, another tab, a
       -- picker — a late render would yank it back to the panel.
       if valid() and vim.api.nvim_get_current_win() == state.panel_win then
-        show(false)
+        -- Re-rendering the selection already on screen would just flicker.
+        local file = current_file()
+        if file == state.shown and state.diff_win and vim.api.nvim_win_is_valid(state.diff_win) then
+          return
+        end
+        show(false, { async = true })
       end
     end)
   )
+end
+
+---Move the cursor `delta` file rows, stepping over directory lines; from the
+---header, forward lands on the first file.
+local function move(delta)
+  local lnum = vim.api.nvim_win_get_cursor(state.panel_win)[1]
+  local idx = lnum - state.first_line + 1
+  local i = math.max(idx + delta, 1)
+  local target
+  while state.rows[i] do
+    if state.rows[i].kind == "file" then
+      target = i
+      break
+    end
+    i = i + delta
+  end
+  if target then
+    vim.api.nvim_win_set_cursor(state.panel_win, { state.first_line + target - 1, 0 })
+  end
+  schedule_show()
+end
+
+---Half-page the diff pane from the panel, so a file can be skimmed without
+---moving focus into it.
+local function scroll_diff(dir)
+  if not valid() then
+    return
+  end
+  local win = state.diff_win
+  if not (win and vim.api.nvim_win_is_valid(win)) then
+    win = diff_wins()[1]
+  end
+  if win then
+    vim.api.nvim_win_call(win, function()
+      vim.cmd("normal! " .. (dir > 0 and "\4" or "\21"))
+    end)
+  end
 end
 
 local function setup_panel_keys(buf)
@@ -437,15 +775,23 @@ local function setup_panel_keys(buf)
   map("<Up>", function()
     move(-1)
   end, "Previous changed file")
-  map("<CR>", function()
-    show(true)
-  end, "Open diff")
-  map("o", function()
-    show(true)
-  end, "Open diff")
+  -- <Space> would be the natural "select" key but it is leader, and taking it
+  -- over buffer-locally would silently break every <leader> binding while the
+  -- panel is focused. l / <Right> are the next-nearest reach.
+  for _, lhs in ipairs({ "<CR>", "o", "l", "<Right>" }) do
+    map(lhs, function()
+      show(true)
+    end, "Open diff")
+  end
   map("<Tab>", function()
     show(true)
   end, "Focus diff")
+  map("J", function()
+    scroll_diff(1)
+  end, "Scroll diff down")
+  map("K", function()
+    scroll_diff(-1)
+  end, "Scroll diff up")
   map("R", function()
     M.refresh()
   end, "Refresh")
@@ -506,13 +852,145 @@ local function ensure_tab()
   state.previews = state.previews or {}
 
   setup_panel_keys(buf)
+  -- Render on any cursor motion in the panel — a mouse click, a search, `G` —
+  -- not just the mapped keys. j/k stay mapped so they can step over directory
+  -- rows; this catches everything else.
+  vim.api.nvim_create_autocmd("CursorMoved", {
+    buffer = buf,
+    callback = function()
+      if valid() and vim.api.nvim_get_current_win() == state.panel_win then
+        schedule_show()
+      end
+    end,
+  })
+  -- The preview buffers must be cleaned up however the view dies — `q` is one
+  -- way, but so are :tabclose, :q on its last window, a session switch. When
+  -- the diff tab is gone and close() has not run, run it now; otherwise every
+  -- file ever scrubbed past stays loaded in the session.
+  vim.api.nvim_create_autocmd("TabClosed", {
+    group = vim.api.nvim_create_augroup("vcs_ui_lifecycle", { clear = true }),
+    callback = function()
+      -- Scheduled so close()'s own tabclose does not re-enter it mid-run.
+      vim.schedule(function()
+        if state and not vim.api.nvim_tabpage_is_valid(state.tab) then
+          M.close()
+        end
+      end)
+    end,
+  })
+end
+
+--------------------------------------------------------------------------
+-- background revalidation
+--------------------------------------------------------------------------
+
+local function same_listing(a, b)
+  if #a ~= #b then
+    return false
+  end
+  for i = 1, #a do
+    -- rev too: a p4 sync moves a file's haveRev without changing the set of
+    -- opened files, and that must read as "the world moved".
+    if a[i].path ~= b[i].path or a[i].status ~= b[i].status or a[i].orig ~= b[i].orig or a[i].rev ~= b[i].rev then
+      return false
+    end
+  end
+  return true
+end
+
+---Re-ask the backend for the listing in the background and reconcile: the
+---cached paint stays up and interactive the whole time, and the panel only
+---redraws when something actually changed.
+local function refresh_listing()
+  if not valid() then
+    return
+  end
+  refresh_gen = refresh_gen + 1
+  local gen = refresh_gen
+  local backend, root, scope = state.backend, state.root, state.scope
+  local key = listing_key(root, scope)
+  refresh_inflight[key] = gen
+  state.refreshing = true
+  render_panel()
+
+  vcs.async(function()
+    local ok, err = pcall(function()
+      local rev = backend.rev(root, scope)
+      local files = rev and backend.changed(root, rev) or nil
+      -- A newer revalidation of this same listing owns the truth now. The
+      -- view merely having closed is not that: its result is still worth
+      -- keeping, since the warmed cache is what makes the next open instant.
+      if refresh_inflight[key] ~= gen then
+        return
+      end
+      refresh_inflight[key] = nil
+      local fresh = false
+      if files then
+        table.sort(files, function(a, b)
+          return a.path < b.path
+        end)
+        local prev = listing_cache[key]
+        fresh = not (prev and rev == prev.rev and same_listing(files, prev.files))
+        if fresh then
+          -- The world moved; bases fetched against the old listing cannot be
+          -- trusted (a commit or a sync changes what a revision string means).
+          drop_bases(root)
+        end
+        listing_cache[key] = { rev = rev, files = files }
+      end
+      if gen ~= refresh_gen or not valid() or state.root ~= root or state.scope ~= scope then
+        return
+      end
+      state.refreshing = nil
+      if not files or not fresh then
+        render_panel() -- just drops the refreshing marker
+        return
+      end
+
+      local selected = current_file()
+      state.rev, state.files = rev, files
+      state.rows = build_rows(files)
+      render_panel()
+
+      -- Keep the cursor on the file it was on; if that file left the listing,
+      -- fall back to the first one.
+      local lnum
+      if selected then
+        for i, row in ipairs(state.rows) do
+          if row.kind == "file" and row.file.path == selected.path then
+            lnum = state.first_line + i - 1
+            break
+          end
+        end
+      end
+      pcall(vim.api.nvim_win_set_cursor, state.panel_win, { lnum or first_file_lnum(), 0 })
+      -- Redraw the diff for the (possibly moved) selection, but never yank
+      -- focus away from wherever the user is working.
+      if vim.api.nvim_get_current_win() == state.panel_win then
+        show(false, { async = true })
+      end
+      prefetch_bases()
+    end)
+    if not ok then
+      -- The marker must not survive the refresh that owned it dying.
+      if state and state.refreshing and gen == refresh_gen then
+        state.refreshing = nil
+        if valid() then
+          pcall(render_panel)
+        end
+      end
+      vim.notify("vcs refresh: " .. tostring(err), vim.log.levels.ERROR)
+    end
+  end)
 end
 
 --------------------------------------------------------------------------
 -- public API
 --------------------------------------------------------------------------
 
----Open the changed-files view.
+---Open the changed-files view. With a listing cached for this repository and
+---scope the view paints from it instantly and revalidates in the background;
+---the first visit fetches synchronously and pays the cost once.
 ---@param opts? { scope?: string, rev?: string }
 function M.open(opts)
   opts = opts or {}
@@ -522,34 +1000,74 @@ function M.open(opts)
   end
 
   local scope = opts.scope or (state and state.scope) or "working"
-  local rev = opts.rev or backend.rev(root, scope)
+  -- An explicitly given base revision is an ad-hoc question; it bypasses the
+  -- caches rather than polluting them.
+  local cached = not opts.rev and listing_cache[listing_key(root, scope)] or nil
+
+  local rev = opts.rev or (cached and cached.rev)
   if not rev then
-    vim.notify(("Could not resolve a base revision for %s"):format(backend.name), vim.log.levels.WARN)
-    return
+    rev = backend.rev(root, scope)
+    if not rev then
+      vim.notify(("Could not resolve a base revision for %s"):format(backend.name), vim.log.levels.WARN)
+      return
+    end
   end
 
   cancel_scrub()
   ensure_tab()
   state.backend, state.root, state.scope, state.rev = backend, root, scope, rev
-  state.base_cache = {}
-  state.files = backend.changed(root, rev)
-  table.sort(state.files, function(a, b)
-    return a.path < b.path
-  end)
+  state.refreshing = nil
+  if cached then
+    state.files = cached.files
+  else
+    state.files = backend.changed(root, rev)
+    table.sort(state.files, function(a, b)
+      return a.path < b.path
+    end)
+    if not opts.rev then
+      listing_cache[listing_key(root, scope)] = { rev = rev, files = state.files }
+    end
+  end
+  state.rows = build_rows(state.files)
 
   render_panel()
-  vim.api.nvim_win_set_cursor(state.panel_win, { state.first_line, 0 })
+  vim.api.nvim_win_set_cursor(state.panel_win, { first_file_lnum(), 0 })
   show(false)
+  if cached then
+    refresh_listing()
+  end
+  prefetch_bases()
+end
+
+---True while background work is in flight — a listing revalidation, a base
+---prefetch, an async render. The tests settle on this; nothing else should
+---need it.
+function M.busy()
+  return (state ~= nil and state.refreshing == true) or prefetch_busy or render_busy > 0
 end
 
 function M.refresh()
-  if valid() then
-    M.open({ scope = state.scope })
+  if not valid() then
+    return
   end
+  -- An explicit refresh distrusts everything remembered about this repository:
+  -- a p4 sync or a rebase can change base content without changing the listing.
+  refresh_gen = refresh_gen + 1
+  -- An in-flight revalidation predates the distrust; its result must not
+  -- overwrite the fresh listing fetched below.
+  refresh_inflight[listing_key(state.root, state.scope)] = nil
+  listing_cache[listing_key(state.root, state.scope)] = nil
+  drop_bases(state.root)
+  M.open({ scope = state.scope })
 end
 
 function M.close()
   cancel_scrub()
+  -- Orphan the in-flight render and revalidation; a running prefetch is left
+  -- to finish quietly, since the cache it warms is what makes the next open
+  -- instant.
+  refresh_gen = refresh_gen + 1
+  render_gen = render_gen + 1
   local previews = state and state.previews or {}
   if state and state.inline_buf then
     inline_diff.detach(state.inline_buf)
@@ -606,7 +1124,13 @@ function M.toggle_inline()
   if valid() then
     state.inline = not state.inline
     remembered_inline = state.inline
-    show(false)
+    -- On a directory or header row show() would keep the previous rendering;
+    -- redraw that file explicitly so the toggle is never silently deferred.
+    if current_file() or #state.files == 0 then
+      show(false)
+    elseif state.shown then
+      render_file(state.shown, false)
+    end
     return
   end
   -- Outside the diff tab this is still the natural "show me the other layout"
@@ -629,6 +1153,51 @@ function M.switch_side()
     end
   end
   return true
+end
+
+---Which change is the cursor on in a native diff: hunk index and total,
+---computed by diffing the two visible sides. Index 0 means the cursor sits
+---above the first change. Nil when the current window is not half of a diff.
+---@return integer|nil index, integer|nil total
+function M.change_position()
+  if not vim.wo.diff then
+    return nil
+  end
+  local cur = vim.api.nvim_get_current_win()
+  local other
+  for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if w ~= cur and vim.wo[w].diff then
+      other = w
+      break
+    end
+  end
+  if not other then
+    return nil
+  end
+  local function text(win)
+    local lines = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, -1, false)
+    return table.concat(lines, "\n") .. "\n"
+  end
+  -- Match the settings native diff mode is using, or the count disagrees with
+  -- where ]c actually stops.
+  local hunks = vim.diff(text(other), text(cur), {
+    result_type = "indices",
+    algorithm = vim.o.diffopt:match("algorithm:(%w+)") or "myers",
+    indent_heuristic = vim.o.diffopt:find("indent%-heuristic") ~= nil,
+  }) or {}
+  local row = vim.api.nvim_win_get_cursor(0)[1]
+  local line_count = vim.api.nvim_buf_line_count(0)
+  local index = 0
+  for i, h in ipairs(hunks) do
+    local start_b, count_b = h[3], h[4]
+    -- A pure deletion occupies no lines here; it reads as sitting on the line
+    -- its filler is drawn above, same as the inline overlay's anchor.
+    local anchor = count_b > 0 and start_b or math.max(math.min(start_b + 1, line_count), 1)
+    if anchor <= row then
+      index = i
+    end
+  end
+  return index, #hunks
 end
 
 ---From a diff, jump to the real file on disk in the tab you came from.

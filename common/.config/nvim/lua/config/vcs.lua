@@ -123,6 +123,18 @@ local function next_change(dir)
     if ok then
       gs.nav_hunk(dir > 0 and "next" or "prev")
     end
+    return
+  end
+  -- Say where that landed — "Change 2 of 5" — the way the VS Code diff editor
+  -- numbers its changes, so a walk through a big file keeps its bearings.
+  local index, total
+  if vim.wo.diff then
+    index, total = ui.change_position()
+  elseif inline.has(0) then
+    index, total = inline.hunk_position(0)
+  end
+  if total and total > 0 then
+    vim.api.nvim_echo({ { ("Change %d of %d"):format(index, total), "None" } }, false, {})
   end
 end
 

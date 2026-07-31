@@ -24,6 +24,7 @@ local M = {}
 ---@field path string  repo-relative path
 ---@field status string  one of M A D R ? C
 ---@field orig string|nil  pre-rename path, when status is R
+---@field rev string|nil  per-file base revision, when the backend tracks one (p4's haveRev)
 
 ---@class VcsBackend
 ---@field name string
@@ -39,14 +40,42 @@ local M = {}
 -- helpers
 --------------------------------------------------------------------------
 
+---Coroutines created by M.async. Inside one of these, sh() suspends while its
+---subprocess runs instead of blocking the editor.
+local async_threads = setmetatable({}, { __mode = "k" })
+
+local function resume(co, ...)
+  local ok, err = coroutine.resume(co, ...)
+  if not ok then
+    vim.notify("vcs: " .. tostring(err), vim.log.levels.ERROR)
+  end
+end
+
 ---Run a command and return the completed vim.system result, or nil if the
 ---binary is missing entirely. Callers check `.code` themselves; a non-zero exit
 ---is normal (e.g. `git show` on a path that did not exist at that revision).
+---
+---Blocking by default. Inside an M.async coroutine the same call yields while
+---the subprocess runs, so every backend works asynchronously without a second
+---callback-shaped implementation of itself.
 ---@param cmd string[]
 ---@param cwd string|nil
 local function sh(cmd, cwd)
   if vim.fn.executable(cmd[1]) ~= 1 then
     return nil
+  end
+  local co = coroutine.running()
+  if co and async_threads[co] then
+    local ok = pcall(vim.system, cmd, { cwd = cwd, text = true }, function(res)
+      -- on_exit arrives off the main loop; API calls are only legal back on it.
+      vim.schedule(function()
+        resume(co, res)
+      end)
+    end)
+    if not ok then
+      return nil
+    end
+    return coroutine.yield()
   end
   local ok, res = pcall(function()
     return vim.system(cmd, { cwd = cwd, text = true }):wait()
@@ -55,6 +84,17 @@ local function sh(cmd, cwd)
     return nil
   end
   return res
+end
+
+---Run `fn` on a coroutine where every backend call yields to the event loop
+---while its subprocess runs, instead of freezing the UI. `fn` still executes on
+---the main thread between calls and may use the API freely; it just has to
+---tolerate the world having changed across any backend call.
+---@param fn fun()
+function M.async(fn)
+  local co = coroutine.create(fn)
+  async_threads[co] = true
+  resume(co)
 end
 
 ---Split command output into lines, dropping the trailing blank that every
@@ -141,11 +181,13 @@ function git.rev(root, scope)
     -- No trunk to fork from (a fresh repo, or trunk *is* the branch) still has
     -- a sensible answer: everything since the first commit is not useful, so
     -- fall back to HEAD and let it read as "uncommitted".
-    return git_fork_point(root) or "HEAD"
-  elseif scope == "head" then
-    return "HEAD~1"
+    return git_fork_point(root) or one(sh({ "git", "rev-parse", "--verify", "--quiet", "HEAD" }, root)) or "HEAD"
   end
-  return "HEAD"
+  local ref = scope == "head" and "HEAD~1" or "HEAD"
+  -- Resolved to the hash, not left symbolic: cached base content is keyed by
+  -- this string, and "HEAD" would keep meaning the old content after a
+  -- commit, amend or rebase moved it.
+  return one(sh({ "git", "rev-parse", "--verify", "--quiet", ref }, root)) or ref
 end
 
 function git.changed(root, rev)
@@ -250,20 +292,23 @@ function jj.root(dir)
 end
 
 function jj.rev(root, scope)
+  local ref
   if scope == "branch" then
     -- The newest ancestor of @ that is also on trunk. With no remote bookmarks
     -- configured, trunk() degrades to the root commit, and diffing against the
     -- root reports the entire repository as added — so treat the all-zeros id
     -- as "no trunk here" and fall back to the parent commit.
     local base = one(sh(jj_read("log", "--no-graph", "-r", "latest(::@ & trunk())", "-T", "commit_id"), root))
-    if not base or base:match("^0+$") then
-      return "@-"
+    if base and not base:match("^0+$") then
+      return base
     end
-    return base
-  elseif scope == "head" then
-    return "@--"
+    ref = "@-"
+  else
+    ref = scope == "head" and "@--" or "@-"
   end
-  return "@-"
+  -- Resolved to the commit id for the same reason git resolves "HEAD": cached
+  -- base content keyed by "@-" would survive the parent commit moving.
+  return one(sh(jj_read("log", "--no-graph", "-r", ref, "-T", "commit_id"), root)) or ref
 end
 
 function jj.changed(root, rev)
@@ -417,7 +462,10 @@ local function perforce(bin)
         end
         local action = rec.action or "edit"
         local status = ({ edit = "M", add = "A", delete = "D", integrate = "M", branch = "A", move_add = "R" })[action]
-        table.insert(out, { path = rel, status = status or "M", depot = rec.depotFile })
+        -- The synced revision per file: "#have" as a base-cache key would keep
+        -- meaning the old content after a sync, "#12" cannot.
+        local rev = rec.haveRev and rec.haveRev ~= "none" and ("#" .. rec.haveRev) or nil
+        table.insert(out, { path = rel, status = status or "M", depot = rec.depotFile, rev = rev })
       end
     end
     return out
@@ -470,8 +518,10 @@ function hg.root(dir)
   return one(sh({ "hg", "root" }, dir))
 end
 
-function hg.rev(_, scope)
-  return scope == "head" and ".^" or "."
+function hg.rev(root, scope)
+  local ref = scope == "head" and ".^" or "."
+  -- Resolved to the node for the same reason git resolves "HEAD".
+  return one(sh({ "hg", "log", "-r", ref, "--template", "{node}" }, root)) or ref
 end
 
 function hg.changed(root, rev)
