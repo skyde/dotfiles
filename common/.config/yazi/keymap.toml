@@ -75,7 +75,8 @@ desc = "Change name keeping extension"
 
 [[mgr.prepend_keymap]]
 on = ["<Space>"]
-run = "plugin fzf"
+run = "plugin fzf-preview"
+desc = "Search files with fzf, previewing as you type"
 
 [[mgr.prepend_keymap]]
 on = [ "f", "l" ]
