@@ -119,7 +119,10 @@
     # Hunk headers. No decoration at all: with file+line-number in the header
     # text itself, the blue single line after a blank row separates fine, and
     # the old box+ul spent three extra rows on every hunk.
-    hunk-header-style = file line-number syntax
+    # No `syntax` in the style: it appends git's function context — code from
+    # lines *above* the hunk — right after "file:42:", which reads as a line of
+    # code wearing the wrong line number now that no box sets the header apart.
+    hunk-header-style = file line-number
     hunk-header-file-style = "#7aa2f7"
     hunk-header-line-number-style = "bold #7aa2f7"
     hunk-header-decoration-style = omit
