@@ -53,17 +53,41 @@
 -- screen. That is what makes J/K work on a file that is only a few lines long
 -- but wraps into a tall block — counting source lines would let a single
 -- 2000-character line swallow the whole pane with nothing left to scroll.
+--
+-- Large files: two things used to make the first hover of a big file slow.
+-- A single-line monster (minified JS, one-line JSON) forces bat to read and
+-- highlight the *whole* line before it can emit the first wrapped row, so the
+-- pane stayed blank for as long as that took. And the first fetch asked for
+-- the full LOOKAHEAD depth up front, which on syntaxes with expensive
+-- grammars (bat's Log, notably) meant highlighting ~10 screens of text
+-- before the first one could paint. So: files bigger than a computed cap are
+-- piped through `head -c` so bat never sees more bytes than the requested
+-- rows could possibly display, and the first fetch of a file only asks for
+-- two screens — the deep lookahead happens on the refetch that scrolling
+-- triggers, when the pane is already painted and nobody is staring at a
+-- blank column.
 
 local M = {}
 
--- Cached previews, one per file+width. Entries are small (a table of strings
--- capped by how far the preview was scrolled), so keep a handful around: LRU
--- eviction when a new file pushes the table past this.
-local ENTRIES_MAX = 8
+-- Cached previews, one per file+width. An entry tops out around the fetched
+-- row count times the pane width (tens of KB), so a couple dozen of them is
+-- still nothing: LRU eviction when a new file pushes the table past this.
+local ENTRIES_MAX = 24
 
 -- Rows fetched beyond what the pane needs right now, so scrolling a page or
--- three lands in cache instead of paying another bat run per J.
+-- three lands in cache instead of paying another bat run per J. Only applied
+-- from the second fetch of a file onwards — the first fetch stays small so
+-- the first paint is fast (see the "Large files" note above).
 local LOOKAHEAD = 400
+
+-- Byte budget for how much of a file bat may read, as a multiple of the
+-- cells the requested rows can display. One screen cell is at most one
+-- source byte for ASCII; multi-byte UTF-8 buys *fewer* cells per byte, but
+-- 4-byte emoji still cover 2 cells, so 4 bytes per cell over-provisions for
+-- every real encoding. The floor keeps the cap from being silly-small on
+-- tiny panes.
+local CAP_BYTES_PER_CELL = 4
+local CAP_MIN = 256 * 1024
 
 -- A fetch that has produced nothing for this long is presumed lost (the async
 -- task errored, or its result was dropped); the next peek queues a fresh one.
@@ -189,13 +213,36 @@ function M:peek(job)
 	local entry = entry_for(job, w)
 	local need = job.skip + h
 
-	local stale = entry.fetching and ya.time() - (entry.started or 0) > FETCH_TIMEOUT
-	if not entry.eof and #entry.rows < need and (not entry.fetching or entry.want < need or stale) then
+	local function queue(want)
 		entry.fetching = true
 		entry.started = ya.time()
-		entry.want = need + LOOKAHEAD
-		pending[#pending + 1] = { id = entry.id, url = entry.url, w = w, want = entry.want, tabs = tab_width() }
+		entry.want = want
+		pending[#pending + 1] = {
+			id = entry.id,
+			url = entry.url,
+			w = w,
+			want = want,
+			tabs = tab_width(),
+			len = cha.len or math.huge,
+			cap = math.max(CAP_MIN, want * w * CAP_BYTES_PER_CELL),
+		}
 		emit("plugin", { "bat-preview" })
+	end
+
+	local stale = entry.fetching and ya.time() - (entry.started or 0) > FETCH_TIMEOUT
+	if not entry.eof and #entry.rows < need and (not entry.fetching or entry.want < need or stale) then
+		-- Rows the pane needs right now are missing. The first fetch of a
+		-- file asks for just the pane plus one screen, so the first paint is
+		-- as fast as bat can possibly be; catch-up fetches after a scroll
+		-- outran the cache grab the deep lookahead.
+		queue(need + (#entry.rows == 0 and h or LOOKAHEAD))
+	elseif not entry.eof and (not entry.fetching or stale) and #entry.rows - need < 2 * h and entry.want < need + LOOKAHEAD then
+		-- The pane is painted but the cached runway past it has dropped below
+		-- two screens: deepen the cache in the background now, so a held-down
+		-- J reaches already-fetched rows instead of running off the end of
+		-- the cache and blanking the pane. This is also what tops the fresh
+		-- two-screen fetch up to the full lookahead right after first paint.
+		queue(need + LOOKAHEAD)
 	end
 
 	local rows = entry.rows
@@ -275,56 +322,111 @@ local function spawn_bat(req)
 	return child
 end
 
+-- For files bigger than the byte cap, don't let bat read the whole thing:
+-- a one-line 20MB JSON forces bat to slurp and highlight all 20MB before it
+-- can emit the first wrapped row. `head -c` bounds that to what the
+-- requested rows could actually display. Piping through `sh` also solves
+-- the plumbing: head feeds bat while we drain bat's stdout, so no pipe can
+-- fill up and deadlock. The url rides in as "$1" rather than being spliced
+-- into the script, so no filename can break out of the quoting.
+local function spawn_bat_capped(req)
+	local script = string.format(
+		'head -c %d -- "$1" | bat --color=always --style=plain --paging=never'
+			.. ' --wrap=character --tabs=%d --terminal-width=%d --file-name="$1"',
+		req.cap,
+		req.tabs,
+		req.w
+	)
+	local cmd = Command("sh")
+	pcall(function()
+		cmd = cmd:env("COLORTERM", "truecolor")
+	end)
+	local child, _ = cmd
+		:arg("-c")
+		:arg(script)
+		:arg("sh")
+		:arg(req.url)
+		:stdin(Command.NULL)
+		:stdout(Command.PIPED)
+		:stderr(Command.NULL)
+		:spawn()
+	return child
+end
+
 -- Read up to `want` rows, then stop bat rather than letting it highlight the
 -- rest of a file nobody scrolled to. eof=false says "there were more rows" —
 -- the sync side uses that to queue a deeper fetch when scrolling catches up.
 local function bat_rows(req)
-	local child = spawn_bat(req)
+	local capped = req.len > req.cap
+	local child = capped and spawn_bat_capped(req) or spawn_bat(req)
+	if not child and capped then
+		-- No usable `sh`: an uncapped preview beats none, and bat still gets
+		-- killed once `want` rows have arrived.
+		capped = false
+		child = spawn_bat(req)
+	end
 	if not child then
 		return nil
 	end
 
-	local rows, eof = {}, false
+	local rows, ended = {}, false
 	while #rows < req.want do
 		local line, event = child:read_line()
 		if event == 0 then
 			rows[#rows + 1] = printable((line:gsub("[\r\n]+$", "")))
 		elseif event ~= 1 then
-			eof = true
+			ended = true
 			break
 		end
 	end
 	child:start_kill()
-	return rows, eof
+
+	-- Nothing at all out of bat is a failure (binary it refused, unreadable
+	-- file): let the caller fall back to the plain-text path.
+	if ended and #rows == 0 then
+		return nil
+	end
+	-- The stream ending is only the end of the *file* when bat saw all of
+	-- it; behind the cap it just means the head-sized window ran out.
+	return rows, ended and not capped
 end
 
 -- Plain-text fallback used when bat is unavailable or produces nothing
 -- (unreadable file, binary it refuses, ...). Wraps by hand, which is safe
--- here precisely because there are no escape sequences to split.
+-- here precisely because there are no escape sequences to split. Reads at
+-- most `cap` bytes in one gulp — iterating with f:lines() would slurp a
+-- single-line monster into memory whole, the exact thing the cap exists to
+-- prevent.
 local function plain_rows(req)
-	local f = io.open(req.url, "r")
+	local f = io.open(req.url, "rb")
 	if not f then
+		return { "Cannot read file" }, true
+	end
+	local data = f:read(req.cap)
+	local truncated = data ~= nil and #data == req.cap and f:read(1) ~= nil
+	f:close()
+	if not data then
 		return { "Cannot read file" }, true
 	end
 
 	local indent = string.rep(" ", req.tabs)
-	local rows = {}
-	for line in f:lines() do
+	local rows, pos = {}, 1
+	while pos <= #data and #rows < req.want do
+		local nl = data:find("\n", pos, true)
+		local line = data:sub(pos, (nl or #data + 1) - 1)
+		pos = (nl or #data) + 1
 		-- No bat here to expand tabs for us, and a raw one would scramble the
 		-- row exactly as it would in the bat path.
-		line = printable((line:gsub("\t", indent)))
+		line = printable((line:gsub("\r$", ""):gsub("\t", indent)))
 		-- Expand one source line into as many screen rows as it occupies.
 		repeat
 			rows[#rows + 1] = line:sub(1, req.w)
 			line = line:sub(req.w + 1)
 		until line == "" or #rows >= req.want
-		if #rows >= req.want then
-			f:close()
-			return rows, false
-		end
 	end
-	f:close()
-	return rows, true
+	-- Only a real end-of-file if the whole file fit in the cap *and* the
+	-- rows above consumed all of it.
+	return rows, not truncated and pos > #data
 end
 
 -- Invoked as `plugin bat-preview` (no args) from the sync side. Requests
@@ -333,7 +435,7 @@ end
 function M:entry(_)
 	for _, req in ipairs(take_pending()) do
 		local rows, eof = bat_rows(req)
-		if not rows or (eof and #rows == 0) then
+		if not rows then
 			rows, eof = plain_rows(req)
 		end
 		put_rows(req.id, rows, eof)
