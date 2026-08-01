@@ -53,5 +53,5 @@
   "vim-be-good": { "branch": "master", "commit": "0ae3de14eb8efc6effe7704b5e46495e91931cc5" },
   "vim-startuptime": { "branch": "master", "commit": "5f33e50f1e2e2a80370c9094e4c303ea54cd2aea" },
   "which-key.nvim": { "branch": "main", "commit": "3aab2147e74890957785941f0c1ad87d0a44c15a" },
-  "yazi.nvim": { "branch": "main", "commit": "e63edf5c90aaed0b6b13320958c5302f97a6cc95" }
+  "yazi.nvim": { "branch": "main", "commit": "fb72059eec58cffae9fcfc0105c71d5fbe69a214" }
 }
