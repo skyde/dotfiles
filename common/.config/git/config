@@ -17,7 +17,13 @@
 # --- Diff behavior ---
 [diff]
     context = 10
-    colorMoved = no
+    # Paint relocated code as "moved" instead of add/remove green/red, so the
+    # eye stays on the real changes. Git marks the moved lines with its own
+    # colours; delta recognises those and restyles them via map-styles below.
+    # Note git only calls a block moved from ~20 alphanumeric chars up — a
+    # shuffled one-liner still shows as plain add/remove, by design.
+    colorMoved = default
+    colorMovedWS = allow-indentation-change
     algorithm = histogram
     # Neovim is the default now; `git difftool -g` still reaches VS Code.
     tool = nvim
@@ -76,11 +82,14 @@
     trustExitCode = false
 
 # --- Delta styling ---
-# Everything lives in this one [delta] section on purpose. Delta 0.18 silently
-# drops several options when they come from a named feature — commit-style,
-# file-style and all the *-decoration-style keys are read only from here — so a
-# [delta "tokyonight"] feature left the diff headers un-themed while the diff
-# body was themed. Keep colours here; features are fine for behaviour toggles.
+# Everything lives in this one [delta] section on purpose. On delta 0.18 named
+# [delta "..."] features are effectively dead: beyond the long-known dropping
+# of commit-style / file-style / *-decoration-style, neither DELTA_FEATURES nor
+# --features applies a feature section from git config at all (verified with a
+# probe feature that changed nothing). For an occasional toggle use a `git -c
+# delta.<option>=<value>` alias instead — git exports -c to the pager through
+# GIT_CONFIG_PARAMETERS, which delta reads like any other git config. See the
+# `sbs` alias at the bottom for the side-by-side example.
 # Palette reference: docs/tokyonight.md
 [delta]
     # Syntax highlighting stays Visual Studio Dark+ on purpose, matching bat and
@@ -125,6 +134,13 @@
     zero-style = syntax
     whitespace-error-style = "#db4b4b reverse"
 
+    # Moved code (diff.colorMoved above). Git paints moved-out lines bold
+    # magenta/blue and moved-in lines bold cyan/yellow; remap those onto quiet
+    # Tokyo Night-tinted backgrounds — violet/indigo for "left from here",
+    # cyan/teal for "landed here" — keeping the syntax-highlighted foreground.
+    # Moves then sit visually between unchanged code and real add/remove.
+    map-styles = "bold purple => syntax #2e2547, bold blue => syntax #203356, bold cyan => syntax #12384a, bold yellow => syntax #15423d"
+
     # Line numbers
     line-numbers-left-style = "#545c7e"
     line-numbers-right-style = "#545c7e"
@@ -149,17 +165,13 @@
     merge-conflict-theirs-diff-header-style = "#e0af68 bold"
     merge-conflict-theirs-diff-header-decoration-style = "#292e42 box"
 
-    # `delta --grep` / rg integration
+    # `delta --grep` / rg integration. Matches are inverted yellow blocks for
+    # the same reason as fzf's hl/hl+ (see theme.sh): a recoloured foreground
+    # drowns in already-syntax-coloured lines; reverse video cannot.
     grep-file-style = "#7aa2f7"
     grep-line-number-style = "#545c7e"
-
-# Optional named feature for an occasional side-by-side diff.
-# The DELTA_FEATURES env var does not activate it on delta 0.18 (neither
-# "side-by-side" nor "+side-by-side"); the --features flag does:
-#     git diff | delta --features side-by-side
-[delta "side-by-side"]
-    side-by-side = true
-    line-numbers = true
+    grep-match-line-style = syntax
+    grep-match-word-style = "#e0af68 bold reverse"
 
 [index]
     threads = 10
@@ -190,3 +202,9 @@
 
 [alias]
 	dft = -c diff.external=difft diff
+	# Occasional side-by-side diff. A [delta "side-by-side"] feature cannot do
+	# this on delta 0.18 (see the note above the [delta] section); `git -c` can,
+	# because git hands the setting to the pager via GIT_CONFIG_PARAMETERS. The
+	# left line-number column comes back for the occasion: the left panel is the
+	# old file, and the global "" format would leave it unnumbered.
+	sbs = -c delta.side-by-side=true -c "delta.line-numbers-left-format={nm:>4} " diff

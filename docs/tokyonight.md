@@ -151,8 +151,15 @@ Delta's colours must sit in the plain `[delta]` section, **not** in a named
 `[delta "..."]` feature. As of delta 0.18, `commit-style`, `file-style` and
 every `*-decoration-style` key is read only from the plain section; setting them
 in a feature is silently ignored, which leaves diff headers un-themed while the
-diff body looks correct. Named features are still fine for behaviour toggles
-(`side-by-side`, `line-numbers`).
+diff body looks correct.
+
+It is worse than that, though: on delta 0.18 a feature section in git config is
+not applied **at all** — not via `DELTA_FEATURES`, and not via `--features`
+either (verified with a probe feature whose format change never rendered). The
+working escape hatch for an occasional toggle is a `git -c delta.<option>=<value>`
+alias: git exports `-c` settings to its pager through `GIT_CONFIG_PARAMETERS`,
+and delta reads that like any other git config. That is how the `sbs`
+side-by-side alias in `common/.config/git/config` works.
 
 ### Local deviation: the cursor
 
