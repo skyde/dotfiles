@@ -393,12 +393,22 @@ end
 ---actually edited, at which point it earns its place.
 local function edit_preview(full)
   local existing = vim.fn.bufnr(full)
-  local fresh = existing == -1 or vim.fn.buflisted(existing) == 0
+  if existing ~= -1 and vim.api.nvim_buf_is_loaded(existing) then
+    -- Reuse the loaded buffer rather than `:edit`-ing it again: a re-edit
+    -- forces a reload, which fails on a buffer carrying unsaved edits and
+    -- re-lists a preview this view had deliberately unlisted.
+    vim.api.nvim_set_current_buf(existing)
+    -- An unmodified preview still picks up external changes to the file.
+    pcall(vim.cmd, "silent checktime " .. existing)
+    return
+  end
   vim.cmd("edit " .. vim.fn.fnameescape(full))
   local buf = vim.api.nvim_get_current_buf()
-  if fresh and not state.previews[buf] then
+  -- A brand-new buffer starts listed; a preview earns its place in the list
+  -- only when it is actually edited.
+  vim.bo[buf].buflisted = false
+  if not state.previews[buf] then
     state.previews[buf] = true
-    vim.bo[buf].buflisted = false
     vim.api.nvim_create_autocmd("BufModifiedSet", {
       buffer = buf,
       callback = function()
@@ -569,6 +579,13 @@ local function show(focus, opts)
     if focus and state.diff_win and vim.api.nvim_win_is_valid(state.diff_win) then
       vim.api.nvim_set_current_win(state.diff_win)
     end
+    return
+  end
+
+  -- <CR> on the selection already on screen has nothing to redraw; just move
+  -- into it. (The scrub debounce makes the same skip for non-focus renders.)
+  if focus and file and file == state.shown and state.diff_win and vim.api.nvim_win_is_valid(state.diff_win) then
+    vim.api.nvim_set_current_win(state.diff_win)
     return
   end
 
@@ -1184,6 +1201,7 @@ function M.change_position()
     result_type = "indices",
     algorithm = vim.o.diffopt:match("algorithm:(%w+)") or "myers",
     indent_heuristic = vim.o.diffopt:find("indent%-heuristic") ~= nil,
+    linematch = tonumber(vim.o.diffopt:match("linematch:(%d+)")),
   }) or {}
   local row = vim.api.nvim_win_get_cursor(0)[1]
   local line_count = vim.api.nvim_buf_line_count(0)

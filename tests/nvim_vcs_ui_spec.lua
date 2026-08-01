@@ -628,7 +628,18 @@ do
   feed("\r")
   eq("preview: focus lands on the working copy", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
   eq("preview: the diff opens at the first change", 2, vim.api.nvim_win_get_cursor(0)[1])
+  -- Entering a file is not editing it: `:edit` re-lists a buffer, and the
+  -- view has to undo that or every file ever focused stays open after close.
+  eq("preview: focusing alone does not re-list the buffer", 0, vim.fn.buflisted(vim.api.nvim_get_current_buf()))
+  vim.api.nvim_set_current_win(layout()[1])
+  scrub("j")
+  scrub("k")
+  feed("\r")
+  eq("preview: refocusing after a scrub away does not re-list either", 0, vim.fn.buflisted(vim.api.nvim_get_current_buf()))
   vim.cmd("normal! Ox")
+  -- BufModifiedSet is dispatched from the interactive main loop, which a
+  -- headless -l script never runs; fire it the way the main loop would.
+  vim.cmd("doautocmd BufModifiedSet")
   eq("preview: editing re-lists the buffer", 1, vim.fn.buflisted(vim.api.nvim_get_current_buf()))
   vim.cmd("silent! undo")
 
@@ -790,6 +801,64 @@ do
 end
 
 --------------------------------------------------------------------------
+-- tree view: paths that stress the rendering
+--------------------------------------------------------------------------
+
+do
+  write(root .. "/dir with space/üñïcode.txt", "x\n")
+  open_settled({ scope = "working" })
+  ui.close()
+  open_settled({ scope = "working" })
+
+  local lines = panel_lines()
+  check(
+    "tree: a directory with a space renders",
+    vim.tbl_contains(lines, "    dir with space/"),
+    vim.inspect(lines)
+  )
+  check("tree: a unicode filename renders whole", vim.tbl_contains(lines, " ?    üñïcode.txt"), vim.inspect(lines))
+
+  -- Selecting it opens the right file.
+  local row
+  for i, l in ipairs(lines) do
+    if l:find("üñïcode", 1, true) then
+      row = i
+    end
+  end
+  vim.api.nvim_win_set_cursor(layout()[1], { row, 0 })
+  feed("\r")
+  eq("tree: selecting the unicode path opens it", root .. "/dir with space/üñïcode.txt", vim.api.nvim_buf_get_name(0))
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- toggling the rendering while parked on a directory row
+--------------------------------------------------------------------------
+
+do
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  local dir_row
+  for i, l in ipairs(panel_lines()) do
+    if l:find("/%s*$") and not l:find("·") then
+      dir_row = i
+      break
+    end
+  end
+  check("toggle: found a directory row", dir_row ~= nil, vim.inspect(panel_lines()))
+  vim.api.nvim_win_set_cursor(panel, { dir_row, 0 })
+  scrub("")
+  eq("toggle: side-by-side before", 3, #layout())
+  feed("i")
+  -- The toggle must re-render immediately even though the cursor is not on a
+  -- file; deferring it until the next selection would read as a dead key.
+  eq("toggle: i on a directory row re-renders inline at once", 2, #layout())
+  feed("i")
+  eq("toggle: and back to side-by-side", 3, #layout())
+  ui.close()
+end
+
+--------------------------------------------------------------------------
 -- caching: reopening paints from the cache, then revalidates in the background
 --------------------------------------------------------------------------
 
@@ -833,6 +902,98 @@ do
   end)
   backend.show = real_show
   eq("cache: a previously fetched base is not re-fetched", nil, shows["a_modified.txt"])
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- revalidation races: supersession and close-time cache warming
+--------------------------------------------------------------------------
+
+---Delay the next *asynchronous* backend.changed call by `ms` and append a
+---marker file to its result, so a stale in-flight revalidation is
+---identifiable. Synchronous calls (a hard refresh's fresh fetch) pass
+---through untouched. Restores itself after the delayed call.
+local function delay_next_async_changed(marker, ms)
+  local backend = vcs.backends.git
+  local real_changed = backend.changed
+  local landed = false
+  backend.changed = function(r, rv)
+    local co = coroutine.running()
+    if not co then
+      return real_changed(r, rv)
+    end
+    backend.changed = real_changed
+    vim.defer_fn(function()
+      coroutine.resume(co)
+    end, ms)
+    coroutine.yield()
+    local files = real_changed(r, rv)
+    table.insert(files, { path = marker, status = "?" })
+    landed = true
+    return files
+  end
+  return function()
+    return landed
+  end
+end
+
+do
+  -- A hard refresh must supersede a revalidation that was already in flight:
+  -- the stale result, landing later, cannot resurface in the panel or poison
+  -- the cache.
+  open_settled({ scope = "working" })
+  ui.close()
+  local landed = delay_next_async_changed("zz_stale_marker.txt", 400)
+  ui.open({ scope = "working" }) -- cached paint + delayed revalidation
+  feed("R") -- hard refresh: fresh synchronous listing
+  vim.wait(3000, landed)
+  vim.wait(2000, function()
+    return not ui.busy()
+  end)
+  check(
+    "supersede: a stale in-flight revalidation cannot resurface",
+    not vim.tbl_contains(panel_lines(), " ?  zz_stale_marker.txt"),
+    vim.inspect(panel_lines())
+  )
+  ui.close()
+  ui.open({ scope = "working" })
+  check(
+    "supersede: the cache was not poisoned either",
+    not vim.tbl_contains(panel_lines(), " ?  zz_stale_marker.txt"),
+    vim.inspect(panel_lines())
+  )
+  vim.wait(2000, function()
+    return not ui.busy()
+  end)
+  ui.close()
+end
+
+do
+  -- Closing the view mid-revalidation must not discard the result: the next
+  -- open paints from it. (The marker file does not exist on disk, so the
+  -- revalidation after the reopen clears it again — which doubles as the
+  -- self-healing check.)
+  local landed = delay_next_async_changed("zz_late_arrival.txt", 400)
+  ui.open({ scope = "working" }) -- cached paint + delayed revalidation
+  ui.close() -- close before it lands
+  vim.wait(3000, landed)
+  vim.wait(200, function()
+    return false
+  end)
+  ui.open({ scope = "working" })
+  check(
+    "close-mid-refresh: the finished revalidation still warmed the cache",
+    vim.tbl_contains(panel_lines(), " ?  zz_late_arrival.txt"),
+    vim.inspect(panel_lines())
+  )
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+  check(
+    "close-mid-refresh: the next revalidation clears the ghost",
+    not vim.tbl_contains(panel_lines(), " ?  zz_late_arrival.txt"),
+    vim.inspect(panel_lines())
+  )
   ui.close()
 end
 
