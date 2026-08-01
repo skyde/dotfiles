@@ -42,6 +42,15 @@ if [ -f "packages.txt" ]; then
     # release instead, and leaving it here fails the whole apt transaction.
     packages="${packages//lazygit/}"
   fi
+  # Homebrew has no "delta" formula either — the pager lives under "git-delta",
+  # and one unknown name makes the whole `brew install` error out. The shell
+  # fallback in .zshrc/.bashrc-custom then quietly pages git through less, so
+  # the miss reads as "delta works on Linux but not on the Mac" rather than as
+  # an install failure. Windows keeps the plain name: chocolatey's package
+  # really is called "delta".
+  if [[ "$(uname)" == "Darwin" ]]; then
+    packages="${packages//delta/git-delta}"
+  fi
 
   install_apps=$(get_user_confirmation "Install packages ($packages)? (y/N): ")
   if [[ "$install_apps" =~ ^[Yy] ]]; then
