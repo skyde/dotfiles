@@ -20,71 +20,71 @@
 -- whole point. If bat is missing or fails, we fall back to plain uncoloured
 -- text rather than showing an error.
 --
+-- Architecture: synchronous render, asynchronous fetch.
+--
+-- `peek` is synchronous (`@sync peek`) because moving the cursor onto another
+-- file makes yazi's `Mgr::peek` call `Preview::reset()`, which drops the old
+-- preview immediately. An asynchronous previewer only hands back its widget a
+-- few milliseconds later, and yazi paints whatever frames fall in that gap —
+-- an empty pane. A synchronous peek is dispatched through the app's own event
+-- queue, and yazi drains every pending event before it renders, so the cursor
+-- move and the new preview land in the *same* frame: no flicker.
+--
+-- An earlier version of this plugin also ran `bat` inside that synchronous
+-- peek, which blocks the main thread for as long as fork+exec and bat's
+-- startup take. On an idle machine that is a few milliseconds; under system
+-- load it is arbitrarily long. The whole UI freezes, keypresses queue up, and
+-- when the freeze ends they all fire at once against whatever state the app
+-- is in by then — the cursor jumps, pickers and prompts open seemingly on
+-- their own. So the synchronous side now touches no process and no file: it
+-- only renders rows already sitting in the cache below. A miss queues a fetch
+-- request and returns; the asynchronous side (`entry`) runs bat off the main
+-- thread, hands the rows back through a `ya.sync` bridge, and that bridge
+-- re-emits `peek` — which now hits the cache and renders in one frame.
+--
+-- The price is that the very first hover of a file shows an empty pane for
+-- one bat round-trip, exactly like yazi's stock previewers. Every revisit,
+-- and every scroll within the fetched rows, still renders flicker-free in the
+-- same frame as the keypress. Under load the fetch may take a while — but the
+-- UI keeps responding the entire time.
+--
 -- Scrolling model: `skip` counts *screen rows*, not source lines. bat does the
 -- wrapping (--wrap=character), so one line of its output is exactly one row on
 -- screen. That is what makes J/K work on a file that is only a few lines long
 -- but wraps into a tall block — counting source lines would let a single
 -- 2000-character line swallow the whole pane with nothing left to scroll.
---
--- Why `@sync peek`: moving the cursor onto another file makes yazi's
--- `Mgr::peek` call `Preview::reset()`, which drops the previous preview
--- immediately. An asynchronous previewer only hands back its widget a few
--- milliseconds later, and yazi paints whatever frames fall in that gap — an
--- empty pane. That is the flicker. A synchronous peek is dispatched through
--- the app's own event queue, and yazi drains every pending event before it
--- renders, so the cursor move and the new preview land in the *same* frame:
--- there is no intermediate state left to draw.
---
--- The price of running on the main thread is that `bat` blocks the UI while it
--- produces the rows. Two things keep that short:
---
---   * we only ever read the rows the pane can show, never the whole file;
---   * bat's pipe is kept open per file (see `entries` below), so scrolling
---     pulls the next few rows from a process that is already running and
---     already ahead, instead of re-rendering from the top on every J/K.
 
 local M = {}
 
--- One live `bat` per previewed file+width. Each entry owns a child process, so
--- the table is small and the least recently used entry is closed when a new
--- file pushes it out.
-local ENTRIES_MAX = 4
+-- Cached previews, one per file+width. Entries are small (a table of strings
+-- capped by how far the preview was scrolled), so keep a handful around: LRU
+-- eviction when a new file pushes the table past this.
+local ENTRIES_MAX = 8
 
-local entries, clock = {}, 0
+-- Rows fetched beyond what the pane needs right now, so scrolling a page or
+-- three lands in cache instead of paying another bat run per J.
+local LOOKAHEAD = 400
 
-local function shell_quote(s)
-	local escaped = tostring(s):gsub("'", "'\\''")
-	return "'" .. escaped .. "'"
-end
+-- A fetch that has produced nothing for this long is presumed lost (the async
+-- task errored, or its result was dropped); the next peek queues a fresh one.
+local FETCH_TIMEOUT = 3
 
--- </dev/null keeps the child off yazi's terminal input, and 2>/dev/null stops a
--- missing or unhappy bat from painting its complaint into the preview;
--- producing no rows routes that to `fallback` instead.
--- Tabs have to become spaces before they reach the terminal: a tab moves the
+-- Sync-context state. The async context loads this module separately and gets
+-- its own (empty, unused) copies; it may only touch the real ones through the
+-- `ya.sync` bridges below.
+local entries, by_id, pending = {}, {}, {}
+local clock, next_id = 0, 1
+
+local emit = ya.emit or ya.mgr_emit
+
+-- Tabs have to become spaces before rows reach the terminal: a tab moves the
 -- cursor to the next tab stop instead of overwriting the cells it skips, which
--- leaves shreds of the previous file's preview behind now that the pane is no
--- longer blanked between files. yazi's own `preview.tab_size` decides how wide
--- they are, so indentation matches the rest of yazi. Never 0 — that is bat's
--- "pass tabs through" mode, the exact thing we are avoiding.
+-- would leave shreds of the previous file's preview behind. yazi's own
+-- `preview.tab_size` decides how wide they are, so indentation matches the
+-- rest of yazi. Never 0 — that is bat's "pass tabs through" mode, the exact
+-- thing we are avoiding.
 local function tab_width()
 	return math.max(1, math.floor(rt.preview.tab_size or 2))
-end
-
-local function spawn(url, w)
-	return io.popen(
-		string.format(
-			-- bat picks 24-bit vs 256-colour from COLORTERM, and yazi does not
-			-- reliably have it set itself (notably under tmux and the VS Code
-			-- terminal). Without this bat silently downgrades to the 256-colour
-			-- cube and the preview stops matching VS Code.
-			"COLORTERM=truecolor bat --color=always --style=plain --paging=never "
-				.. "--wrap=character --tabs=%d --terminal-width=%d -- %s </dev/null 2>/dev/null",
-			tab_width(),
-			w,
-			shell_quote(url)
-		),
-		"r"
-	)
 end
 
 -- Anything else that steers the cursor rather than printing a glyph gets the
@@ -98,13 +98,6 @@ local function printable(row)
 	return (row:gsub("[%z\1-\26\28-\31\127]", "\u{FFFD}"))
 end
 
-local function close(entry)
-	if entry.handle then
-		entry.handle:close()
-		entry.handle = nil
-	end
-end
-
 local function evict()
 	local n, oldest, oldest_key = 0, nil, nil
 	for key, entry in pairs(entries) do
@@ -114,14 +107,12 @@ local function evict()
 		end
 	end
 	if n > ENTRIES_MAX then
-		close(oldest)
 		entries[oldest_key] = nil
+		by_id[oldest.id] = nil
 	end
 end
 
--- Rows rendered for this file so far, extended from the live pipe until we
--- have `need` of them or bat runs out of file.
-local function rows_for(job, w, need)
+local function entry_for(job, w)
 	local url = tostring(job.file.url)
 	-- Keyed on the file's identity *and* its content: a rewritten file gets a
 	-- new key rather than a stale preview. Width too, because bat wrapped the
@@ -131,96 +122,100 @@ local function rows_for(job, w, need)
 	clock = clock + 1
 
 	local entry = entries[key]
-	if entry then
-		entry.used = clock
-	else
+	if not entry then
+		entry = { id = next_id, url = url, rows = {}, eof = false, fetching = false, want = 0 }
+		next_id = next_id + 1
+		entries[key] = entry
+		by_id[entry.id] = entry
 		-- `used` has to be set before evicting, or the entry we just created
 		-- has no age to compare against the ones already in the table.
-		entry = { rows = {}, handle = spawn(url, w), used = clock }
-		entries[key] = entry
+		entry.used = clock
 		evict()
 	end
+	entry.used = clock
+	return entry
+end
 
-	while entry.handle and #entry.rows < need do
-		local row = entry.handle:read("l")
-		if row == nil then
-			close(entry) -- end of file: every row there will ever be is cached
-			break
-		end
-		entry.rows[#entry.rows + 1] = printable(row)
+----------------------------------------------------------------------
+--  Async → sync bridges
+----------------------------------------------------------------------
+
+-- Hand the queued fetch requests to the async side, draining the queue.
+local take_pending = ya.sync(function()
+	local batch = pending
+	pending = {}
+	return batch
+end)
+
+-- Deliver fetched rows into the cache, then re-peek so the waiting pane gets
+-- painted — but only if the file is still the hovered one; otherwise the rows
+-- just sit in cache for the next visit.
+local put_rows = ya.sync(function(_, id, rows, eof)
+	local entry = by_id[id]
+	if not entry then
+		return -- evicted while the fetch was in flight
 	end
 
-	return entry.rows
-end
+	-- Two fetches can be in flight when a scroll raised `want` mid-flight;
+	-- they may complete out of order, so only ever grow the cached rows.
+	if #rows > #entry.rows then
+		entry.rows = rows
+	end
+	entry.eof = entry.eof or eof
+	entry.fetching = false
+
+	local h = cx.active.current.hovered
+	if h and tostring(h.url) == entry.url then
+		emit("peek", { cx.active.preview.skip, only_if = h.url, force = true })
+	end
+end)
+
+----------------------------------------------------------------------
+--  Sync side: render from cache, never block
+----------------------------------------------------------------------
 
 function M:peek(job)
 	local w = math.max(1, math.floor(job.area.w))
 	local h = math.max(1, math.floor(job.area.h))
 
 	-- Our previewer is also selected by filename, so a FIFO, socket or device
-	-- node called `queue.log` would land here. Reading one can block forever,
-	-- and this peek runs on the main thread — that would freeze yazi outright,
-	-- not merely flicker it. Only regular files get opened.
+	-- node called `queue.log` would land here. Reading one can block forever —
+	-- keep them away from the fetcher entirely.
 	local cha = job.file.cha
 	if cha.is_fifo or cha.is_sock or cha.is_block or cha.is_char then
 		return self:render(job, { "Not a regular file" })
 	end
 
-	local rows = rows_for(job, w, job.skip + h)
+	local entry = entry_for(job, w)
+	local need = job.skip + h
 
-	if #rows == 0 and job.skip == 0 then
-		-- bat produced nothing (unreadable file, or not installed): don't leave
-		-- the pane blank, show the file as plain text.
-		return self:fallback(job, w, h)
+	local stale = entry.fetching and ya.time() - (entry.started or 0) > FETCH_TIMEOUT
+	if not entry.eof and #entry.rows < need and (not entry.fetching or entry.want < need or stale) then
+		entry.fetching = true
+		entry.started = ya.time()
+		entry.want = need + LOOKAHEAD
+		pending[#pending + 1] = { id = entry.id, url = entry.url, w = w, want = entry.want, tabs = tab_width() }
+		emit("plugin", { "bat-preview" })
 	end
 
+	local rows = entry.rows
 	local visible = table.move(rows, job.skip + 1, math.min(#rows, job.skip + h), 1, {})
 
-	if job.skip > 0 and #visible < h then
-		-- Scrolled past the end: pull the viewport back so the last page stays
-		-- filled, matching how yazi's built-in previewers behave.
-		return ya.mgr_emit("peek", {
+	-- Scrolled past the end: pull the viewport back so the last page stays
+	-- filled, matching how yazi's built-in previewers behave. Only once EOF is
+	-- known — while rows are still arriving a short cache just means "not
+	-- fetched yet", and yanking the viewport around would fight the scroll.
+	if entry.eof and job.skip > 0 and #visible < h then
+		return emit("peek", {
 			math.max(0, job.skip - (h - #visible)),
 			only_if = job.file.url,
 			upper_bound = true,
 		})
 	end
 
+	-- On a cache miss this renders an empty pane (rows are still on their
+	-- way); on a hit it renders in the same frame as the cursor move.
 	self:render(job, visible)
-end
-
--- Plain-text rendering used when bat is unavailable or produces nothing.
--- Wraps by hand, which is safe here precisely because there are no escape
--- sequences to split.
-function M:fallback(job, w, h)
-	local f = io.open(tostring(job.file.url), "r")
-	if not f then
-		return self:render(job, { "Cannot read file" })
-	end
-
-	local indent = string.rep(" ", tab_width())
-
-	local rows, seen = {}, 0
-	for line in f:lines() do
-		-- No bat here to expand tabs for us, and a raw one would scramble the
-		-- row exactly as it would in the bat path.
-		line = printable((line:gsub("\t", indent)))
-		-- Expand one source line into as many screen rows as it occupies.
-		repeat
-			local chunk = line:sub(1, w)
-			line = line:sub(w + 1)
-			seen = seen + 1
-			if seen > job.skip then
-				rows[#rows + 1] = chunk
-			end
-		until line == "" or #rows >= h
-		if #rows >= h then
-			break
-		end
-	end
-	f:close()
-
-	self:render(job, rows)
 end
 
 -- ui.Clear wipes the pane first. Without it a shorter file leaves the tail of
@@ -243,10 +238,106 @@ function M:seek(job)
 		return
 	end
 
-	ya.mgr_emit("peek", {
+	emit("peek", {
 		math.max(0, cx.active.preview.skip + job.units),
 		only_if = job.file.url,
 	})
+end
+
+----------------------------------------------------------------------
+--  Async side: run bat, ship rows back
+----------------------------------------------------------------------
+
+-- bat picks 24-bit vs 256-colour from COLORTERM, and yazi does not reliably
+-- have it set itself (notably under tmux and the VS Code terminal). Without
+-- this bat silently downgrades to the 256-colour cube and the preview stops
+-- matching VS Code. pcall because `Command:env` is newer than some of the
+-- yazi versions this config has to survive on; losing it only costs colour
+-- depth, not the preview.
+local function spawn_bat(req)
+	local cmd = Command("bat")
+	pcall(function()
+		cmd = cmd:env("COLORTERM", "truecolor")
+	end)
+	local child, _ = cmd
+		:arg("--color=always")
+		:arg("--style=plain")
+		:arg("--paging=never")
+		:arg("--wrap=character")
+		:arg("--tabs=" .. req.tabs)
+		:arg("--terminal-width=" .. req.w)
+		:arg("--")
+		:arg(req.url)
+		:stdin(Command.NULL)
+		:stdout(Command.PIPED)
+		:stderr(Command.NULL)
+		:spawn()
+	return child
+end
+
+-- Read up to `want` rows, then stop bat rather than letting it highlight the
+-- rest of a file nobody scrolled to. eof=false says "there were more rows" —
+-- the sync side uses that to queue a deeper fetch when scrolling catches up.
+local function bat_rows(req)
+	local child = spawn_bat(req)
+	if not child then
+		return nil
+	end
+
+	local rows, eof = {}, false
+	while #rows < req.want do
+		local line, event = child:read_line()
+		if event == 0 then
+			rows[#rows + 1] = printable((line:gsub("[\r\n]+$", "")))
+		elseif event ~= 1 then
+			eof = true
+			break
+		end
+	end
+	child:start_kill()
+	return rows, eof
+end
+
+-- Plain-text fallback used when bat is unavailable or produces nothing
+-- (unreadable file, binary it refuses, ...). Wraps by hand, which is safe
+-- here precisely because there are no escape sequences to split.
+local function plain_rows(req)
+	local f = io.open(req.url, "r")
+	if not f then
+		return { "Cannot read file" }, true
+	end
+
+	local indent = string.rep(" ", req.tabs)
+	local rows = {}
+	for line in f:lines() do
+		-- No bat here to expand tabs for us, and a raw one would scramble the
+		-- row exactly as it would in the bat path.
+		line = printable((line:gsub("\t", indent)))
+		-- Expand one source line into as many screen rows as it occupies.
+		repeat
+			rows[#rows + 1] = line:sub(1, req.w)
+			line = line:sub(req.w + 1)
+		until line == "" or #rows >= req.want
+		if #rows >= req.want then
+			f:close()
+			return rows, false
+		end
+	end
+	f:close()
+	return rows, true
+end
+
+-- Invoked as `plugin bat-preview` (no args) from the sync side. Requests
+-- travel through the sync-owned queue rather than command arguments, so
+-- nothing here depends on how any particular yazi version parses plugin args.
+function M:entry(_)
+	for _, req in ipairs(take_pending()) do
+		local rows, eof = bat_rows(req)
+		if not rows or (eof and #rows == 0) then
+			rows, eof = plain_rows(req)
+		end
+		put_rows(req.id, rows, eof)
+	end
 end
 
 return M
