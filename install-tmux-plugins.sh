@@ -18,6 +18,9 @@ resolve_tpm_path() {
       local raw_path
       if raw_path=$(tmux show-environment -g TMUX_PLUGIN_MANAGER_PATH 2>/dev/null); then
         raw_path="${raw_path#TMUX_PLUGIN_MANAGER_PATH=}"
+        # tmux may hand back a literal unexpanded tilde; expand it ourselves so
+        # git clone does not create a directory named '~' in the cwd.
+        raw_path="${raw_path/#\~/$HOME}"
         if [ -n "$raw_path" ]; then
           TPM_PATH="$raw_path"
         fi
