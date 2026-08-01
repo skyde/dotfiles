@@ -29,6 +29,16 @@
     tool = nvim
     guitool = vscode
 
+# Stop git appending "function context" (the nearest enclosing-function line)
+# after every @@ hunk header. Delta prints that context in its hunk header no
+# matter what hunk-header-style says, so a clean "file:line" header needs git
+# to not emit context at all: a driver whose xfuncname never finds a function,
+# assigned to every path by the attributes file beside this config. Costs:
+# `git log -L :name:file` and `git diff -W` stop finding functions. A repo's
+# own .gitattributes still overrides this.
+[diff "nofunc"]
+    xfuncname = "^$"
+
 [difftool]
     prompt = false
 
@@ -118,9 +128,11 @@
     # Hunk headers. No decoration at all: with file+line-number in the header
     # text itself, the blue single line after a blank row separates fine, and
     # the old box+ul spent three extra rows on every hunk.
-    # No `syntax` in the style: it appends git's function context — code from
-    # lines *above* the hunk — right after "file:42:", which reads as a line of
-    # code wearing the wrong line number now that no box sets the header apart.
+    # The function context — code from lines *above* the hunk that read as a
+    # line of code wearing the wrong line number — is stripped at the source
+    # by the [diff "nofunc"] driver above; delta prints whatever context git
+    # emits regardless of which style attributes are listed here (dropping
+    # `syntax` only stops highlighting it).
     hunk-header-style = file line-number
     hunk-header-file-style = "#7aa2f7"
     hunk-header-line-number-style = "bold #7aa2f7"

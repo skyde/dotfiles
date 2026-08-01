@@ -1,0 +1,4 @@
+# Every path gets the no-function-context diff driver — see [diff "nofunc"]
+# in the config beside this file for why. A repository's own .gitattributes
+# takes precedence over this global assignment.
+* diff=nofunc

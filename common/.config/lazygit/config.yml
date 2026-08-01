@@ -1,12 +1,13 @@
 git:
-  # The key is `paging` (an object) — an earlier edit renamed it to `pagers:`
-  # with a list under it, and lazygit silently ignores unknown keys, so the
-  # whole delta pager was disconnected: `lazygit --config` showed pager: ""
-  # and diffs rendered as raw git output. Verify with `lazygit --config`
-  # after touching this section, not by eyeballing the YAML.
-  paging:
-    colorArg: always # Delta wants colored input; LazyGit handles paging itself
-    pager: delta --dark --paging=never --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
+  # The key is `pagers` — a LIST — on lazygit 0.63 (`lazygit --config` prints
+  # the default config, which shows `pagers: []`; older docs say `paging:`, an
+  # object). lazygit silently ignores unknown keys, so the wrong shape doesn't
+  # error — it just disconnects delta and diffs quietly render as raw git
+  # output. Verify against `lazygit --config` output after touching this
+  # section, not by eyeballing the YAML.
+  pagers:
+    - colorArg: always # Delta wants colored input; LazyGit handles paging itself
+      pager: delta --dark --paging=never --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
   parseEmoji: false
 promptToReturnFromSubprocess: false
 promptToOpenMergeTool: false
@@ -42,7 +43,10 @@ keybinding:
     undo: u
 customCommands:
   - key: "Z"
-    command: "sh -c 'id=$(git stash create); if [ -n \"$id\" ]; then git stash store -m \"snapshot $(date +%Y-%m-%d\ %H:%M:%S)\" \"$id\"; fi'"
+    # The date format must be one quoted argument: unquoted, BSD date treats
+    # %H:%M:%S as a set-the-clock operand, errors, and the snapshot message
+    # gets an empty timestamp.
+    command: "sh -c 'id=$(git stash create); if [ -n \"$id\" ]; then git stash store -m \"snapshot $(date \"+%Y-%m-%d %H:%M:%S\")\" \"$id\"; fi'"
     context: "global"
     description: "Stash snapshot (keep worktree)"
   - key: 'Y' # You can change this to any key (e.g., 'C' or '<c-c>')
