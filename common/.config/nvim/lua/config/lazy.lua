@@ -34,6 +34,7 @@ require("lazy").setup({
   checker = {
     enabled = true, -- check for plugin updates periodically
     notify = false, -- notify on update
+    frequency = 86400, -- each check spawns git once per plugin; daily is plenty
   }, -- automatically check for plugin updates
   performance = {
     rtp = {
@@ -43,6 +44,7 @@ require("lazy").setup({
         -- "matchit",
         -- "matchparen",
         -- "netrwPlugin",
+        "rplugin", -- remote plugins are dead code: providers are off in options.lua
         "tarPlugin",
         "tohtml",
         "tutor",
