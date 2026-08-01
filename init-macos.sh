@@ -74,4 +74,15 @@ defaults write com.apple.dock autohide-delay -float 0
 defaults write com.apple.dock autohide-time-modifier -float 0.15
 killall Dock || true
 
+# lazygit on macOS reads ~/Library/Application Support/lazygit/config.yml —
+# not the stowed ~/.config/lazygit/config.yml — unless XDG_CONFIG_HOME is
+# exported, which these dotfiles do not do. Link the Apple location to the
+# stowed file so both resolve to the same config; otherwise a stale copy
+# there keeps rendering with settings the repo no longer has, and nothing
+# committed to the repo appears to change anything.
+LAZYGIT_APP_SUPPORT="$HOME/Library/Application Support/lazygit"
+mkdir -p "$LAZYGIT_APP_SUPPORT"
+ln -sf "$HOME/.config/lazygit/config.yml" "$LAZYGIT_APP_SUPPORT/config.yml"
+echo "Linked lazygit's Application Support config to ~/.config/lazygit/config.yml"
+
 echo "✅ macOS-specific setup complete!"

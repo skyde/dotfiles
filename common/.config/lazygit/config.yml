@@ -1,8 +1,12 @@
 git:
-  pagers:
-    - # Delta wants colored input; LazyGit handles paging itself
-      colorArg: always # recommended for delta as a pager
-      pager: delta --dark --paging=never --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
+  # The key is `paging` (an object) — an earlier edit renamed it to `pagers:`
+  # with a list under it, and lazygit silently ignores unknown keys, so the
+  # whole delta pager was disconnected: `lazygit --config` showed pager: ""
+  # and diffs rendered as raw git output. Verify with `lazygit --config`
+  # after touching this section, not by eyeballing the YAML.
+  paging:
+    colorArg: always # Delta wants colored input; LazyGit handles paging itself
+    pager: delta --dark --paging=never --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
   parseEmoji: false
 promptToReturnFromSubprocess: false
 promptToOpenMergeTool: false
