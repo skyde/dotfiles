@@ -91,36 +91,72 @@ disabled = true
 [rust]
 disabled = true
 
+# Every custom module below runs on every prompt, so each one costs its
+# processes on every command you type. Two rules keep that cheap:
+#
+#   1. No `when` where the work can be folded into `command`. Starship runs
+#      `when` and then `command` as separate shells, so a module that probes
+#      git in both pays for the same probe twice.
+#   2. That fold is only safe when the module renders to nothing on empty
+#      output — starship does NOT hide a module whose command printed
+#      nothing, it renders the format with `$output` empty. So any literal
+#      text or spacing in `format` has to move into the command's output,
+#      leaving `format` as a bare styled `$output`. Where that is not
+#      possible, `when` stays (see git_cl).
+#
+# `when = true` is required, not decorative: `when` defaults to *false*, so a
+# custom module that simply omits it never renders. As a TOML boolean it is
+# free — starship reads it directly instead of spawning a shell for it.
+
 [custom.cloud_workspace]
 description = "Cloud workspace name"
-when = 'echo "$PWD" | grep -q "^/google/src/cloud/[^/]*/[^/]*"'
-command = 'echo "$PWD" | cut -d/ -f6'
-format = '[$output]($style) '
+when = true
+# Pure shell: `case` and parameter expansion are builtins, where the previous
+# `echo | grep` gate plus `echo | cut` command spawned four processes.
+command = '''
+case "$PWD" in
+  /google/src/cloud/*/*)
+    rest=${PWD#/google/src/cloud/}
+    rest=${rest#*/}
+    printf '%s ' "${rest%%/*}"
+    ;;
+esac
+'''
+format = '[$output]($style)'
 style = 'bold purple'
 
 [custom.git_workspace]
 description = "Chromium workspace name (chrome/chrome2/etc)"
+# Cheap for free: starship knows whether it is in a repo without asking git,
+# so outside one the command never runs at all.
 require_repo = true
+when = true
 
-# Only show this module if the git repo root is a directory named 'src'
-when = '''
-root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 1
-[ "${root##*/}" = "src" ]
-'''
-
-# Print the parent of the 'src' checkout (chrome, chrome2, ...)
+# Show the parent of the checkout (chrome, chrome2, ...) when the repo root is
+# a directory named 'src'. The trailing "/" is printed here rather than sitting
+# in `format` so that a non-Chromium repo renders nothing instead of a stray
+# slash — which is what lets the gate live in this one git call instead of a
+# second identical one in `when`.
 command = '''
 root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+[ "${root##*/}" = "src" ] || exit 0
 parent=${root%/*}
-echo "${parent##*/}"
+printf '%s/' "${parent##*/}"
 '''
 
-# No leading/trailing spaces; add "/" so it glues to $directory
-format = '[$output/]($style)'
+format = '[$output]($style)'
 style  = 'bold cyan'
 
 [custom.git_cl]
 description = "Chromium CL number"
+# Skipped outright outside a git repo.
+require_repo = true
+# This one keeps its `when`: `format` wraps $output in the literal "at " and a
+# trailing space, so an empty output would render "at  " rather than nothing.
+# Folding the gate into `command` would need those literals moved inside it,
+# and they are deliberately unstyled while $output is bold blue. A repo where
+# some *other* branch has a CL is normal in Chromium, so "repo has any
+# gerritissue" is not a usable cheaper gate either.
 # Check if the current branch has a gerritissue config
 when = """
 branch=$(git symbolic-ref --short HEAD 2>/dev/null)

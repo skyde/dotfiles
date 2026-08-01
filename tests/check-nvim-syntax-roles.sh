@@ -23,8 +23,21 @@ sandbox="$(mktemp -d)"
 trap 'rm -rf "$sandbox"' EXIT
 export NVIM_SYNTAX_REPORT="$sandbox/report.txt"
 
+# `timeout` is GNU coreutils; macOS ships neither it nor a BSD equivalent, so
+# this script aborted with "timeout: command not found" before running a single
+# check — on the very platform it is usually run from. Prefer whichever of the
+# two names exists (Homebrew coreutils installs it as gtimeout), and just run
+# nvim directly when neither does. The timeout is a guard against a hang, not a
+# part of the check, so losing it degrades the run rather than invalidating it.
+timeout_cmd=()
+if command -v timeout >/dev/null 2>&1; then
+  timeout_cmd=(timeout 120)
+elif command -v gtimeout >/dev/null 2>&1; then
+  timeout_cmd=(gtimeout 120)
+fi
+
 # VeryLazy is normally fired by UIEnter, which never happens headless.
-timeout 120 nvim --headless \
+"${timeout_cmd[@]}" nvim --headless \
   -c 'doautocmd User VeryLazy' \
   -c "luafile $here/tests/nvim_syntax_roles.lua" \
   -c 'qa!'
