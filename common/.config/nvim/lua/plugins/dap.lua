@@ -9,39 +9,87 @@ return {
       -- Required by nvim-dap-ui
       "nvim-neotest/nvim-nio",
     },
-    keys = function()
-      local dap = require("dap")
-      local dapui = require("dapui")
-      return {
-        { "<leader>db", dap.toggle_breakpoint, desc = "DAP Toggle Breakpoint" },
-        {
-          "<leader>dB",
-          function()
-            vim.ui.input({ prompt = "Breakpoint condition: " }, function(cond)
-              if cond and #cond > 0 then
-                dap.set_breakpoint(cond)
-              end
-            end)
-          end,
-          desc = "DAP Conditional Breakpoint",
-        },
-        { "<leader>dc", dap.continue, desc = "DAP Continue" },
-        { "<leader>tn", dap.step_over, desc = "DAP Step Over" },
-        { "<leader>ti", dap.step_into, desc = "DAP Step Into" },
-        { "<leader>to", dap.step_out, desc = "DAP Step Out" },
-        { "<leader>dr", dap.repl.open, desc = "DAP REPL" },
-        { "<leader>dl", dap.run_last, desc = "DAP Run Last" },
-        { "<leader>du", dapui.toggle, desc = "DAP UI Toggle" },
-        {
-          "<leader><backspace>",
-          function()
-            require("dap.ui.widgets").hover()
-          end,
-          mode = { "n", "v" },
-          desc = "DAP Eval (hover)",
-        },
-      }
-    end,
+    -- lazy.nvim evaluates `keys` specs during startup to register the trigger
+    -- mappings, so a require at the top of a keys function loads the plugin --
+    -- and with it the whole DAP/mason chain -- on every launch. The requires
+    -- have to stay inside the callbacks for the lazy-loading to mean anything.
+    keys = {
+      {
+        "<leader>db",
+        function()
+          require("dap").toggle_breakpoint()
+        end,
+        desc = "DAP Toggle Breakpoint",
+      },
+      {
+        "<leader>dB",
+        function()
+          vim.ui.input({ prompt = "Breakpoint condition: " }, function(cond)
+            if cond and #cond > 0 then
+              require("dap").set_breakpoint(cond)
+            end
+          end)
+        end,
+        desc = "DAP Conditional Breakpoint",
+      },
+      {
+        "<leader>dc",
+        function()
+          require("dap").continue()
+        end,
+        desc = "DAP Continue",
+      },
+      {
+        "<leader>tn",
+        function()
+          require("dap").step_over()
+        end,
+        desc = "DAP Step Over",
+      },
+      {
+        "<leader>ti",
+        function()
+          require("dap").step_into()
+        end,
+        desc = "DAP Step Into",
+      },
+      {
+        "<leader>to",
+        function()
+          require("dap").step_out()
+        end,
+        desc = "DAP Step Out",
+      },
+      {
+        "<leader>dr",
+        function()
+          require("dap").repl.open()
+        end,
+        desc = "DAP REPL",
+      },
+      {
+        "<leader>dl",
+        function()
+          require("dap").run_last()
+        end,
+        desc = "DAP Run Last",
+      },
+      {
+        "<leader>du",
+        function()
+          require("dapui").toggle()
+        end,
+        desc = "DAP UI Toggle",
+      },
+      {
+        "<leader><backspace>",
+        function()
+          require("dap.ui.widgets").hover()
+        end,
+        mode = { "n", "v" },
+        desc = "DAP Eval (hover)",
+      },
+    },
     config = function()
       local dap = require("dap")
       local dapui = require("dapui")
