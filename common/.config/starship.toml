@@ -76,6 +76,8 @@ disabled = false
 disabled = false
 style = 'bold orange'
 
+# Deliberately off: computing status means walking the whole worktree, and on
+# a Chromium-sized checkout that is seconds per prompt, not milliseconds.
 [git_status]
 disabled = true
 
@@ -107,9 +109,15 @@ disabled = true
 # `when = true` is required, not decorative: `when` defaults to *false*, so a
 # custom module that simply omits it never renders. As a TOML boolean it is
 # free — starship reads it directly instead of spawning a shell for it.
+#
+# Every module pins `shell = ['sh']`. Left unset, starship falls back to
+# $STARSHIP_SHELL — i.e. zsh — so each command (and string `when`) spawn paid
+# full zsh startup including a .zshenv source, per prompt. The scripts are
+# plain POSIX; /bin/sh (dash on Debian) starts in a fraction of the time.
 
 [custom.cloud_workspace]
 description = "Cloud workspace name"
+shell = ['sh']
 when = true
 # Pure shell: `case` and parameter expansion are builtins, where the previous
 # `echo | grep` gate plus `echo | cut` command spawned four processes.
@@ -130,6 +138,7 @@ description = "Chromium workspace name (chrome/chrome2/etc)"
 # Cheap for free: starship knows whether it is in a repo without asking git,
 # so outside one the command never runs at all.
 require_repo = true
+shell = ['sh']
 when = true
 
 # Show the parent of the checkout (chrome, chrome2, ...) when the repo root is
@@ -151,6 +160,7 @@ style  = 'bold cyan'
 description = "Chromium CL number"
 # Skipped outright outside a git repo.
 require_repo = true
+shell = ['sh']
 # This one keeps its `when`: `format` wraps $output in the literal "at " and a
 # trailing space, so an empty output would render "at  " rather than nothing.
 # Folding the gate into `command` would need those literals moved inside it,

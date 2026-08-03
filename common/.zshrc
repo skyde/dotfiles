@@ -56,6 +56,20 @@ unset _compdump
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
+# -------- completion in very large repos (Chromium-sized checkouts, FUSE mounts)
+# Accept an exactly-typed parent directory as-is instead of listing the whole
+# directory to re-derive it. That listing is what makes `cd`/file completion
+# crawl in huge or network-backed trees; a typo'd component just fails to
+# complete instead of being fuzzily rescued, which is the right trade there.
+zstyle ':completion:*' accept-exact-dirs true
+# Let completers that support caching (dpkg, brew, etc.) reuse results between
+# invocations, stored next to the compdump.
+zstyle ':completion::complete:*' use-cache on
+zstyle ':completion::complete:*' cache-path "$ZSH_CACHE_DIR"
+# A repo with thousands of refs: present them in the order git emits them
+# (most-recent first for branches) rather than paying to re-sort the list.
+zstyle ':completion:*:git-checkout:*' sort false
+
 # # -------- prompt (Starship)
 eval "$(starship init zsh)"
 
@@ -184,6 +198,18 @@ unset GIT_PAGER
 gg() { command lazygit; }
 
 # -------- plugins (load AFTER everything else; keep syntax-highlighting last)
+
+# zsh-autosuggestions tuning, set before the plugin loads.
+# MANUAL_REBIND: by default the plugin re-scans and re-wraps every ZLE widget
+# on every single prompt to catch widgets defined after it loaded; binding once
+# at startup drops that per-prompt cost. All our widgets (fzf history, ZLE
+# builtins) exist before the plugin loads — if .zshrc.local ever defines a new
+# widget, have it call _zsh_autosuggest_bind_widgets afterwards.
+ZSH_AUTOSUGGEST_MANUAL_REBIND=1
+# Don't run a history lookup per keystroke on very long buffers (pasted
+# scripts/one-liners), where the search cost surfaces as typing latency.
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=200
+
 _source_zsh_plugin() {
   local plugin_name="$1"
   local init_file="$2"
