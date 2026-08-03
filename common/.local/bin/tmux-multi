@@ -326,8 +326,11 @@ cmd_doctor() {
     [ -z "$host" ] && continue
     printf '%s: ' "$host"
     if ver=$("${QUERY_SSH[@]}" "$host" -- "$REMOTE_PATH tmux -V" 2>/dev/null); then
-      count=$("${QUERY_SSH[@]}" "$host" -- \
-        "$REMOTE_PATH tmux list-sessions -F x 2>/dev/null" 2>/dev/null | wc -l | tr -d ' ')
+      # `|| true` inside the substitution: a host with tmux installed but no
+      # server running exits non-zero, which must read as "0 sessions", not
+      # abort the whole report under set -e/pipefail.
+      count=$({ "${QUERY_SSH[@]}" "$host" -- \
+        "$REMOTE_PATH tmux list-sessions -F x 2>/dev/null" 2>/dev/null || true; } | wc -l | tr -d ' ')
       printf 'ok (%s, %s sessions)\n' "$ver" "$count"
       ok=$((ok + 1))
     else

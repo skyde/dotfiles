@@ -343,6 +343,14 @@ class TmuxMultiTest(unittest.TestCase):
         self.assertIn('alpha: ok (tmux 3.4a, 2 sessions)', result.stdout)
         self.assertIn('beta: FAILED', result.stdout)
 
+    def test_doctor_survives_host_with_no_tmux_server(self):
+        # tmux present (tmux -V works) but list-sessions exits non-zero
+        # because no server is running: doctor must report 0 sessions and
+        # carry on, not die mid-report under set -e/pipefail.
+        result = self.run_script('doctor', check=False)
+        self.assertIn('alpha: ok (tmux 3.4a, 0 sessions)', result.stdout)
+        self.assertIn('beta: FAILED', result.stdout)
+
 
 @unittest.skipUnless(shutil.which('tmux'), 'tmux not installed')
 class TmuxConfSmokeTest(unittest.TestCase):
