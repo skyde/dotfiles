@@ -70,6 +70,8 @@ SSH_STUB = textwrap.dedent(
           printf '%s\n' "$out"
         done <<<"$sessions"
         ;;
+      *capture-pane*) printf '%s\n' "${STUB_REMOTE_PANE:-}" ;;
+      *list-windows*) printf '%s\n' "${STUB_REMOTE_WINDOWS:-}" ;;
       *kill-session*) exit 0 ;;
       *'tmux -V'*) echo 'tmux 3.4a' ;;
       *new-session* | *tmux-session*) exit "${STUB_ATTACH_EXIT:-0}" ;;
@@ -114,7 +116,15 @@ TMUX_STUB = textwrap.dedent(
       list-windows)
         if [ "$2" = -a ] && [ -n "${STUB_WINDOWS:-}" ]; then
           printf '%s\n' "$STUB_WINDOWS"
+        elif [ "$2" = -t ] && [ -n "${STUB_SESSION_WINDOWS:-}" ]; then
+          printf '%s\n' "$STUB_SESSION_WINDOWS"
         fi
+        ;;
+      capture-pane)
+        [ -n "${STUB_PANE:-}" ] && printf '%s\n' "$STUB_PANE"
+        ;;
+      new-window)
+        for a in "$@"; do [ "$a" = -P ] && { echo '@9'; break; }; done
         ;;
     esac
     exit 0
@@ -261,9 +271,16 @@ class TmuxMultiTest(unittest.TestCase):
         new_windows = [c for c in self.calls_for('tmux') if c[1] == 'new-window']
         self.assertEqual(1, len(new_windows))
         self.assertEqual(
-            ['--', str(SCRIPT), 'shell-attach', 'alpha', 'build'],
+            ['-P', '-F', '#{window_id}', '--', str(SCRIPT), 'shell-attach', 'alpha', 'build'],
             new_windows[0][2:],
         )
+        # Tagged and flattened synchronously: the flat-view hook fires before
+        # anything inside the new window runs, so open must do both itself.
+        self.assertIn(
+            ['tmux', 'set-option', '-w', '-t', '@9', '@tmux_multi_target', 'alpha:build'],
+            self.calls(),
+        )
+        self.assertIn(['tmux', 'set-option', '-t', '@9', 'status', 'off'], self.calls())
 
     def test_open_remote_reuses_existing_window(self):
         env = self.env(
@@ -307,6 +324,40 @@ class TmuxMultiTest(unittest.TestCase):
         env = self.env(TMUX='/tmp/fake,1,0', STUB_EXISTING_SESSIONS='notes')
         self.run_script('open', 'hubbox', 'notes', env=env)
         self.assertIn(['tmux', 'switch-client', '-t', '=notes'], self.calls())
+
+    # ---- preview ----
+
+    def test_preview_local_renders_window_bar_and_pane(self):
+        env = self.env(
+            STUB_SESSION_WINDOWS='-1:shell\n*2:logs',
+            STUB_PANE='listening on :8080',
+        )
+        out = self.run_script('preview', 'hubbox', 'build', env=env).stdout
+        # Active window reverse-video, inactive dimmed.
+        self.assertIn('\033[7;1m 2:logs \033[0m', out)
+        self.assertIn('\033[2m1:shell\033[0m', out)
+        self.assertIn('listening on :8080', out)
+        capture = [c for c in self.calls_for('tmux') if c[1] == 'capture-pane']
+        self.assertEqual(1, len(capture))
+        # -e keeps the pane's own colours in the preview.
+        self.assertIn('-ep', capture[0])
+        self.assertIn('=build:', capture[0])
+
+    def test_preview_remote_quotes_session_name(self):
+        env = self.env(STUB_REMOTE_PANE='remote screen text')
+        out = self.run_script('preview', 'alpha', "it's got spaces", env=env).stdout
+        self.assertIn('remote screen text', out)
+        remote = ' '.join(' '.join(c) for c in self.calls_for('ssh'))
+        self.assertIn("capture-pane -ep -t '=it'\\''s got spaces:'", remote)
+
+    def test_preview_trims_trailing_blank_lines(self):
+        env = self.env(STUB_PANE='top line\n\n\n')
+        out = self.run_script('preview', 'hubbox', 'build', env=env).stdout
+        self.assertTrue(out.endswith('top line\n'), repr(out[-40:]))
+
+    def test_preview_of_missing_session_is_not_an_error(self):
+        result = self.run_script('preview', 'hubbox', 'ghost')
+        self.assertEqual(0, result.returncode)
 
     # ---- kill ----
 

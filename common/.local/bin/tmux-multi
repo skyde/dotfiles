@@ -17,7 +17,7 @@
 #   ls                   print "host<TAB>session<TAB>windows<TAB>attached"
 #   open HOST SESSION    open (attach/create) a session on HOST
 #   kill HOST SESSION    kill a session on HOST (and its local ssh window)
-#   windows HOST SESSION list a session's windows (used for the fzf preview)
+#   preview HOST SESSION render a session (window bar + active pane capture)
 #   shell-attach HOST S  internal: the ssh loop that runs inside a window
 #   doctor               check ssh + tmux on every configured host
 #
@@ -210,7 +210,13 @@ cmd_open() {
       tmux select-window -t "$wid"
       exec tmux switch-client -t "$sid"
     fi
-    exec tmux new-window -- "$SELF" shell-attach "$host" "$sess"
+    # Tag the window here, not just in shell-attach: the flat-view hook in
+    # .tmux.conf reads @tmux_multi_target when the current window changes,
+    # and it fires before the code inside the new window gets to run. Same
+    # reason for setting the initial status state explicitly.
+    wid=$(tmux new-window -P -F '#{window_id}' -- "$SELF" shell-attach "$host" "$sess")
+    tmux set-option -w -t "$wid" @tmux_multi_target "${host}:${sess}"
+    exec tmux set-option -t "$wid" status off
   fi
   # Outside tmux: attach in this terminal.
   exec "$SELF" shell-attach "$host" "$sess"
@@ -244,18 +250,44 @@ cmd_kill() {
   fi
 }
 
-# ---- windows (fzf preview) ------------------------------------------------
+# ---- preview (fzf preview pane) -------------------------------------------
 
-cmd_windows() {
-  local host=${1:?host required} sess=${2:?session required}
-  local fmt='#{window_index}: #{window_name} (#{window_panes} panes)#{?window_active, *,}'
+# The preview mirrors tmux's own choose-tree: a window bar plus a live,
+# still-coloured capture of the session's active pane, so you recognise a
+# session by what is on its screen rather than by window names alone.
+WIN_FMT='#{?window_active,*,-}#{window_index}:#{window_name}'
+
+# Run a snippet against HOST's tmux — locally, or over ssh for a remote.
+on_host() {
+  local host=$1 snippet=$2
   if is_self "$host"; then
-    tmux list-windows -t "=$sess" -F "$fmt" 2>/dev/null || true
+    eval "$snippet" 2>/dev/null || true
   else
-    "${QUERY_SSH[@]}" "$host" -- \
-      "$REMOTE_PATH tmux list-windows -t $(shq "=$sess") -F $(shq "$fmt") 2>/dev/null" \
-      2>/dev/null || true
+    "${QUERY_SSH[@]}" "$host" -- "$REMOTE_PATH $snippet" 2>/dev/null || true
   fi
+}
+
+cmd_preview() {
+  local host=${1:?host required} sess=${2:?session required}
+  local cols=${FZF_PREVIEW_COLUMNS:-80} bar='' line
+
+  # Window bar: active window highlighted, the rest dimmed.
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    if [ "${line:0:1}" = '*' ]; then
+      bar+=$'\033[7;1m '${line:1}$' \033[0m '
+    else
+      bar+=$'\033[2m'${line:1}$'\033[0m  '
+    fi
+  done < <(on_host "$host" "tmux list-windows -t $(shq "=$sess") -F $(shq "$WIN_FMT")")
+  [ -n "$bar" ] && printf '%s\n' "$bar"
+  printf '\033[38;5;60m%*s\033[0m\n' "$cols" '' | tr ' ' '-'
+
+  # Active pane, colours intact (-e). Trailing blank lines are the unused
+  # bottom of the pane; dropping them keeps short sessions from rendering as
+  # a screenful of whitespace.
+  on_host "$host" "tmux capture-pane -ep -t $(shq "=$sess:")" |
+    awk '{ buf = buf $0 "\n"; if (NF) { printf "%s", buf; buf = "" } }'
 }
 
 # ---- interactive pickers --------------------------------------------------
@@ -277,8 +309,9 @@ cmd_pick() {
     --header='enter: open  ctrl-n: new  ctrl-x: kill  ctrl-r: refresh' \
     --expect=ctrl-n \
     --print-query \
-    --preview="$SELF windows {1} {2}" \
-    --preview-window='right:55%:wrap' \
+    --ansi \
+    --preview="$SELF preview {1} {2}" \
+    --preview-window='right:65%:nowrap' \
     --bind="ctrl-x:execute-silent($SELF kill {1} {2})+reload($SELF ls)" \
     --bind="ctrl-r:reload($SELF ls)") || true
   key=$(printf '%s\n' "$out" | sed -n 2p)
@@ -355,7 +388,7 @@ case $cmd in
   ls) cmd_ls "$@" ;;
   open) cmd_open "$@" ;;
   kill) cmd_kill "$@" ;;
-  windows) cmd_windows "$@" ;;
+  preview | windows) cmd_preview "$@" ;;
   shell-attach) cmd_shell_attach "$@" ;;
   doctor) cmd_doctor "$@" ;;
   hosts) remote_hosts ;;

@@ -63,18 +63,35 @@ name, the same dotfiles work everywhere — any machine can be the hub.
 
 | Key | Action |
 | --- | --- |
-| `prefix S` | Session picker across all machines. `enter` open, `ctrl-n` new, `ctrl-x` kill, `ctrl-r` refresh. |
+| `prefix s` | Fullscreen session picker across all machines; the preview shows each session's window bar and a live capture of its active pane (like the native tree's preview, but cross-machine). `enter` open, `ctrl-n` new, `ctrl-x` kill, `ctrl-r` refresh. |
+| `prefix S` | Same picker (alias). |
 | `prefix N` | New session: pick the machine, then name the session (or pick an existing one). |
+| `prefix M-s` | The native, local-only session tree that `prefix s` used to open. |
 | `prefix prefix` | Send one prefix to the inner (remote) tmux — e.g. `M-a M-a c` makes a window on the remote machine. |
 | `F12` | Hand **all** keys to the inner tmux (outer status dims and shows `NESTED`). `F12` again to take them back. |
 
-In a remote-session window there are two tmuxes: the outer/local one (window
-per machine-session) and the inner/remote one (that session's own windows).
-The inner one draws its own status line with its hostname in green, right
-under the outer one. Day to day: use `prefix S` to move between sessions,
-and `F12` (or double-prefix) when you want to drive the remote tmux itself.
+A remote-session window technically holds a second tmux (the remote one),
+but the view stays **flat**: while such a window is current, the local bar
+hides itself, so the only status line on screen is the remote machine's —
+green hostname, that machine's windows. Select a local window and the local
+bar returns. At any moment exactly one bar describes the machine you are
+looking at. Day to day: use `prefix s` to move between sessions, and `F12`
+(or double-prefix) when you want to drive the remote tmux's own windows.
 
-`prefix S` deliberately complements the local-only `prefix s` (native tree).
+`prefix s` deliberately *replaces* the native session tree: the key you already
+reach for should show every machine's sessions, not just this one's. With no
+hosts configured it lists local sessions only, so it degrades to the old
+behaviour. The native tree is still on `prefix M-s`.
+
+## Trying it without real machines
+
+`tmux-multi-demo start` boots a sandbox: an `ssh` shim answers for two fake
+hosts (devbox, buildbox — each a private tmux server on its own socket) plus
+an always-unreachable `offline`, with a few seeded sessions. Attach with
+`tmux-multi-demo attach` and use the normal keys; the status bar shows a red
+DEMO. It is fully self-contained — own config, own sockets, nothing read from
+`~/.tmux.conf` or `~/.ssh`, and the shim refuses unknown hosts. `stop` kills
+the demo servers, `clean` also removes its directory (`~/.cache/tmux-multi-demo`).
 
 ## CLI
 
