@@ -142,13 +142,23 @@ class TmuxMultiTest(unittest.TestCase):
         self.hosts = self.tmp / 'hosts'
         self.hosts.write_text('# my machines\nalpha\nbeta\n\nhubbox  # this box\nlocal\n')
 
+    def make_stub(self, name, body="#!/usr/bin/env bash\nexit 0\n"):
+        """Add an executable stub to the test bin, shadowing any real one."""
+        path = self.bin / name
+        path.write_text(body)
+        path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        return path
+
     def env(self, **extra):
         env = dict(os.environ)
         env.pop('TMUX', None)
         env.pop('TMUX_PANE', None)
         env.pop('TMUX_MULTI_SELF', None)
+        # Deliberately NOT inheriting the caller's PATH: on a machine with these
+        # dotfiles installed, the real tmux-session (and friends) would shadow
+        # the stubs and make branch coverage depend on the developer's setup.
         env.update(
-            PATH=f"{self.bin}:{env['PATH']}",
+            PATH=f"{self.bin}:/usr/bin:/bin:/usr/sbin:/sbin",
             STUB_LOG=str(self.log),
             TMUX_MULTI_HOSTS_FILE=str(self.hosts),
         )
@@ -273,8 +283,24 @@ class TmuxMultiTest(unittest.TestCase):
         self.assertIn(['tmux', 'attach-session', '-t', '=notes'], self.calls())
 
     def test_open_local_creates_missing_session(self):
+        # No tmux-session helper on PATH: fall back to a plain new-session.
         self.run_script('open', 'hubbox', 'fresh')
         self.assertIn(['tmux', 'new-session', '-d', '-s', 'fresh'], self.calls())
+        self.assertIn(['tmux', 'attach-session', '-t', '=fresh'], self.calls())
+
+    def test_open_local_prefers_tmux_session_helper(self):
+        # With the helper installed it wins, so new sessions get the layout.
+        self.make_stub(
+            'tmux-session',
+            "#!/usr/bin/env bash\n"
+            "line='tmux-session'\n"
+            'for a in "$@"; do line="$line"$\'\\x1f\'"$a"; done\n'
+            "printf '%s\\n' \"$line\" >>\"$STUB_LOG\"\n",
+        )
+        self.run_script('open', 'hubbox', 'fresh')
+        self.assertIn(['tmux-session', 'fresh', '', '--no-attach'], self.calls())
+        tmux_cmds = [c[1] for c in self.calls_for('tmux')]
+        self.assertNotIn('new-session', tmux_cmds)
         self.assertIn(['tmux', 'attach-session', '-t', '=fresh'], self.calls())
 
     def test_open_local_switches_inside_tmux(self):
