@@ -70,6 +70,16 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 - `lazygit` for a simple git TUI
 - `starship` for a customizable cross-shell prompt
 
+## Unified tmux Across Machines
+
+`tmux-multi` makes the tmux servers on several computers feel like one:
+`prefix S` opens a picker over every session on every machine (Enter jumps to
+it, opening remote ones over ssh in a tagged local window), and `prefix N`
+creates a session on whichever machine you choose. List your machines in
+`~/.config/tmux-multi/hosts` (see `hosts.example`) and run `tmux-multi doctor`
+to verify the wiring — full guide in
+[`docs/tmux-multi.md`](docs/tmux-multi.md).
+
 ## Neovim
 
 LazyVim, configured to match the VS Code setup key-for-key — see

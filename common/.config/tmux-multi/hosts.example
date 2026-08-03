@@ -1,0 +1,18 @@
+# tmux-multi hosts — copy this file to ~/.config/tmux-multi/hosts and edit.
+#
+#   mkdir -p ~/.config/tmux-multi
+#   cp ~/.config/tmux-multi/hosts.example ~/.config/tmux-multi/hosts
+#
+# One ssh destination per line (anything `ssh <name>` accepts — ideally a
+# Host alias from ~/.ssh/config with key auth set up). Blank lines and #
+# comments are ignored.
+#
+# List ALL of your machines, including the one you are sitting at: each
+# machine automatically skips its own hostname, so the same file works on
+# every computer and any of them can act as the hub. If an alias does not
+# match that machine's `hostname -s`, set TMUX_MULTI_SELF=<alias> in that
+# machine's shell profile so it knows to skip itself.
+#
+# desktop
+# laptop
+# devbox
