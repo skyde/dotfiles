@@ -15,8 +15,11 @@
     filemode = false
 
 [init]
+    # New repos start on main (also silences the `git init` hint). The ref
+    # storage format is deliberately left at git's default (files): pinning
+    # it is a no-op — reftable only pays off at huge ref counts, and
+    # libgit2-based tools can't read it yet.
     defaultBranch = main
-    defaultRefFormat = files
 
 # --- Diff behavior ---
 [diff]
