@@ -201,8 +201,6 @@ map("v", "<S-Tab>", "<gv", { desc = "Unindent selection" })
 vim.keymap.set({ "n", "v" }, "<leader>e", function()
   if vim.fn.exists(":Yazi") == 2 then
     vim.cmd("Yazi")
-  elseif vim.fn.exists(":Lf") == 2 then
-    vim.cmd("Lf")
   else
     local ok, mini = pcall(require, "mini.files")
     if ok and mini then
@@ -211,7 +209,7 @@ vim.keymap.set({ "n", "v" }, "<leader>e", function()
       vim.cmd("NvimTreeToggle")
     end
   end
-end, { silent = true, desc = "File manager (Yazi/lf/mini.files/nvim-tree)" })
+end, { silent = true, desc = "File manager (Yazi/mini.files/nvim-tree)" })
 
 -- Move selection up / down
 map("v", "J", ":m '>+1<CR>gv=gv", { desc = "Move selection down", silent = true })
