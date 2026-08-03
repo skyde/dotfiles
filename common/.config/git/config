@@ -14,6 +14,10 @@
     autocrlf = false
     filemode = false
 
+[init]
+    defaultBranch = main
+    defaultRefFormat = files
+
 # --- Diff behavior ---
 [diff]
     context = 10
