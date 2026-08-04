@@ -67,8 +67,7 @@ name, the same dotfiles work everywhere — any machine can be the hub.
 | `prefix S` | Same picker (alias). |
 | `prefix N` | New session: pick the machine, then name the session (or pick an existing one). |
 | `prefix M-s` | The native, local-only session tree that `prefix s` used to open. |
-| `prefix prefix` | Send one prefix to the inner (remote) tmux — e.g. `M-a M-a c` makes a window on the remote machine. |
-| `F12` | Hand **all** keys to the inner tmux (outer status dims and shows `NESTED`). `F12` again to take them back. |
+| `prefix prefix` | Send one prefix to the inner (remote) tmux, for keys outside the forwarded set — e.g. `M-a M-a M-1` applies a layout on the remote machine. |
 
 A remote-session window technically holds a second tmux (the remote one),
 but the view stays **flat**: while such a window is current, the local bar
@@ -86,8 +85,10 @@ everywhere: `s`/`S`/`N` (picker), `d` (detach), `r` (reload), `M-s` — and
 `]` pastes the local buffer into the remote pane, i.e. cross-machine paste.
 Note the asymmetry: `n`/`p` can walk you *into* a remote window, but once
 there they cycle that machine's windows — the picker (`prefix s`) is the way
-back out. `F12` still hands over *every* key when you need something not in
-the forwarded set.
+back out. For anything not in the forwarded set, double-tap the prefix to
+send a single prefix inward; there is deliberately no sustained
+"hand all keys over" mode — an invisible mode that reroutes every key
+proved to be a trap.
 
 `prefix s` deliberately *replaces* the native session tree: the key you already
 reach for should show every machine's sessions, not just this one's. With no

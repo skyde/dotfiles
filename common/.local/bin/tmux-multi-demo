@@ -19,7 +19,7 @@
 # Keys inside the demo (own config, independent of your dotfiles; the prefix
 # matches the dotfiles' M-a so muscle memory works):
 #   prefix s / S   cross-machine session picker      prefix N  new session
-#   F12            hand all keys to the inner tmux   prefix d  detach
+#   prefix prefix  send one prefix to the inner tmux  prefix d  detach
 #
 # The status bar shows a red DEMO so the sandbox is never mistaken for a
 # real session.
@@ -146,7 +146,7 @@ set -g status-position top
 set -g status-style 'bg=#1a1b26,fg=#565f89'
 set -g status-left "#[bg=#1a1b26,fg=#ff9e64] #S  "
 set -g status-left-length 30
-set -g status-right "#{?#{==:#{client_key_table},off},#[fg=#e0af68#,bold]NESTED #[default],}#[fg=#f7768e,bold]DEMO "
+set -g status-right "#[fg=#f7768e,bold]DEMO "
 
 bind-key s display-popup -E -w 100% -h 100% '$popup pick'
 bind-key S display-popup -E -w 100% -h 100% '$popup pick'
@@ -171,21 +171,9 @@ bind-key 1 if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a 1 } { sele
 bind-key 2 if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a 2 } { select-window -t :=2 }
 bind-key 3 if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a 3 } { select-window -t :=3 }
 
-# Nested-tmux keys, same shape as the dotfiles: double-tap the prefix to send
-# one prefix inward; F12 hands all keys to the inner tmux until pressed again.
+# Double-tap the prefix to send one prefix to the inner tmux (mirrors the
+# dotfiles; there is no sustained handoff mode on purpose).
 bind-key M-a send-prefix
-bind-key -n F12 \\
-  set prefix None \\;\\
-  set key-table off \\;\\
-  set status on \\;\\
-  set status-style 'bg=#1a1b26,fg=#3b4261' \\;\\
-  refresh-client -S
-bind-key -T off F12 \\
-  set -u prefix \\;\\
-  set -u key-table \\;\\
-  set -u status-style \\;\\
-  set -F status '#{?#{!=:#{@tmux_multi_target},},off,on}' \\;\\
-  refresh-client -S
 CONF
 }
 
