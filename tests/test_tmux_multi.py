@@ -114,13 +114,19 @@ TMUX_STUB = textwrap.dedent(
         exit 1
         ;;
       display-message)
-        [ "$2" = -p ] && printf '%s\n' "${STUB_CURRENT_SESSION:-}"
+        if [ "$3" = '#{@tmux_multi_target}' ]; then
+          printf '%s\n' "${STUB_CURRENT_TAG:-}"
+        elif [ "$2" = -p ]; then
+          printf '%s\n' "${STUB_CURRENT_SESSION:-}"
+        fi
         ;;
       list-windows)
         if [ "$2" = -a ] && [ -n "${STUB_WINDOWS:-}" ]; then
           printf '%s\n' "$STUB_WINDOWS"
         elif [ "$2" = -t ] && [ -n "${STUB_SESSION_WINDOWS:-}" ]; then
           printf '%s\n' "$STUB_SESSION_WINDOWS"
+        elif [ "$2" = -F ] && [ -n "${STUB_CURRENT_WINDOWS:-}" ]; then
+          printf '%s\n' "$STUB_CURRENT_WINDOWS"
         fi
         ;;
       capture-pane)
@@ -322,6 +328,22 @@ class TmuxMultiTest(unittest.TestCase):
         tmux_cmds = [c[1] for c in self.calls_for('tmux')]
         self.assertNotIn('new-session', tmux_cmds)
         self.assertIn(['tmux', 'attach-session', '-t', '=fresh'], self.calls())
+
+    def test_open_local_escapes_remote_window_of_same_session(self):
+        # Viewing a remote window of session "notes" and picking "notes"
+        # itself: switch-client alone is a no-op, so open must land on the
+        # most recently used LOCAL window first (here @4, not the newer but
+        # tagged @9).
+        env = self.env(
+            TMUX='/tmp/fake,1,0',
+            STUB_EXISTING_SESSIONS='notes',
+            STUB_CURRENT_SESSION='notes',
+            STUB_CURRENT_TAG='alpha:build',
+            STUB_CURRENT_WINDOWS='100 @4 \n900 @9 alpha:build',
+        )
+        self.run_script('open', 'hubbox', 'notes', env=env)
+        self.assertIn(['tmux', 'select-window', '-t', '@4'], self.calls())
+        self.assertIn(['tmux', 'switch-client', '-t', '=notes'], self.calls())
 
     def test_open_local_switches_inside_tmux(self):
         env = self.env(TMUX='/tmp/fake,1,0', STUB_EXISTING_SESSIONS='notes')

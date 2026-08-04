@@ -112,8 +112,14 @@ SHIM
   # self-contained; status-left is set per machine at start.
   cat >"$D/remote.conf" <<'CONF'
 set -g default-terminal xterm-256color
-# Real remotes share the dotfiles, so they answer to the same prefix.
+# Real remotes share the dotfiles, so they answer to the same prefix and
+# custom binds (flat keys forward these from the outer tmux).
 set -g prefix M-a
+bind-key h select-pane -L
+bind-key j select-pane -D
+bind-key k select-pane -U
+bind-key l select-pane -R
+bind-key C new-window -a
 set -g base-index 1
 set -g mouse on
 set -g status-position top
@@ -149,6 +155,21 @@ bind-key N display-popup -E -w 100% -h 100% '$popup new'
 # Flat view (mirrors the dotfiles): hide this bar while the current window
 # holds a remote session, so only that machine's bar shows.
 set-hook -g session-window-changed "set -F status '#{?#{!=:#{@tmux_multi_target},},off,on}'"
+
+# Flat keys (mirrors the dotfiles): window/pane-level commands forward to
+# the machine you are looking at; session-level keys (s/S/N, d) stay local.
+bind-key n if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a n } { next-window }
+bind-key p if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a p } { previous-window }
+bind-key c if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a c } { new-window }
+bind-key x if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a x } { confirm-before -p "kill-pane #P? (y/n)" kill-pane }
+bind-key z if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a z } { resize-pane -Z }
+bind-key h if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a h } { select-pane -L }
+bind-key j if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a j } { select-pane -D }
+bind-key k if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a k } { select-pane -U }
+bind-key l if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a l } { select-pane -R }
+bind-key 1 if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a 1 } { select-window -t :=1 }
+bind-key 2 if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a 2 } { select-window -t :=2 }
+bind-key 3 if-shell -F '#{!=:#{@tmux_multi_target},}' { send-keys M-a 3 } { select-window -t :=3 }
 
 # Nested-tmux keys, same shape as the dotfiles: double-tap the prefix to send
 # one prefix inward; F12 hands all keys to the inner tmux until pressed again.

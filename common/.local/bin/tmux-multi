@@ -195,6 +195,16 @@ cmd_open() {
       fi
     fi
     if [ -n "${TMUX:-}" ]; then
+      # Already in this session but parked on a remote (tmux-multi) window?
+      # switch-client alone would be a no-op there; land on the most recently
+      # used LOCAL window so picking a local session visibly goes local.
+      if [ "$(tmux display-message -p '#S')" = "$sess" ] &&
+        [ -n "$(tmux display-message -p '#{@tmux_multi_target}')" ]; then
+        local w
+        w=$(tmux list-windows -F '#{window_activity} #{window_id} #{@tmux_multi_target}' 2>/dev/null |
+          awk 'NF == 2 { print $1, $2 }' | sort -rn | head -1 | cut -d' ' -f2)
+        [ -n "$w" ] && tmux select-window -t "$w"
+      fi
       exec tmux switch-client -t "=$sess"
     else
       exec tmux attach-session -t "=$sess"

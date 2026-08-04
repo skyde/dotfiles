@@ -75,8 +75,19 @@ but the view stays **flat**: while such a window is current, the local bar
 hides itself, so the only status line on screen is the remote machine's —
 green hostname, that machine's windows. Select a local window and the local
 bar returns. At any moment exactly one bar describes the machine you are
-looking at. Day to day: use `prefix s` to move between sessions, and `F12`
-(or double-prefix) when you want to drive the remote tmux's own windows.
+looking at.
+
+Keys follow the same rule: **window- and pane-level commands act on the
+machine you are looking at**. In a remote window, `n`/`p`, the digits, `c`,
+`x`, `z`, `w`, `,`, `[`, splits, `h`/`j`/`k`/`l`, `<`/`>` and `C` are
+forwarded to the inner tmux, so the bar you see is the bar they drive; on a
+local window they act locally as always. Session-level keys stay local
+everywhere: `s`/`S`/`N` (picker), `d` (detach), `r` (reload), `M-s` — and
+`]` pastes the local buffer into the remote pane, i.e. cross-machine paste.
+Note the asymmetry: `n`/`p` can walk you *into* a remote window, but once
+there they cycle that machine's windows — the picker (`prefix s`) is the way
+back out. `F12` still hands over *every* key when you need something not in
+the forwarded set.
 
 `prefix s` deliberately *replaces* the native session tree: the key you already
 reach for should show every machine's sessions, not just this one's. With no
