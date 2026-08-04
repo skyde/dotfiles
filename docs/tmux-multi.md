@@ -27,11 +27,22 @@ name, the same dotfiles work everywhere — any machine can be the hub.
 
 ## Setup
 
-1. **Key-based ssh** to each machine (background queries use `BatchMode`, so
+The minimum is a hosts file on the machine you actually sit at (the hub) —
+that alone gives its picker the whole fleet. The symmetric setup (every
+machine lists every other, so any picker shows everything) additionally
+needs ssh to work in *both* directions: on a Mac that means enabling
+System Settings → Sharing → Remote Login, which is off by default. A
+machine you never sit at needs neither a hosts file nor reverse ssh.
+
+1. **These dotfiles, current, on every machine** — the picker, keys, and
+   flat view all live here, so a remote still running an older checkout has
+   none of them (its `prefix s` may even be an older, broken binding).
+
+2. **Key-based ssh** to each machine (background queries use `BatchMode`, so
    password prompts are treated as unreachable). Ideally give each machine a
    short alias in `~/.ssh/config`.
 
-2. **List your machines** in `~/.config/tmux-multi/hosts`:
+3. **List your machines** in `~/.config/tmux-multi/hosts`:
 
    ```sh
    mkdir -p ~/.config/tmux-multi
@@ -45,7 +56,7 @@ name, the same dotfiles work everywhere — any machine can be the hub.
    the first alias also becomes the machine's display name in every picker,
    keeping names consistent across the fleet.
 
-3. **Enable ssh connection sharing** so the picker is instant instead of
+4. **Enable ssh connection sharing** so the picker is instant instead of
    paying a full ssh handshake per host. In `~/.ssh/config`:
 
    ```ssh-config
@@ -55,7 +66,7 @@ name, the same dotfiles work everywhere — any machine can be the hub.
      ControlPersist 10m
    ```
 
-4. **Check the wiring**:
+5. **Check the wiring**:
 
    ```sh
    tmux-multi doctor
@@ -128,7 +139,13 @@ dotfiles (it falls back to plain `tmux new-session -A` otherwise).
 - **A host never shows sessions** — run `tmux-multi doctor`. Almost always
   ssh auth (BatchMode needs keys/agent) or tmux not installed there.
 - **Picker is slow** — enable ControlMaster (above). Without it every refresh
-  pays a full ssh handshake per host; unreachable hosts time out after 3 s.
+  pays a full ssh handshake per host. A host that fails to answer is skipped
+  for 60 s so one dead machine cannot stall the picker; `ctrl-r` in the
+  picker retries it immediately.
+- **The picker on a remote machine doesn't show the hub's sessions** — that
+  machine cannot ssh *back* to the hub. For a Mac hub, enable Remote Login
+  and install your key there; or simply treat the hub as the only place you
+  open the cross-machine picker.
 - **After a reboot + tmux-resurrect restore** the remote windows re-run their
   ssh loop and reconnect; the remote sessions themselves were never gone.
 - **Killed a remote session from its own machine?** The local window notices

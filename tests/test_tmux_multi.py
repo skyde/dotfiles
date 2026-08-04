@@ -176,6 +176,8 @@ class TmuxMultiTest(unittest.TestCase):
             PATH=f"{self.bin}:/usr/bin:/bin:/usr/sbin:/sbin",
             STUB_LOG=str(self.log),
             TMUX_MULTI_HOSTS_FILE=str(self.hosts),
+            # Isolate the cache dir (preview caches, unreachable markers).
+            TMPDIR=str(self.tmp),
         )
         env.update({k: v for k, v in extra.items() if v is not None})
         return env
@@ -258,6 +260,19 @@ class TmuxMultiTest(unittest.TestCase):
         self.run_script('ls', env=self.env(STUB_LOCAL_SESSIONS='1|notes|1|0'))
         for call in self.calls_for('ssh'):
             self.assertIn('BatchMode=yes', call)
+
+    def test_ls_skips_recently_unreachable_host(self):
+        # beta's ssh exits 255; the first ls marks it down, the second skips
+        # it entirely instead of paying the connect timeout again. alpha
+        # (reachable) is queried both times.
+        env = self.env(STUB_SESSIONS_alpha='300|build|2|1')
+        self.run_script('ls', env=env)
+        beta_first = len([c for c in self.calls_for('ssh') if 'beta' in c])
+        alpha_first = len([c for c in self.calls_for('ssh') if 'alpha' in c])
+        self.assertEqual(1, beta_first)
+        self.run_script('ls', env=env)
+        self.assertEqual(beta_first, len([c for c in self.calls_for('ssh') if 'beta' in c]))
+        self.assertEqual(alpha_first * 2, len([c for c in self.calls_for('ssh') if 'alpha' in c]))
 
     def test_ls_labels_local_with_first_self_alias(self):
         # With TMUX_MULTI_SELF set, the local machine is listed under its

@@ -32,7 +32,7 @@ TAB=$'\t'
 # previews): -n keeps ssh away from stdin (it would eat the host list in
 # read loops). Interactive attaches use plain `ssh -t` so auth prompts still
 # work there.
-QUERY_SSH=(ssh -n -o BatchMode=yes -o ConnectTimeout=3)
+QUERY_SSH=(ssh -n -o BatchMode=yes -o ConnectTimeout=1)
 
 # Remote tmux may not be on the non-interactive PATH (Homebrew on macOS,
 # ~/.local/bin installs). Single quotes on purpose: PATH/HOME must expand on
@@ -124,10 +124,21 @@ list_local() {
 }
 
 list_remote() {
-  local host=$1
-  "${QUERY_SSH[@]}" "$host" -- \
+  local host=$1 out rc=0 down
+  # A host that just failed to answer is skipped for DOWN_TTL so one dead
+  # machine does not stall every picker open; ctrl-r in the picker retries.
+  down=$(cache_file down "$host")
+  file_fresh "$down" "$DOWN_TTL" && return 0
+  out=$("${QUERY_SSH[@]}" "$host" -- \
     "$REMOTE_PATH tmux list-sessions -F $(shq "$SESS_FMT") 2>/dev/null" \
-    2>/dev/null | to_tsv "$host" || true
+    2>/dev/null) || rc=$?
+  if [ "$rc" -eq 255 ]; then
+    # 255 is ssh itself failing (unreachable, auth); anything else is the
+    # remote command (e.g. no tmux server yet), which is not "down".
+    : >"$down"
+    return 0
+  fi
+  printf '%s\n' "$out" | to_tsv "$host"
 }
 
 list_all() {
@@ -362,28 +373,32 @@ format_preview() {
     }'
 }
 
-# Remote previews are cached briefly so hovering around the picker does not
-# pay an ssh round trip per keystroke. Local previews are cheap: always live.
+# Cache dir: brief remote-preview caches and unreachable-host markers.
+CACHE_DIR="${TMPDIR:-/tmp}/tmux-multi-$UID"
 PREVIEW_TTL=10
+DOWN_TTL=60
 
-preview_cache_file() {
-  local dir="${TMPDIR:-/tmp}/tmux-multi-preview-$UID"
-  [ -d "$dir" ] || { mkdir -p "$dir" && chmod 700 "$dir"; }
-  # Sanitized name + length is collision-proof enough for a 10s cache.
-  printf '%s/%s' "$dir" "${1//[^[:alnum:]._-]/_}${#1}"
+cache_file() { # cache_file PREFIX KEY
+  [ -d "$CACHE_DIR" ] || { mkdir -p "$CACHE_DIR" && chmod 700 "$CACHE_DIR"; }
+  # Sanitized key + length is collision-proof enough for short-lived caches.
+  printf '%s/%s.%s' "$CACHE_DIR" "$1" "${2//[^[:alnum:]._-]/_}${#2}"
+}
+
+file_fresh() { # file_fresh FILE TTL
+  local mt now
+  [ -f "$1" ] || return 1
+  mt=$(stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0)
+  now=${EPOCHSECONDS:-$(date +%s)}
+  [ $((now - mt)) -lt "$2" ]
 }
 
 cmd_preview() {
-  local host=${1:?host required} sess=${2:?session required} cache='' now mt out
+  local host=${1:?host required} sess=${2:?session required} cache='' out
   if ! is_self "$host"; then
-    cache=$(preview_cache_file "$host:$sess")
-    if [ -f "$cache" ]; then
-      now=${EPOCHSECONDS:-$(date +%s)}
-      mt=$(stat -f %m "$cache" 2>/dev/null || stat -c %Y "$cache" 2>/dev/null || echo 0)
-      if [ $((now - mt)) -lt "$PREVIEW_TTL" ]; then
-        cat "$cache"
-        return 0
-      fi
+    cache=$(cache_file preview "$host:$sess")
+    if file_fresh "$cache" "$PREVIEW_TTL"; then
+      cat "$cache"
+      return 0
     fi
   fi
   out=$(on_host "$host" "$(win_dump_snippet "$sess")" | format_preview)
@@ -434,7 +449,7 @@ cmd_pick() {
     --preview="$SELF preview {2} {1}" \
     --preview-window='down:65%:nowrap' \
     --bind="ctrl-x:execute-silent($SELF kill {2} {1})+reload($SELF rows)" \
-    --bind="ctrl-r:reload($SELF rows)") || true
+    --bind="ctrl-r:execute-silent(rm -f $CACHE_DIR/down.*)+reload($SELF rows)") || true
   key=$(printf '%s\n' "$out" | sed -n 1p)
   sel=$(printf '%s\n' "$out" | sed -n 2p)
   if [ "$key" = ctrl-n ]; then
