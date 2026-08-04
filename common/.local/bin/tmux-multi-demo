@@ -177,12 +177,14 @@ bind-key M-a send-prefix
 bind-key -n F12 \\
   set prefix None \\;\\
   set key-table off \\;\\
+  set status on \\;\\
   set status-style 'bg=#1a1b26,fg=#3b4261' \\;\\
   refresh-client -S
 bind-key -T off F12 \\
   set -u prefix \\;\\
   set -u key-table \\;\\
   set -u status-style \\;\\
+  set -F status '#{?#{!=:#{@tmux_multi_target},},off,on}' \\;\\
   refresh-client -S
 CONF
 }
