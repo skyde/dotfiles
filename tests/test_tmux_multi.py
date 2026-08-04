@@ -259,6 +259,16 @@ class TmuxMultiTest(unittest.TestCase):
         for call in self.calls_for('ssh'):
             self.assertIn('BatchMode=yes', call)
 
+    def test_ls_labels_local_with_first_self_alias(self):
+        # With TMUX_MULTI_SELF set, the local machine is listed under its
+        # fleet name (the first alias) rather than its hostname.
+        env = self.env(
+            TMUX_MULTI_SELF='hub hubbox',
+            STUB_LOCAL_SESSIONS='100|notes|1|0',
+        )
+        result = self.run_script('ls', env=env)
+        self.assertIn('hub\tnotes\t1w\t-', result.stdout.splitlines())
+
     def test_ls_without_hosts_file_lists_local_only(self):
         env = self.env(
             TMUX_MULTI_HOSTS_FILE=str(self.tmp / 'missing'),

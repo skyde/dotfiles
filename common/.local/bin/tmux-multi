@@ -65,8 +65,15 @@ shq() {
 LOCAL_SHORT=$(hostname -s 2>/dev/null || hostname)
 LOCAL_FULL=$(hostname 2>/dev/null || true)
 
+# The name this machine goes by in listings: its first TMUX_MULTI_SELF alias
+# when set — that is the name the rest of the fleet's hosts files use for it
+# — falling back to the hostname.
+LOCAL_LABEL=${TMUX_MULTI_SELF:-}
+LOCAL_LABEL=${LOCAL_LABEL%% *}
+[ -n "$LOCAL_LABEL" ] || LOCAL_LABEL=$LOCAL_SHORT
+
 local_name() {
-  printf '%s\n' "$LOCAL_SHORT"
+  printf '%s\n' "$LOCAL_LABEL"
 }
 
 # Is this host entry the machine we are on?
@@ -400,7 +407,7 @@ need_fzf() {
 # padded columns, Tokyo Night colours. Underlying fields stay TAB-separated
 # so fzf placeholders keep working; --ansi strips the colours for matching.
 cmd_rows() {
-  list_all | awk -F "$TAB" -v self="$LOCAL_SHORT" '
+  list_all | awk -F "$TAB" -v self="$LOCAL_LABEL" '
     {
       hc = ($1 == self) ? "\033[38;2;122;162;247m" : "\033[1;38;2;158;206;106m"
       ac = ($4 == "attached") ? "\033[38;2;224;175;104mattached" : "\033[38;2;86;95;137m-"

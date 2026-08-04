@@ -56,12 +56,14 @@ build() {
   mkdir -p "$D/bin"
 
   # Per-host tmux wrappers: on "that machine", `tmux` means that machine's
-  # own private server. A tmux machine is really just a socket.
+  # own private server. A tmux machine is really just a socket. laptop is
+  # the demo-local machine — it gets a wrapper too, so the fake remotes can
+  # "ssh" back to it: every machine in the fleet is a hub.
   local h
-  for h in "${REMOTES[@]}"; do
+  for h in "${REMOTES[@]}" laptop; do
     mkdir -p "$D/remote/$h"
     printf '#!/usr/bin/env bash\nexec %s -L demo-%s "$@"\n' \
-      "$TMUX_BIN" "$h" >"$D/remote/$h/tmux"
+      "$TMUX_BIN" "${h/laptop/local}" >"$D/remote/$h/tmux"
     chmod +x "$D/remote/$h/tmux"
   done
 
@@ -87,7 +89,7 @@ done
 [ -n "$gflag" ] && { echo 'controlmaster auto'; exit 0; }
 
 case $host in
-  devbox|buildbox) ;;
+  devbox|buildbox|laptop) ;;
   offline)
     sleep 0.3
     echo "ssh: connect to host $host port 22: Operation timed out" >&2
@@ -107,7 +109,7 @@ SHIM
   } >"$D/bin/ssh"
   chmod +x "$D/bin/ssh"
 
-  printf '# fake machines served by %s/bin/ssh\ndevbox\nbuildbox\noffline\n' \
+  printf '# fake machines served by %s/bin/ssh\nlaptop\ndevbox\nbuildbox\noffline\n' \
     "$D" >"$D/hosts"
 
   # Config for the fake remotes' servers. Real remotes share the dotfiles,
@@ -116,6 +118,7 @@ SHIM
   cat >"$D/remote.conf" <<CONF
 set -g default-terminal xterm-256color
 set -g prefix M-a
+set-environment -g TMUX_MULTI_HOSTS_FILE "$D/hosts"
 source-file "$FLAT_CONF"
 set -g base-index 1
 set -g mouse on
@@ -145,6 +148,7 @@ set -g status-left-length 30
 set -g status-right "#[fg=#f7768e,bold]DEMO "
 set-environment -g PATH "$D/bin:\$PATH"
 set-environment -g TMUX_MULTI_HOSTS_FILE "$D/hosts"
+set-environment -g TMUX_MULTI_SELF laptop
 source-file "$FLAT_CONF"
 CONF
 }
@@ -168,6 +172,10 @@ cmd_start() {
   for h in "${REMOTES[@]}"; do
     t "$h" -f "$D/remote.conf" new-session -d -s placeholder -x 200 -y 50
     t "$h" set -g status-left "#[bg=#1a1b26,fg=#9ece6a,bold] $h #[fg=#ff9e64,nobold]#S  "
+    # Per-machine identity, so each fake remote's own picker is a full hub:
+    # it knows who it is, its `tmux` is its own server, and `ssh` is the shim.
+    t "$h" set-environment -g TMUX_MULTI_SELF "$h"
+    t "$h" set-environment -g PATH "$D/remote/$h:$D/bin:$PATH"
   done
   for s in api web 'db migrate'; do t devbox new-session -d -s "$s" -x 200 -y 50; done
   for s in ci release; do t buildbox new-session -d -s "$s" -x 200 -y 50; done

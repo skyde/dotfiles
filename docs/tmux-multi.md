@@ -41,7 +41,9 @@ name, the same dotfiles work everywhere — any machine can be the hub.
 
    One ssh destination per line; `#` comments allowed. List every machine —
    each one skips its own hostname. If an alias doesn't match that machine's
-   `hostname -s`, export `TMUX_MULTI_SELF=<alias>` there so it knows itself.
+   `hostname -s`, export `TMUX_MULTI_SELF=<alias>` there so it knows itself;
+   the first alias also becomes the machine's display name in every picker,
+   keeping names consistent across the fleet.
 
 3. **Enable ssh connection sharing** so the picker is instant instead of
    paying a full ssh handshake per host. In `~/.ssh/config`:
