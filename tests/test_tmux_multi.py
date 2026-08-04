@@ -354,9 +354,10 @@ class TmuxMultiTest(unittest.TestCase):
             STUB_PANE='listening on :8080',
         )
         out = self.run_script('preview', 'hubbox', 'build', env=env).stdout
-        # One header per window: active reverse-video, inactive dimmed.
-        self.assertIn('\033[7;1m 2:logs \033[0m', out)
-        self.assertIn('\033[2m 1:shell \033[0m', out)
+        # One header cell per window column: active reverse-video, inactive
+        # dimmed (cell padding varies with the preview width).
+        self.assertIn('\033[7;1m 2:logs', out)
+        self.assertIn('\033[2m 1:shell', out)
         self.assertIn('listening on :8080', out)
         captures = [c for c in self.calls_for('tmux') if c[1] == 'capture-pane']
         # One coloured capture per window, exact-match targets.
@@ -368,7 +369,7 @@ class TmuxMultiTest(unittest.TestCase):
     def test_preview_remote_quotes_session_name(self):
         env = self.env(STUB_REMOTE_DUMP='\x011\x011\x01main\nremote screen text')
         out = self.run_script('preview', 'alpha', "it's got spaces", env=env).stdout
-        self.assertIn('\033[7;1m 1:main \033[0m', out)
+        self.assertIn('\033[7;1m 1:main', out)
         self.assertIn('remote screen text', out)
         remote = ' '.join(' '.join(c) for c in self.calls_for('ssh'))
         self.assertIn("list-windows -t '=it'\\''s got spaces'", remote)
