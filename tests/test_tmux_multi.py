@@ -73,8 +73,6 @@ SSH_STUB = textwrap.dedent(
       # The preview's combined window-walk snippet (list-windows piped into
       # per-window capture-pane): emit a canned marker stream.
       *while*capture-pane*) [ -n "${STUB_REMOTE_DUMP:-}" ] && printf '%s\n' "$STUB_REMOTE_DUMP" ;;
-      *capture-pane*) printf '%s\n' "${STUB_REMOTE_PANE:-}" ;;
-      *list-windows*) printf '%s\n' "${STUB_REMOTE_WINDOWS:-}" ;;
       *kill-session*) exit 0 ;;
       *'tmux -V'*) echo 'tmux 3.4a' ;;
       *new-session* | *tmux-session*) exit "${STUB_ATTACH_EXIT:-0}" ;;
@@ -154,14 +152,12 @@ class TmuxMultiTest(unittest.TestCase):
             ('tmux', TMUX_STUB),
             ('hostname', HOSTNAME_STUB),
         ):
-            path = self.bin / name
-            path.write_text(body)
-            path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+            self.make_stub(name, body)
         self.log = self.tmp / 'invocations.log'
         self.hosts = self.tmp / 'hosts'
-        self.hosts.write_text('# my machines\nalpha\nbeta\n\nhubbox  # this box\nlocal\n')
+        self.hosts.write_text('# my machines\nalpha\nbeta\n\nhubbox  # this box\n')
 
-    def make_stub(self, name, body="#!/usr/bin/env bash\nexit 0\n"):
+    def make_stub(self, name, body):
         """Add an executable stub to the test bin, shadowing any real one."""
         path = self.bin / name
         path.write_text(body)
@@ -213,7 +209,7 @@ class TmuxMultiTest(unittest.TestCase):
 
     # ---- host list ----
 
-    def test_hosts_skips_comments_blanks_self_and_local(self):
+    def test_hosts_skips_comments_blanks_and_self(self):
         result = self.run_script('hosts')
         self.assertEqual(['alpha', 'beta'], result.stdout.splitlines())
 

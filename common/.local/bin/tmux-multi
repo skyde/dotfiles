@@ -60,15 +60,20 @@ shq() {
   printf "'%s'" "$s"
 }
 
+# This machine's names, resolved once — is_self runs per host line and per
+# preview hover, and each $(hostname) is a fork.
+LOCAL_SHORT=$(hostname -s 2>/dev/null || hostname)
+LOCAL_FULL=$(hostname 2>/dev/null || true)
+
 local_name() {
-  hostname -s 2>/dev/null || hostname
+  printf '%s\n' "$LOCAL_SHORT"
 }
 
 # Is this host entry the machine we are on?
 is_self() {
   local h=$1 n
   # shellcheck disable=SC2086  # TMUX_MULTI_SELF may hold several names
-  for n in "$(local_name)" "$(hostname 2>/dev/null)" local ${TMUX_MULTI_SELF:-}; do
+  for n in "$LOCAL_SHORT" "$LOCAL_FULL" ${TMUX_MULTI_SELF:-}; do
     [ -n "$n" ] && [ "$h" = "$n" ] && return 0
   done
   return 1
@@ -133,9 +138,7 @@ list_all() {
   cat "$tmp"/* 2>/dev/null | sort -t "$TAB" -rn -k1,1 | cut -f2-
 }
 
-cmd_ls() {
-  list_all
-}
+
 
 # ---- open / attach --------------------------------------------------------
 
@@ -331,10 +334,10 @@ format_preview() {
 PREVIEW_TTL=10
 
 preview_cache_file() {
-  local dir
-  dir="${TMPDIR:-/tmp}/tmux-multi-preview-$(id -u)"
-  mkdir -p "$dir" && chmod 700 "$dir"
-  printf '%s/%s' "$dir" "$(printf '%s' "$1" | cksum | tr -cd '0-9')"
+  local dir="${TMPDIR:-/tmp}/tmux-multi-preview-$UID"
+  [ -d "$dir" ] || { mkdir -p "$dir" && chmod 700 "$dir"; }
+  # Sanitized name + length is collision-proof enough for a 10s cache.
+  printf '%s/%s' "$dir" "${1//[^[:alnum:]._-]/_}${#1}"
 }
 
 cmd_preview() {
@@ -342,7 +345,7 @@ cmd_preview() {
   if ! is_self "$host"; then
     cache=$(preview_cache_file "$host:$sess")
     if [ -f "$cache" ]; then
-      now=$(date +%s)
+      now=${EPOCHSECONDS:-$(date +%s)}
       mt=$(stat -f %m "$cache" 2>/dev/null || stat -c %Y "$cache" 2>/dev/null || echo 0)
       if [ $((now - mt)) -lt "$PREVIEW_TTL" ]; then
         cat "$cache"
@@ -371,7 +374,7 @@ need_fzf() {
 # padded columns, Tokyo Night colours. Underlying fields stay TAB-separated
 # so fzf placeholders keep working; --ansi strips the colours for matching.
 cmd_rows() {
-  "$SELF" ls | awk -F "$TAB" -v self="$(local_name)" '
+  list_all | awk -F "$TAB" -v self="$LOCAL_SHORT" '
     {
       hc = ($1 == self) ? "\033[38;2;122;162;247m" : "\033[1;38;2;158;206;106m"
       ac = ($4 == "attached") ? "\033[38;2;224;175;104mattached" : "\033[38;2;86;95;137m-"
@@ -385,12 +388,11 @@ cmd_pick() {
   local out key sel host sess
   # Vim-style: j/k move, / searches (esc leaves search), q quits. Session
   # column first, preview across the bottom showing every window.
-  out=$("$SELF" rows | fzf \
+  out=$(cmd_rows | fzf \
     --delimiter="$TAB" \
     --prompt='/ ' \
     --header='j/k move  / search  enter open  ctrl-n new  ctrl-x kill  ctrl-r refresh  q quit' \
     --expect=ctrl-n \
-    --print-query \
     --ansi \
     --layout=reverse \
     --no-input \
@@ -400,8 +402,8 @@ cmd_pick() {
     --preview-window='down:65%:nowrap' \
     --bind="ctrl-x:execute-silent($SELF kill {2} {1})+reload($SELF rows)" \
     --bind="ctrl-r:reload($SELF rows)") || true
-  key=$(printf '%s\n' "$out" | sed -n 2p)
-  sel=$(printf '%s\n' "$out" | sed -n 3p)
+  key=$(printf '%s\n' "$out" | sed -n 1p)
+  sel=$(printf '%s\n' "$out" | sed -n 2p)
   if [ "$key" = ctrl-n ]; then
     exec "$SELF" new
   fi
@@ -424,7 +426,7 @@ cmd_new() {
     --header='where should the session live?' |
     cut -f1) || true
   [ -z "$host" ] && exit 0
-  out=$("$SELF" ls | awk -F "$TAB" -v h="$host" '$1 == h { print $2 }' | fzf \
+  out=$(list_all | awk -F "$TAB" -v h="$host" '$1 == h { print $2 }' | fzf \
     --prompt="session on ${host}> " \
     --header='pick an existing session or type a new name' \
     --print-query) || true
@@ -472,10 +474,10 @@ shift 2>/dev/null || true
 case $cmd in
   pick) cmd_pick "$@" ;;
   new) cmd_new "$@" ;;
-  ls) cmd_ls "$@" ;;
+  ls) list_all ;;
   open) cmd_open "$@" ;;
   kill) cmd_kill "$@" ;;
-  preview | windows) cmd_preview "$@" ;;
+  preview) cmd_preview "$@" ;;
   rows) cmd_rows ;;
   shell-attach) cmd_shell_attach "$@" ;;
   doctor) cmd_doctor "$@" ;;
