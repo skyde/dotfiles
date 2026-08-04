@@ -63,7 +63,7 @@ name, the same dotfiles work everywhere — any machine can be the hub.
 
 | Key | Action |
 | --- | --- |
-| `prefix s` | Fullscreen session picker across all machines; the preview shows each session's window bar and a live capture of its active pane (like the native tree's preview, but cross-machine). `enter` open, `ctrl-n` new, `ctrl-x` kill, `ctrl-r` refresh. |
+| `prefix s` | Fullscreen session picker across all machines: session name first, colourised columns, and a preview along the bottom showing a live capture of **every** window in the session (remote previews cached ~10s so hovering is instant). Vim-style: `j`/`k` move, `/` searches (`esc` back), `q` quits; `enter` open, `ctrl-n` new, `ctrl-x` kill, `ctrl-r` refresh. |
 | `prefix S` | Same picker (alias). |
 | `prefix N` | New session: pick the machine, then name the session (or pick an existing one). |
 | `prefix M-s` | The native, local-only session tree that `prefix s` used to open. |

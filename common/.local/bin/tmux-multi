@@ -17,7 +17,7 @@
 #   ls                   print "host<TAB>session<TAB>windows<TAB>attached"
 #   open HOST SESSION    open (attach/create) a session on HOST
 #   kill HOST SESSION    kill a session on HOST (and its local ssh window)
-#   preview HOST SESSION render a session (window bar + active pane capture)
+#   preview HOST SESSION render a session (all windows; remotes cached ~10s)
 #   shell-attach HOST S  internal: the ssh loop that runs inside a window
 #   doctor               check ssh + tmux on every configured host
 #
@@ -252,10 +252,9 @@ cmd_kill() {
 
 # ---- preview (fzf preview pane) -------------------------------------------
 
-# The preview mirrors tmux's own choose-tree: a window bar plus a live,
-# still-coloured capture of the session's active pane, so you recognise a
-# session by what is on its screen rather than by window names alone.
-WIN_FMT='#{?window_active,*,-}#{window_index}:#{window_name}'
+# The preview shows every window of the session: a header per window plus a
+# live, still-coloured capture of that window's pane, so you recognise a
+# session by what is on its screens rather than by window names alone.
 
 # Run a snippet against HOST's tmux — locally, or over ssh for a remote.
 on_host() {
@@ -267,27 +266,81 @@ on_host() {
   fi
 }
 
+# One command string that walks a session's windows and emits, per window, a
+# \001-marker line (index, active flag, name) followed by a coloured capture
+# of its pane. Shared verbatim between the local and ssh paths, so remotes
+# cost a single round trip.
+win_dump_snippet() {
+  local q
+  q=$(shq "=$1")
+  printf '%s' "tmux list-windows -t $q -F '#{window_index} #{window_active} #{window_name}' 2>/dev/null | while IFS=' ' read -r i a n; do printf '\\001%s\\001%s\\001%s\\n' \"\$i\" \"\$a\" \"\$n\"; tmux capture-pane -ep -t $q:\"\$i\" 2>/dev/null; done"
+}
+
+# Turn the marker stream into the rendered preview: window headers (active
+# reversed, inactive dimmed), per-window trailing blank lines dropped, and —
+# when fzf tells us the preview height — each window capped to its last lines
+# so every window stays visible without scrolling.
+format_preview() {
+  awk -v rows="${FZF_PREVIEW_LINES:-0}" '
+    /^\x01/ {
+      n++
+      split($0, p, "\x01")
+      head[n] = p[2] ":" p[4]
+      active[n] = (p[3] == "1")
+      pending[n] = ""; buf = ""
+      next
+    }
+    # Buffer pane lines; blank runs only survive if content follows, which
+    # drops each window'\''s unused bottom rows.
+    n { buf = buf $0 "\n"; if (NF) { pending[n] = pending[n] buf; buf = "" } }
+    END {
+      if (!n) exit
+      # Share the preview height between windows (header lines included) so
+      # every window is visible without scrolling; keep at least a few lines
+      # each, and show the LAST lines — that is where the action is.
+      cap = 0
+      if (rows > n) { cap = int((rows - n) / n); if (cap < 3) cap = 3 }
+      for (i = 1; i <= n; i++) {
+        keep = split(pending[i], lines, "\n") - 1
+        first = (cap > 0 && keep > cap) ? keep - cap + 1 : 1
+        if (active[i])
+          printf "\033[7;1m %s \033[0m\n", head[i]
+        else
+          printf "\033[2m %s \033[0m\n", head[i]
+        for (j = first; j <= keep; j++) print lines[j]
+      }
+    }'
+}
+
+# Remote previews are cached briefly so hovering around the picker does not
+# pay an ssh round trip per keystroke. Local previews are cheap: always live.
+PREVIEW_TTL=10
+
+preview_cache_file() {
+  local dir
+  dir="${TMPDIR:-/tmp}/tmux-multi-preview-$(id -u)"
+  mkdir -p "$dir" && chmod 700 "$dir"
+  printf '%s/%s' "$dir" "$(printf '%s' "$1" | cksum | tr -cd '0-9')"
+}
+
 cmd_preview() {
-  local host=${1:?host required} sess=${2:?session required}
-  local cols=${FZF_PREVIEW_COLUMNS:-80} bar='' line
-
-  # Window bar: active window highlighted, the rest dimmed.
-  while IFS= read -r line; do
-    [ -z "$line" ] && continue
-    if [ "${line:0:1}" = '*' ]; then
-      bar+=$'\033[7;1m '${line:1}$' \033[0m '
-    else
-      bar+=$'\033[2m'${line:1}$'\033[0m  '
+  local host=${1:?host required} sess=${2:?session required} cache='' now mt out
+  if ! is_self "$host"; then
+    cache=$(preview_cache_file "$host:$sess")
+    if [ -f "$cache" ]; then
+      now=$(date +%s)
+      mt=$(stat -f %m "$cache" 2>/dev/null || stat -c %Y "$cache" 2>/dev/null || echo 0)
+      if [ $((now - mt)) -lt "$PREVIEW_TTL" ]; then
+        cat "$cache"
+        return 0
+      fi
     fi
-  done < <(on_host "$host" "tmux list-windows -t $(shq "=$sess") -F $(shq "$WIN_FMT")")
-  [ -n "$bar" ] && printf '%s\n' "$bar"
-  printf '\033[38;5;60m%*s\033[0m\n' "$cols" '' | tr ' ' '-'
-
-  # Active pane, colours intact (-e). Trailing blank lines are the unused
-  # bottom of the pane; dropping them keeps short sessions from rendering as
-  # a screenful of whitespace.
-  on_host "$host" "tmux capture-pane -ep -t $(shq "=$sess:")" |
-    awk '{ buf = buf $0 "\n"; if (NF) { printf "%s", buf; buf = "" } }'
+  fi
+  out=$(on_host "$host" "$(win_dump_snippet "$sess")" | format_preview)
+  if [ -n "$cache" ]; then
+    printf '%s\n' "$out" >"$cache.tmp" 2>/dev/null && mv "$cache.tmp" "$cache" 2>/dev/null || true
+  fi
+  printf '%s\n' "$out"
 }
 
 # ---- interactive pickers --------------------------------------------------
@@ -300,28 +353,48 @@ need_fzf() {
   die 'fzf is required'
 }
 
+# The picker's display rows: session name first (it is what you scan for),
+# padded columns, Tokyo Night colours. Underlying fields stay TAB-separated
+# so fzf placeholders keep working; --ansi strips the colours for matching.
+cmd_rows() {
+  "$SELF" ls | awk -F "$TAB" -v self="$(local_name)" '
+    {
+      hc = ($1 == self) ? "\033[38;2;122;162;247m" : "\033[1;38;2;158;206;106m"
+      ac = ($4 == "attached") ? "\033[38;2;224;175;104mattached" : "\033[38;2;86;95;137m-"
+      printf "\033[1;38;2;255;158;100m%-24s\033[0m\t%s%-12s\033[0m\t\033[38;2;86;95;137m%3s\033[0m\t%s\033[0m\n",
+        $2, hc, $1, $3, ac
+    }'
+}
+
 cmd_pick() {
   need_fzf
   local out key sel host sess
-  out=$("$SELF" ls | fzf \
+  # Vim-style: j/k move, / searches (esc leaves search), q quits. Session
+  # column first, preview across the bottom showing every window.
+  out=$("$SELF" rows | fzf \
     --delimiter="$TAB" \
-    --prompt='session> ' \
-    --header='enter: open  ctrl-n: new  ctrl-x: kill  ctrl-r: refresh' \
+    --prompt='/ ' \
+    --header='j/k move  / search  enter open  ctrl-n new  ctrl-x kill  ctrl-r refresh  q quit' \
     --expect=ctrl-n \
     --print-query \
     --ansi \
-    --preview="$SELF preview {1} {2}" \
-    --preview-window='right:65%:nowrap' \
-    --bind="ctrl-x:execute-silent($SELF kill {1} {2})+reload($SELF ls)" \
-    --bind="ctrl-r:reload($SELF ls)") || true
+    --layout=reverse \
+    --no-input \
+    --bind='j:down,k:up,q:abort,/:show-input+unbind(j,k,q,/)' \
+    --bind='esc:clear-query+hide-input+rebind(j,k,q,/)' \
+    --preview="$SELF preview {2} {1}" \
+    --preview-window='down:65%:nowrap' \
+    --bind="ctrl-x:execute-silent($SELF kill {2} {1})+reload($SELF rows)" \
+    --bind="ctrl-r:reload($SELF rows)") || true
   key=$(printf '%s\n' "$out" | sed -n 2p)
   sel=$(printf '%s\n' "$out" | sed -n 3p)
   if [ "$key" = ctrl-n ]; then
     exec "$SELF" new
   fi
   [ -z "$sel" ] && exit 0
-  host=$(printf '%s\n' "$sel" | cut -f1)
-  sess=$(printf '%s\n' "$sel" | cut -f2)
+  # Fields carry display padding; strip it before using them as tmux targets.
+  sess=$(printf '%s\n' "$sel" | cut -f1 | sed 's/[[:space:]]*$//')
+  host=$(printf '%s\n' "$sel" | cut -f2 | sed 's/[[:space:]]*$//')
   exec "$SELF" open "$host" "$sess"
 }
 
@@ -389,6 +462,7 @@ case $cmd in
   open) cmd_open "$@" ;;
   kill) cmd_kill "$@" ;;
   preview | windows) cmd_preview "$@" ;;
+  rows) cmd_rows ;;
   shell-attach) cmd_shell_attach "$@" ;;
   doctor) cmd_doctor "$@" ;;
   hosts) remote_hosts ;;

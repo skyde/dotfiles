@@ -70,6 +70,9 @@ SSH_STUB = textwrap.dedent(
           printf '%s\n' "$out"
         done <<<"$sessions"
         ;;
+      # The preview's combined window-walk snippet (list-windows piped into
+      # per-window capture-pane): emit a canned marker stream.
+      *while*capture-pane*) [ -n "${STUB_REMOTE_DUMP:-}" ] && printf '%s\n' "$STUB_REMOTE_DUMP" ;;
       *capture-pane*) printf '%s\n' "${STUB_REMOTE_PANE:-}" ;;
       *list-windows*) printf '%s\n' "${STUB_REMOTE_WINDOWS:-}" ;;
       *kill-session*) exit 0 ;;
@@ -327,37 +330,64 @@ class TmuxMultiTest(unittest.TestCase):
 
     # ---- preview ----
 
-    def test_preview_local_renders_window_bar_and_pane(self):
+    def test_preview_local_renders_every_window(self):
         env = self.env(
-            STUB_SESSION_WINDOWS='-1:shell\n*2:logs',
+            STUB_SESSION_WINDOWS='1 0 shell\n2 1 logs',
             STUB_PANE='listening on :8080',
         )
         out = self.run_script('preview', 'hubbox', 'build', env=env).stdout
-        # Active window reverse-video, inactive dimmed.
+        # One header per window: active reverse-video, inactive dimmed.
         self.assertIn('\033[7;1m 2:logs \033[0m', out)
-        self.assertIn('\033[2m1:shell\033[0m', out)
+        self.assertIn('\033[2m 1:shell \033[0m', out)
         self.assertIn('listening on :8080', out)
-        capture = [c for c in self.calls_for('tmux') if c[1] == 'capture-pane']
-        self.assertEqual(1, len(capture))
-        # -e keeps the pane's own colours in the preview.
-        self.assertIn('-ep', capture[0])
-        self.assertIn('=build:', capture[0])
+        captures = [c for c in self.calls_for('tmux') if c[1] == 'capture-pane']
+        # One coloured capture per window, exact-match targets.
+        self.assertEqual(
+            [['-ep', '-t', '=build:1'], ['-ep', '-t', '=build:2']],
+            [c[2:] for c in captures],
+        )
 
     def test_preview_remote_quotes_session_name(self):
-        env = self.env(STUB_REMOTE_PANE='remote screen text')
+        env = self.env(STUB_REMOTE_DUMP='\x011\x011\x01main\nremote screen text')
         out = self.run_script('preview', 'alpha', "it's got spaces", env=env).stdout
+        self.assertIn('\033[7;1m 1:main \033[0m', out)
         self.assertIn('remote screen text', out)
         remote = ' '.join(' '.join(c) for c in self.calls_for('ssh'))
-        self.assertIn("capture-pane -ep -t '=it'\\''s got spaces:'", remote)
+        self.assertIn("list-windows -t '=it'\\''s got spaces'", remote)
+        self.assertIn("capture-pane -ep -t '=it'\\''s got spaces':", remote)
+
+    def test_preview_remote_is_cached(self):
+        env = self.env(
+            STUB_REMOTE_DUMP='\x011\x011\x01main\nremote screen text',
+            TMPDIR=str(self.tmp),
+        )
+        first = self.run_script('preview', 'alpha', 'build', env=env).stdout
+        after_first = len(self.calls_for('ssh'))
+        second = self.run_script('preview', 'alpha', 'build', env=env).stdout
+        self.assertEqual(first, second)
+        # Second render came from the cache: no further ssh round trips.
+        self.assertEqual(after_first, len(self.calls_for('ssh')))
 
     def test_preview_trims_trailing_blank_lines(self):
-        env = self.env(STUB_PANE='top line\n\n\n')
+        env = self.env(
+            STUB_SESSION_WINDOWS='1 1 shell',
+            STUB_PANE='top line\n\n\n',
+        )
         out = self.run_script('preview', 'hubbox', 'build', env=env).stdout
         self.assertTrue(out.endswith('top line\n'), repr(out[-40:]))
 
     def test_preview_of_missing_session_is_not_an_error(self):
         result = self.run_script('preview', 'hubbox', 'ghost')
         self.assertEqual(0, result.returncode)
+
+    # ---- picker rows ----
+
+    def test_rows_put_session_name_first(self):
+        env = self.env(STUB_LOCAL_SESSIONS='100|notes|1|0')
+        out = self.run_script('rows', env=env).stdout
+        # Session before host, colourised and padded for the picker.
+        self.assertRegex(out, r'notes\s.*hubbox')
+        self.assertIn('\033[1;38;2;255;158;100m', out)
 
     # ---- kill ----
 
