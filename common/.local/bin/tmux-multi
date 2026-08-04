@@ -295,18 +295,22 @@ format_preview() {
     n { buf = buf $0 "\n"; if (NF) { pending[n] = pending[n] buf; buf = "" } }
     END {
       if (!n) exit
-      # Share the preview height between windows (header lines included) so
-      # every window is visible without scrolling; keep at least a few lines
-      # each, and show the LAST lines — that is where the action is.
-      cap = 0
-      if (rows > n) { cap = int((rows - n) / n); if (cap < 3) cap = 3 }
+      # Share the preview height between windows so EVERY window is visible
+      # without scrolling — like the native tree, showing all windows beats
+      # showing more of some. Headers cost a line each; whatever remains is
+      # split evenly, each window showing its LAST lines (that is where the
+      # action is). Worst case the preview degrades to headers only.
+      if (rows <= 0) rows = 40
+      cap = int((rows - n) / n)
+      if (cap < 0) cap = 0
       for (i = 1; i <= n; i++) {
-        keep = split(pending[i], lines, "\n") - 1
-        first = (cap > 0 && keep > cap) ? keep - cap + 1 : 1
         if (active[i])
           printf "\033[7;1m %s \033[0m\n", head[i]
         else
           printf "\033[2m %s \033[0m\n", head[i]
+        if (cap == 0) continue
+        keep = split(pending[i], lines, "\n") - 1
+        first = (keep > cap) ? keep - cap + 1 : 1
         for (j = first; j <= keep; j++) print lines[j]
       }
     }'
