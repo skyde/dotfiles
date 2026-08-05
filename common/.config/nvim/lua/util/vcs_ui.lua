@@ -839,6 +839,9 @@ local function ensure_tab()
   vim.wo[win].relativenumber = false
   vim.wo[win].wrap = false
   vim.wo[win].cursorline = true
+  -- The global cursorlineopt is "number", and the panel has no numbers — so
+  -- without this the selected file would get no highlight at all.
+  vim.wo[win].cursorlineopt = "line"
   vim.wo[win].winfixwidth = true
 
   state = state or {}

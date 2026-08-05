@@ -790,6 +790,23 @@ do
 end
 
 --------------------------------------------------------------------------
+-- panel: the selected file is visibly highlighted
+--------------------------------------------------------------------------
+
+do
+  -- The real config sets cursorlineopt = "number" globally, and the panel has
+  -- no line numbers — the panel must override it or the selection is invisible.
+  local saved = vim.o.cursorlineopt
+  vim.o.cursorlineopt = "number"
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  check("panel: cursorline is on", vim.wo[panel].cursorline)
+  eq("panel: cursorline highlights the row, not just the number", "line", vim.wo[panel].cursorlineopt)
+  ui.close()
+  vim.o.cursorlineopt = saved
+end
+
+--------------------------------------------------------------------------
 -- caching: reopening paints from the cache, then revalidates in the background
 --------------------------------------------------------------------------
 
