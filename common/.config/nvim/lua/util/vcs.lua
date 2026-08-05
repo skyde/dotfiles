@@ -14,6 +14,11 @@
 --   raw_diff(root, rev, path)   unified diff text
 --   log(root, path)             revisions touching a path
 --
+-- and optional per-file actions, present where the backend can honour them:
+--
+--   revert(root, rev, file)      discard the local change to one file
+--   staged / stage / unstage     git's index; absent everywhere else
+--
 -- Scopes are deliberately only three, matching how the VS Code setup framed
 -- them: `working` (what git calls uncommitted), `branch` (everything since the
 -- fork point with trunk) and `head` (the tip commit's own change).
@@ -35,6 +40,10 @@ local M = {}
 ---@field show fun(root: string, rev: string, path: string): string[]|nil
 ---@field raw_diff fun(root: string, rev: string, path: string|nil, orig: string|nil): string
 ---@field log fun(root: string, path: string): table[]
+---@field revert fun(root: string, rev: string, file: VcsFile): boolean|nil
+---@field staged fun(root: string, path: string): boolean|nil
+---@field stage fun(root: string, path: string): boolean|nil
+---@field unstage fun(root: string, path: string): boolean|nil
 
 --------------------------------------------------------------------------
 -- helpers
@@ -124,6 +133,13 @@ local function one(res)
   end
   l = vim.trim(l)
   return l ~= "" and l or nil
+end
+
+---Did a command run and succeed? For the action-shaped backend calls, where
+---the caller only needs pass/fail.
+---@param res table|nil
+local function ran(res)
+  return res ~= nil and res.code == 0
 end
 
 ---Walk up from `dir` looking for any of `markers`; return the containing dir.
@@ -266,6 +282,34 @@ function git.log(root, path)
   return out
 end
 
+---Discard the local change to one file, restoring what `rev` had.
+function git.revert(root, rev, file)
+  if file.status == "A" then
+    -- Added: there is nothing at `rev` to restore, so reverting means
+    -- removing the file — from the index too, when it is staged.
+    return ran(sh({ "git", "rm", "-fq", "--ignore-unmatch", "--", file.path }, root))
+  end
+  if file.orig then
+    -- A rename reverts as: drop the new path, resurrect the old one.
+    sh({ "git", "rm", "-fq", "--ignore-unmatch", "--", file.path }, root)
+  end
+  -- `checkout <rev> -- <path>` resets both the index and the working tree.
+  return ran(sh({ "git", "checkout", rev, "--", file.orig or file.path }, root))
+end
+
+function git.staged(root, path)
+  local res = sh({ "git", "diff", "--cached", "--name-only", "--", path }, root)
+  return ran(res) and vim.trim(res.stdout or "") ~= ""
+end
+
+function git.stage(root, path)
+  return ran(sh({ "git", "add", "--", path }, root))
+end
+
+function git.unstage(root, path)
+  return ran(sh({ "git", "restore", "--staged", "--", path }, root))
+end
+
 --------------------------------------------------------------------------
 -- jj
 --------------------------------------------------------------------------
@@ -364,6 +408,12 @@ function jj.log(root, path)
     end
   end
   return out
+end
+
+---One command covers every status: restoring from a revision that lacks the
+---file deletes it, which is exactly what reverting an add should do.
+function jj.revert(root, rev, file)
+  return ran(sh(jj_cmd("restore", "--from", rev, file.path), root))
 end
 
 --------------------------------------------------------------------------
@@ -505,6 +555,10 @@ local function perforce(bin)
     return out
   end
 
+  function p4.revert(root, _, file)
+    return ran(sh({ bin, "revert", file.path }, root))
+  end
+
   return p4
 end
 
@@ -568,6 +622,13 @@ function hg.log(root, path)
     end
   end
   return out
+end
+
+---`hg revert` on an added file un-adds it and leaves it untracked, which is
+---the closest Mercurial gets to discarding an add without deleting data.
+function hg.revert(root, rev, file)
+  local res = sh({ "hg", "revert", "--no-backup", "-r", rev, file.path }, root)
+  return ran(res)
 end
 
 --------------------------------------------------------------------------

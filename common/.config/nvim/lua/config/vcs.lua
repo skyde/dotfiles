@@ -64,12 +64,14 @@ end)
 --------------------------------------------------------------------------
 
 -- The one that gets used constantly: the changed-file list with a live diff,
--- standing in for focusing the VS Code SCM view.
+-- standing in for focusing the VS Code SCM view. toggle() means the same key
+-- closes the view from inside it, like the VS Code sidebar; from inside with
+-- the other scope it switches scope instead.
 map("n", "<leader>gc", function()
-  ui.open({ scope = "working" })
+  ui.toggle({ scope = "working" })
 end, { desc = "Changed files (uncommitted)" })
 map("n", "<leader>gD", function()
-  ui.open({ scope = "branch" })
+  ui.toggle({ scope = "branch" })
 end, { desc = "Changed files (since fork point)" })
 map("n", "<leader>gC", function()
   vim.ui.input({ prompt = "Compare against revision: " }, function(rev)
