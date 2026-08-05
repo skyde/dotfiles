@@ -5,6 +5,9 @@
 --  – Device presence checked exactly when a decision is needed
 --------------------------------------------------------------------------------
 
+require("hs.ipc")
+
+
 ---------------------------  Constants  ----------------------------------------
 local INTERNAL_KB_NAME = "Apple Internal Keyboard / Trackpad"
 local CMD_TAP_THRESHOLD = 0.15 -- seconds a press counts as a tap
@@ -190,3 +193,41 @@ for key, appName in pairs(appSwitchShortcuts) do
 		end)
 	end
 end
+
+--------------------------------------------------------------------------------
+-- Arrow-key navigation for AltTab
+--
+-- AltTab's own "Select windows using arrow keys" option swallows Ctrl+Up Arrow,
+-- which is needed elsewhere. So instead: turn that option OFF, turn on
+-- "Select windows using vim keys", and let this tap rewrite Left/Right into
+-- h/l while the switcher is on screen. Arrow keys keep working everywhere else.
+--------------------------------------------------------------------------------
+
+-- The switcher itself is a borderless, untitled window; AltTab's Settings
+-- window is a normal AXStandardWindow, so exclude that to avoid rewriting
+-- arrow keys while the user is editing preferences.
+local function isAltTabSwitcherOpen()
+	local app = hs.application.find("com.lwouis.alt-tab-macos")
+	if not app then return false end
+	for _, win in ipairs(app:allWindows()) do
+		if win:isVisible() and win:subrole() ~= "AXStandardWindow" and win:title() == "" then
+			return true
+		end
+	end
+	return false
+end
+
+local altTabArrowTap = hs.eventtap.new({ hs.eventtap.event.types.keyDown }, function(evt)
+	local keyCode = evt:getKeyCode()
+	-- 123 = Left Arrow, 124 = Right Arrow
+	if keyCode == 124 or keyCode == 123 then
+		if isAltTabSwitcherOpen() then
+			hs.eventtap.keyStroke({}, keyCode == 124 and "l" or "h", 0)
+			return true -- consume the arrow key so it never reaches the app
+		end
+	end
+	return false
+end):start()
+
+-- Keep a strong reference so Lua's GC never collects the tap
+_G.__altTabArrowTap_noCache = altTabArrowTap
