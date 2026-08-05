@@ -1106,6 +1106,45 @@ do
 end
 
 --------------------------------------------------------------------------
+-- closing when the view is the only tab left
+--------------------------------------------------------------------------
+
+do
+  open_settled({ scope = "working" })
+  vim.cmd("tabonly") -- the origin tab is gone; the view is the last tab
+  local ok = pcall(ui.close)
+  check("last tab: close does not raise E784", ok)
+  eq("last tab: one clean tab remains", 1, #vim.api.nvim_list_tabpages())
+  check(
+    "last tab: the panel is gone",
+    not vim.api.nvim_buf_get_name(0):find("vcs://changes", 1, true),
+    vim.api.nvim_buf_get_name(0)
+  )
+  -- And the view is not stuck: it opens again as if nothing happened.
+  open_settled({ scope = "working" })
+  eq("last tab: reopening works", 2, #vim.api.nvim_list_tabpages())
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- two diffs of the same file must not fight over the scratch buffer name
+--------------------------------------------------------------------------
+
+do
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+  ui.file_diff("working")
+  local first_left = win_name(layout()[1])
+  vim.cmd("tabprevious")
+  ui.file_diff("working")
+  local second_left = win_name(layout()[1])
+  check("scratch: first base pane is named", first_left:find("vcs://", 1, true) ~= nil, first_left)
+  check("scratch: second base pane is named too", second_left:find("vcs://", 1, true) ~= nil, second_left)
+  check("scratch: the names differ", first_left ~= second_left, second_left)
+  vim.cmd("tabclose")
+  vim.cmd("tabclose")
+end
+
+--------------------------------------------------------------------------
 -- m: merge view straight from the list
 --------------------------------------------------------------------------
 

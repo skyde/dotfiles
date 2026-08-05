@@ -145,6 +145,16 @@ local function scratch(name, content, path)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, content or {})
   vim.bo[buf].modifiable = false
   vim.bo[buf].modified = false
+  -- Two diffs of the same file at the same revision would collide on the
+  -- name, and the loser would silently end up as a nameless "[No Name]"
+  -- pane; suffix instead.
+  if vim.fn.bufexists(name) == 1 then
+    local n = 2
+    while vim.fn.bufexists(("%s (%d)"):format(name, n)) == 1 do
+      n = n + 1
+    end
+    name = ("%s (%d)"):format(name, n)
+  end
   pcall(vim.api.nvim_buf_set_name, buf, name)
   if path then
     local ft = vim.filetype.match({ filename = path, buf = buf })
@@ -1317,7 +1327,16 @@ function M.close()
   end
   if valid() then
     vim.api.nvim_set_current_tabpage(state.tab)
-    vim.cmd("tabclose")
+    if vim.fn.tabpagenr("$") == 1 then
+      -- The origin tab is gone and a lone tab cannot be closed (E784).
+      -- Dissolve the layout into an empty buffer instead — erroring here
+      -- would skip the cleanup below and leave the view stuck half-alive,
+      -- with every further open/close attempt failing the same way.
+      pcall(vim.cmd, "silent! only")
+      pcall(vim.cmd, "enew")
+    else
+      pcall(vim.cmd, "tabclose")
+    end
   end
   state = nil
   -- The ]f/[f maps only mean something while the view exists; leaving them
