@@ -149,8 +149,10 @@ map({ "n", "i" }, "<D-s>", "<cmd>w<CR>", { desc = "Save file" })
 -- Same action via Shift+F5 (sent by kitty Cmd+S)
 map_shift_f(5, "<cmd>w<CR>", { mode = { "n", "i" }, desc = "Save file" })
 
--- Toggle between source and header files (requires clangd)
-map("n", "<A-o>", "<cmd>ClangdSwitchSourceHeader<CR>", { desc = "Switch header/source" })
+-- Toggle between source and header files (needs clangd attached)
+map("n", "<A-o>", function()
+  require("util.clangd").switch_source_header()
+end, { desc = "Switch header/source" })
 
 -- Navigate jump list with Alt+Left/Right
 map("n", "<D-Left>", "<C-o>", { desc = "Jump backward" })
