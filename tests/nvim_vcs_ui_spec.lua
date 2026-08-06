@@ -376,6 +376,11 @@ do
   eq("inline: the old line is drawn as virtual text", { "two" }, virt)
   eq("inline: the new lines are highlighted", { 2, 4 }, added)
 
+  -- <Space> selects too; in the panel it deliberately shadows leader.
+  feed(" ")
+  eq("inline: <Space> focuses the file itself", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  vim.api.nvim_set_current_win(layout()[1])
+
   -- The whole point: it is editable, and the overlay follows the edit.
   feed("\r")
   eq("inline: <CR> focuses the file itself", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))

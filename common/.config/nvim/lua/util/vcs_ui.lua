@@ -1026,7 +1026,7 @@ end
 -- should be learnable only by reading the source.
 local HELP = {
   { "j / k", "select file, diff follows" },
-  { "<CR> / l", "focus the diff" },
+  { "<CR> / Space", "focus the diff" },
   { "J / K", "scroll the diff from the list" },
   { "]c / [c", "next / previous change in the diff" },
   { "]f / [f", "next / previous file, from inside the diff" },
@@ -1042,7 +1042,7 @@ local HELP = {
 local function show_help()
   local lines = {}
   for _, entry in ipairs(HELP) do
-    table.insert(lines, ("  %-11s %s"):format(entry[1], entry[2]))
+    table.insert(lines, ("  %-12s %s"):format(entry[1], entry[2]))
   end
   local width = 0
   for _, l in ipairs(lines) do
@@ -1053,7 +1053,7 @@ local function show_help()
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
   for i = 1, #lines do
-    vim.api.nvim_buf_set_extmark(buf, ns, i - 1, 0, { end_col = 13, hl_group = "Special" })
+    vim.api.nvim_buf_set_extmark(buf, ns, i - 1, 0, { end_col = 14, hl_group = "Special" })
   end
   local win = vim.api.nvim_open_win(buf, true, {
     relative = "editor",
@@ -1089,10 +1089,11 @@ local function setup_panel_keys(buf)
   map("<Up>", function()
     move(-1)
   end, "Previous changed file")
-  -- <Space> would be the natural "select" key but it is leader, and taking it
-  -- over buffer-locally would silently break every <leader> binding while the
-  -- panel is focused. l / <Right> are the next-nearest reach.
-  for _, lhs in ipairs({ "<CR>", "o", "l", "<Right>" }) do
+  -- <Space> is leader, and mapping it here (nowait, so it fires immediately)
+  -- makes every <leader> binding unreachable while the panel is focused.
+  -- Deliberate: selecting a file is what this panel is for, constantly, and
+  -- the leader keys are all one window away.
+  for _, lhs in ipairs({ "<CR>", "<Space>", "o", "l", "<Right>" }) do
     map(lhs, function()
       show(true)
     end, "Open diff")
