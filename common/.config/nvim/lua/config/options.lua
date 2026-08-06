@@ -112,3 +112,10 @@ vim.opt.diffopt = {
   "linematch:60",
   "context:10",
 }
+
+-- Highlight the characters that changed inside a modified line, not just the
+-- line — what delta does in the terminal. Only exists on nvim 0.12+, hence
+-- the pcall rather than a version check.
+pcall(function()
+  vim.opt.diffopt:append("inline:char")
+end)

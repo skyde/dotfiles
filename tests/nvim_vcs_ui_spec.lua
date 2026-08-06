@@ -389,8 +389,12 @@ do
   vim.api.nvim_win_set_cursor(0, { 1, 0 })
   inline.goto_hunk(0, 1)
   eq("inline: next hunk from the top", 2, vim.api.nvim_win_get_cursor(0)[1])
+  -- linematch pairs old "two" with "inserted" (they share characters; "TWO"
+  -- shares none case-sensitively), so "TWO" and that pair are separate hunks.
   inline.goto_hunk(0, 1)
-  eq("inline: next hunk again", 5, vim.api.nvim_win_get_cursor(0)[1])
+  eq("inline: next hunk again", 3, vim.api.nvim_win_get_cursor(0)[1])
+  inline.goto_hunk(0, 1)
+  eq("inline: last hunk", 5, vim.api.nvim_win_get_cursor(0)[1])
 
   check("inline: revert replaces the hunk with the base lines", inline.revert_hunk(0))
   eq(
