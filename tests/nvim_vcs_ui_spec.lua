@@ -939,8 +939,17 @@ do
     return not ui.busy()
   end)
   eq("toggle: opens the view", tabs + 1, #vim.api.nvim_list_tabpages())
+
+  -- The key walks inward: from the diff it focuses the list, from the list
+  -- it closes.
+  local panel = layout()[1]
+  feed("l")
+  check("toggle precondition: focus sits in the diff", vim.api.nvim_get_current_win() ~= panel)
   ui.toggle({ scope = "working" })
-  eq("toggle: closes it from inside", tabs, #vim.api.nvim_list_tabpages())
+  eq("toggle: from the diff it focuses the list", panel, vim.api.nvim_get_current_win())
+  eq("toggle: without closing the view", tabs + 1, #vim.api.nvim_list_tabpages())
+  ui.toggle({ scope = "working" })
+  eq("toggle: from the list it closes", tabs, #vim.api.nvim_list_tabpages())
 
   ui.toggle({ scope = "working" })
   vim.wait(3000, function()

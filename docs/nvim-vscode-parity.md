@@ -16,7 +16,7 @@ so a jj repo colocated with git is treated as jj; override with
 
 | Key | VS Code | Neovim |
 | --- | --- | --- |
-| `<leader>gc` | focus SCM view | changed files, uncommitted — list on the left, live diff on the right; pressing it again from inside closes the view, like the VS Code sidebar |
+| `<leader>gc` | focus SCM view | changed files, uncommitted — list on the left, live diff on the right; pressed again it walks inward: from the diff it focuses the list, from the list it closes, like the VS Code sidebar |
 | `<leader>gD` | `gitTreeCompare.openAllChanges` | changed files since the fork point with trunk (also a toggle) |
 | `<leader>gC` | `gitTreeCompare.changeBase` | changed files against a revision you type |
 | `<leader>gR` | refresh SCM | refresh the list |

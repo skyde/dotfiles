@@ -1355,8 +1355,11 @@ function M.open(opts)
   prefetch_bases()
 end
 
----One key both ways: open the view from outside, close it from inside. From
----inside with a *different* scope requested, switch scope instead of closing.
+---One key, walking inward: from outside it opens the view; from the diff it
+---focuses the file list (whose cursorline is the selection highlight); from
+---the list it closes — the way VS Code's "focus SCM view" key first focuses,
+---then toggles away. From inside with a *different* scope requested, it
+---switches scope instead.
 ---@param opts? { scope?: string, rev?: string }
 function M.toggle(opts)
   opts = opts or {}
@@ -1366,7 +1369,11 @@ function M.toggle(opts)
     and not opts.rev
     and (not opts.scope or opts.scope == state.scope)
   then
-    M.close()
+    if vim.api.nvim_get_current_win() ~= state.panel_win then
+      vim.api.nvim_set_current_win(state.panel_win)
+    else
+      M.close()
+    end
     return
   end
   M.open(opts)
