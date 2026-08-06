@@ -39,8 +39,13 @@ The list is a tree, VS Code explorer style: directories first, chains of
 single-child directories compacted onto one line (`a/b/c/`), and every
 filename shown whole instead of a full path truncated against the panel
 edge. Status letters (`M` `A` `D` `R` `?` `!`) sit in the left column,
-renamed files read `new ← old`, and the header tracks the selection as
-`file 3 of 12`.
+filetype icons follow when mini.icons is around, renamed files read
+`new ← old`, and the header tracks the selection as `file 3 of 12` plus the
+listing's total churn (`+125 -40`). The right edge of each row carries the
+review state: the file's own `+n -n` (computed in the background off the
+cached bases, never a subprocess) and a `✓` once the file has been looked
+at — GitHub's per-file "viewed" checks, kept per listing until its base
+revision moves.
 
 | Key | Action |
 | --- | --- |
@@ -51,7 +56,9 @@ renamed files read `new ← old`, and the header tracks the selection as
 | `]f` / `[f` | from *inside* the diff: render the next / previous file, focus staying in the diff |
 | `s` | cycle scope: uncommitted → since fork point → last commit |
 | `i` | toggle inline / side-by-side |
+| `z` | toggle collapsing unchanged regions (both renderings; `zR` / `zM` still work per window) |
 | `a` | stage / unstage the file, where the backend has an index (git) |
+| `y` | copy the selected file's diff to the clipboard |
 | `X` | revert the file to its base version, after a confirm; on an added or untracked file this deletes it |
 | `m` | open the three-way merge view for a conflicted file; `<leader>cq` there drops back into this view |
 | `R` | hard refresh: re-ask the backend for everything |
@@ -80,11 +87,22 @@ sides, exactly the way delta renders a patch in the terminal: the unchanged
 part of an edited line dims, the changed tokens brighten (skipped when a line
 was rewritten wholesale, where emphasis would cover everything). Lines that
 merely **moved** — deleted in one place, reinserted verbatim in another — get
-delta's moved violet/cyan on both ends instead of reading as unrelated
-delete + add. The colours are the delta palette from the git config,
-verbatim, so this view and `git diff` in a terminal are the same picture; the
-overlay also slices hunks with the same histogram + linematch settings as
-`'diffopt'`, so both renderings agree about what a change is.
+delta's moved violet/cyan on both ends, with pointers between them — the
+departure says `→ 87`, the arrival says `← 12`, in buffer line numbers —
+instead of reading as unrelated delete + add. Trailing whitespace on a new
+line gets delta's whitespace-error red. The colours are the delta palette
+from the git config, verbatim, so this view and `git diff` in a terminal are
+the same picture; the overlay also slices hunks with the same histogram +
+linematch settings as `'diffopt'`, so both renderings agree about what a
+change is.
+
+**Unchanged regions collapse away** (VS Code's hideUnchangedRegions, on by
+default): the side-by-side panes use diff mode's native folds, the inline
+overlay folds through its own foldexpr, and both keep the same context
+`'diffopt'` gives native diff mode, so a review reads hunk to hunk the way a
+delta patch does. `╌╌ 42 unchanged lines ╌╌` marks each gap; `zR` opens a
+window up, `z` in the panel turns the whole behaviour off (remembered, like
+the inline/side-by-side choice).
 `]c` / `[c` walk the changes, `<leader>cv` reverts the change under the
 cursor. Untracked files read as a whole-file add, deleted files show their
 old content struck red. `i` in the panel (or `<leader>ci` anywhere) switches

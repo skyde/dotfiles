@@ -68,10 +68,11 @@ local function overlay(buf)
 end
 
 ---The overlay's colouring in detail: every virtual-line chunk as {text, hl},
----each line-level highlight group by row, and the char-emphasis spans on
----buffer lines as {row, from, to} byte ranges.
+---each line-level highlight group by row, the emphasis spans on buffer lines
+---as {row, from, to} byte ranges (with the group when it is not the usual
+---add-emphasis), and any end-of-line hints by row.
 local function detail(buf)
-  local chunks, line_hl, spans = {}, {}, {}
+  local chunks, line_hl, spans, eol = {}, {}, {}, {}
   for _, m in ipairs(vim.api.nvim_buf_get_extmarks(buf, ns, 0, -1, { details = true })) do
     local d = m[4]
     if d.virt_lines then
@@ -81,14 +82,21 @@ local function detail(buf)
         end
       end
     end
+    if d.virt_text then
+      eol[m[2] + 1] = d.virt_text[1][1]
+    end
     if d.line_hl_group then
       line_hl[m[2] + 1] = d.line_hl_group
     end
     if d.end_col and d.hl_group then
-      spans[#spans + 1] = { m[2] + 1, m[3], d.end_col }
+      local span = { m[2] + 1, m[3], d.end_col }
+      if d.hl_group ~= "InlineDiffAddEmph" then
+        span[4] = d.hl_group
+      end
+      spans[#spans + 1] = span
     end
   end
-  return chunks, line_hl, spans
+  return chunks, line_hl, spans, eol
 end
 
 --------------------------------------------------------------------------
@@ -218,11 +226,13 @@ end
 do
   local buf = mkbuf({ "keep one", "keep two", "local function relocated()" })
   inline.attach(buf, { "keep one", "local function relocated()", "keep two" })
-  local chunks, line_hl = detail(buf)
+  local chunks, line_hl, _, eol = detail(buf)
   eq("moves: the arrival is coloured as a move, not an add", "InlineDiffMovedAdd", line_hl[3])
   eq("moves: the departure is coloured as a move, not a delete", {
     { "local function relocated()", "InlineDiffMovedDelete" },
+    { "  → 3", "InlineDiffMovedHint" },
   }, chunks)
+  eq("moves: the arrival points back at the departure", "← 2", eol[3])
   inline.detach(buf)
 end
 
@@ -245,6 +255,67 @@ do
   local _, line_hl = detail(buf)
   eq("moves: an edited relocation stays an ordinary add", "InlineDiffAdd", line_hl[3])
   inline.detach(buf)
+end
+
+--------------------------------------------------------------------------
+-- trailing whitespace
+--------------------------------------------------------------------------
+
+do
+  local buf = mkbuf({ "clean", "trailing  " })
+  inline.attach(buf, { "clean" })
+  local _, _, spans = detail(buf)
+  eq("whitespace: trailing whitespace on a new line is flagged", { { 2, 8, 10, "InlineDiffWsError" } }, spans)
+  inline.detach(buf)
+end
+
+do
+  local buf = mkbuf({ "unchanged has trailing  " })
+  inline.attach(buf, { "unchanged has trailing  " })
+  local _, _, spans = detail(buf)
+  eq("whitespace: untouched lines are not flagged", {}, spans)
+  inline.detach(buf)
+end
+
+--------------------------------------------------------------------------
+-- collapsing unchanged regions
+--------------------------------------------------------------------------
+
+do
+  local base, work = {}, {}
+  for i = 1, 30 do
+    base[i] = "line " .. i
+    work[i] = i == 15 and "line fifteen edited" or ("line " .. i)
+  end
+  local buf = mkbuf(work)
+  inline.attach(buf, base)
+
+  -- The pure logic first: context (6 without a diffopt setting) around the
+  -- hunk stays, everything further folds.
+  eq("collapse: far-away lines fold", "1", (inline.foldexpr(1)))
+  eq("collapse: the context edge stays visible", "0", (inline.foldexpr(9)))
+  eq("collapse: the hunk stays visible", "0", (inline.foldexpr(15)))
+  eq("collapse: the other context edge stays visible", "0", (inline.foldexpr(21)))
+  eq("collapse: the tail folds", "1", (inline.foldexpr(30)))
+
+  -- And wired into a real window: the unchanged regions actually close.
+  vim.wo.foldmethod = "expr"
+  vim.wo.foldexpr = "v:lua.require'util.inline_diff'.foldexpr(v:lnum)"
+  vim.wo.foldlevel = 0
+  check("collapse: the head region is closed", vim.fn.foldclosed(1) == 1, tostring(vim.fn.foldclosed(1)))
+  check("collapse: the hunk is open", vim.fn.foldclosed(15) == -1, tostring(vim.fn.foldclosed(15)))
+  check("collapse: the tail region is closed", vim.fn.foldclosed(25) == 22, tostring(vim.fn.foldclosed(25)))
+  vim.wo.foldmethod = "manual"
+  inline.detach(buf)
+end
+
+do
+  -- A buffer with no changes must not fold into one line.
+  local buf = mkbuf({ "same", "same again", "and again" })
+  inline.attach(buf, { "same", "same again", "and again" })
+  eq("collapse: an unchanged buffer folds nothing", "0", (inline.foldexpr(1)))
+  inline.detach(buf)
+  eq("collapse: a detached buffer folds nothing", "0", (inline.foldexpr(1)))
 end
 
 --------------------------------------------------------------------------

@@ -24,6 +24,7 @@ local ns = vim.api.nvim_create_namespace("vcs_inline_diff")
 ---@field base string[]
 ---@field base_text string
 ---@field hunks integer[][]  { start_a, count_a, start_b, count_b } as vim.diff returns
+---@field keep table<integer, true>|nil  buffer rows that stay visible when unchanged regions collapse
 local states = {} ---@type table<integer, InlineDiffState>
 
 --------------------------------------------------------------------------
@@ -42,22 +43,28 @@ local states = {} ---@type table<integer, InlineDiffState>
 --   InlineDiffDeleteEmph   minus-emph-style      changed tokens, old side
 --   InlineDiffMovedAdd     map-styles cyan       a line that landed here
 --   InlineDiffMovedDelete  map-styles violet     the place a line left from
+--   InlineDiffWsError      whitespace-error      trailing whitespace on a new line
+--   InlineDiffMovedHint    (no delta equivalent) "→ 87" pointers between the
+--                          two ends of a move, in the comment grey
 -- All are set with default=true, so a user (or theme) definition wins.
 
 local PALETTE = {
-  InlineDiffAdd = "#20432b",
-  InlineDiffAddDim = "#17311f",
-  InlineDiffAddEmph = "#2c5a3a",
-  InlineDiffDelete = "#532727",
-  InlineDiffDeleteDim = "#3f1f1f",
-  InlineDiffDeleteEmph = "#683131",
-  InlineDiffMovedAdd = "#12384a",
-  InlineDiffMovedDelete = "#2e2547",
+  InlineDiffAdd = { bg = "#20432b" },
+  InlineDiffAddDim = { bg = "#17311f" },
+  InlineDiffAddEmph = { bg = "#2c5a3a" },
+  InlineDiffDelete = { bg = "#532727" },
+  InlineDiffDeleteDim = { bg = "#3f1f1f" },
+  InlineDiffDeleteEmph = { bg = "#683131" },
+  InlineDiffMovedAdd = { bg = "#12384a" },
+  InlineDiffMovedDelete = { bg = "#2e2547" },
+  InlineDiffWsError = { bg = "#db4b4b" },
+  InlineDiffMovedHint = { fg = "#565f89", italic = true },
 }
 
 local function setup_highlights()
-  for name, bg in pairs(PALETTE) do
-    vim.api.nvim_set_hl(0, name, { default = true, bg = bg })
+  for name, spec in pairs(PALETTE) do
+    local def = vim.tbl_extend("force", { default = true }, spec)
+    vim.api.nvim_set_hl(0, name, def)
   end
 end
 
@@ -175,9 +182,10 @@ end
 local MOVED_MIN_CHARS = 8
 
 ---Lines that left one hunk and arrived verbatim in another, matched on
----trimmed text with occurrences paired up one-to-one.
----@return table<integer, true> old_moved  base line numbers
----@return table<integer, true> new_moved  buffer line numbers
+---trimmed text with occurrences paired up one-to-one. The two returned maps
+---are inverses: each end of a move knows where its partner is.
+---@return table<integer, integer> old_moved  base lnum -> buffer lnum it moved to
+---@return table<integer, integer> new_moved  buffer lnum -> base lnum it came from
 local function detect_moves(st, lines)
   local dels, adds = {}, {} ---@type table<string, integer[]>, table<string, integer[]>
   local function collect(into, source, start, count)
@@ -198,8 +206,8 @@ local function detect_moves(st, lines)
     local new_at = adds[text]
     if new_at then
       for i = 1, math.min(#old_at, #new_at) do
-        old_moved[old_at[i]] = true
-        new_moved[new_at[i]] = true
+        old_moved[old_at[i]] = new_at[i]
+        new_moved[new_at[i]] = old_at[i]
       end
     end
   end
@@ -209,6 +217,28 @@ end
 --------------------------------------------------------------------------
 -- rendering
 --------------------------------------------------------------------------
+
+---Where a hunk lives for the cursor. A pure deletion occupies no buffer
+---lines; its red virtual text hangs above line start_b + 1 (or below the last
+---line), so both neighbouring rows count as "on" it.
+local function hunk_range(h, line_count)
+  local start_b, count_b = h[3], h[4]
+  if count_b > 0 then
+    return start_b, start_b + count_b - 1
+  end
+  local first = math.max(start_b, 1)
+  return first, math.min(start_b + 1, line_count)
+end
+
+---The row to land on when jumping to a hunk: its first real line, or for a
+---pure deletion the line its virtual text hangs above.
+local function hunk_anchor(h, line_count)
+  local start_b, count_b = h[3], h[4]
+  if count_b > 0 then
+    return start_b
+  end
+  return math.max(math.min(start_b + 1, line_count), 1)
+end
 
 ---Recompute hunks and redraw the overlay for `buf`.
 function M.render(buf)
@@ -232,6 +262,34 @@ function M.render(buf)
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
   local old_moved, new_moved = detect_moves(st, lines)
   local last = #lines
+
+  -- Both ends of a move point at each other in buffer line numbers — the
+  -- departure's virtual text says where the line went, the arrival says where
+  -- it left from. The departure end is virtual, so "where it left from" means
+  -- the buffer row its red text is drawn at, computed up front because a
+  -- move's two hunks can come in either order.
+  local departure_row = {} ---@type table<integer, integer>  base lnum -> buffer row
+  for _, h in ipairs(st.hunks) do
+    for i = h[1], h[1] + h[2] - 1 do
+      if old_moved[i] then
+        departure_row[i] = hunk_anchor(h, last)
+      end
+    end
+  end
+
+  -- Which lines to keep visible when the window collapses unchanged regions:
+  -- every changed or neighbouring row, with the same context 'diffopt' gives
+  -- native diff mode. Everything else folds away (see M.foldexpr).
+  local context = tonumber(vim.o.diffopt:match("context:(%d+)")) or 6
+  local keep = {}
+  for _, h in ipairs(st.hunks) do
+    local first, until_ = hunk_range(h, last)
+    for row = math.max(1, first - context), math.min(last, until_ + context) do
+      keep[row] = true
+    end
+  end
+  st.keep = keep
+
   for _, h in ipairs(st.hunks) do
     local start_a, count_a, start_b, count_b = h[1], h[2], h[3], h[4]
 
@@ -255,7 +313,11 @@ function M.render(buf)
         -- the plain wash. The dimming is what makes the emphasis carry.
         local spans = old_spans[i - start_a]
         local base_hl = old_moved[i] and "InlineDiffMovedDelete" or (spans and "InlineDiffDeleteDim" or "InlineDiffDelete")
-        virt[#virt + 1] = virt_chunks(st.base[i] or "", base_hl, "InlineDiffDeleteEmph", spans)
+        local chunks = virt_chunks(st.base[i] or "", base_hl, "InlineDiffDeleteEmph", spans)
+        if old_moved[i] then
+          chunks[#chunks + 1] = { ("  → %d"):format(old_moved[i]), "InlineDiffMovedHint" }
+        end
+        virt[#virt + 1] = chunks
       end
       if count_b > 0 then
         -- A change: the old lines sit directly above their replacements.
@@ -289,6 +351,23 @@ function M.render(buf)
             priority = 60,
           })
         end
+      end
+      if new_moved[row] then
+        vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
+          virt_text = { { ("← %d"):format(departure_row[new_moved[row]] or 0), "InlineDiffMovedHint" } },
+          virt_text_pos = "eol",
+        })
+      end
+      -- Delta's whitespace-error: trailing whitespace on a new line, painted
+      -- the hard red that means "you probably did not want this".
+      local text = lines[row] or ""
+      local ws = text:find("%s+$")
+      if ws and not new_moved[row] then
+        vim.api.nvim_buf_set_extmark(buf, ns, row - 1, ws - 1, {
+          end_col = #text,
+          hl_group = "InlineDiffWsError",
+          priority = 70,
+        })
       end
     end
   end
@@ -335,28 +414,6 @@ end
 ---True when `buf` (default: current) has an overlay.
 function M.has(buf)
   return states[resolve(buf)] ~= nil
-end
-
----Where a hunk lives for the cursor. A pure deletion occupies no buffer
----lines; its red virtual text hangs above line start_b + 1 (or below the last
----line), so both neighbouring rows count as "on" it.
-local function hunk_range(h, line_count)
-  local start_b, count_b = h[3], h[4]
-  if count_b > 0 then
-    return start_b, start_b + count_b - 1
-  end
-  local first = math.max(start_b, 1)
-  return first, math.min(start_b + 1, line_count)
-end
-
----The row to land on when jumping to a hunk: its first real line, or for a
----pure deletion the line its virtual text hangs above.
-local function hunk_anchor(h, line_count)
-  local start_b, count_b = h[3], h[4]
-  if count_b > 0 then
-    return start_b
-  end
-  return math.max(math.min(start_b + 1, line_count), 1)
 end
 
 ---The hunk under `row`, or nil.
@@ -442,6 +499,28 @@ function M.goto_first(buf)
       pcall(vim.cmd, "normal! \25")
     end
   end
+end
+
+--------------------------------------------------------------------------
+-- collapsing unchanged regions
+--------------------------------------------------------------------------
+
+---'foldexpr' for a window showing an attached buffer: unchanged lines beyond
+---the diff context fold away — what foldmethod=diff does for native diff
+---mode, and VS Code's "hide unchanged regions". The keep-map is rebuilt on
+---every render, so the folds track edits; a buffer with no changes (or no
+---overlay) folds nothing.
+function M.foldexpr(lnum)
+  local st = states[vim.api.nvim_get_current_buf()]
+  if not st or not st.keep or next(st.keep) == nil then
+    return "0"
+  end
+  return st.keep[lnum] and "0" or "1"
+end
+
+---'foldtext' companion: how much is hidden, and nothing else.
+function M.foldtext()
+  return ("╌╌ %d unchanged lines ╌╌"):format(vim.v.foldend - vim.v.foldstart + 1)
 end
 
 ---Revert the hunk under the cursor to the base version, VS Code's inline
