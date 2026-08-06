@@ -60,7 +60,7 @@ using that extension's settings.
 - `<leader>gt` – timelapse view.
 
 ## Refactoring and Errors
-- `<leader>ce` – ReSharper quick fix.
+- `<leader>ca` – ReSharper quick fix.
 - `<leader>.` – quick actions for position.
 - `<leader>ee` – show error list.
 - `<leader>en` – next error.

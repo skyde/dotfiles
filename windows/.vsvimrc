@@ -119,7 +119,7 @@ nnoremap <leader>gh :vsc P4EditVS.History<CR>
 nnoremap <leader>gt :vsc P4EditVS.TimelapseView<CR>
 
 " Open the Resharper Quick Fix Dialog
-nnoremap <leader>ce :vsc Resharper_AltEnter<CR>
+nnoremap <leader>ca :vsc Resharper_AltEnter<CR>
 
 " View quick actions for position (have not seen this working - try a bit but
 " possibly disable it)

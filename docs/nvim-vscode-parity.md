@@ -148,7 +148,7 @@ it works in every backend and on files handed over by any other tool.
 | `gh`, `<A-o>` | switch header/source (clangd) |
 | `vig` `yig` `dig` | whole-buffer text object |
 | `<leader>cr` | rename symbol |
-| `<leader>ce` | code action (LazyVim also keeps `<leader>ca`) |
+| `<leader>ca` | code action (LazyVim default) |
 | `<leader>cI`, `<BS><leader>` | signature help |
 | `<BS><BS>` | hover |
 | `<leader>Backspace` | debug hover / evaluate |
