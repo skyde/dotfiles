@@ -387,7 +387,8 @@ do
           virt[#virt + 1] = vl[1][1]
         end
       end
-      if d.line_hl_group and d.line_hl_group:find("^InlineDiffAdd") then
+      local wash = d.line_hl_group or (d.hl_eol and d.hl_group)
+      if wash and wash:find("^InlineDiffAdd") then
         added[#added + 1] = m[2] + 1
       end
     end

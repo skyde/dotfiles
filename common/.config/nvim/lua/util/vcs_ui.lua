@@ -598,6 +598,11 @@ end
 local function diff_pane(w)
   reset_cursorline(w)
   wo_local(w, "foldlevel", collapsing() and 0 or 99)
+  -- The overlay's fold text works for any fold; using it here too means a
+  -- collapsed gap reads the same in both renderings.
+  wo_local(w, "foldtext", "v:lua.require'util.inline_diff'.foldtext()")
+  local fc = vim.o.fillchars
+  wo_local(w, "fillchars", fc ~= "" and (fc .. ",fold: ") or "fold: ")
   wo_local(w, "number", true)
   wo_local(w, "relativenumber", true)
   vim.api.nvim_win_call(w, function()

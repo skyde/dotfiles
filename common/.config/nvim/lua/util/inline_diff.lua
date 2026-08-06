@@ -317,6 +317,10 @@ function M.render(buf)
         if old_moved[i] then
           chunks[#chunks + 1] = { ("  → %d"):format(old_moved[i]), "InlineDiffMovedHint" }
         end
+        -- Wash the rest of the row too, the way line_hl_group washes the
+        -- added lines — a virtual line only paints under its chunks. The
+        -- window truncates whatever does not fit.
+        chunks[#chunks + 1] = { (" "):rep(500), base_hl }
         virt[#virt + 1] = chunks
       end
       if count_b > 0 then
@@ -336,12 +340,21 @@ function M.render(buf)
     for row = start_b, start_b + count_b - 1 do
       local spans = new_spans[row - start_b]
       local line_hl = new_moved[row] and "InlineDiffMovedAdd" or (spans and "InlineDiffAddDim" or "InlineDiffAdd")
+      -- The full-row wash is an eol range highlight, NOT line_hl_group: a
+      -- range hl_group never paints over line_hl_group whatever its
+      -- priority, so a line_hl wash would swallow the token emphasis and
+      -- the whitespace flag. The eol range covers the same screen area and
+      -- layers by priority the way one would expect. The number column is
+      -- tinted along the way, so with wrapped lines the margin shows where
+      -- a change starts, not just that one is nearby.
       vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
-        line_hl_group = line_hl,
-        -- Tint the line number too: with wrapped lines the margin then shows
-        -- where a change starts, not just that one is nearby.
+        end_row = row,
+        end_col = 0,
+        hl_group = line_hl,
+        hl_eol = true,
         number_hl_group = line_hl,
         priority = 50,
+        strict = false,
       })
       for _, s in ipairs(spans or {}) do
         if s[2] > s[1] then
