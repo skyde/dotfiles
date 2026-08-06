@@ -929,38 +929,45 @@ do
 end
 
 --------------------------------------------------------------------------
--- toggle: one key opens, closes from inside, switches scope
+-- focus: one key always goes to the view; it never closes it
 --------------------------------------------------------------------------
 
 do
   local tabs = #vim.api.nvim_list_tabpages()
-  ui.toggle({ scope = "working" })
+  ui.focus({ scope = "working" })
   vim.wait(3000, function()
     return not ui.busy()
   end)
-  eq("toggle: opens the view", tabs + 1, #vim.api.nvim_list_tabpages())
+  eq("focus: opens the view", tabs + 1, #vim.api.nvim_list_tabpages())
 
-  -- The key walks inward: from the diff it focuses the list, from the list
-  -- it closes.
+  -- From the diff the same key returns to the list; it never closes.
   local panel = layout()[1]
   feed("l")
-  check("toggle precondition: focus sits in the diff", vim.api.nvim_get_current_win() ~= panel)
-  ui.toggle({ scope = "working" })
-  eq("toggle: from the diff it focuses the list", panel, vim.api.nvim_get_current_win())
-  eq("toggle: without closing the view", tabs + 1, #vim.api.nvim_list_tabpages())
-  ui.toggle({ scope = "working" })
-  eq("toggle: from the list it closes", tabs, #vim.api.nvim_list_tabpages())
+  check("focus precondition: focus sits in the diff", vim.api.nvim_get_current_win() ~= panel)
+  ui.focus({ scope = "working" })
+  eq("focus: from the diff it focuses the list", panel, vim.api.nvim_get_current_win())
+  eq("focus: without closing the view", tabs + 1, #vim.api.nvim_list_tabpages())
+  ui.focus({ scope = "working" })
+  eq("focus: pressed again it still does not close", tabs + 1, #vim.api.nvim_list_tabpages())
+  eq("focus: and stays on the list", panel, vim.api.nvim_get_current_win())
 
-  ui.toggle({ scope = "working" })
+  -- From another tab it jumps back without resetting the selection.
+  scrub("j")
+  local selection = vim.api.nvim_win_get_cursor(panel)[1]
+  vim.cmd("tabfirst")
+  ui.focus({ scope = "working" })
   vim.wait(3000, function()
     return not ui.busy()
   end)
-  ui.toggle({ scope = "branch" })
+  eq("focus: from another tab it jumps to the view", panel, vim.api.nvim_get_current_win())
+  eq("focus: keeping the selection", selection, vim.api.nvim_win_get_cursor(panel)[1])
+
+  ui.focus({ scope = "branch" })
   vim.wait(3000, function()
     return not ui.busy()
   end)
-  eq("toggle: a different scope switches instead of closing", tabs + 1, #vim.api.nvim_list_tabpages())
-  check("toggle: scope actually switched", panel_lines()[1]:find("fork point", 1, true) ~= nil, panel_lines()[1])
+  eq("focus: a different scope switches in place", tabs + 1, #vim.api.nvim_list_tabpages())
+  check("focus: scope actually switched", panel_lines()[1]:find("fork point", 1, true) ~= nil, panel_lines()[1])
   ui.close()
 end
 

@@ -1355,25 +1355,17 @@ function M.open(opts)
   prefetch_bases()
 end
 
----One key, walking inward: from outside it opens the view; from the diff it
----focuses the file list (whose cursorline is the selection highlight); from
----the list it closes — the way VS Code's "focus SCM view" key first focuses,
----then toggles away. From inside with a *different* scope requested, it
----switches scope instead.
+---Open the view, or when it is already open just go to it: jump to its tab
+---and focus the file list, whose cursorline is the selection highlight —
+---never closing, and never resetting the selection the way a re-open would.
+---Closing is its own action (`<leader>gC`, or q in the list). A *different*
+---scope requested from inside switches scope instead.
 ---@param opts? { scope?: string, rev?: string }
-function M.toggle(opts)
+function M.focus(opts)
   opts = opts or {}
-  if
-    valid()
-    and vim.api.nvim_get_current_tabpage() == state.tab
-    and not opts.rev
-    and (not opts.scope or opts.scope == state.scope)
-  then
-    if vim.api.nvim_get_current_win() ~= state.panel_win then
-      vim.api.nvim_set_current_win(state.panel_win)
-    else
-      M.close()
-    end
+  if valid() and not opts.rev and (not opts.scope or opts.scope == state.scope) then
+    vim.api.nvim_set_current_tabpage(state.tab)
+    vim.api.nvim_set_current_win(state.panel_win)
     return
   end
   M.open(opts)
