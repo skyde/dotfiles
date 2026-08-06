@@ -1847,17 +1847,32 @@ function M.toggle_inline()
 end
 
 ---Toggle collapsing unchanged regions, in whichever rendering is up: the
----overlay's expr folds inline, diff mode's native folds side-by-side.
+---overlay's expr folds inline, diff mode's native folds side-by-side. Works
+---from anywhere — inside the view it re-renders, and in any other tab (an
+---ad-hoc <leader>gd, a history diff) it re-levels the diff windows in place,
+---never yanking focus to the view's tab.
 function M.toggle_collapse()
-  if not valid() then
-    return
+  local on
+  if valid() then
+    state.collapse = not state.collapse
+    remembered_collapse = state.collapse
+    on = state.collapse
+    if vim.api.nvim_get_current_tabpage() == state.tab then
+      if current_file() or #state.files == 0 then
+        show(false)
+      elseif state.shown then
+        render_file(state.shown, false)
+      end
+      return
+    end
+  else
+    remembered_collapse = not remembered_collapse
+    on = remembered_collapse
   end
-  state.collapse = not state.collapse
-  remembered_collapse = state.collapse
-  if current_file() or #state.files == 0 then
-    show(false)
-  elseif state.shown then
-    render_file(state.shown, false)
+  for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if vim.wo[w].diff then
+      wo_local(w, "foldlevel", on and 0 or 99)
+    end
   end
 end
 

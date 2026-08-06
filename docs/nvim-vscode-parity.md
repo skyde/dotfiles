@@ -101,8 +101,8 @@ default): the side-by-side panes use diff mode's native folds, the inline
 overlay folds through its own foldexpr, and both keep the same context
 `'diffopt'` gives native diff mode, so a review reads hunk to hunk the way a
 delta patch does. `╌╌ 42 unchanged lines ╌╌` marks each gap; `zR` opens a
-window up, `z` in the panel turns the whole behaviour off (remembered, like
-the inline/side-by-side choice).
+window up, and `z` in the panel or `<leader>cz` from anywhere turns the whole
+behaviour off (remembered, like the inline/side-by-side choice).
 `]c` / `[c` walk the changes, `<leader>cv` reverts the change under the
 cursor. Untracked files read as a whole-file add, deleted files show their
 old content struck red. `i` in the panel (or `<leader>ci` anywhere) switches
@@ -160,6 +160,7 @@ it works in every backend and on files handed over by any other tool.
 | `<leader>cc` | toggle between inputs | move to the other side of the diff |
 | `<leader>cd` | switch diff side | switch side in a diff, line diagnostics elsewhere |
 | `<leader>ci` | toggle inline diff | toggle inline / side-by-side |
+| `<leader>cz` | `diffEditor.hideUnchangedRegions.enabled` | toggle collapsing unchanged regions |
 | `<leader>cv` | `diffEditor.revert` | revert this change (`do` in diff mode, gitsigns reset otherwise) |
 | `<leader>cV` | `git.revertSelectedRanges` | revert the selected range |
 
