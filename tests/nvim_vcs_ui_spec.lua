@@ -836,8 +836,40 @@ do
   local panel = layout()[1]
   check("panel: cursorline is on", vim.wo[panel].cursorline)
   eq("panel: cursorline highlights the row, not just the number", "line", vim.wo[panel].cursorlineopt)
+  -- The diff panes are split from the panel and would inherit that full-row
+  -- highlight; on real text it must fall back to the global setting.
+  for i, w in ipairs(layout()) do
+    if i > 1 then
+      eq(("panel: diff pane %d does not inherit the row highlight"):format(i), "number", vim.wo[w].cursorlineopt)
+    end
+  end
   ui.close()
   vim.o.cursorlineopt = saved
+end
+
+--------------------------------------------------------------------------
+-- ]c / [c from the panel: walk the diff's changes without leaving the list
+--------------------------------------------------------------------------
+
+do
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  -- a_modified has two hunks; the tree's first file (untracked) has one.
+  for i, l in ipairs(panel_lines()) do
+    if l:find("a_modified.txt", 1, true) then
+      vim.api.nvim_win_set_cursor(panel, { i - 1, 0 })
+    end
+  end
+  scrub("j")
+  local diff = layout()[#layout()]
+  local before = vim.api.nvim_win_get_cursor(diff)[1]
+  feed("]c")
+  local after = vim.api.nvim_win_get_cursor(diff)[1]
+  check("]c: moves the diff to the next change", after > before, ("%d -> %d"):format(before, after))
+  eq("]c: focus stays in the panel", panel, vim.api.nvim_get_current_win())
+  feed("[c")
+  check("[c: moves back", vim.api.nvim_win_get_cursor(diff)[1] < after, tostring(vim.api.nvim_win_get_cursor(diff)[1]))
+  ui.close()
 end
 
 --------------------------------------------------------------------------

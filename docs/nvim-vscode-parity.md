@@ -47,6 +47,7 @@ renamed files read `new ← old`, and the header tracks the selection as
 | `j` / `k` | move through files (stepping over directory rows), re-rendering the diff as you go |
 | `<CR>` / `o` / `l` / `<Right>` / `<Tab>` | move focus into the diff (`<Space>` stays leader, so it cannot be the select key) |
 | `J` / `K` | scroll the diff half a page from the list, for skimming a file without leaving it |
+| `]c` / `[c` | step the diff to the next / previous change, cursor staying in the list |
 | `]f` / `[f` | from *inside* the diff: render the next / previous file, focus staying in the diff |
 | `s` | cycle scope: uncommitted → since fork point → last commit |
 | `i` | toggle inline / side-by-side |

@@ -111,6 +111,13 @@ local function valid()
     and vim.api.nvim_buf_is_valid(state.panel_buf)
 end
 
+---Set a window-local option locally. `vim.wo[win].x = v` acts like `:set`,
+---quietly overwriting the global value too — which is how the panel's
+---full-row cursorline once leaked into every other window in the session.
+local function wo_local(win, name, value)
+  vim.api.nvim_set_option_value(name, value, { win = win, scope = "local" })
+end
+
 ---Windows in the diff tab other than the file list.
 local function diff_wins()
   local out = {}
@@ -424,15 +431,23 @@ local function base_missing(file)
   return has_base(file) and base_cache[base_key(state.root, base_rev(file), file.orig or file.path)] == nil
 end
 
+---Splitting from the panel makes the new window inherit its window-local
+---options — including the full-row cursorline that is the panel's selection
+---highlight, which is far too loud on actual text. Back to the global.
+local function reset_cursorline(w)
+  wo_local(w, "cursorlineopt", vim.go.cursorlineopt)
+end
+
 ---Diff panes share one look: native diff, folds open, hybrid line numbers —
 ---absolute on the cursor line, relative everywhere else, so a `3j` between
 ---changes reads straight off the margin.
 local function diff_pane(w)
+  reset_cursorline(w)
+  wo_local(w, "foldlevel", 99)
+  wo_local(w, "number", true)
+  wo_local(w, "relativenumber", true)
   vim.api.nvim_win_call(w, function()
     vim.cmd("diffthis")
-    vim.wo.foldlevel = 99
-    vim.wo.number = true
-    vim.wo.relativenumber = true
   end)
 end
 
@@ -579,6 +594,7 @@ local function render_inline(file)
   vim.api.nvim_set_current_win(state.panel_win)
   vim.cmd("vertical rightbelow split")
   local win = vim.api.nvim_get_current_win()
+  reset_cursorline(win)
 
   if not file then
     vim.api.nvim_win_set_buf(win, scratch("vcs://empty", { "(no changes)" }))
@@ -594,10 +610,10 @@ local function render_inline(file)
     local buf = vim.api.nvim_get_current_buf()
     state.inline_buf = buf
     inline_diff.attach(buf, base)
-    vim.wo[win].number = true
-    vim.wo[win].relativenumber = true
+    wo_local(win, "number", true)
+    wo_local(win, "relativenumber", true)
     -- So scrolling up can reveal virtual lines hanging above line 1.
-    vim.wo[win].smoothscroll = true
+    wo_local(win, "smoothscroll", true)
     vim.api.nvim_win_call(win, function()
       inline_diff.goto_first(buf)
     end)
@@ -608,8 +624,8 @@ local function render_inline(file)
     for row = 0, #base - 1 do
       vim.api.nvim_buf_set_extmark(buf, ns, row, 0, { line_hl_group = "DiffDelete", priority = 50 })
     end
-    vim.wo[win].number = true
-    vim.wo[win].relativenumber = true
+    wo_local(win, "number", true)
+    wo_local(win, "relativenumber", true)
   end
 
   balance(win)
@@ -647,6 +663,7 @@ local function render_file(file, focus)
     vim.api.nvim_set_current_win(state.panel_win)
     vim.cmd("vertical rightbelow split")
     target = vim.api.nvim_get_current_win()
+    reset_cursorline(target)
     vim.api.nvim_win_set_buf(target, scratch("vcs://empty", { "" }))
     balance(target)
   end
@@ -884,6 +901,36 @@ local function scroll_diff(dir)
   end
 end
 
+---Step the diff to the next / previous change from the list, cursor staying
+---in the panel: the right-hand side moves to follow its own cursor, so a
+---file can be walked hunk by hunk without leaving the list.
+local function change_diff(dir)
+  if not valid() then
+    return
+  end
+  local win = state.diff_win
+  if not (win and vim.api.nvim_win_is_valid(win)) then
+    win = diff_wins()[1]
+  end
+  if not win then
+    return
+  end
+  vim.api.nvim_win_call(win, function()
+    local buf = vim.api.nvim_win_get_buf(win)
+    local index, total
+    if vim.wo.diff then
+      pcall(vim.cmd, "normal! " .. (dir > 0 and "]c" or "[c"))
+      index, total = M.change_position()
+    elseif inline_diff.has(buf) then
+      inline_diff.goto_hunk(buf, dir)
+      index, total = inline_diff.hunk_position(buf)
+    end
+    if total and total > 0 then
+      vim.api.nvim_echo({ { ("Change %d of %d"):format(index, total), "None" } }, false, {})
+    end
+  end)
+end
+
 ---From inside the diff, move the selection without going back to the list:
 ---]f / [f render the next or previous file and keep focus in the diff.
 local function step_file(delta)
@@ -981,6 +1028,7 @@ local HELP = {
   { "j / k", "select file, diff follows" },
   { "<CR> / l", "focus the diff" },
   { "J / K", "scroll the diff from the list" },
+  { "]c / [c", "next / previous change in the diff" },
   { "]f / [f", "next / previous file, from inside the diff" },
   { "s", "cycle scope: uncommitted / branch / last commit" },
   { "i", "toggle inline and side-by-side" },
@@ -1058,6 +1106,12 @@ local function setup_panel_keys(buf)
   map("K", function()
     scroll_diff(-1)
   end, "Scroll diff up")
+  map("]c", function()
+    change_diff(1)
+  end, "Next change in the diff")
+  map("[c", function()
+    change_diff(-1)
+  end, "Previous change in the diff")
   map("R", function()
     M.refresh()
   end, "Refresh")
@@ -1107,14 +1161,14 @@ local function ensure_tab()
   if vim.api.nvim_buf_is_valid(leftover) and vim.api.nvim_buf_get_name(leftover) == "" then
     pcall(vim.api.nvim_buf_delete, leftover, { force = true })
   end
-  vim.wo[win].number = false
-  vim.wo[win].relativenumber = false
-  vim.wo[win].wrap = false
-  vim.wo[win].cursorline = true
+  wo_local(win, "number", false)
+  wo_local(win, "relativenumber", false)
+  wo_local(win, "wrap", false)
+  wo_local(win, "cursorline", true)
   -- The global cursorlineopt is "number", and the panel has no numbers — so
   -- without this the selected file would get no highlight at all.
-  vim.wo[win].cursorlineopt = "line"
-  vim.wo[win].winfixwidth = true
+  wo_local(win, "cursorlineopt", "line")
+  wo_local(win, "winfixwidth", true)
 
   state = state or {}
   state.tab = vim.api.nvim_get_current_tabpage()
