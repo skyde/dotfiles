@@ -11,6 +11,14 @@
 --   * inline        the unified patch piped through delta, matching
 --                   `diffEditor.renderSideBySide: false` from the VS Code setup
 --
+-- Browsing leaves no trace: the working side is always the real, editable
+-- buffer, opened as an unlisted preview — and the moment the view moves off
+-- a file, that preview is deleted again unless it carries unsaved edits. At
+-- most one looked-at file is ever loaded, and closing the view drops that
+-- too (surfacing anything edited into the buffer list). The view also folds
+-- itself away before a session is written (VimLeavePre / PersistenceSavePre),
+-- since a session that captured the diff tab would restore it as junk.
+--
 -- Everything a backend says is remembered across opens of the view (the
 -- listing per scope, base content per file), so `<leader>gc` in a large or
 -- server-backed repository paints instantly from the last known state and
@@ -101,6 +109,13 @@ local function valid()
     and vim.api.nvim_tabpage_is_valid(state.tab)
     and vim.api.nvim_win_is_valid(state.panel_win)
     and vim.api.nvim_buf_is_valid(state.panel_buf)
+end
+
+---Set a window-local option locally. `vim.wo[win].x = v` acts like `:set`,
+---quietly overwriting the global value too — which is how the panel's
+---full-row cursorline once leaked into every other window in the session.
+local function wo_local(win, name, value)
+  vim.api.nvim_set_option_value(name, value, { win = win, scope = "local" })
 end
 
 ---Windows in the diff tab other than the file list.
@@ -416,15 +431,23 @@ local function base_missing(file)
   return has_base(file) and base_cache[base_key(state.root, base_rev(file), file.orig or file.path)] == nil
 end
 
+---Splitting from the panel makes the new window inherit its window-local
+---options — including the full-row cursorline that is the panel's selection
+---highlight, which is far too loud on actual text. Back to the global.
+local function reset_cursorline(w)
+  wo_local(w, "cursorlineopt", vim.go.cursorlineopt)
+end
+
 ---Diff panes share one look: native diff, folds open, hybrid line numbers —
 ---absolute on the cursor line, relative everywhere else, so a `3j` between
 ---changes reads straight off the margin.
 local function diff_pane(w)
+  reset_cursorline(w)
+  wo_local(w, "foldlevel", 99)
+  wo_local(w, "number", true)
+  wo_local(w, "relativenumber", true)
   vim.api.nvim_win_call(w, function()
     vim.cmd("diffthis")
-    vim.wo.foldlevel = 99
-    vim.wo.number = true
-    vim.wo.relativenumber = true
   end)
 end
 
@@ -452,18 +475,47 @@ local function edit_preview(full)
   local fresh = existing == -1 or vim.fn.buflisted(existing) == 0
   vim.cmd("edit " .. vim.fn.fnameescape(full))
   local buf = vim.api.nvim_get_current_buf()
-  if fresh and not state.previews[buf] then
-    state.previews[buf] = true
+  if fresh then
+    -- `:edit` lists the buffer as a side effect — undone every time, not
+    -- just on first tracking, or re-focusing an already-tracked preview
+    -- would quietly pin it into the buffer list. That was exactly the
+    -- "files randomly staying open" leak.
     vim.bo[buf].buflisted = false
-    vim.api.nvim_create_autocmd("BufModifiedSet", {
-      buffer = buf,
-      callback = function()
-        if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].modified then
-          vim.bo[buf].buflisted = true
-          return true
-        end
-      end,
-    })
+    if not state.previews[buf] then
+      state.previews[buf] = true
+      vim.api.nvim_create_autocmd("BufModifiedSet", {
+        buffer = buf,
+        callback = function()
+          if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].modified then
+            vim.bo[buf].buflisted = true
+            return true
+          end
+        end,
+      })
+    end
+  end
+end
+
+-- Forward declarations: the render helpers below wire keys defined further
+-- down, and the tab autocmds revalidate with machinery from the refresh
+-- section.
+local setup_diff_keys
+local refresh_listing
+
+---Drop a preview buffer the moment the view moves off it: a file that was
+---only looked at, and not edited, has no business staying loaded. This is
+---what keeps scrubbing the list from accumulating open files.
+local function drop_preview(buf)
+  if
+    buf
+    and state.previews[buf]
+    and vim.api.nvim_buf_is_valid(buf)
+    and not vim.bo[buf].modified
+    and vim.fn.buflisted(buf) == 0
+    and #vim.fn.win_findbuf(buf) == 0
+  then
+    state.previews[buf] = nil
+    pcall(vim.api.nvim_buf_delete, buf, {})
   end
 end
 
@@ -542,6 +594,7 @@ local function render_inline(file)
   vim.api.nvim_set_current_win(state.panel_win)
   vim.cmd("vertical rightbelow split")
   local win = vim.api.nvim_get_current_win()
+  reset_cursorline(win)
 
   if not file then
     vim.api.nvim_win_set_buf(win, scratch("vcs://empty", { "(no changes)" }))
@@ -557,10 +610,10 @@ local function render_inline(file)
     local buf = vim.api.nvim_get_current_buf()
     state.inline_buf = buf
     inline_diff.attach(buf, base)
-    vim.wo[win].number = true
-    vim.wo[win].relativenumber = true
+    wo_local(win, "number", true)
+    wo_local(win, "relativenumber", true)
     -- So scrolling up can reveal virtual lines hanging above line 1.
-    vim.wo[win].smoothscroll = true
+    wo_local(win, "smoothscroll", true)
     vim.api.nvim_win_call(win, function()
       inline_diff.goto_first(buf)
     end)
@@ -571,22 +624,30 @@ local function render_inline(file)
     for row = 0, #base - 1 do
       vim.api.nvim_buf_set_extmark(buf, ns, row, 0, { line_hl_group = "DiffDelete", priority = 50 })
     end
-    vim.wo[win].number = true
-    vim.wo[win].relativenumber = true
+    wo_local(win, "number", true)
+    wo_local(win, "relativenumber", true)
   end
 
   balance(win)
   return win
 end
 
--- Forward declarations: render_file wires keys that are defined further down,
--- and the tab autocmds revalidate with machinery from the refresh section.
-local setup_diff_keys
-local refresh_listing
-
 ---Draw `file` in the right-hand side. Assumes any base content it needs is
 ---already cached; everything here is buffer and window work.
 local function render_file(file, focus)
+  -- Re-rendering the file already on screen (the inline toggle, a refresh)
+  -- keeps the reading position.
+  local keep
+  if file and file == state.shown and state.diff_win and vim.api.nvim_win_is_valid(state.diff_win) then
+    keep = vim.api.nvim_win_get_cursor(state.diff_win)
+  end
+  -- Remember what was on screen: whichever preview the view moves off gets
+  -- dropped below, so browsing never accumulates open files.
+  local before = {}
+  for _, w in ipairs(diff_wins()) do
+    table.insert(before, vim.api.nvim_win_get_buf(w))
+  end
+
   if state.inline_buf then
     inline_diff.detach(state.inline_buf)
     state.inline_buf = nil
@@ -602,6 +663,7 @@ local function render_file(file, focus)
     vim.api.nvim_set_current_win(state.panel_win)
     vim.cmd("vertical rightbelow split")
     target = vim.api.nvim_get_current_win()
+    reset_cursorline(target)
     vim.api.nvim_win_set_buf(target, scratch("vcs://empty", { "" }))
     balance(target)
   end
@@ -609,6 +671,13 @@ local function render_file(file, focus)
   state.diff_win = target
   state.shown = file
   setup_diff_keys()
+  if keep then
+    pcall(vim.api.nvim_win_set_cursor, target, keep)
+  end
+  -- Close on switch: previews the render just replaced, unless edited.
+  for _, buf in ipairs(before) do
+    drop_preview(buf)
+  end
   vim.api.nvim_set_current_win(focus and target or state.panel_win)
 end
 
@@ -632,6 +701,16 @@ local function show(focus, opts)
       vim.api.nvim_set_current_win(state.diff_win)
     end
     return
+  end
+
+  -- Focusing a file whose real buffer is already on screen needs no
+  -- re-render — just move into it.
+  if focus and file and file == state.shown and state.diff_win and vim.api.nvim_win_is_valid(state.diff_win) then
+    local shown_buf = vim.api.nvim_win_get_buf(state.diff_win)
+    if vim.api.nvim_buf_get_name(shown_buf) == state.root .. "/" .. file.path then
+      vim.api.nvim_set_current_win(state.diff_win)
+      return
+    end
   end
 
   if file and opts and opts.async and base_missing(file) then
@@ -822,6 +901,36 @@ local function scroll_diff(dir)
   end
 end
 
+---Step the diff to the next / previous change from the list, cursor staying
+---in the panel: the right-hand side moves to follow its own cursor, so a
+---file can be walked hunk by hunk without leaving the list.
+local function change_diff(dir)
+  if not valid() then
+    return
+  end
+  local win = state.diff_win
+  if not (win and vim.api.nvim_win_is_valid(win)) then
+    win = diff_wins()[1]
+  end
+  if not win then
+    return
+  end
+  vim.api.nvim_win_call(win, function()
+    local buf = vim.api.nvim_win_get_buf(win)
+    local index, total
+    if vim.wo.diff then
+      pcall(vim.cmd, "normal! " .. (dir > 0 and "]c" or "[c"))
+      index, total = M.change_position()
+    elseif inline_diff.has(buf) then
+      inline_diff.goto_hunk(buf, dir)
+      index, total = inline_diff.hunk_position(buf)
+    end
+    if total and total > 0 then
+      vim.api.nvim_echo({ { ("Change %d of %d"):format(index, total), "None" } }, false, {})
+    end
+  end)
+end
+
 ---From inside the diff, move the selection without going back to the list:
 ---]f / [f render the next or previous file and keep focus in the diff.
 local function step_file(delta)
@@ -919,6 +1028,7 @@ local HELP = {
   { "j / k", "select file, diff follows" },
   { "<CR> / l", "focus the diff" },
   { "J / K", "scroll the diff from the list" },
+  { "]c / [c", "next / previous change in the diff" },
   { "]f / [f", "next / previous file, from inside the diff" },
   { "s", "cycle scope: uncommitted / branch / last commit" },
   { "i", "toggle inline and side-by-side" },
@@ -996,6 +1106,12 @@ local function setup_panel_keys(buf)
   map("K", function()
     scroll_diff(-1)
   end, "Scroll diff up")
+  map("]c", function()
+    change_diff(1)
+  end, "Next change in the diff")
+  map("[c", function()
+    change_diff(-1)
+  end, "Previous change in the diff")
   map("R", function()
     M.refresh()
   end, "Refresh")
@@ -1045,14 +1161,14 @@ local function ensure_tab()
   if vim.api.nvim_buf_is_valid(leftover) and vim.api.nvim_buf_get_name(leftover) == "" then
     pcall(vim.api.nvim_buf_delete, leftover, { force = true })
   end
-  vim.wo[win].number = false
-  vim.wo[win].relativenumber = false
-  vim.wo[win].wrap = false
-  vim.wo[win].cursorline = true
+  wo_local(win, "number", false)
+  wo_local(win, "relativenumber", false)
+  wo_local(win, "wrap", false)
+  wo_local(win, "cursorline", true)
   -- The global cursorlineopt is "number", and the panel has no numbers — so
   -- without this the selected file would get no highlight at all.
-  vim.wo[win].cursorlineopt = "line"
-  vim.wo[win].winfixwidth = true
+  wo_local(win, "cursorlineopt", "line")
+  wo_local(win, "winfixwidth", true)
 
   state = state or {}
   state.tab = vim.api.nvim_get_current_tabpage()
@@ -1082,8 +1198,9 @@ local function ensure_tab()
   -- commit from a terminal, a sync, an editor left overnight. Coming back to
   -- the tab (or to Neovim itself) revalidates in the background, exactly the
   -- way reopening the view does.
+  local group = vim.api.nvim_create_augroup("vcs_ui_revalidate", { clear = true })
   vim.api.nvim_create_autocmd({ "TabEnter", "FocusGained" }, {
-    group = vim.api.nvim_create_augroup("vcs_ui_revalidate", { clear = true }),
+    group = group,
     callback = function()
       -- Scheduled so an open() in progress finishes first; the refresh it
       -- starts itself then makes this one redundant, which `refreshing` sees.
@@ -1092,6 +1209,25 @@ local function ensure_tab()
           refresh_listing()
         end
       end)
+    end,
+  })
+  -- A session saved with the view open would bake the diff tab and any
+  -- focused preview buffer into the session file, and restoring it later
+  -- resurrects them as real listed buffers plus a junk tab of dead vcs://
+  -- windows. Fold the view away before anything is written down.
+  -- PersistenceSavePre fires inside persistence.nvim right before mksession;
+  -- VimLeavePre covers quitting without it.
+  vim.api.nvim_create_autocmd("VimLeavePre", {
+    group = group,
+    callback = function()
+      M.close()
+    end,
+  })
+  vim.api.nvim_create_autocmd("User", {
+    group = group,
+    pattern = "PersistenceSavePre",
+    callback = function()
+      M.close()
     end,
   })
   -- The preview buffers must be cleaned up however the view dies — `q` is one
@@ -1273,18 +1409,17 @@ function M.open(opts)
   prefetch_bases()
 end
 
----One key both ways: open the view from outside, close it from inside. From
----inside with a *different* scope requested, switch scope instead of closing.
+---Open the view, or when it is already open just go to it: jump to its tab
+---and focus the file list, whose cursorline is the selection highlight —
+---never closing, and never resetting the selection the way a re-open would.
+---Closing is its own action (`<leader>gC`, or q in the list). A *different*
+---scope requested from inside switches scope instead.
 ---@param opts? { scope?: string, rev?: string }
-function M.toggle(opts)
+function M.focus(opts)
   opts = opts or {}
-  if
-    valid()
-    and vim.api.nvim_get_current_tabpage() == state.tab
-    and not opts.rev
-    and (not opts.scope or opts.scope == state.scope)
-  then
-    M.close()
+  if valid() and not opts.rev and (not opts.scope or opts.scope == state.scope) then
+    vim.api.nvim_set_current_tabpage(state.tab)
+    vim.api.nvim_set_current_win(state.panel_win)
     return
   end
   M.open(opts)
@@ -1347,11 +1482,16 @@ function M.close()
       pcall(vim.keymap.del, "n", "[f", { buffer = buf })
     end
   end
-  -- Drop the buffers that only existed because they were scrubbed past.
-  -- Anything the user actually touched has been re-listed and is kept.
+  -- Drop the buffers that only existed because they were previewed; anything
+  -- carrying unsaved edits is surfaced into the buffer list instead — edits
+  -- must never end up hiding in an unlisted buffer after the view is gone.
   for buf in pairs(previews) do
-    if vim.api.nvim_buf_is_valid(buf) and not vim.bo[buf].modified and vim.fn.buflisted(buf) == 0 then
-      pcall(vim.api.nvim_buf_delete, buf, {})
+    if vim.api.nvim_buf_is_valid(buf) then
+      if vim.bo[buf].modified then
+        vim.bo[buf].buflisted = true
+      elseif vim.fn.buflisted(buf) == 0 then
+        pcall(vim.api.nvim_buf_delete, buf, {})
+      end
     end
   end
 end

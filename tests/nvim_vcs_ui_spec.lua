@@ -196,6 +196,7 @@ do
   eq("open: right pane holds the working copy", { "one", "TWO", "three", "four" }, win_lines(wins[3]))
   eq("open: right pane is the real file", root .. "/a_modified.txt", win_name(wins[3]))
   eq("open: right pane is editable", "", vim.bo[vim.api.nvim_win_get_buf(wins[3])].buftype)
+  eq("open: the preview stays out of the buffer list", 0, vim.fn.buflisted(vim.api.nvim_win_get_buf(wins[3])))
   eq("open: left pane is a scratch buffer", "nofile", vim.bo[vim.api.nvim_win_get_buf(wins[2])].buftype)
   check("open: left pane is read-only", not vim.bo[vim.api.nvim_win_get_buf(wins[2])].modifiable)
   eq("open: left pane inherits the filetype", "text", vim.bo[vim.api.nvim_win_get_buf(wins[2])].filetype)
@@ -302,10 +303,13 @@ end
 
 do
   local panel = layout()[1]
+  vim.api.nvim_set_current_win(panel)
   vim.api.nvim_win_set_cursor(panel, { 4, 0 })
   feed("\r")
   check("<CR>: moves focus into the diff", vim.api.nvim_get_current_win() ~= panel)
+  -- Focusing is what materialises the real, editable buffer.
   eq("<CR>: focus lands on the working copy", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  eq("<CR>: the focused buffer is the real file", "", vim.bo.buftype)
 
   local before = vim.api.nvim_get_current_win()
   ui.switch_side()
@@ -616,25 +620,31 @@ do
 
   ui.open({ scope = "working" })
   local a = vim.fn.bufnr(root .. "/a_modified.txt")
-  check("preview: opening loads the first file", a ~= -1)
-  eq("preview: the first file stays out of the buffer list", 0, vim.fn.buflisted(a))
+  check("preview: the shown file is loaded", a ~= -1)
+  eq("preview: and stays out of the buffer list", 0, vim.fn.buflisted(a))
 
   scrub("jjj")
-  local d = vim.fn.bufnr(root .. "/d_untracked.txt")
-  check("preview: scrubbed-to file is loaded", d ~= -1)
-  eq("preview: scrubbed-to file stays out of the buffer list", 0, vim.fn.buflisted(d))
+  -- Close on switch: moving off an unedited preview drops it immediately.
+  eq("preview: moving on drops the previous preview", -1, vim.fn.bufnr(root .. "/a_modified.txt"))
+  check("preview: only the shown file is loaded", vim.fn.bufnr(root .. "/d_untracked.txt") ~= -1)
 
   vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
   feed("\r")
   eq("preview: focus lands on the working copy", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  eq("preview: the materialised buffer stays out of the buffer list", 0, vim.fn.buflisted(0))
   eq("preview: the diff opens at the first change", 2, vim.api.nvim_win_get_cursor(0)[1])
   vim.cmd("normal! Ox")
-  eq("preview: editing re-lists the buffer", 1, vim.fn.buflisted(vim.api.nvim_get_current_buf()))
-  vim.cmd("silent! undo")
-
+  -- Headless nvim delivers no BufModifiedSet, so the live relisting cannot
+  -- be asserted here; the close-time guarantee can: an edited preview is
+  -- kept and surfaced in the buffer list, never silently dropped.
   ui.close()
   eq("close: unedited previews are dropped", -1, vim.fn.bufnr(root .. "/d_untracked.txt"))
-  check("close: the edited buffer survives", vim.fn.bufnr(root .. "/a_modified.txt") ~= -1)
+  local a = vim.fn.bufnr(root .. "/a_modified.txt")
+  check("close: the edited buffer survives", a ~= -1)
+  eq("close: and is surfaced in the buffer list", 1, vim.fn.buflisted(a))
+  vim.api.nvim_buf_call(a, function()
+    vim.cmd("silent! undo")
+  end)
 end
 
 --------------------------------------------------------------------------
@@ -644,7 +654,8 @@ end
 do
   ui.open({ scope = "working" })
   scrub("jjj")
-  check("external close: the scrubbed-to preview is loaded", vim.fn.bufnr(root .. "/d_untracked.txt") ~= -1)
+  feed("\r") -- focus, materialising the real preview buffer
+  check("external close: focusing materialises the preview", vim.fn.bufnr(root .. "/d_untracked.txt") ~= -1)
 
   -- Close the tab out from under the UI, the way :tabclose or :q on its last
   -- window would; the deferred cleanup must still drop the previews.
@@ -658,6 +669,29 @@ do
   local ok = pcall(ui.open, { scope = "working" })
   check("external close: the view reopens cleanly afterwards", ok)
   ui.close()
+end
+
+--------------------------------------------------------------------------
+-- sessions: nothing of the view may leak into a saved session
+--------------------------------------------------------------------------
+
+do
+  -- A session saved with the view open used to bake the diff tab and its
+  -- preview buffers into the session file; restoring it then resurrected
+  -- them as real listed buffers plus a junk tab of dead vcs:// windows.
+  ui.open({ scope = "working" })
+  scrub("jjj")
+  feed("\r") -- materialise one real preview buffer
+  check("session: the preview exists before saving", vim.fn.bufnr(root .. "/d_untracked.txt") ~= -1)
+  local tabs = #vim.api.nvim_list_tabpages()
+  vim.api.nvim_exec_autocmds("User", { pattern = "PersistenceSavePre" })
+  eq("session: PersistenceSavePre folds the view away", tabs - 1, #vim.api.nvim_list_tabpages())
+  eq("session: the preview buffer is gone", -1, vim.fn.bufnr(root .. "/d_untracked.txt"))
+
+  ui.open({ scope = "working" })
+  tabs = #vim.api.nvim_list_tabpages()
+  vim.api.nvim_exec_autocmds("VimLeavePre", {})
+  eq("session: VimLeavePre folds the view away too", tabs - 1, #vim.api.nvim_list_tabpages())
 end
 
 --------------------------------------------------------------------------
@@ -802,8 +836,40 @@ do
   local panel = layout()[1]
   check("panel: cursorline is on", vim.wo[panel].cursorline)
   eq("panel: cursorline highlights the row, not just the number", "line", vim.wo[panel].cursorlineopt)
+  -- The diff panes are split from the panel and would inherit that full-row
+  -- highlight; on real text it must fall back to the global setting.
+  for i, w in ipairs(layout()) do
+    if i > 1 then
+      eq(("panel: diff pane %d does not inherit the row highlight"):format(i), "number", vim.wo[w].cursorlineopt)
+    end
+  end
   ui.close()
   vim.o.cursorlineopt = saved
+end
+
+--------------------------------------------------------------------------
+-- ]c / [c from the panel: walk the diff's changes without leaving the list
+--------------------------------------------------------------------------
+
+do
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  -- a_modified has two hunks; the tree's first file (untracked) has one.
+  for i, l in ipairs(panel_lines()) do
+    if l:find("a_modified.txt", 1, true) then
+      vim.api.nvim_win_set_cursor(panel, { i - 1, 0 })
+    end
+  end
+  scrub("j")
+  local diff = layout()[#layout()]
+  local before = vim.api.nvim_win_get_cursor(diff)[1]
+  feed("]c")
+  local after = vim.api.nvim_win_get_cursor(diff)[1]
+  check("]c: moves the diff to the next change", after > before, ("%d -> %d"):format(before, after))
+  eq("]c: focus stays in the panel", panel, vim.api.nvim_get_current_win())
+  feed("[c")
+  check("[c: moves back", vim.api.nvim_win_get_cursor(diff)[1] < after, tostring(vim.api.nvim_win_get_cursor(diff)[1]))
+  ui.close()
 end
 
 --------------------------------------------------------------------------
@@ -895,29 +961,45 @@ do
 end
 
 --------------------------------------------------------------------------
--- toggle: one key opens, closes from inside, switches scope
+-- focus: one key always goes to the view; it never closes it
 --------------------------------------------------------------------------
 
 do
   local tabs = #vim.api.nvim_list_tabpages()
-  ui.toggle({ scope = "working" })
+  ui.focus({ scope = "working" })
   vim.wait(3000, function()
     return not ui.busy()
   end)
-  eq("toggle: opens the view", tabs + 1, #vim.api.nvim_list_tabpages())
-  ui.toggle({ scope = "working" })
-  eq("toggle: closes it from inside", tabs, #vim.api.nvim_list_tabpages())
+  eq("focus: opens the view", tabs + 1, #vim.api.nvim_list_tabpages())
 
-  ui.toggle({ scope = "working" })
+  -- From the diff the same key returns to the list; it never closes.
+  local panel = layout()[1]
+  feed("l")
+  check("focus precondition: focus sits in the diff", vim.api.nvim_get_current_win() ~= panel)
+  ui.focus({ scope = "working" })
+  eq("focus: from the diff it focuses the list", panel, vim.api.nvim_get_current_win())
+  eq("focus: without closing the view", tabs + 1, #vim.api.nvim_list_tabpages())
+  ui.focus({ scope = "working" })
+  eq("focus: pressed again it still does not close", tabs + 1, #vim.api.nvim_list_tabpages())
+  eq("focus: and stays on the list", panel, vim.api.nvim_get_current_win())
+
+  -- From another tab it jumps back without resetting the selection.
+  scrub("j")
+  local selection = vim.api.nvim_win_get_cursor(panel)[1]
+  vim.cmd("tabfirst")
+  ui.focus({ scope = "working" })
   vim.wait(3000, function()
     return not ui.busy()
   end)
-  ui.toggle({ scope = "branch" })
+  eq("focus: from another tab it jumps to the view", panel, vim.api.nvim_get_current_win())
+  eq("focus: keeping the selection", selection, vim.api.nvim_win_get_cursor(panel)[1])
+
+  ui.focus({ scope = "branch" })
   vim.wait(3000, function()
     return not ui.busy()
   end)
-  eq("toggle: a different scope switches instead of closing", tabs + 1, #vim.api.nvim_list_tabpages())
-  check("toggle: scope actually switched", panel_lines()[1]:find("fork point", 1, true) ~= nil, panel_lines()[1])
+  eq("focus: a different scope switches in place", tabs + 1, #vim.api.nvim_list_tabpages())
+  check("focus: scope actually switched", panel_lines()[1]:find("fork point", 1, true) ~= nil, panel_lines()[1])
   ui.close()
 end
 

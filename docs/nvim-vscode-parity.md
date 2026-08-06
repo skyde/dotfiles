@@ -16,9 +16,10 @@ so a jj repo colocated with git is treated as jj; override with
 
 | Key | VS Code | Neovim |
 | --- | --- | --- |
-| `<leader>gc` | focus SCM view | changed files, uncommitted — list on the left, live diff on the right; pressing it again from inside closes the view, like the VS Code sidebar |
-| `<leader>gD` | `gitTreeCompare.openAllChanges` | changed files since the fork point with trunk (also a toggle) |
-| `<leader>gC` | `gitTreeCompare.changeBase` | changed files against a revision you type |
+| `<leader>gc` | focus SCM view | changed files, uncommitted — list on the left, live diff on the right; pressed again it always goes to the view (from the diff, back to the list; from another tab, jumps to it), never closing |
+| `<leader>gD` | `gitTreeCompare.openAllChanges` | changed files since the fork point with trunk (same go-to behavior) |
+| `<leader>gC` | — | close the changed-files view (`q` in the list does too) |
+| `<leader>gb` | `gitTreeCompare.changeBase` | changed files against a revision you type |
 | `<leader>gR` | refresh SCM | refresh the list |
 | `<leader>gd` | `git.openChange` | diff the current file against its last committed version |
 | `<leader>ga` | `git.viewChanges` | diff the current file against the fork point |
@@ -46,6 +47,7 @@ renamed files read `new ← old`, and the header tracks the selection as
 | `j` / `k` | move through files (stepping over directory rows), re-rendering the diff as you go |
 | `<CR>` / `o` / `l` / `<Right>` / `<Tab>` | move focus into the diff (`<Space>` stays leader, so it cannot be the select key) |
 | `J` / `K` | scroll the diff half a page from the list, for skimming a file without leaving it |
+| `]c` / `[c` | step the diff to the next / previous change, cursor staying in the list |
 | `]f` / `[f` | from *inside* the diff: render the next / previous file, focus staying in the diff |
 | `s` | cycle scope: uncommitted → since fork point → last commit |
 | `i` | toggle inline / side-by-side |
@@ -59,6 +61,14 @@ renamed files read `new ← old`, and the header tracks the selection as
 The listing also revalidates itself in the background whenever you come back
 to the tab (or to Neovim), so a commit made in a terminal does not leave the
 view describing a world that no longer exists.
+
+Browsing leaves no trace: the working side is the real file, opened as an
+unlisted preview, and the moment you move to the next file the previous
+preview is **closed again** unless it carries unsaved edits — so at most one
+looked-at file is ever loaded, and closing the view drops that too (a buffer
+with unsaved edits is kept and surfaced in the buffer list instead). The
+view also folds itself away before a session is saved, so quitting
+mid-review cannot bake stray buffers or a junk tab into the session.
 
 The right-hand side has two renderings, and the choice is remembered across
 opens. **Inline is the default**, matching `diffEditor.renderSideBySide:
