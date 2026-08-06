@@ -42,10 +42,16 @@ local function mkbuf(lines)
   return buf
 end
 
+---Chunks a reader does not see as content: the full-width wash padding at
+---the end of every virtual line.
+local function is_padding(chunk)
+  return #chunk[1] >= 100 and chunk[1]:match("^%s+$") ~= nil
+end
+
 ---The overlay reduced to what a reader sees: the old lines drawn as virtual
 ---text (with where they hang), and which buffer lines are highlighted as new.
 ---Virtual lines can carry several chunks (char emphasis); the text is their
----concatenation.
+---concatenation, without the wash padding.
 local function overlay(buf)
   local virt, added = {}, {}
   for _, m in ipairs(vim.api.nvim_buf_get_extmarks(buf, ns, 0, -1, { details = true })) do
@@ -54,12 +60,15 @@ local function overlay(buf)
       for _, vl in ipairs(d.virt_lines) do
         local text = {}
         for _, chunk in ipairs(vl) do
-          text[#text + 1] = chunk[1]
+          if not is_padding(chunk) then
+            text[#text + 1] = chunk[1]
+          end
         end
         virt[#virt + 1] = { row = m[2] + 1, text = table.concat(text), above = d.virt_lines_above or false }
       end
     end
-    if d.line_hl_group and d.line_hl_group:find("^InlineDiffAdd") then
+    local wash = d.line_hl_group or (d.hl_eol and d.hl_group)
+    if wash and wash:find("^InlineDiffAdd") then
       added[#added + 1] = m[2] + 1
     end
   end
@@ -78,17 +87,22 @@ local function detail(buf)
     if d.virt_lines then
       for _, vl in ipairs(d.virt_lines) do
         for _, chunk in ipairs(vl) do
-          chunks[#chunks + 1] = { chunk[1], chunk[2] }
+          if not is_padding(chunk) then
+            chunks[#chunks + 1] = { chunk[1], chunk[2] }
+          end
         end
       end
     end
     if d.virt_text then
       eol[m[2] + 1] = d.virt_text[1][1]
     end
-    if d.line_hl_group then
-      line_hl[m[2] + 1] = d.line_hl_group
+    -- The full-row wash is an eol range highlight (line_hl_group would
+    -- swallow the emphasis); either counts as the row's line colour here.
+    local wash = d.line_hl_group or (d.hl_eol and d.hl_group)
+    if wash then
+      line_hl[m[2] + 1] = wash
     end
-    if d.end_col and d.hl_group then
+    if d.end_col and d.hl_group and not d.hl_eol then
       local span = { m[2] + 1, m[3], d.end_col }
       if d.hl_group ~= "InlineDiffAddEmph" then
         span[4] = d.hl_group
