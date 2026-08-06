@@ -194,8 +194,10 @@ do
   -- The first entry is a plain modification: base on the left, real file right.
   eq("open: left pane holds the committed version", { "one", "two", "three" }, win_lines(wins[2]))
   eq("open: right pane holds the working copy", { "one", "TWO", "three", "four" }, win_lines(wins[3]))
-  eq("open: right pane is the real file", root .. "/a_modified.txt", win_name(wins[3]))
-  eq("open: right pane is editable", "", vim.bo[vim.api.nvim_win_get_buf(wins[3])].buftype)
+  -- Unfocused, the working side is a scratch preview: merely looking at a
+  -- file must not load its real buffer.
+  eq("open: right pane is a scratch preview", "vcs://working/a_modified.txt", win_name(wins[3]))
+  eq("open: no real buffer was loaded", -1, vim.fn.bufnr(root .. "/a_modified.txt"))
   eq("open: left pane is a scratch buffer", "nofile", vim.bo[vim.api.nvim_win_get_buf(wins[2])].buftype)
   check("open: left pane is read-only", not vim.bo[vim.api.nvim_win_get_buf(wins[2])].modifiable)
   eq("open: left pane inherits the filetype", "text", vim.bo[vim.api.nvim_win_get_buf(wins[2])].filetype)
@@ -302,10 +304,13 @@ end
 
 do
   local panel = layout()[1]
+  vim.api.nvim_set_current_win(panel)
   vim.api.nvim_win_set_cursor(panel, { 4, 0 })
   feed("\r")
   check("<CR>: moves focus into the diff", vim.api.nvim_get_current_win() ~= panel)
+  -- Focusing is what materialises the real, editable buffer.
   eq("<CR>: focus lands on the working copy", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  eq("<CR>: the focused buffer is the real file", "", vim.bo.buftype)
 
   local before = vim.api.nvim_get_current_win()
   ui.switch_side()
@@ -407,10 +412,10 @@ do
     vim.inspect(win_lines(layout()[2]))
   )
 
-  -- An untracked file is all additions, and still editable.
+  -- An untracked file is all additions; unfocused it previews as a scratch.
   scrub("j")
   local ubuf = vim.api.nvim_win_get_buf(layout()[2])
-  eq("inline: an untracked file is the real file", root .. "/d_untracked.txt", vim.api.nvim_buf_get_name(ubuf))
+  eq("inline: an untracked file previews as a scratch", "vcs://working/d_untracked.txt", vim.api.nvim_buf_get_name(ubuf))
   local uvirt, uadded = overlay(ubuf)
   eq("inline: an untracked file shows as a whole-file add", { 1 }, uadded)
   eq("inline: an untracked file has no old lines", {}, uvirt)
@@ -615,26 +620,33 @@ do
   end
 
   ui.open({ scope = "working" })
-  local a = vim.fn.bufnr(root .. "/a_modified.txt")
-  check("preview: opening loads the first file", a ~= -1)
-  eq("preview: the first file stays out of the buffer list", 0, vim.fn.buflisted(a))
+  eq("preview: opening loads no real buffer", -1, vim.fn.bufnr(root .. "/a_modified.txt"))
 
   scrub("jjj")
-  local d = vim.fn.bufnr(root .. "/d_untracked.txt")
-  check("preview: scrubbed-to file is loaded", d ~= -1)
-  eq("preview: scrubbed-to file stays out of the buffer list", 0, vim.fn.buflisted(d))
+  eq("preview: scrubbing loads no real buffers either", -1, vim.fn.bufnr(root .. "/d_untracked.txt"))
+  eq(
+    "preview: the pane shows a scratch copy meanwhile",
+    "vcs://working/d_untracked.txt",
+    win_name(layout()[#layout()])
+  )
 
   vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
   feed("\r")
   eq("preview: focus lands on the working copy", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  eq("preview: the materialised buffer stays out of the buffer list", 0, vim.fn.buflisted(0))
   eq("preview: the diff opens at the first change", 2, vim.api.nvim_win_get_cursor(0)[1])
   vim.cmd("normal! Ox")
-  eq("preview: editing re-lists the buffer", 1, vim.fn.buflisted(vim.api.nvim_get_current_buf()))
-  vim.cmd("silent! undo")
-
+  -- Headless nvim delivers no BufModifiedSet, so the live relisting cannot
+  -- be asserted here; the close-time guarantee can: an edited preview is
+  -- kept and surfaced in the buffer list, never silently dropped.
   ui.close()
   eq("close: unedited previews are dropped", -1, vim.fn.bufnr(root .. "/d_untracked.txt"))
-  check("close: the edited buffer survives", vim.fn.bufnr(root .. "/a_modified.txt") ~= -1)
+  local a = vim.fn.bufnr(root .. "/a_modified.txt")
+  check("close: the edited buffer survives", a ~= -1)
+  eq("close: and is surfaced in the buffer list", 1, vim.fn.buflisted(a))
+  vim.api.nvim_buf_call(a, function()
+    vim.cmd("silent! undo")
+  end)
 end
 
 --------------------------------------------------------------------------
@@ -644,7 +656,8 @@ end
 do
   ui.open({ scope = "working" })
   scrub("jjj")
-  check("external close: the scrubbed-to preview is loaded", vim.fn.bufnr(root .. "/d_untracked.txt") ~= -1)
+  feed("\r") -- focus, materialising the real preview buffer
+  check("external close: focusing materialises the preview", vim.fn.bufnr(root .. "/d_untracked.txt") ~= -1)
 
   -- Close the tab out from under the UI, the way :tabclose or :q on its last
   -- window would; the deferred cleanup must still drop the previews.
@@ -658,6 +671,29 @@ do
   local ok = pcall(ui.open, { scope = "working" })
   check("external close: the view reopens cleanly afterwards", ok)
   ui.close()
+end
+
+--------------------------------------------------------------------------
+-- sessions: nothing of the view may leak into a saved session
+--------------------------------------------------------------------------
+
+do
+  -- A session saved with the view open used to bake the diff tab and its
+  -- preview buffers into the session file; restoring it then resurrected
+  -- them as real listed buffers plus a junk tab of dead vcs:// windows.
+  ui.open({ scope = "working" })
+  scrub("jjj")
+  feed("\r") -- materialise one real preview buffer
+  check("session: the preview exists before saving", vim.fn.bufnr(root .. "/d_untracked.txt") ~= -1)
+  local tabs = #vim.api.nvim_list_tabpages()
+  vim.api.nvim_exec_autocmds("User", { pattern = "PersistenceSavePre" })
+  eq("session: PersistenceSavePre folds the view away", tabs - 1, #vim.api.nvim_list_tabpages())
+  eq("session: the preview buffer is gone", -1, vim.fn.bufnr(root .. "/d_untracked.txt"))
+
+  ui.open({ scope = "working" })
+  tabs = #vim.api.nvim_list_tabpages()
+  vim.api.nvim_exec_autocmds("VimLeavePre", {})
+  eq("session: VimLeavePre folds the view away too", tabs - 1, #vim.api.nvim_list_tabpages())
 end
 
 --------------------------------------------------------------------------

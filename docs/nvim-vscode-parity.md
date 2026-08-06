@@ -60,10 +60,18 @@ The listing also revalidates itself in the background whenever you come back
 to the tab (or to Neovim), so a commit made in a terminal does not leave the
 view describing a world that no longer exists.
 
+Scrubbing with j/k is **looking, not opening**: the working side renders as a
+throwaway scratch copy, and only moving into the diff (`l` / `<CR>` /
+`<Tab>` / `]f`) opens the real, editable buffer — so skimming a changelist
+leaves nothing behind: no loaded buffers, no oldfiles entries, nothing for a
+session to resurrect. The view also folds itself away before a session is
+saved, and a focused-but-unedited buffer is dropped again when the view
+closes; one carrying unsaved edits is kept and surfaced in the buffer list.
+
 The right-hand side has two renderings, and the choice is remembered across
 opens. **Inline is the default**, matching `diffEditor.renderSideBySide:
-false` in the VS Code config — and like that editor it is the **real,
-editable file**: the base version's missing lines are drawn between the lines
+false` in the VS Code config — and once focused it is the **real, editable
+file**: the base version's missing lines are drawn between the lines
 in red, new lines are highlighted green, and the overlay follows as you type.
 `]c` / `[c` walk the changes, `<leader>cv` reverts the change under the
 cursor. Untracked files read as a whole-file add, deleted files show their
