@@ -16,8 +16,8 @@ so a jj repo colocated with git is treated as jj; override with
 
 | Key | VS Code | Neovim |
 | --- | --- | --- |
-| `<leader>gc` | focus SCM view | changed files, uncommitted — list on the left, live diff on the right |
-| `<leader>gD` | `gitTreeCompare.openAllChanges` | changed files since the fork point with trunk |
+| `<leader>gc` | focus SCM view | changed files, uncommitted — list on the left, live diff on the right; pressing it again from inside closes the view, like the VS Code sidebar |
+| `<leader>gD` | `gitTreeCompare.openAllChanges` | changed files since the fork point with trunk (also a toggle) |
 | `<leader>gC` | `gitTreeCompare.changeBase` | changed files against a revision you type |
 | `<leader>gR` | refresh SCM | refresh the list |
 | `<leader>gd` | `git.openChange` | diff the current file against its last committed version |
@@ -37,17 +37,28 @@ Commands do the same without leader keys: `:VcsChanges [working|branch|head]`,
 The list is a tree, VS Code explorer style: directories first, chains of
 single-child directories compacted onto one line (`a/b/c/`), and every
 filename shown whole instead of a full path truncated against the panel
-edge. Status letters (`M` `A` `D` `R` `?` `!`) sit in the left column.
+edge. Status letters (`M` `A` `D` `R` `?` `!`) sit in the left column,
+renamed files read `new ← old`, and the header tracks the selection as
+`file 3 of 12`.
 
 | Key | Action |
 | --- | --- |
 | `j` / `k` | move through files (stepping over directory rows), re-rendering the diff as you go |
 | `<CR>` / `o` / `l` / `<Right>` / `<Tab>` | move focus into the diff (`<Space>` stays leader, so it cannot be the select key) |
 | `J` / `K` | scroll the diff half a page from the list, for skimming a file without leaving it |
+| `]f` / `[f` | from *inside* the diff: render the next / previous file, focus staying in the diff |
 | `s` | cycle scope: uncommitted → since fork point → last commit |
 | `i` | toggle inline / side-by-side |
+| `a` | stage / unstage the file, where the backend has an index (git) |
+| `X` | revert the file to its base version, after a confirm; on an added or untracked file this deletes it |
+| `m` | open the three-way merge view for a conflicted file; `<leader>cq` there drops back into this view |
 | `R` | hard refresh: re-ask the backend for everything |
-| `q` | close |
+| `q` | close — also from a scratch diff pane |
+| `?` | cheat sheet of these keys |
+
+The listing also revalidates itself in the background whenever you come back
+to the tab (or to Neovim), so a commit made in a terminal does not leave the
+view describing a world that no longer exists.
 
 The right-hand side has two renderings, and the choice is remembered across
 opens. **Inline is the default**, matching `diffEditor.renderSideBySide:

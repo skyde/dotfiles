@@ -50,6 +50,7 @@ local ns = vim.api.nvim_create_namespace("vcs_ui")
 ---@field shown VcsFile|nil  the selection the diff windows currently render
 ---@field refreshing boolean|nil  a background revalidation is in flight
 ---@field previews table<integer, true>  buffers this view opened and unlisted
+---@field navmapped table<integer, true>  real file buffers carrying view-local maps
 local state = nil
 
 -- The inline / side-by-side choice outlives the view, the way VS Code's
@@ -144,6 +145,16 @@ local function scratch(name, content, path)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, content or {})
   vim.bo[buf].modifiable = false
   vim.bo[buf].modified = false
+  -- Two diffs of the same file at the same revision would collide on the
+  -- name, and the loser would silently end up as a nameless "[No Name]"
+  -- pane; suffix instead.
+  if vim.fn.bufexists(name) == 1 then
+    local n = 2
+    while vim.fn.bufexists(("%s (%d)"):format(name, n)) == 1 do
+      n = n + 1
+    end
+    name = ("%s (%d)"):format(name, n)
+  end
   pcall(vim.api.nvim_buf_set_name, buf, name)
   if path then
     local ft = vim.filetype.match({ filename = path, buf = buf })
@@ -246,18 +257,66 @@ local function build_rows(files)
   return rows
 end
 
+---The panel row under the cursor, or nil on a header line (or before the
+---very first render has established where the header ends).
+local function row_at_cursor()
+  if not valid() or not state.first_line then
+    return nil
+  end
+  local lnum = vim.api.nvim_win_get_cursor(state.panel_win)[1]
+  return state.rows[lnum - state.first_line + 1]
+end
+
+---The file under the cursor in the panel; nil on a header or directory line.
+local function current_file()
+  local row = row_at_cursor()
+  return row and row.file or nil
+end
+
+---Where the selection sits among the file rows — "file 3 of 12" — or just the
+---count while the cursor is on a header or directory line.
+local function file_position()
+  local at, n = nil, 0
+  local here = row_at_cursor()
+  for _, row in ipairs(state.rows) do
+    if row.kind == "file" then
+      n = n + 1
+      if row == here then
+        at = n
+      end
+    end
+  end
+  if at then
+    return ("file %d of %d"):format(at, n)
+  end
+  return ("%d file%s"):format(n, n == 1 and "" or "s")
+end
+
+local function header_line()
+  return ("%s · %s%s"):format(state.rev:sub(1, 12), file_position(), state.refreshing and " · refreshing…" or "")
+end
+
+---Redraw just the position line, cheap enough to run on every cursor motion.
+local function update_header()
+  if not valid() then
+    return
+  end
+  local buf = state.panel_buf
+  local line = header_line()
+  vim.bo[buf].modifiable = true
+  vim.api.nvim_buf_set_lines(buf, 1, 2, false, { line })
+  vim.bo[buf].modifiable = false
+  vim.api.nvim_buf_clear_namespace(buf, ns, 1, 2)
+  vim.api.nvim_buf_set_extmark(buf, ns, 1, 0, { end_col = #line, hl_group = "Comment" })
+end
+
 local function render_panel()
   local buf = state.panel_buf
   local scope_label = ({ working = "uncommitted", branch = "since fork point", head = "last commit" })[state.scope]
     or state.scope
   local header = {
     ("%s · %s"):format(state.backend.name, scope_label),
-    ("%s · %d file%s%s"):format(
-      state.rev:sub(1, 12),
-      #state.files,
-      #state.files == 1 and "" or "s",
-      state.refreshing and " · refreshing…" or ""
-    ),
+    header_line(),
     "",
   }
   state.first_line = #header + 1
@@ -269,7 +328,12 @@ local function render_panel()
       table.insert(lines, ("    %s%s/"):format(indent, row.name))
     else
       local meta = STATUS[row.file.status] or STATUS.M
-      table.insert(lines, (" %s  %s%s"):format(meta.icon, indent, row.name))
+      local label = row.name
+      if row.file.orig then
+        -- Renamed: show where it came from, not just the new basename.
+        label = ("%s ← %s"):format(row.name, row.file.orig)
+      end
+      table.insert(lines, (" %s  %s%s"):format(meta.icon, indent, label))
     end
   end
   if #state.files == 0 then
@@ -290,23 +354,15 @@ local function render_panel()
     else
       local meta = STATUS[row.file.status] or STATUS.M
       vim.api.nvim_buf_set_extmark(buf, ns, lnum, 0, { end_col = 3, hl_group = meta.hl })
+      if row.file.orig then
+        local tail = #(" ← " .. row.file.orig)
+        vim.api.nvim_buf_set_extmark(buf, ns, lnum, #lines[lnum + 1] - tail, {
+          end_col = #lines[lnum + 1],
+          hl_group = "Comment",
+        })
+      end
     end
   end
-end
-
----The panel row under the cursor, or nil on a header line.
-local function row_at_cursor()
-  if not valid() then
-    return nil
-  end
-  local lnum = vim.api.nvim_win_get_cursor(state.panel_win)[1]
-  return state.rows[lnum - state.first_line + 1]
-end
-
----The file under the cursor in the panel; nil on a header or directory line.
-local function current_file()
-  local row = row_at_cursor()
-  return row and row.file or nil
 end
 
 ---Panel line of the first file row (directories can come before it).
@@ -523,6 +579,11 @@ local function render_inline(file)
   return win
 end
 
+-- Forward declarations: render_file wires keys that are defined further down,
+-- and the tab autocmds revalidate with machinery from the refresh section.
+local setup_diff_keys
+local refresh_listing
+
 ---Draw `file` in the right-hand side. Assumes any base content it needs is
 ---already cached; everything here is buffer and window work.
 local function render_file(file, focus)
@@ -547,6 +608,7 @@ local function render_file(file, focus)
 
   state.diff_win = target
   state.shown = file
+  setup_diff_keys()
   vim.api.nvim_set_current_win(focus and target or state.panel_win)
 end
 
@@ -739,6 +801,7 @@ local function move(delta)
   if target then
     vim.api.nvim_win_set_cursor(state.panel_win, { state.first_line + target - 1, 0 })
   end
+  update_header()
   schedule_show()
 end
 
@@ -756,6 +819,147 @@ local function scroll_diff(dir)
     vim.api.nvim_win_call(win, function()
       vim.cmd("normal! " .. (dir > 0 and "\4" or "\21"))
     end)
+  end
+end
+
+---From inside the diff, move the selection without going back to the list:
+---]f / [f render the next or previous file and keep focus in the diff.
+local function step_file(delta)
+  if not (valid() and vim.api.nvim_get_current_tabpage() == state.tab) then
+    return
+  end
+  local lnum = vim.api.nvim_win_get_cursor(state.panel_win)[1]
+  local i = lnum - state.first_line + 1 + delta
+  while state.rows[i] do
+    if state.rows[i].kind == "file" then
+      vim.api.nvim_win_set_cursor(state.panel_win, { state.first_line + i - 1, 0 })
+      update_header()
+      show(true)
+      return
+    end
+    i = i + delta
+  end
+end
+
+---Buffer-local keys for the diff panes themselves. Scratch buffers die with
+---the view; maps put on real file buffers are removed again in close().
+function setup_diff_keys()
+  for _, w in ipairs(diff_wins()) do
+    local buf = vim.api.nvim_win_get_buf(w)
+    local function bmap(lhs, fn, desc)
+      vim.keymap.set("n", lhs, fn, { buffer = buf, nowait = true, silent = true, desc = desc })
+    end
+    bmap("]f", function()
+      step_file(1)
+    end, "Next changed file")
+    bmap("[f", function()
+      step_file(-1)
+    end, "Previous changed file")
+    if vim.bo[buf].buftype == "" then
+      state.navmapped[buf] = true
+    else
+      -- `q` on the real file would shadow macro recording wherever that
+      -- buffer is shown later, so only the scratch panes get it.
+      bmap("q", function()
+        M.close()
+      end, "Close diff view")
+    end
+  end
+end
+
+--------------------------------------------------------------------------
+-- panel actions
+--------------------------------------------------------------------------
+
+---Stage or unstage the selected file, on backends that have an index.
+local function stage_toggle()
+  local file = current_file()
+  if not file then
+    return
+  end
+  local backend, root = state.backend, state.root
+  if not backend.stage then
+    vim.notify(("%s has no staging area"):format(backend.name), vim.log.levels.INFO)
+    return
+  end
+  vcs.async(function()
+    local staged = backend.staged(root, file.path)
+    local ok = staged and backend.unstage(root, file.path) or (not staged and backend.stage(root, file.path))
+    vim.notify(
+      ok and ("%s %s"):format(staged and "Unstaged" or "Staged", file.path)
+        or ("Could not %s %s"):format(staged and "unstage" or "stage", file.path),
+      ok and vim.log.levels.INFO or vim.log.levels.WARN
+    )
+  end)
+end
+
+---Open the three-way merge view for the selected file, straight from the
+---list. The merge view lives in its own tab, so finishing it (<leader>cq)
+---drops right back into this view.
+local function merge_current()
+  local file = current_file()
+  if not file then
+    return
+  end
+  local full = state.root .. "/" .. file.path
+  if vim.fn.filereadable(full) == 0 then
+    vim.notify("No file on disk to merge", vim.log.levels.WARN)
+    return
+  end
+  show(true)
+  if vim.api.nvim_buf_get_name(0) ~= full then
+    vim.cmd("edit " .. vim.fn.fnameescape(full))
+  end
+  require("util.conflict").merge_view()
+end
+
+-- What `?` shows. Discoverability is the point: none of the panel keys
+-- should be learnable only by reading the source.
+local HELP = {
+  { "j / k", "select file, diff follows" },
+  { "<CR> / l", "focus the diff" },
+  { "J / K", "scroll the diff from the list" },
+  { "]f / [f", "next / previous file, from inside the diff" },
+  { "s", "cycle scope: uncommitted / branch / last commit" },
+  { "i", "toggle inline and side-by-side" },
+  { "a", "stage / unstage file (git)" },
+  { "X", "revert file" },
+  { "m", "merge view for a conflicted file" },
+  { "R", "hard refresh" },
+  { "q", "close" },
+}
+
+local function show_help()
+  local lines = {}
+  for _, entry in ipairs(HELP) do
+    table.insert(lines, ("  %-11s %s"):format(entry[1], entry[2]))
+  end
+  local width = 0
+  for _, l in ipairs(lines) do
+    width = math.max(width, vim.fn.strdisplaywidth(l))
+  end
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].bufhidden = "wipe"
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+  for i = 1, #lines do
+    vim.api.nvim_buf_set_extmark(buf, ns, i - 1, 0, { end_col = 13, hl_group = "Special" })
+  end
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = "editor",
+    row = math.max(0, math.floor((vim.o.lines - #lines) / 2) - 1),
+    col = math.max(0, math.floor((vim.o.columns - width - 2) / 2)),
+    width = width + 2,
+    height = #lines,
+    style = "minimal",
+    border = "rounded",
+    title = " changed files ",
+    title_pos = "center",
+  })
+  for _, lhs in ipairs({ "q", "<Esc>", "?" }) do
+    vim.keymap.set("n", lhs, function()
+      pcall(vim.api.nvim_win_close, win, true)
+    end, { buffer = buf, nowait = true, silent = true })
   end
 end
 
@@ -808,6 +1012,12 @@ local function setup_panel_keys(buf)
     local next_scope = ({ working = "branch", branch = "head", head = "working" })[state.scope]
     M.open({ scope = next_scope })
   end, "Cycle scope")
+  map("a", stage_toggle, "Stage / unstage file")
+  map("X", function()
+    M.revert_current()
+  end, "Revert file")
+  map("m", merge_current, "Merge view for conflicts")
+  map("?", show_help, "Help")
 end
 
 ---Create (or reuse) the diff tab.
@@ -839,6 +1049,9 @@ local function ensure_tab()
   vim.wo[win].relativenumber = false
   vim.wo[win].wrap = false
   vim.wo[win].cursorline = true
+  -- The global cursorlineopt is "number", and the panel has no numbers — so
+  -- without this the selected file would get no highlight at all.
+  vim.wo[win].cursorlineopt = "line"
   vim.wo[win].winfixwidth = true
 
   state = state or {}
@@ -850,6 +1063,7 @@ local function ensure_tab()
     state.inline = remembered_inline
   end
   state.previews = state.previews or {}
+  state.navmapped = state.navmapped or {}
 
   setup_panel_keys(buf)
   -- Render on any cursor motion in the panel — a mouse click, a search, `G` —
@@ -859,8 +1073,25 @@ local function ensure_tab()
     buffer = buf,
     callback = function()
       if valid() and vim.api.nvim_get_current_win() == state.panel_win then
+        update_header()
         schedule_show()
       end
+    end,
+  })
+  -- The repository can move while the view sits in a background tab — a
+  -- commit from a terminal, a sync, an editor left overnight. Coming back to
+  -- the tab (or to Neovim itself) revalidates in the background, exactly the
+  -- way reopening the view does.
+  vim.api.nvim_create_autocmd({ "TabEnter", "FocusGained" }, {
+    group = vim.api.nvim_create_augroup("vcs_ui_revalidate", { clear = true }),
+    callback = function()
+      -- Scheduled so an open() in progress finishes first; the refresh it
+      -- starts itself then makes this one redundant, which `refreshing` sees.
+      vim.schedule(function()
+        if valid() and vim.api.nvim_get_current_tabpage() == state.tab and not state.refreshing then
+          refresh_listing()
+        end
+      end)
     end,
   })
   -- The preview buffers must be cleaned up however the view dies — `q` is one
@@ -900,8 +1131,9 @@ end
 
 ---Re-ask the backend for the listing in the background and reconcile: the
 ---cached paint stays up and interactive the whole time, and the panel only
----redraws when something actually changed.
-local function refresh_listing()
+---redraws when something actually changed. (Assigns the forward declaration
+---above render_file, so the tab autocmds and panel actions can reach it.)
+function refresh_listing()
   if not valid() then
     return
   end
@@ -964,6 +1196,7 @@ local function refresh_listing()
         end
       end
       pcall(vim.api.nvim_win_set_cursor, state.panel_win, { lnum or first_file_lnum(), 0 })
+      update_header()
       -- Redraw the diff for the (possibly moved) selection, but never yank
       -- focus away from wherever the user is working.
       if vim.api.nvim_get_current_win() == state.panel_win then
@@ -1032,11 +1265,29 @@ function M.open(opts)
 
   render_panel()
   vim.api.nvim_win_set_cursor(state.panel_win, { first_file_lnum(), 0 })
+  update_header()
   show(false)
   if cached then
     refresh_listing()
   end
   prefetch_bases()
+end
+
+---One key both ways: open the view from outside, close it from inside. From
+---inside with a *different* scope requested, switch scope instead of closing.
+---@param opts? { scope?: string, rev?: string }
+function M.toggle(opts)
+  opts = opts or {}
+  if
+    valid()
+    and vim.api.nvim_get_current_tabpage() == state.tab
+    and not opts.rev
+    and (not opts.scope or opts.scope == state.scope)
+  then
+    M.close()
+    return
+  end
+  M.open(opts)
 end
 
 ---True while background work is in flight — a listing revalidation, a base
@@ -1069,15 +1320,33 @@ function M.close()
   refresh_gen = refresh_gen + 1
   render_gen = render_gen + 1
   local previews = state and state.previews or {}
+  local navmapped = state and state.navmapped or {}
   if state and state.inline_buf then
     inline_diff.detach(state.inline_buf)
     state.inline_buf = nil
   end
   if valid() then
     vim.api.nvim_set_current_tabpage(state.tab)
-    vim.cmd("tabclose")
+    if vim.fn.tabpagenr("$") == 1 then
+      -- The origin tab is gone and a lone tab cannot be closed (E784).
+      -- Dissolve the layout into an empty buffer instead — erroring here
+      -- would skip the cleanup below and leave the view stuck half-alive,
+      -- with every further open/close attempt failing the same way.
+      pcall(vim.cmd, "silent! only")
+      pcall(vim.cmd, "enew")
+    else
+      pcall(vim.cmd, "tabclose")
+    end
   end
   state = nil
+  -- The ]f/[f maps only mean something while the view exists; leaving them
+  -- on real file buffers would surprise whoever edits those files later.
+  for buf in pairs(navmapped) do
+    if vim.api.nvim_buf_is_valid(buf) then
+      pcall(vim.keymap.del, "n", "]f", { buffer = buf })
+      pcall(vim.keymap.del, "n", "[f", { buffer = buf })
+    end
+  end
   -- Drop the buffers that only existed because they were scrubbed past.
   -- Anything the user actually touched has been re-listed and is kept.
   for buf in pairs(previews) do
@@ -1085,6 +1354,51 @@ function M.close()
       pcall(vim.api.nvim_buf_delete, buf, {})
     end
   end
+end
+
+---Discard the selected file's change — VS Code's SCM "discard". Destructive,
+---so it asks first; `opts.force` (used by the tests) skips the prompt.
+---@param opts? { force?: boolean }
+function M.revert_current(opts)
+  if not valid() then
+    return
+  end
+  local file = current_file()
+  if not file then
+    return
+  end
+  local deletes = file.status == "A" or file.status == "?"
+  local prompt = deletes and ("Delete %s?"):format(file.path)
+    or ("Revert %s to %s?"):format(file.path, base_rev(file):sub(1, 12))
+  if not (opts and opts.force) and vim.fn.confirm(prompt, "&Yes\n&No", 2) ~= 1 then
+    return
+  end
+  local backend, root, rev = state.backend, state.root, base_rev(file)
+  vcs.async(function()
+    local ok
+    if file.status == "?" then
+      ok = vim.fn.delete(root .. "/" .. file.path) == 0
+    elseif backend.revert then
+      ok = backend.revert(root, rev, file)
+    else
+      vim.notify(("%s cannot revert files from here"):format(backend.name), vim.log.levels.WARN)
+      return
+    end
+    if not ok then
+      vim.notify(("Could not revert %s"):format(file.path), vim.log.levels.WARN)
+      return
+    end
+    -- A loaded buffer still showing the old content would be a lie to edit.
+    local buf = vim.fn.bufnr(root .. "/" .. file.path)
+    if buf ~= -1 and vim.api.nvim_buf_is_loaded(buf) and not vim.bo[buf].modified then
+      vim.api.nvim_buf_call(buf, function()
+        pcall(vim.cmd.checktime)
+      end)
+    end
+    if valid() then
+      refresh_listing()
+    end
+  end)
 end
 
 ---Diff just the current buffer's file, without the file list.

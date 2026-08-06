@@ -176,7 +176,7 @@ do
 
   local lines = panel_lines()
   check("open: header names the backend and scope", lines[1]:find("git") and lines[1]:find("uncommitted"), lines[1])
-  check("open: header counts the files", lines[2]:find("3 files"), lines[2])
+  check("open: header counts the files", lines[2]:find("of 3"), lines[2])
 
   local listed = {}
   for i = 4, #lines do
@@ -319,7 +319,7 @@ do
   local lines = panel_lines()
   check("s: scope cycles to the fork point", lines[1]:find("since fork point"), lines[1])
   check("s: the branch commit now appears", vim.tbl_contains(lines, " M  committed_on_branch.txt"), vim.inspect(lines))
-  check("s: header counts four files", lines[2]:find("4 files"), lines[2])
+  check("s: header counts four files", lines[2]:find("of 4"), lines[2])
 
   scrub("s")
   check("s: cycles on to the last commit", panel_lines()[1]:find("last commit"), panel_lines()[1])
@@ -716,7 +716,7 @@ do
     " ?    other.txt",
     " M  a_modified.txt",
     " D  b_deleted.txt",
-    " R  c_renamed.txt",
+    " R  c_renamed.txt ← c_untouched.txt",
     " ?  d_untracked.txt",
   }, listed)
 
@@ -787,6 +787,23 @@ do
   feed("K")
   check("panel: K scrolls it back up", topline() < down, string.format("%d after K", topline()))
   ui.close()
+end
+
+--------------------------------------------------------------------------
+-- panel: the selected file is visibly highlighted
+--------------------------------------------------------------------------
+
+do
+  -- The real config sets cursorlineopt = "number" globally, and the panel has
+  -- no line numbers — the panel must override it or the selection is invisible.
+  local saved = vim.o.cursorlineopt
+  vim.o.cursorlineopt = "number"
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  check("panel: cursorline is on", vim.wo[panel].cursorline)
+  eq("panel: cursorline highlights the row, not just the number", "line", vim.wo[panel].cursorlineopt)
+  ui.close()
+  vim.o.cursorlineopt = saved
 end
 
 --------------------------------------------------------------------------
@@ -863,6 +880,292 @@ do
   eq("change_position: the base pane counts the same hunks", 3, t2)
   vim.cmd("tabclose")
   check("change_position: nil outside a diff", ui.change_position() == nil)
+end
+
+--------------------------------------------------------------------------
+-- header: the position cue follows the selection
+--------------------------------------------------------------------------
+
+do
+  open_settled({ scope = "working" })
+  check("header: says file 1 of N", panel_lines()[2]:match("file 1 of %d+") ~= nil, panel_lines()[2])
+  scrub("j")
+  check("header: follows the cursor to file 2", panel_lines()[2]:match("file 2 of %d+") ~= nil, panel_lines()[2])
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- toggle: one key opens, closes from inside, switches scope
+--------------------------------------------------------------------------
+
+do
+  local tabs = #vim.api.nvim_list_tabpages()
+  ui.toggle({ scope = "working" })
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+  eq("toggle: opens the view", tabs + 1, #vim.api.nvim_list_tabpages())
+  ui.toggle({ scope = "working" })
+  eq("toggle: closes it from inside", tabs, #vim.api.nvim_list_tabpages())
+
+  ui.toggle({ scope = "working" })
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+  ui.toggle({ scope = "branch" })
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+  eq("toggle: a different scope switches instead of closing", tabs + 1, #vim.api.nvim_list_tabpages())
+  check("toggle: scope actually switched", panel_lines()[1]:find("fork point", 1, true) ~= nil, panel_lines()[1])
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- ]f / [f: walk the changelist from inside the diff
+--------------------------------------------------------------------------
+
+do
+  -- A buffer that predates the view, to prove the maps come off it on close.
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+  local outliving = vim.api.nvim_get_current_buf()
+
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  feed("l")
+  local first = vim.api.nvim_buf_get_name(0)
+  feed("]f")
+  local second = vim.api.nvim_buf_get_name(0)
+  check("]f: renders the next file", second ~= first and second ~= "", second)
+  check("]f: keeps focus in the diff", vim.api.nvim_get_current_win() ~= panel)
+  feed("[f")
+  eq("[f: goes back to the previous file", first, vim.api.nvim_buf_get_name(0))
+
+  -- Visit the pre-existing buffer through the view, then close it.
+  local row
+  for i, l in ipairs(panel_lines()) do
+    if l:find("a_modified.txt", 1, true) then
+      row = i
+    end
+  end
+  vim.api.nvim_win_set_cursor(panel, { row, 0 })
+  vim.api.nvim_set_current_win(panel)
+  feed("l")
+  local has_map = false
+  for _, m in ipairs(vim.api.nvim_buf_get_keymap(outliving, "n")) do
+    has_map = has_map or m.lhs == "]f"
+  end
+  check("]f: mapped on the shown file while the view lives", has_map)
+  ui.close()
+  has_map = false
+  for _, m in ipairs(vim.api.nvim_buf_get_keymap(outliving, "n")) do
+    has_map = has_map or m.lhs == "]f"
+  end
+  check("]f: removed from surviving buffers on close", not has_map)
+end
+
+--------------------------------------------------------------------------
+-- q from a scratch diff pane closes the view
+--------------------------------------------------------------------------
+
+do
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  local row
+  for i, l in ipairs(panel_lines()) do
+    if l:find("b_deleted.txt", 1, true) then
+      row = i
+    end
+  end
+  vim.api.nvim_win_set_cursor(panel, { row, 0 })
+  feed("l")
+  check(
+    "q: the deleted file's pane is a scratch buffer",
+    vim.api.nvim_buf_get_name(0):find("vcs://deleted", 1, true) ~= nil,
+    vim.api.nvim_buf_get_name(0)
+  )
+  local tabs = #vim.api.nvim_list_tabpages()
+  feed("q")
+  eq("q: closes the view from a scratch diff pane", tabs - 1, #vim.api.nvim_list_tabpages())
+end
+
+--------------------------------------------------------------------------
+-- ?: the cheat sheet
+--------------------------------------------------------------------------
+
+do
+  open_settled({ scope = "working" })
+  local function floats()
+    local n = 0
+    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      if vim.api.nvim_win_get_config(w).relative ~= "" then
+        n = n + 1
+      end
+    end
+    return n
+  end
+  eq("help: no float before ?", 0, floats())
+  feed("?")
+  eq("help: ? opens the cheat sheet", 1, floats())
+  local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+  check("help: it mentions the scroll keys", text:find("J / K", 1, true) ~= nil, text)
+  feed("q")
+  eq("help: q closes it again", 0, floats())
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- revalidation: coming back to the tab re-asks the backend
+--------------------------------------------------------------------------
+
+do
+  open_settled({ scope = "working" })
+  vim.cmd("tabnew")
+  write(root .. "/f_while_away.txt", "made in another tab\n")
+  vim.cmd("tabclose") -- drops back into the diff tab, firing TabEnter
+  vim.wait(3000, function()
+    return vim.tbl_contains(panel_lines(), " ?  f_while_away.txt")
+  end)
+  check(
+    "revalidate: returning to the tab picks up outside changes",
+    vim.tbl_contains(panel_lines(), " ?  f_while_away.txt"),
+    vim.inspect(panel_lines())
+  )
+  ui.close()
+  vim.fn.delete(root .. "/f_while_away.txt")
+end
+
+--------------------------------------------------------------------------
+-- a: stage / unstage
+--------------------------------------------------------------------------
+
+do
+  local function staged()
+    return vim.trim(git(root, "diff", "--cached", "--name-only", "--", "a_modified.txt")) ~= ""
+  end
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  local row
+  for i, l in ipairs(panel_lines()) do
+    if l:find("a_modified.txt", 1, true) then
+      row = i
+    end
+  end
+  vim.api.nvim_win_set_cursor(panel, { row, 0 })
+  check("stage: starts unstaged", not staged())
+  feed("a")
+  vim.wait(3000, staged)
+  check("stage: a stages the file", staged())
+  feed("a")
+  vim.wait(3000, function()
+    return not staged()
+  end)
+  check("stage: a again unstages it", not staged())
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- X: revert the selected file
+--------------------------------------------------------------------------
+
+do
+  write(root .. "/revert_me.txt", "keep\n")
+  git(root, "add", "revert_me.txt")
+  git(root, "commit", "-qm", "revert fixture")
+  write(root .. "/revert_me.txt", "keep\nlocal edit\n")
+
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  local function row_of(name)
+    for i, l in ipairs(panel_lines()) do
+      if l:find(name, 1, true) then
+        return i
+      end
+    end
+  end
+  local row = row_of("revert_me.txt")
+  check("revert: fixture is listed", row ~= nil, vim.inspect(panel_lines()))
+  vim.api.nvim_win_set_cursor(panel, { row, 0 })
+  ui.revert_current({ force = true })
+  vim.wait(3000, function()
+    return not ui.busy() and row_of("revert_me.txt") == nil
+  end)
+  eq("revert: X restores the base content", { "keep" }, vim.fn.readfile(root .. "/revert_me.txt"))
+  check("revert: the listing drops the file", row_of("revert_me.txt") == nil, vim.inspect(panel_lines()))
+
+  -- On an untracked file, reverting means deleting it.
+  row = row_of("e_new.txt")
+  check("revert: untracked fixture is listed", row ~= nil, vim.inspect(panel_lines()))
+  vim.api.nvim_win_set_cursor(panel, { row, 0 })
+  ui.revert_current({ force = true })
+  vim.wait(3000, function()
+    return not ui.busy() and vim.fn.filereadable(root .. "/e_new.txt") == 0
+  end)
+  eq("revert: X deletes an untracked file", 0, vim.fn.filereadable(root .. "/e_new.txt"))
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- closing when the view is the only tab left
+--------------------------------------------------------------------------
+
+do
+  open_settled({ scope = "working" })
+  vim.cmd("tabonly") -- the origin tab is gone; the view is the last tab
+  local ok = pcall(ui.close)
+  check("last tab: close does not raise E784", ok)
+  eq("last tab: one clean tab remains", 1, #vim.api.nvim_list_tabpages())
+  check(
+    "last tab: the panel is gone",
+    not vim.api.nvim_buf_get_name(0):find("vcs://changes", 1, true),
+    vim.api.nvim_buf_get_name(0)
+  )
+  -- And the view is not stuck: it opens again as if nothing happened.
+  open_settled({ scope = "working" })
+  eq("last tab: reopening works", 2, #vim.api.nvim_list_tabpages())
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- two diffs of the same file must not fight over the scratch buffer name
+--------------------------------------------------------------------------
+
+do
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+  ui.file_diff("working")
+  local first_left = win_name(layout()[1])
+  vim.cmd("tabprevious")
+  ui.file_diff("working")
+  local second_left = win_name(layout()[1])
+  check("scratch: first base pane is named", first_left:find("vcs://", 1, true) ~= nil, first_left)
+  check("scratch: second base pane is named too", second_left:find("vcs://", 1, true) ~= nil, second_left)
+  check("scratch: the names differ", first_left ~= second_left, second_left)
+  vim.cmd("tabclose")
+  vim.cmd("tabclose")
+end
+
+--------------------------------------------------------------------------
+-- m: merge view straight from the list
+--------------------------------------------------------------------------
+
+do
+  write(root .. "/conflicted.txt", "<<<<<<< ours\nmine\n=======\ntheirs\n>>>>>>> theirs\n")
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  local row
+  for i, l in ipairs(panel_lines()) do
+    if l:find("conflicted.txt", 1, true) then
+      row = i
+    end
+  end
+  vim.api.nvim_win_set_cursor(panel, { row, 0 })
+  local tabs = #vim.api.nvim_list_tabpages()
+  feed("m")
+  eq("merge: m opens the merge view in its own tab", tabs + 1, #vim.api.nvim_list_tabpages())
+  eq("merge: three panes", 3, #vim.api.nvim_tabpage_list_wins(0))
+  vim.cmd("tabclose")
+  ui.close()
+  vim.fn.delete(root .. "/conflicted.txt")
 end
 
 --------------------------------------------------------------------------
