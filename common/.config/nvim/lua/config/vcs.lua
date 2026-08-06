@@ -202,6 +202,7 @@ map("n", "<leader>cd", function()
 end, { desc = "Diff: other side / Line diagnostics" })
 
 map("n", "<leader>ci", ui.toggle_inline, { desc = "Diff: toggle inline / side-by-side" })
+map("n", "<leader>cz", ui.toggle_collapse, { desc = "Diff: toggle collapsing unchanged regions" })
 
 -- Revert. In diff mode `do` already pulls the other side's hunk in, which is
 -- exactly `diffEditor.revert`; these just give it the VS Code names. The

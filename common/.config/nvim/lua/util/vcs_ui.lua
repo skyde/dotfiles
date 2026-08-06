@@ -53,6 +53,7 @@ local ns = vim.api.nvim_create_namespace("vcs_ui")
 ---@field rows PanelRow[]  files grouped into a directory tree, one entry per panel line
 ---@field first_line integer
 ---@field inline boolean
+---@field collapse boolean  unchanged regions fold away, VS Code's hideUnchangedRegions
 ---@field inline_buf integer|nil  buffer currently carrying the inline overlay
 ---@field diff_win integer|nil  the pane J/K scroll and <CR> focuses
 ---@field shown VcsFile|nil  the selection the diff windows currently render
@@ -66,6 +67,11 @@ local state = nil
 -- Inline is the default, matching `diffEditor.renderSideBySide: false` in the
 -- VS Code config this mirrors.
 local remembered_inline = true
+
+-- Whether unchanged regions collapse out of the diff, VS Code's
+-- hideUnchangedRegions. On by default: a review reads hunk to hunk, the way
+-- delta prints a patch — the full file is one zR (or a toggle) away.
+local remembered_collapse = true
 
 -- What the backends said, remembered across opens (and closes) of the view.
 -- Reopening paints from here instantly; a background pass revalidates.
@@ -206,6 +212,65 @@ local function store_base(key, content)
   base_cache[key] = content
 end
 
+-- Which files have been looked at, per listing — GitHub's per-file "viewed"
+-- checks. Survives close and reopen (a review in progress is a thing worth
+-- keeping) but resets itself when the listing's base revision moves.
+local viewed_sets = {} ---@type table<string, {rev: string, paths: table<string, true>}>
+
+local function viewed_paths()
+  local key = listing_key(state.root, state.scope)
+  local v = viewed_sets[key]
+  if not v or v.rev ~= state.rev then
+    v = { rev = state.rev, paths = {} }
+    viewed_sets[key] = v
+  end
+  return v.paths
+end
+
+-- Files past this size do without stats: diffing megabytes to decorate a
+-- panel row is the wrong trade, and the numbers would be noise anyway.
+local STATS_MAX_BYTES = 4 * 1024 * 1024
+local STATS_MAX_LINES = 20000
+
+---Line counts for a file — the "+12 -3" of a diff --stat — from its cached
+---base against the loaded buffer (which may be ahead of disk) or the disk
+---content. Pure arithmetic over vim.diff; never shells out. Nil for files
+---too large to be worth it.
+---@param root string
+---@param file VcsFile
+---@param base string[]
+---@return {add: integer, del: integer}|nil
+local function file_stats(root, file, base)
+  if #base > STATS_MAX_LINES then
+    return nil
+  end
+  local full = root .. "/" .. file.path
+  local lines
+  local buf = vim.fn.bufnr(full)
+  if buf ~= -1 and vim.api.nvim_buf_is_loaded(buf) then
+    if vim.api.nvim_buf_line_count(buf) > STATS_MAX_LINES then
+      return nil
+    end
+    lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  elseif vim.fn.filereadable(full) == 1 then
+    local size = (vim.uv.fs_stat(full) or {}).size or 0
+    if size > STATS_MAX_BYTES then
+      return nil
+    end
+    lines = vim.fn.readfile(full)
+  else
+    lines = {}
+  end
+  local a = #base > 0 and (table.concat(base, "\n") .. "\n") or ""
+  local b = #lines > 0 and (table.concat(lines, "\n") .. "\n") or ""
+  local add, del = 0, 0
+  for _, h in ipairs(vim.diff(a, b, { result_type = "indices" }) or {}) do
+    del = del + h[2]
+    add = add + h[4]
+  end
+  return { add = add, del = del }
+end
+
 ---Forget every base fetched for `root`, in any revision.
 local function drop_bases(root)
   base_epoch = base_epoch + 1
@@ -308,7 +373,20 @@ local function file_position()
 end
 
 local function header_line()
-  return ("%s · %s%s"):format(state.rev:sub(1, 12), file_position(), state.refreshing and " · refreshing…" or "")
+  -- Total churn across the listing, once the stats pass has been anywhere.
+  local add, del, known = 0, 0, false
+  for _, f in ipairs(state.files) do
+    if f.stats then
+      known = true
+      add, del = add + f.stats.add, del + f.stats.del
+    end
+  end
+  return ("%s · %s%s%s"):format(
+    state.rev:sub(1, 12),
+    file_position(),
+    known and (" · +%d -%d"):format(add, del) or "",
+    state.refreshing and " · refreshing…" or ""
+  )
 end
 
 ---Redraw just the position line, cheap enough to run on every cursor motion.
@@ -325,6 +403,25 @@ local function update_header()
   vim.api.nvim_buf_set_extmark(buf, ns, 1, 0, { end_col = #line, hl_group = "Comment" })
 end
 
+-- Filetype icons for the panel, when mini.icons is around (it is, under
+-- LazyVim). The probe is remembered; a bare Neovim renders identically to
+-- how the panel always looked.
+local icons_ready ---@type boolean|nil
+local mini_icons
+local function file_icon(kind, name)
+  if icons_ready == nil then
+    icons_ready, mini_icons = pcall(require, "mini.icons")
+    icons_ready = icons_ready and pcall(mini_icons.get, "file", "probe.txt") or false
+  end
+  if not icons_ready then
+    return nil
+  end
+  local ok, icon, hl = pcall(mini_icons.get, kind, name)
+  if ok then
+    return icon, hl
+  end
+end
+
 local function render_panel()
   local buf = state.panel_buf
   local scope_label = ({ working = "uncommitted", branch = "since fork point", head = "last commit" })[state.scope]
@@ -337,10 +434,17 @@ local function render_panel()
   state.first_line = #header + 1
 
   local lines = vim.list_extend({}, header)
-  for _, row in ipairs(state.rows) do
+  local row_icons = {} ---@type table<integer, {[1]: string, [2]: string|nil}>
+  for i, row in ipairs(state.rows) do
     local indent = ("  "):rep(row.depth)
     if row.kind == "dir" then
-      table.insert(lines, ("    %s%s/"):format(indent, row.name))
+      local icon = file_icon("directory", row.name)
+      if icon then
+        row_icons[i] = { icon, "Directory" }
+        table.insert(lines, ("    %s%s %s/"):format(indent, icon, row.name))
+      else
+        table.insert(lines, ("    %s%s/"):format(indent, row.name))
+      end
     else
       local meta = STATUS[row.file.status] or STATUS.M
       local label = row.name
@@ -348,20 +452,31 @@ local function render_panel()
         -- Renamed: show where it came from, not just the new basename.
         label = ("%s ← %s"):format(row.name, row.file.orig)
       end
-      table.insert(lines, (" %s  %s%s"):format(meta.icon, indent, label))
+      local icon, icon_hl = file_icon("file", row.name)
+      if icon then
+        row_icons[i] = { icon, icon_hl }
+        table.insert(lines, (" %s  %s%s %s"):format(meta.icon, indent, icon, label))
+      else
+        table.insert(lines, (" %s  %s%s"):format(meta.icon, indent, label))
+      end
     end
   end
   if #state.files == 0 then
     table.insert(lines, " (no changes)")
+    table.insert(lines, " s cycles scope · ? for help")
   end
 
   vim.bo[buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
 
+  local viewed = viewed_paths()
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
   vim.api.nvim_buf_set_extmark(buf, ns, 0, 0, { end_col = #lines[1], hl_group = "Title" })
   vim.api.nvim_buf_set_extmark(buf, ns, 1, 0, { end_col = #lines[2], hl_group = "Comment" })
+  if #state.files == 0 then
+    vim.api.nvim_buf_set_extmark(buf, ns, #lines - 1, 0, { end_col = #lines[#lines], hl_group = "Comment" })
+  end
   for i, row in ipairs(state.rows) do
     local lnum = state.first_line - 1 + i - 1
     if row.kind == "dir" then
@@ -369,12 +484,40 @@ local function render_panel()
     else
       local meta = STATUS[row.file.status] or STATUS.M
       vim.api.nvim_buf_set_extmark(buf, ns, lnum, 0, { end_col = 3, hl_group = meta.hl })
+      if row_icons[i] and row_icons[i][2] then
+        local from = 4 + 2 * row.depth
+        vim.api.nvim_buf_set_extmark(buf, ns, lnum, from, {
+          end_col = from + #row_icons[i][1],
+          hl_group = row_icons[i][2],
+        })
+      end
       if row.file.orig then
         local tail = #(" ← " .. row.file.orig)
         vim.api.nvim_buf_set_extmark(buf, ns, lnum, #lines[lnum + 1] - tail, {
           end_col = #lines[lnum + 1],
           hl_group = "Comment",
         })
+      end
+      -- The right edge carries the review state: a ✓ once the file has been
+      -- looked at, and the file's churn as +n -n once the stats pass knows
+      -- it. Virtual, so the row text (and everything that parses it) is
+      -- untouched.
+      local chunks = {}
+      if viewed[row.file.path] then
+        chunks[#chunks + 1] = { "✓ ", "Comment" }
+      end
+      local stats = row.file.stats
+      if stats and (stats.add > 0 or stats.del > 0) then
+        if stats.add > 0 then
+          chunks[#chunks + 1] = { ("+%d"):format(stats.add), "Added" }
+        end
+        if stats.del > 0 then
+          chunks[#chunks + 1] = { (stats.add > 0 and " -%d" or "-%d"):format(stats.del), "Removed" }
+        end
+      end
+      if #chunks > 0 then
+        chunks[#chunks + 1] = { " ", "Comment" }
+        vim.api.nvim_buf_set_extmark(buf, ns, lnum, 0, { virt_text = chunks, virt_text_pos = "right_align" })
       end
     end
   end
@@ -438,12 +581,23 @@ local function reset_cursorline(w)
   wo_local(w, "cursorlineopt", vim.go.cursorlineopt)
 end
 
----Diff panes share one look: native diff, folds open, hybrid line numbers —
----absolute on the cursor line, relative everywhere else, so a `3j` between
----changes reads straight off the margin.
+---Whether this view collapses unchanged regions right now — the view's own
+---setting when it is open, the remembered one for ad-hoc diffs (<leader>gd,
+---history) that render outside it.
+local function collapsing()
+  if state and state.collapse ~= nil then
+    return state.collapse
+  end
+  return remembered_collapse
+end
+
+---Diff panes share one look: native diff, hybrid line numbers — absolute on
+---the cursor line, relative everywhere else, so a `3j` between changes reads
+---straight off the margin. Diff mode folds its unchanged regions natively;
+---the collapse setting just decides whether those folds start closed.
 local function diff_pane(w)
   reset_cursorline(w)
-  wo_local(w, "foldlevel", 99)
+  wo_local(w, "foldlevel", collapsing() and 0 or 99)
   wo_local(w, "number", true)
   wo_local(w, "relativenumber", true)
   vim.api.nvim_win_call(w, function()
@@ -614,6 +768,23 @@ local function render_inline(file)
     wo_local(win, "relativenumber", true)
     -- So scrolling up can reveal virtual lines hanging above line 1.
     wo_local(win, "smoothscroll", true)
+    if collapsing() then
+      -- Collapse unchanged regions, exactly what foldmethod=diff does for the
+      -- side-by-side panes; the overlay knows where the hunks are, so its
+      -- foldexpr folds everything further than the diff context from one.
+      -- zR (or the z toggle in the panel) brings the whole file back.
+      wo_local(win, "foldmethod", "expr")
+      wo_local(win, "foldexpr", "v:lua.require'util.inline_diff'.foldexpr(v:lnum)")
+      wo_local(win, "foldtext", "v:lua.require'util.inline_diff'.foldtext()")
+      wo_local(win, "foldlevel", 0)
+      local fc = vim.o.fillchars
+      wo_local(win, "fillchars", fc ~= "" and (fc .. ",fold: ") or "fold: ")
+    else
+      -- Editing a buffer restores the window-local options it last had, so
+      -- the expr folding from a collapsed render would silently come back.
+      wo_local(win, "foldmethod", "manual")
+      wo_local(win, "foldlevel", 99)
+    end
     vim.api.nvim_win_call(win, function()
       inline_diff.goto_first(buf)
     end)
@@ -671,6 +842,29 @@ local function render_file(file, focus)
 
   state.diff_win = target
   state.shown = file
+
+  -- Rendering a file is looking at it: mark it viewed, and refresh its stats
+  -- from what is actually on screen — an edit in the overlay moves the
+  -- numbers in the panel on the next render.
+  if file then
+    local panel_dirty = false
+    local viewed = viewed_paths()
+    if not viewed[file.path] then
+      viewed[file.path] = true
+      panel_dirty = true
+    end
+    if not base_missing(file) then
+      local ok, stats = pcall(file_stats, state.root, file, base_content(file))
+      if ok and stats and not (file.stats and file.stats.add == stats.add and file.stats.del == stats.del) then
+        file.stats = stats
+        panel_dirty = true
+      end
+    end
+    if panel_dirty then
+      render_panel()
+    end
+  end
+
   setup_diff_keys()
   if keep then
     pcall(vim.api.nvim_win_set_cursor, target, keep)
@@ -792,10 +986,18 @@ local function prefetch_bases()
   prefetch_busy = true
   vcs.async(function()
     local ok, err = pcall(function()
+      local stats_dirty = 0
+      local function paint()
+        if stats_dirty > 0 and gen == prefetch_gen and valid() then
+          render_panel()
+          stats_dirty = 0
+        end
+      end
       for _, file in ipairs(ordered) do
         if gen ~= prefetch_gen then
           return
         end
+        local base = {}
         if has_base(file) then
           local base_path = file.orig or file.path
           local file_rev = file.rev or rev
@@ -807,8 +1009,27 @@ local function prefetch_bases()
             end
             store_base(key, content or {})
           end
+          base = base_cache[key] or {}
+        end
+        -- With the base in hand the file's +n -n is free. Files judged too
+        -- big get zeros rather than staying nil, so they are not re-judged
+        -- on every sweep.
+        if not file.stats then
+          local ok_stats, stats = pcall(file_stats, root, file, base)
+          if ok_stats then
+            file.stats = stats or { add = 0, del = 0 }
+            if stats then
+              stats_dirty = stats_dirty + 1
+              -- Repaint in batches, so a long sweep over a cold server shows
+              -- numbers trickling in rather than nothing until the end.
+              if stats_dirty >= 16 then
+                paint()
+              end
+            end
+          end
         end
       end
+      paint()
     end)
     -- Only the newest prefetch owns the flag; and it must clear it on error
     -- too, or busy() would report a prefetch that no longer exists.
@@ -1003,6 +1224,26 @@ local function stage_toggle()
   end)
 end
 
+---Copy the selected file's diff to the clipboard — for pasting into a chat
+---or a review comment without leaving the list.
+local function yank_file_diff()
+  local file = current_file()
+  if not file then
+    return
+  end
+  local backend, root, rev = state.backend, state.root, base_rev(file)
+  vcs.async(function()
+    local text = backend.raw_diff(root, rev, file.path, file.orig)
+    if not text or text == "" then
+      vim.notify(("No diff for %s"):format(file.path), vim.log.levels.INFO)
+      return
+    end
+    vim.fn.setreg("+", text)
+    local count = select(2, text:gsub("\n", "\n"))
+    vim.notify(("Copied %d-line diff of %s"):format(count, file.path))
+  end)
+end
+
 ---Open the three-way merge view for the selected file, straight from the
 ---list. The merge view lives in its own tab, so finishing it (<leader>cq)
 ---drops right back into this view.
@@ -1033,7 +1274,9 @@ local HELP = {
   { "]f / [f", "next / previous file, from inside the diff" },
   { "s", "cycle scope: uncommitted / branch / last commit" },
   { "i", "toggle inline and side-by-side" },
+  { "z", "toggle collapsing unchanged regions" },
   { "a", "stage / unstage file (git)" },
+  { "y", "copy this file's diff" },
   { "X", "revert file" },
   { "m", "merge view for a conflicted file" },
   { "R", "hard refresh" },
@@ -1130,7 +1373,11 @@ local function setup_panel_keys(buf)
     local next_scope = ({ working = "branch", branch = "head", head = "working" })[state.scope]
     M.open({ scope = next_scope })
   end, "Cycle scope")
+  map("z", function()
+    M.toggle_collapse()
+  end, "Toggle collapsing unchanged regions")
   map("a", stage_toggle, "Stage / unstage file")
+  map("y", yank_file_diff, "Copy this file's diff")
   map("X", function()
     M.revert_current()
   end, "Revert file")
@@ -1179,6 +1426,9 @@ local function ensure_tab()
   state.origin_tab = origin
   if state.inline == nil then
     state.inline = remembered_inline
+  end
+  if state.collapse == nil then
+    state.collapse = remembered_collapse
   end
   state.previews = state.previews or {}
   state.navmapped = state.navmapped or {}
@@ -1593,6 +1843,36 @@ function M.toggle_inline()
   -- key: flip vertical/horizontal split on an ad-hoc diff.
   if vim.wo.diff then
     vim.cmd("wincmd " .. (vim.fn.winwidth(0) > vim.fn.winheight(0) * 3 and "K" or "H"))
+  end
+end
+
+---Toggle collapsing unchanged regions, in whichever rendering is up: the
+---overlay's expr folds inline, diff mode's native folds side-by-side. Works
+---from anywhere — inside the view it re-renders, and in any other tab (an
+---ad-hoc <leader>gd, a history diff) it re-levels the diff windows in place,
+---never yanking focus to the view's tab.
+function M.toggle_collapse()
+  local on
+  if valid() then
+    state.collapse = not state.collapse
+    remembered_collapse = state.collapse
+    on = state.collapse
+    if vim.api.nvim_get_current_tabpage() == state.tab then
+      if current_file() or #state.files == 0 then
+        show(false)
+      elseif state.shown then
+        render_file(state.shown, false)
+      end
+      return
+    end
+  else
+    remembered_collapse = not remembered_collapse
+    on = remembered_collapse
+  end
+  for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if vim.wo[w].diff then
+      wo_local(w, "foldlevel", on and 0 or 99)
+    end
   end
 end
 

@@ -243,6 +243,35 @@ do
 end
 
 --------------------------------------------------------------------------
+-- panel decorations: churn stats and viewed marks
+--------------------------------------------------------------------------
+
+do
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+  local ns_ui = vim.api.nvim_create_namespace("vcs_ui")
+  local panel_buf = vim.api.nvim_win_get_buf(layout()[1])
+  local right = {} ---@type table<integer, string>
+  for _, m in ipairs(vim.api.nvim_buf_get_extmarks(panel_buf, ns_ui, 0, -1, { details = true })) do
+    local d = m[4]
+    if d.virt_text and d.virt_text_pos == "right_align" then
+      local parts = {}
+      for _, chunk in ipairs(d.virt_text) do
+        parts[#parts + 1] = chunk[1]
+      end
+      right[m[2] + 1] = table.concat(parts)
+    end
+  end
+  -- Rows: 4 a_modified, 5 b_deleted, 6 d_untracked — all three were rendered
+  -- while scrubbing above, so all three carry the viewed ✓.
+  eq("stats: a modified file counts both ways", "✓ +2 -1 ", right[4])
+  eq("stats: a deleted file counts its deletions", "✓ -1 ", right[5])
+  eq("stats: an untracked file counts its additions", "✓ +1 ", right[6])
+  check("stats: the header totals the listing", panel_lines()[2]:find("+3 -2", 1, true) ~= nil, panel_lines()[2])
+end
+
+--------------------------------------------------------------------------
 -- scrubbing is debounced and base content is cached
 --------------------------------------------------------------------------
 
@@ -479,6 +508,30 @@ do
   scrub("i")
   eq("inline: toggling back restores two diff panes", 3, #layout())
   check("inline: back in diff mode", vim.wo[layout()[2]].diff)
+end
+
+--------------------------------------------------------------------------
+-- collapsing unchanged regions
+--------------------------------------------------------------------------
+
+do
+  -- Side-by-side panes use diff mode's own folds; collapse means they start
+  -- closed. (The fixture files are tiny, so nothing actually folds — what is
+  -- under test is the wiring.)
+  eq("collapse: side-by-side panes start with folds closed", 0, vim.wo[layout()[2]].foldlevel)
+
+  -- The inline overlay folds through its foldexpr.
+  scrub("i")
+  eq("collapse: the inline pane folds via the overlay", "expr", vim.wo[layout()[2]].foldmethod)
+  eq("collapse: inline folds start closed", 0, vim.wo[layout()[2]].foldlevel)
+
+  -- z toggles it off and on; each toggle re-renders the pane.
+  feed("z")
+  eq("collapse: z turns the folding off", "manual", vim.wo[layout()[2]].foldmethod)
+  feed("z")
+  eq("collapse: z folds again", "expr", vim.wo[layout()[2]].foldmethod)
+
+  scrub("i") -- back to side-by-side for the blocks below
 end
 
 --------------------------------------------------------------------------

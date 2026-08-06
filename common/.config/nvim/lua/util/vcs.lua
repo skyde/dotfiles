@@ -30,6 +30,7 @@ local M = {}
 ---@field status string  one of M A D R ? C
 ---@field orig string|nil  pre-rename path, when status is R
 ---@field rev string|nil  per-file base revision, when the backend tracks one (p4's haveRev)
+---@field stats {add: integer, del: integer}|nil  line churn, filled in lazily by the UI's stats pass
 
 ---@class VcsBackend
 ---@field name string

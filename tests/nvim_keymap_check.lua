@@ -127,6 +127,7 @@ local keys = {
   " cc",
   " cd",
   " ci",
+  " cz",
   " cv",
   " ce",
   " cI",
