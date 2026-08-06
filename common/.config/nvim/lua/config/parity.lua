@@ -46,8 +46,8 @@ map("o", "ig", ":<C-u>normal! ggVG<cr>", { silent = true, desc = "Entire buffer"
 -- code (<leader>c)
 --------------------------------------------------------------------------
 
--- LazyVim uses <leader>ca for code actions; the VS Code config uses <leader>ce.
-map({ "n", "x" }, "<leader>ce", vim.lsp.buf.code_action, { desc = "Code Action" })
+-- Code actions are on LazyVim's default <leader>ca; the VS Code config now
+-- uses the same key.
 map("n", "<leader>cI", vim.lsp.buf.signature_help, { desc = "Signature Help" })
 
 --------------------------------------------------------------------------

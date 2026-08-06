@@ -119,7 +119,7 @@ Space is mapped as `<leader>`.
 - `d i g` – g g V G d
 - `<leader> c r` – rename symbol
 - `<leader> c i` – show parameter hints
-- `<leader> c e` – Quick Fix / Code Actions
+- `<leader> c a` – Quick Fix / Code Actions
 - `<leader> c s` – switch diff side
 - `<leader> c v` – revert selected ranges
 - `<leader> e e` – open problems view
