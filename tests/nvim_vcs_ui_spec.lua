@@ -358,7 +358,7 @@ do
           virt[#virt + 1] = vl[1][1]
         end
       end
-      if d.line_hl_group == "DiffAdd" then
+      if d.line_hl_group and d.line_hl_group:find("^InlineDiffAdd") then
         added[#added + 1] = m[2] + 1
       end
     end
@@ -375,6 +375,11 @@ do
   local virt, added = overlay(buf)
   eq("inline: the old line is drawn as virtual text", { "two" }, virt)
   eq("inline: the new lines are highlighted", { 2, 4 }, added)
+
+  -- <Space> selects too; in the panel it deliberately shadows leader.
+  feed(" ")
+  eq("inline: <Space> focuses the file itself", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  vim.api.nvim_set_current_win(layout()[1])
 
   -- The whole point: it is editable, and the overlay follows the edit.
   feed("\r")

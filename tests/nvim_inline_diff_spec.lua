@@ -59,7 +59,7 @@ local function overlay(buf)
         virt[#virt + 1] = { row = m[2] + 1, text = table.concat(text), above = d.virt_lines_above or false }
       end
     end
-    if d.line_hl_group == "DiffAdd" then
+    if d.line_hl_group and d.line_hl_group:find("^InlineDiffAdd") then
       added[#added + 1] = m[2] + 1
     end
   end
@@ -156,19 +156,36 @@ do
 end
 
 --------------------------------------------------------------------------
--- char-level emphasis
+-- token-level emphasis
 --------------------------------------------------------------------------
 
 do
   local buf = mkbuf({ "local value = compute(2)" })
   inline.attach(buf, { "local value = compute(1)" })
   local chunks, line_hl, spans = detail(buf)
-  eq("chars: only the changed characters are emphasized on the new line", { { 1, 22, 23 } }, spans)
-  eq("chars: the changed line keeps its add wash", "DiffAdd", line_hl[1])
-  eq("chars: the old line is split around the changed characters", {
-    { "local value = compute(", "DiffDelete" },
-    { "1", "InlineDiffDeleteText" },
-    { ")", "DiffDelete" },
+  eq("tokens: only the changed token is emphasized on the new line", { { 1, 22, 23 } }, spans)
+  eq("tokens: the unchanged part of an edited line dims", "InlineDiffAddDim", line_hl[1])
+  eq("tokens: the old line dims around its emphasized token", {
+    { "local value = compute(", "InlineDiffDeleteDim" },
+    { "1", "InlineDiffDeleteEmph" },
+    { ")", "InlineDiffDeleteDim" },
+  }, chunks)
+  inline.detach(buf)
+end
+
+do
+  -- Token, not character, granularity: renaming an identifier emphasizes the
+  -- whole identifier on both sides, even where characters coincide.
+  local buf = mkbuf({ "local counter = counter + 1" })
+  inline.attach(buf, { "local count = count + 1" })
+  local chunks, _, spans = detail(buf)
+  eq("tokens: a rename emphasizes the whole identifier", { { 1, 6, 13 }, { 1, 16, 23 } }, spans)
+  eq("tokens: both old occurrences are emphasized", {
+    { "local ", "InlineDiffDeleteDim" },
+    { "count", "InlineDiffDeleteEmph" },
+    { " = ", "InlineDiffDeleteDim" },
+    { "count", "InlineDiffDeleteEmph" },
+    { " + 1", "InlineDiffDeleteDim" },
   }, chunks)
   inline.detach(buf)
 end
@@ -179,17 +196,18 @@ do
   local buf = mkbuf({ "if not enabled then return end" })
   inline.attach(buf, { "if enabled then return end" })
   local _, _, spans = detail(buf)
-  eq("chars: an insertion emphasizes one span", 1, #spans)
-  eq("chars: the span covers just the inserted characters", 4, spans[1] and (spans[1][3] - spans[1][2]))
+  eq("tokens: an insertion emphasizes one span", 1, #spans)
+  eq("tokens: the span covers just the inserted word", 4, spans[1] and (spans[1][3] - spans[1][2]))
   inline.detach(buf)
 end
 
 do
   local buf = mkbuf({ "zzzzzzzzzz" })
   inline.attach(buf, { "aaaaaaaaaa" })
-  local chunks, _, spans = detail(buf)
-  eq("chars: a fully rewritten line gets no emphasis", {}, spans)
-  eq("chars: its old line stays one plain chunk", { { "aaaaaaaaaa", "DiffDelete" } }, chunks)
+  local chunks, line_hl, spans = detail(buf)
+  eq("tokens: a fully rewritten line gets no emphasis", {}, spans)
+  eq("tokens: its old line stays one plain chunk", { { "aaaaaaaaaa", "InlineDiffDelete" } }, chunks)
+  eq("tokens: a fully rewritten line keeps the plain add wash", "InlineDiffAdd", line_hl[1])
   inline.detach(buf)
 end
 
@@ -225,7 +243,7 @@ do
   local buf = mkbuf({ "keep one", "keep two", "local function relocated(x)" })
   inline.attach(buf, { "keep one", "local function relocated()", "keep two" })
   local _, line_hl = detail(buf)
-  eq("moves: an edited relocation stays an ordinary add", "DiffAdd", line_hl[3])
+  eq("moves: an edited relocation stays an ordinary add", "InlineDiffAdd", line_hl[3])
   inline.detach(buf)
 end
 

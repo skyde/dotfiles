@@ -3,11 +3,14 @@
 -- This is what VS Code's diff editor shows with renderSideBySide off — and
 -- like that editor, the buffer stays a perfectly ordinary editable file.
 --
--- Within a changed line the differing characters are emphasized on both sides,
--- the way delta renders a patch in the terminal — the line-level wash says
--- where, the char-level emphasis says what. Lines that merely moved (deleted
--- in one place, reinserted verbatim in another) get their own colour instead
--- of reading as unrelated delete + add.
+-- Within a changed line the differing tokens are emphasized on both sides,
+-- exactly the way delta renders a patch in the terminal: the unchanged part
+-- of an edited line dims, the changed tokens brighten — it is the dimming
+-- that makes the emphasis carry. Lines that merely moved (deleted in one
+-- place, reinserted verbatim in another) get their own colour instead of
+-- reading as unrelated delete + add. The palette is delta's, verbatim, from
+-- the [delta] section in common/.config/git/config — so this view and
+-- `git diff` in a terminal are the same picture.
 --
 -- The overlay is recomputed from the buffer contents on every edit, so it
 -- tracks typing; the base side is fixed at attach time. Backend-agnostic by
@@ -27,79 +30,34 @@ local states = {} ---@type table<integer, InlineDiffState>
 -- highlight groups
 --------------------------------------------------------------------------
 
--- The overlay's own groups, derived from whatever theme is active:
---   InlineDiffAddText      changed characters on an added/changed line
---   InlineDiffDeleteText   changed characters in the old (virtual) line
---   InlineDiffMovedAdd     a line that arrived here from somewhere else
---   InlineDiffMovedDelete  the old position of a moved line (virtual)
+-- The overlay's own groups, mirroring delta's style names one to one. The
+-- colours are the ones the [delta] section in common/.config/git/config sets
+-- (palette reference: docs/tokyonight.md), so the inline overlay and a
+-- delta-rendered patch are indistinguishable:
+--   InlineDiffAdd          plus-style            a plain added line
+--   InlineDiffAddDim       plus-non-emph-style   unchanged part of an edited line
+--   InlineDiffAddEmph      plus-emph-style       changed tokens of an edited line
+--   InlineDiffDelete       minus-style           a plain deleted line (virtual)
+--   InlineDiffDeleteDim    minus-non-emph-style  unchanged part, old side
+--   InlineDiffDeleteEmph   minus-emph-style      changed tokens, old side
+--   InlineDiffMovedAdd     map-styles cyan       a line that landed here
+--   InlineDiffMovedDelete  map-styles violet     the place a line left from
 -- All are set with default=true, so a user (or theme) definition wins.
 
----@param name string
----@return vim.api.keyset.get_hl_info
-local function get_hl(name)
-  local ok, hl = pcall(vim.api.nvim_get_hl, 0, { name = name, link = false })
-  return ok and hl or {}
-end
-
----First defined foreground among `names` — how the theme's accent for
----added/removed/keyword text is found without knowing the theme.
-local function accent_fg(names)
-  for _, name in ipairs(names) do
-    local fg = get_hl(name).fg
-    if fg then
-      return fg
-    end
-  end
-  return nil
-end
-
----Mix two 24-bit colours; alpha 0 is all `a`, 1 is all `b`.
-local function blend(a, b, alpha)
-  local function channel(c, div)
-    return math.floor(c / div) % 256
-  end
-  local out = 0
-  for _, div in ipairs({ 65536, 256, 1 }) do
-    local mixed = channel(a, div) + (channel(b, div) - channel(a, div)) * alpha
-    out = out + math.floor(mixed + 0.5) * div
-  end
-  return out
-end
+local PALETTE = {
+  InlineDiffAdd = "#20432b",
+  InlineDiffAddDim = "#17311f",
+  InlineDiffAddEmph = "#2c5a3a",
+  InlineDiffDelete = "#532727",
+  InlineDiffDeleteDim = "#3f1f1f",
+  InlineDiffDeleteEmph = "#683131",
+  InlineDiffMovedAdd = "#12384a",
+  InlineDiffMovedDelete = "#2e2547",
+}
 
 local function setup_highlights()
-  local hl = vim.api.nvim_set_hl
-  local normal = get_hl("Normal")
-  local add_bg = get_hl("DiffAdd").bg
-  local del_bg = get_hl("DiffDelete").bg
-  local green = accent_fg({ "Added", "diffAdded", "GitSignsAdd" })
-  local red = accent_fg({ "Removed", "diffRemoved", "GitSignsDelete" })
-  local magenta = accent_fg({ "Statement", "Keyword", "Constant" })
-
-  -- Emphasis: the line's diff wash, pushed toward the theme's own accent for
-  -- that kind of change — delta's plus-emph/minus-emph, in theme colours.
-  if add_bg and green then
-    hl(0, "InlineDiffAddText", { default = true, bg = blend(add_bg, green, 0.35) })
-  else
-    hl(0, "InlineDiffAddText", { default = true, link = "DiffText" })
-  end
-  if del_bg and red then
-    hl(0, "InlineDiffDeleteText", { default = true, bg = blend(del_bg, red, 0.35) })
-  else
-    hl(0, "InlineDiffDeleteText", { default = true, link = "DiffText" })
-  end
-
-  -- Moves: a colour that is deliberately neither the add green nor the delete
-  -- red, so relocated code stops reading as churn.
-  if normal.bg and magenta then
-    hl(0, "InlineDiffMovedAdd", { default = true, bg = blend(normal.bg, magenta, 0.16) })
-    hl(0, "InlineDiffMovedDelete", {
-      default = true,
-      bg = blend(normal.bg, magenta, 0.08),
-      fg = normal.fg and blend(normal.fg, normal.bg, 0.45) or nil,
-    })
-  else
-    hl(0, "InlineDiffMovedAdd", { default = true, link = "DiffChange" })
-    hl(0, "InlineDiffMovedDelete", { default = true, link = "NonText" })
+  for name, bg in pairs(PALETTE) do
+    vim.api.nvim_set_hl(0, name, { default = true, bg = bg })
   end
 end
 
@@ -110,15 +68,38 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 })
 
 --------------------------------------------------------------------------
--- char-level diff within a changed line pair
+-- token-level diff within a changed line pair
 --------------------------------------------------------------------------
 
--- Guards on the per-character diff: a pathological line is not worth a
--- quadratic diff, and a line that mostly changed reads better as a plain
--- replacement than as emphasis over nearly every character (delta's
--- max-line-distance idea).
+-- Guards on the intraline diff, both delta's: a pathological line is not
+-- worth diffing at all, and a pair whose tokens mostly differ reads better
+-- as a plain replacement than as emphasis over nearly everything
+-- (max-line-distance, default 0.6).
 local INTRALINE_MAX_BYTES = 1024
 local INTRALINE_MAX_CHANGED = 0.6
+
+---Delta's tokenization: maximal runs of word characters are tokens, and each
+---gap between them (whitespace and punctuation, as one run) is a token too.
+---Diffing these instead of characters is what keeps the emphasis on whole
+---identifiers rather than on stray characters that happen to coincide.
+---Bytes >= 0x80 count as word characters, so multibyte text stays in one
+---piece. Returns the token strings and each token's 0-based byte offset.
+---@param s string
+---@return string[] tokens, integer[] offsets
+local function tokenize(s)
+  local tokens, offsets = {}, {}
+  local i, n = 1, #s
+  while i <= n do
+    local from = i
+    local word = s:find("^[%w_\128-\255]", i) ~= nil
+    while i <= n and (s:find("^[%w_\128-\255]", i) ~= nil) == word do
+      i = i + 1
+    end
+    tokens[#tokens + 1] = s:sub(from, i - 1)
+    offsets[#offsets + 1] = from - 1
+  end
+  return tokens, offsets
+end
 
 ---Differing spans between two single lines, as 0-based end-exclusive byte
 ---ranges — one list per side. Nil when emphasis would not help (huge lines,
@@ -126,43 +107,35 @@ local INTRALINE_MAX_CHANGED = 0.6
 ---@param old string
 ---@param new string
 ---@return {[1]: integer, [2]: integer}[]|nil old_spans, {[1]: integer, [2]: integer}[]|nil new_spans
-local function char_diff(old, new)
+local function token_diff(old, new)
   if #old > INTRALINE_MAX_BYTES or #new > INTRALINE_MAX_BYTES then
     return nil
   end
-  -- One character per line makes vim.diff a character differ; the UTF-8
-  -- positions map its indices back to byte columns.
-  local old_pos, new_pos = vim.str_utf_pos(old), vim.str_utf_pos(new)
-  local function explode(s, pos)
-    if #pos == 0 then
-      return ""
-    end
-    local chars = {}
-    for i = 1, #pos do
-      chars[i] = s:sub(pos[i], (pos[i + 1] or #s + 1) - 1)
-    end
-    return table.concat(chars, "\n") .. "\n"
+  local old_toks, old_offs = tokenize(old)
+  local new_toks, new_offs = tokenize(new)
+  local function joined(toks)
+    return #toks > 0 and (table.concat(toks, "\n") .. "\n") or ""
   end
-  local hunks = vim.diff(explode(old, old_pos), explode(new, new_pos), { result_type = "indices" }) or {}
+  local hunks = vim.diff(joined(old_toks), joined(new_toks), { result_type = "indices" }) or {}
 
-  local function span(pos, s, start, count)
-    local from = pos[start] and pos[start] - 1 or #s
-    local to = pos[start + count] and pos[start + count] - 1 or #s
+  local function span(offs, s, start, count)
+    local from = offs[start] or #s
+    local to = offs[start + count] or #s
     return { from, to }
   end
   local old_spans, new_spans, old_n, new_n = {}, {}, 0, 0
   for _, h in ipairs(hunks) do
     local start_a, count_a, start_b, count_b = h[1], h[2], h[3], h[4]
     if count_a > 0 then
-      old_spans[#old_spans + 1] = span(old_pos, old, start_a, count_a)
+      old_spans[#old_spans + 1] = span(old_offs, old, start_a, count_a)
       old_n = old_n + count_a
     end
     if count_b > 0 then
-      new_spans[#new_spans + 1] = span(new_pos, new, start_b, count_b)
+      new_spans[#new_spans + 1] = span(new_offs, new, start_b, count_b)
       new_n = new_n + count_b
     end
   end
-  if old_n + new_n > INTRALINE_MAX_CHANGED * (#old_pos + #new_pos) then
+  if old_n + new_n > INTRALINE_MAX_CHANGED * (#old_toks + #new_toks) then
     return nil
   end
   return old_spans, new_spans
@@ -262,14 +235,14 @@ function M.render(buf)
   for _, h in ipairs(st.hunks) do
     local start_a, count_a, start_b, count_b = h[1], h[2], h[3], h[4]
 
-    -- Pair the i-th old line with the i-th new line and emphasize what
-    -- changed between them. Moved lines are excluded: their colour already
-    -- says what happened.
+    -- Pair the i-th old line with the i-th new line and emphasize the tokens
+    -- that changed between them. Moved lines are excluded: their colour
+    -- already says what happened.
     local old_spans, new_spans = {}, {} ---@type table<integer, table>, table<integer, table>
     for i = 0, math.min(count_a, count_b) - 1 do
       local old_line, new_line = st.base[start_a + i], lines[start_b + i]
       if old_line and new_line and not old_moved[start_a + i] and not new_moved[start_b + i] then
-        local o, n = char_diff(old_line, new_line)
+        local o, n = token_diff(old_line, new_line)
         old_spans[i], new_spans[i] = o, n
       end
     end
@@ -277,8 +250,12 @@ function M.render(buf)
     if count_a > 0 then
       local virt = {}
       for i = start_a, start_a + count_a - 1 do
-        local base_hl = old_moved[i] and "InlineDiffMovedDelete" or "DiffDelete"
-        virt[#virt + 1] = virt_chunks(st.base[i] or "", base_hl, "InlineDiffDeleteText", old_spans[i - start_a])
+        -- Delta's scheme: on a line with an emphasized partner the unchanged
+        -- part dims and the changed tokens brighten; a line without one gets
+        -- the plain wash. The dimming is what makes the emphasis carry.
+        local spans = old_spans[i - start_a]
+        local base_hl = old_moved[i] and "InlineDiffMovedDelete" or (spans and "InlineDiffDeleteDim" or "InlineDiffDelete")
+        virt[#virt + 1] = virt_chunks(st.base[i] or "", base_hl, "InlineDiffDeleteEmph", spans)
       end
       if count_b > 0 then
         -- A change: the old lines sit directly above their replacements.
@@ -295,7 +272,8 @@ function M.render(buf)
     end
 
     for row = start_b, start_b + count_b - 1 do
-      local line_hl = new_moved[row] and "InlineDiffMovedAdd" or "DiffAdd"
+      local spans = new_spans[row - start_b]
+      local line_hl = new_moved[row] and "InlineDiffMovedAdd" or (spans and "InlineDiffAddDim" or "InlineDiffAdd")
       vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
         line_hl_group = line_hl,
         -- Tint the line number too: with wrapped lines the margin then shows
@@ -303,11 +281,11 @@ function M.render(buf)
         number_hl_group = line_hl,
         priority = 50,
       })
-      for _, s in ipairs(new_spans[row - start_b] or {}) do
+      for _, s in ipairs(spans or {}) do
         if s[2] > s[1] then
           vim.api.nvim_buf_set_extmark(buf, ns, row - 1, s[1], {
             end_col = s[2],
-            hl_group = "InlineDiffAddText",
+            hl_group = "InlineDiffAddEmph",
             priority = 60,
           })
         end

@@ -45,7 +45,7 @@ renamed files read `new ← old`, and the header tracks the selection as
 | Key | Action |
 | --- | --- |
 | `j` / `k` | move through files (stepping over directory rows), re-rendering the diff as you go |
-| `<CR>` / `o` / `l` / `<Right>` / `<Tab>` | move focus into the diff (`<Space>` stays leader, so it cannot be the select key) |
+| `<CR>` / `<Space>` / `o` / `l` / `<Right>` / `<Tab>` | move focus into the diff — `<Space>` deliberately shadows leader while the panel is focused, since selecting is what the panel is for |
 | `J` / `K` | scroll the diff half a page from the list, for skimming a file without leaving it |
 | `]c` / `[c` | step the diff to the next / previous change, cursor staying in the list |
 | `]f` / `[f` | from *inside* the diff: render the next / previous file, focus staying in the diff |
@@ -75,12 +75,15 @@ opens. **Inline is the default**, matching `diffEditor.renderSideBySide:
 false` in the VS Code config — and like that editor it is the **real,
 editable file**: the base version's missing lines are drawn between the lines
 in red, new lines are highlighted green, and the overlay follows as you type.
-Within a changed line the **characters that differ are emphasized** on both
-sides, the way delta renders a patch in the terminal (skipped when a line was
-rewritten wholesale, where emphasis would cover everything). Lines that merely
-**moved** — deleted in one place, reinserted verbatim in another — get their
-own colour on both ends instead of reading as unrelated delete + add. The
-overlay slices hunks with the same histogram + linematch settings as
+Within a changed line the **tokens that differ are emphasized** on both
+sides, exactly the way delta renders a patch in the terminal: the unchanged
+part of an edited line dims, the changed tokens brighten (skipped when a line
+was rewritten wholesale, where emphasis would cover everything). Lines that
+merely **moved** — deleted in one place, reinserted verbatim in another — get
+delta's moved violet/cyan on both ends instead of reading as unrelated
+delete + add. The colours are the delta palette from the git config,
+verbatim, so this view and `git diff` in a terminal are the same picture; the
+overlay also slices hunks with the same histogram + linematch settings as
 `'diffopt'`, so both renderings agree about what a change is.
 `]c` / `[c` walk the changes, `<leader>cv` reverts the change under the
 cursor. Untracked files read as a whole-file add, deleted files show their
