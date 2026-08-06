@@ -194,10 +194,9 @@ do
   -- The first entry is a plain modification: base on the left, real file right.
   eq("open: left pane holds the committed version", { "one", "two", "three" }, win_lines(wins[2]))
   eq("open: right pane holds the working copy", { "one", "TWO", "three", "four" }, win_lines(wins[3]))
-  -- Unfocused, the working side is a scratch preview: merely looking at a
-  -- file must not load its real buffer.
-  eq("open: right pane is a scratch preview", "vcs://working/a_modified.txt", win_name(wins[3]))
-  eq("open: no real buffer was loaded", -1, vim.fn.bufnr(root .. "/a_modified.txt"))
+  eq("open: right pane is the real file", root .. "/a_modified.txt", win_name(wins[3]))
+  eq("open: right pane is editable", "", vim.bo[vim.api.nvim_win_get_buf(wins[3])].buftype)
+  eq("open: the preview stays out of the buffer list", 0, vim.fn.buflisted(vim.api.nvim_win_get_buf(wins[3])))
   eq("open: left pane is a scratch buffer", "nofile", vim.bo[vim.api.nvim_win_get_buf(wins[2])].buftype)
   check("open: left pane is read-only", not vim.bo[vim.api.nvim_win_get_buf(wins[2])].modifiable)
   eq("open: left pane inherits the filetype", "text", vim.bo[vim.api.nvim_win_get_buf(wins[2])].filetype)
@@ -412,10 +411,10 @@ do
     vim.inspect(win_lines(layout()[2]))
   )
 
-  -- An untracked file is all additions; unfocused it previews as a scratch.
+  -- An untracked file is all additions, and still editable.
   scrub("j")
   local ubuf = vim.api.nvim_win_get_buf(layout()[2])
-  eq("inline: an untracked file previews as a scratch", "vcs://working/d_untracked.txt", vim.api.nvim_buf_get_name(ubuf))
+  eq("inline: an untracked file is the real file", root .. "/d_untracked.txt", vim.api.nvim_buf_get_name(ubuf))
   local uvirt, uadded = overlay(ubuf)
   eq("inline: an untracked file shows as a whole-file add", { 1 }, uadded)
   eq("inline: an untracked file has no old lines", {}, uvirt)
@@ -620,15 +619,14 @@ do
   end
 
   ui.open({ scope = "working" })
-  eq("preview: opening loads no real buffer", -1, vim.fn.bufnr(root .. "/a_modified.txt"))
+  local a = vim.fn.bufnr(root .. "/a_modified.txt")
+  check("preview: the shown file is loaded", a ~= -1)
+  eq("preview: and stays out of the buffer list", 0, vim.fn.buflisted(a))
 
   scrub("jjj")
-  eq("preview: scrubbing loads no real buffers either", -1, vim.fn.bufnr(root .. "/d_untracked.txt"))
-  eq(
-    "preview: the pane shows a scratch copy meanwhile",
-    "vcs://working/d_untracked.txt",
-    win_name(layout()[#layout()])
-  )
+  -- Close on switch: moving off an unedited preview drops it immediately.
+  eq("preview: moving on drops the previous preview", -1, vim.fn.bufnr(root .. "/a_modified.txt"))
+  check("preview: only the shown file is loaded", vim.fn.bufnr(root .. "/d_untracked.txt") ~= -1)
 
   vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
   feed("\r")

@@ -11,13 +11,13 @@
 --   * inline        the unified patch piped through delta, matching
 --                   `diffEditor.renderSideBySide: false` from the VS Code setup
 --
--- Scrubbing is looking, focusing is opening: while j/k walks the list the
--- working side renders as a throwaway scratch copy, and only moving into the
--- diff (l / <CR> / <Tab> / ]f) materialises the real, editable buffer — so a
--- review pass leaves nothing behind: no loaded buffers, no oldfiles entries,
--- nothing for a session to resurrect. The view also folds itself away before
--- a session is written (VimLeavePre / PersistenceSavePre), since a session
--- that captured the diff tab would restore it as junk.
+-- Browsing leaves no trace: the working side is always the real, editable
+-- buffer, opened as an unlisted preview — and the moment the view moves off
+-- a file, that preview is deleted again unless it carries unsaved edits. At
+-- most one looked-at file is ever loaded, and closing the view drops that
+-- too (surfacing anything edited into the buffer list). The view also folds
+-- itself away before a session is written (VimLeavePre / PersistenceSavePre),
+-- since a session that captured the diff tab would restore it as junk.
 --
 -- Everything a backend says is remembered across opens of the view (the
 -- listing per scope, base content per file), so `<leader>gc` in a large or
@@ -481,50 +481,32 @@ local function edit_preview(full)
   end
 end
 
--- Forward declarations: the render helpers below wire keys and re-renders
--- that are defined further down, and the tab autocmds revalidate with
--- machinery from the refresh section.
+-- Forward declarations: the render helpers below wire keys defined further
+-- down, and the tab autocmds revalidate with machinery from the refresh
+-- section.
 local setup_diff_keys
 local refresh_listing
-local render_file
 
----The buffer for an *unfocused* look at the working file. A buffer that is
----already loaded is shown as-is — it costs nothing new and carries any
----unsaved edits — but a file not open anywhere renders as a scratch copy, so
----skimming the list loads nothing: no buffers for a session to resurrect,
----no oldfiles entries, no trace at all, the way VS Code's preview editors
----work. The real buffer is only created when the user focuses the diff.
-local function working_preview(file, full)
-  local existing = vim.fn.bufnr(full)
-  if existing ~= -1 and vim.api.nvim_buf_is_loaded(existing) then
-    return existing
+---Drop a preview buffer the moment the view moves off it: a file that was
+---only looked at, and not edited, has no business staying loaded. This is
+---what keeps scrubbing the list from accumulating open files.
+local function drop_preview(buf)
+  if
+    buf
+    and state.previews[buf]
+    and vim.api.nvim_buf_is_valid(buf)
+    and not vim.bo[buf].modified
+    and vim.fn.buflisted(buf) == 0
+    and #vim.fn.win_findbuf(buf) == 0
+  then
+    state.previews[buf] = nil
+    pcall(vim.api.nvim_buf_delete, buf, {})
   end
-  local buf = scratch(("vcs://working/%s"):format(file.path), vim.fn.readfile(full), file.path)
-  -- Wandering into the preview with <C-w>l instead of l / <CR> still means
-  -- "I want to interact": swap in the real, editable buffer, same position.
-  vim.api.nvim_create_autocmd("BufEnter", {
-    buffer = buf,
-    once = true,
-    callback = function()
-      vim.schedule(function()
-        if
-          valid()
-          and state.shown
-          and state.shown.path == file.path
-          and vim.api.nvim_get_current_buf() == buf
-        then
-          render_file(state.shown, true)
-        end
-      end)
-    end,
-  })
-  return buf
 end
 
 ---Side-by-side: base on the left as a read-only scratch buffer, the working
----copy on the right — the real file when `real` (focused, so edits and
----`do`/`dp` land on disk), a scratch copy while merely scrubbing.
-local function render_side_by_side(file, real)
+---copy on the right as the real file so edits and `do`/`dp` land on disk.
+local function render_side_by_side(file)
   local full = state.root .. "/" .. file.path
   local base = base_content(file)
   local base_path = file.orig or file.path
@@ -537,12 +519,10 @@ local function render_side_by_side(file, real)
 
   vim.cmd("vertical rightbelow split")
   local right = vim.api.nvim_get_current_win()
-  if vim.fn.filereadable(full) == 0 then
-    vim.api.nvim_win_set_buf(right, scratch(("vcs://deleted/%s"):format(file.path), {}, file.path))
-  elseif real then
+  if vim.fn.filereadable(full) == 1 then
     edit_preview(full)
   else
-    vim.api.nvim_win_set_buf(right, working_preview(file, full))
+    vim.api.nvim_win_set_buf(right, scratch(("vcs://deleted/%s"):format(file.path), {}, file.path))
   end
 
   diff_pane(left)
@@ -591,12 +571,11 @@ local function patch_buf(win, text, cwd, keys)
   return buf
 end
 
----Inline: the working file with the base version overlaid — deleted lines
----drawn between the lines as virtual text, new lines highlighted. When
----focused (`real`) this is the real, editable file, matching what VS Code's
----diff editor is with renderSideBySide off; while scrubbing it is a scratch
----copy, so skimming the list opens nothing.
-local function render_inline(file, real)
+---Inline: the real file with the base version overlaid — deleted lines drawn
+---between the lines as virtual text, new lines highlighted. Unlike a rendered
+---patch the buffer stays editable, matching what VS Code's diff editor is
+---with renderSideBySide off.
+local function render_inline(file)
   vim.api.nvim_set_current_win(state.panel_win)
   vim.cmd("vertical rightbelow split")
   local win = vim.api.nvim_get_current_win()
@@ -611,14 +590,8 @@ local function render_inline(file, real)
   local base = base_content(file)
 
   if vim.fn.filereadable(full) == 1 then
-    local buf
-    if real then
-      edit_preview(full)
-      buf = vim.api.nvim_get_current_buf()
-    else
-      buf = working_preview(file, full)
-      vim.api.nvim_win_set_buf(win, buf)
-    end
+    edit_preview(full)
+    local buf = vim.api.nvim_get_current_buf()
     state.inline_buf = buf
     inline_diff.attach(buf, base)
     vim.wo[win].number = true
@@ -644,15 +617,19 @@ local function render_inline(file, real)
 end
 
 ---Draw `file` in the right-hand side. Assumes any base content it needs is
----already cached; everything here is buffer and window work. `focus` doubles
----as "materialise the real buffer": an unfocused render is a look, not an
----edit, and looks must not leave buffers behind.
-function render_file(file, focus)
-  -- Re-rendering the file already on screen (focus swapping the scratch
-  -- preview for the real buffer, or the inline toggle) keeps the position.
+---already cached; everything here is buffer and window work.
+local function render_file(file, focus)
+  -- Re-rendering the file already on screen (the inline toggle, a refresh)
+  -- keeps the reading position.
   local keep
   if file and file == state.shown and state.diff_win and vim.api.nvim_win_is_valid(state.diff_win) then
     keep = vim.api.nvim_win_get_cursor(state.diff_win)
+  end
+  -- Remember what was on screen: whichever preview the view moves off gets
+  -- dropped below, so browsing never accumulates open files.
+  local before = {}
+  for _, w in ipairs(diff_wins()) do
+    table.insert(before, vim.api.nvim_win_get_buf(w))
   end
 
   if state.inline_buf then
@@ -663,9 +640,9 @@ function render_file(file, focus)
 
   local target
   if state.inline then
-    target = render_inline(file, focus)
+    target = render_inline(file)
   elseif file then
-    target = render_side_by_side(file, focus)
+    target = render_side_by_side(file)
   else
     vim.api.nvim_set_current_win(state.panel_win)
     vim.cmd("vertical rightbelow split")
@@ -679,6 +656,10 @@ function render_file(file, focus)
   setup_diff_keys()
   if keep then
     pcall(vim.api.nvim_win_set_cursor, target, keep)
+  end
+  -- Close on switch: previews the render just replaced, unless edited.
+  for _, buf in ipairs(before) do
+    drop_preview(buf)
   end
   vim.api.nvim_set_current_win(focus and target or state.panel_win)
 end
