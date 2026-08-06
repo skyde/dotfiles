@@ -59,6 +59,12 @@ local PALETTE = {
   InlineDiffMovedDelete = { bg = "#2e2547" },
   InlineDiffWsError = { bg = "#db4b4b" },
   InlineDiffMovedHint = { fg = "#565f89", italic = true },
+  -- Line numbers, fg only: delta's line-numbers-plus-style "#9ece6a dim",
+  -- pre-dimmed toward the background since highlights have no dim attribute.
+  -- fg-only matters: a number_hl_group background bleeds into the blank
+  -- gutters of the virtual deleted lines above, which read as stray colour.
+  InlineDiffAddNr = { fg = "#6f9157" },
+  InlineDiffMovedAddNr = { fg = "#5a7f9c" },
 }
 
 local function setup_highlights()
@@ -340,22 +346,30 @@ function M.render(buf)
     for row = start_b, start_b + count_b - 1 do
       local spans = new_spans[row - start_b]
       local line_hl = new_moved[row] and "InlineDiffMovedAdd" or (spans and "InlineDiffAddDim" or "InlineDiffAdd")
+      local nr_hl = new_moved[row] and "InlineDiffMovedAddNr" or "InlineDiffAddNr"
+      local text = lines[row] or ""
       -- The full-row wash is an eol range highlight, NOT line_hl_group: a
       -- range hl_group never paints over line_hl_group whatever its
       -- priority, so a line_hl wash would swallow the token emphasis and
-      -- the whitespace flag. The eol range covers the same screen area and
-      -- layers by priority the way one would expect. The number column is
-      -- tinted along the way, so with wrapped lines the margin shows where
-      -- a change starts, not just that one is nearby.
-      vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
-        end_row = row,
-        end_col = 0,
-        hl_group = line_hl,
-        hl_eol = true,
-        number_hl_group = line_hl,
-        priority = 50,
-        strict = false,
-      })
+      -- the whitespace flag. The range spans exactly this line — an end on
+      -- the next row would tint that row's line number too. Empty lines
+      -- have no range to span; they fall back to line_hl_group, which is
+      -- fine there because an empty line has nothing to layer on top.
+      if #text > 0 then
+        vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
+          end_col = #text,
+          hl_group = line_hl,
+          hl_eol = true,
+          number_hl_group = nr_hl,
+          priority = 50,
+        })
+      else
+        vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
+          line_hl_group = line_hl,
+          number_hl_group = nr_hl,
+          priority = 50,
+        })
+      end
       for _, s in ipairs(spans or {}) do
         if s[2] > s[1] then
           vim.api.nvim_buf_set_extmark(buf, ns, row - 1, s[1], {
