@@ -358,7 +358,7 @@ do
           virt[#virt + 1] = vl[1][1]
         end
       end
-      if d.line_hl_group == "DiffAdd" then
+      if d.line_hl_group and d.line_hl_group:find("^InlineDiffAdd") then
         added[#added + 1] = m[2] + 1
       end
     end

@@ -75,12 +75,15 @@ opens. **Inline is the default**, matching `diffEditor.renderSideBySide:
 false` in the VS Code config — and like that editor it is the **real,
 editable file**: the base version's missing lines are drawn between the lines
 in red, new lines are highlighted green, and the overlay follows as you type.
-Within a changed line the **characters that differ are emphasized** on both
-sides, the way delta renders a patch in the terminal (skipped when a line was
-rewritten wholesale, where emphasis would cover everything). Lines that merely
-**moved** — deleted in one place, reinserted verbatim in another — get their
-own colour on both ends instead of reading as unrelated delete + add. The
-overlay slices hunks with the same histogram + linematch settings as
+Within a changed line the **tokens that differ are emphasized** on both
+sides, exactly the way delta renders a patch in the terminal: the unchanged
+part of an edited line dims, the changed tokens brighten (skipped when a line
+was rewritten wholesale, where emphasis would cover everything). Lines that
+merely **moved** — deleted in one place, reinserted verbatim in another — get
+delta's moved violet/cyan on both ends instead of reading as unrelated
+delete + add. The colours are the delta palette from the git config,
+verbatim, so this view and `git diff` in a terminal are the same picture; the
+overlay also slices hunks with the same histogram + linematch settings as
 `'diffopt'`, so both renderings agree about what a change is.
 `]c` / `[c` walk the changes, `<leader>cv` reverts the change under the
 cursor. Untracked files read as a whole-file add, deleted files show their

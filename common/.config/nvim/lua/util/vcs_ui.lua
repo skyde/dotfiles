@@ -618,11 +618,12 @@ local function render_inline(file)
       inline_diff.goto_first(buf)
     end)
   else
-    -- Deleted: nothing on disk to edit, so show what was there, struck red.
+    -- Deleted: nothing on disk to edit, so show what was there, struck red —
+    -- in the same delta minus wash the overlay uses for deleted lines.
     local buf = scratch(("vcs://deleted/%s"):format(file.path), base, file.path)
     vim.api.nvim_win_set_buf(win, buf)
     for row = 0, #base - 1 do
-      vim.api.nvim_buf_set_extmark(buf, ns, row, 0, { line_hl_group = "DiffDelete", priority = 50 })
+      vim.api.nvim_buf_set_extmark(buf, ns, row, 0, { line_hl_group = "InlineDiffDelete", priority = 50 })
     end
     wo_local(win, "number", true)
     wo_local(win, "relativenumber", true)
