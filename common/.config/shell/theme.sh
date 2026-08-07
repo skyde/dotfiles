@@ -50,12 +50,31 @@ unset _fzf_tn
 # 24-bit vs the 256-colour cube from it, and it is not reliably set under tmux,
 # the VS Code terminal, or over ssh. Without it the history quietly renders in
 # approximated colours that do not match anything else.
+# Which bat, resolved once here rather than checked inside the function below.
+#
+# Two reasons, and on Debian and Ubuntu both bite at once. The binary is named
+# `batcat` there, so looking only for `bat` finds nothing and the highlighting
+# silently degrades to plain text — on the distros these dotfiles install bat
+# from. And once ~/.zshrc has aliased `bat=batcat` for interactive use, a
+# call-time `command -v bat` starts *succeeding*, because zsh's `command -v`
+# reports aliases: the guard passed while the function body — parsed here, from
+# ~/.zshenv, long before that alias existed — still resolved `bat` as a command
+# and failed with "command not found: bat" on every keystroke in Ctrl-R.
+#
+# This file is sourced before any alias is defined, so the lookup is honest.
+_fzf_bat=
+if command -v bat >/dev/null 2>&1; then
+	_fzf_bat=bat
+elif command -v batcat >/dev/null 2>&1; then
+	_fzf_bat=batcat
+fi
+
 fzf_history_highlight() {
-	if command -v bat >/dev/null 2>&1; then
-		COLORTERM=truecolor bat --color=always --language=bash \
+	if [ -n "$_fzf_bat" ]; then
+		COLORTERM=truecolor "$_fzf_bat" --color=always --language=bash \
 			--style=plain --paging=never --wrap=never
 	else
-		cat
+		command cat
 	fi
 }
 
@@ -64,8 +83,8 @@ fzf_history_highlight() {
 # Single-quoted on purpose — {} and FZF_PREVIEW_COLUMNS are expanded by fzf when
 # it runs the preview, not by this shell when the string is defined.
 # shellcheck disable=SC2016,SC2089
-if command -v bat >/dev/null 2>&1; then
-	FZF_HISTORY_PREVIEW='printf "%s\n" {} | COLORTERM=truecolor bat --color=always --language=bash --style=plain --paging=never --wrap=character --terminal-width=${FZF_PREVIEW_COLUMNS:-80}'
+if [ -n "$_fzf_bat" ]; then
+	FZF_HISTORY_PREVIEW='printf "%s\n" {} | COLORTERM=truecolor '"$_fzf_bat"' --color=always --language=bash --style=plain --paging=never --wrap=character --terminal-width=${FZF_PREVIEW_COLUMNS:-80}'
 else
 	FZF_HISTORY_PREVIEW='printf "%s\n" {}'
 fi

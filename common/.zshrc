@@ -56,8 +56,14 @@ unset _compdump
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
-# # -------- prompt (Starship)
-eval "$(starship init zsh)"
+# -------- prompt (Starship)
+# Guarded, like zoxide below and like .bashrc-custom already does. Unguarded,
+# every interactive shell on a machine without starship opened with
+# "command not found: starship" before the first prompt — the eval itself is a
+# harmless no-op, but the error is printed on every single shell start.
+if (( $+commands[starship] )); then
+  eval "$(starship init zsh)"
+fi
 
 # -------- zoxide (smart cd)
 if (( $+commands[zoxide] )); then
