@@ -230,10 +230,24 @@ autoload -Uz compinit
 _compdump="$ZSH_CACHE_DIR/zcompdump-$ZSH_VERSION"
 _compstamp="$ZSH_CACHE_DIR/compinit-stamp"
 
+#
+# `-i` on the full pass: when compinit's security audit finds a completion
+# directory that is group-writable or owned by someone else, it wants to *ask*
+# whether to use it — and a shell with no terminal to ask on prints
+#
+#   not interactive and can't open terminal
+#   compinit: initialization aborted
+#
+# and carries on with no completion system at all. This is not hypothetical: it
+# is what happened on a GitHub runner, and a group-writable
+# /usr/local/share/zsh/site-functions is the normal state of a Homebrew install.
+# With -i those directories are dropped from the search path silently and the
+# rest of the completions still load. Run `compaudit` to see what is being
+# skipped; `chmod go-w` on what it names brings those completions back.
 if [[ -s $_compdump && -n $_compstamp(#qNmh-20) ]]; then
   compinit -C -d "$_compdump"
 else
-  compinit -d "$_compdump"
+  compinit -i -d "$_compdump"
   # A stamp file rather than the dump's own mtime: compinit only rewrites the
   # dump when the set of completions actually changed, so on a quiet machine the
   # dump would stay old and every shell would take the slow path forever.

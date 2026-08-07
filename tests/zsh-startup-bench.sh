@@ -101,12 +101,15 @@ if $profile; then
   prof_dir="$(mktemp -d)"
   trap 'rm -rf "${sandbox:-}" "$prof_dir"' EXIT
   ln -sfn "$bench_home/.zshenv" "$prof_dir/.zshenv"
-  cat >"$prof_dir/.zshrc" <<EOF
+  # ZDOTDIR is read from the environment by the profiled shell rather than
+  # written into this file: ${var@Q} is bash 4.4 and later, and /bin/bash on
+  # macOS is 3.2, where it fails with "bad substitution".
+  cat >"$prof_dir/.zshrc" <<'EOF'
 zmodload zsh/zprof
-source ${bench_home@Q}/.zshrc
+source $ZSH_BENCH_RC
 zprof
 EOF
-  ZDOTDIR="$prof_dir" zsh --no-globalrcs -i -c exit
+  ZSH_BENCH_RC="$bench_home/.zshrc" ZDOTDIR="$prof_dir" zsh --no-globalrcs -i -c exit
   exit "$?"
 fi
 

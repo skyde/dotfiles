@@ -78,7 +78,14 @@ jobs:
           done
 
       - name: Run the specs
-        run: tests/run-zsh-specs.sh
+        run: |
+          # The grep is a guard, not decoration: a run that dies early — as it
+          # did on macOS, where a bash-4-only expansion made every spec fail to
+          # start — must not be able to report success. The runner prints that
+          # line only after every spec file has been through.
+          set -o pipefail
+          tests/run-zsh-specs.sh | tee "$RUNNER_TEMP/specs.log"
+          grep -q 'zsh specs:' "$RUNNER_TEMP/specs.log"
 
   startup-budget:
     name: Startup budget

@@ -44,6 +44,38 @@ assert_eq 'the shell still works without the optional tools' \
   'alive' \
   "$(PATH=$_bare_path spec_zsh -i -c 'print -r -- alive' 2>/dev/null)"
 
+spec_section 'a machine with an insecure completion directory'
+
+# A directory on fpath that is group-writable, or owned by someone else, makes
+# compinit's security audit want to ask what to do about it. A shell with no
+# terminal to ask on prints "not interactive and can't open terminal" followed by
+# "compinit: initialization aborted", and then has no completion system at all. A
+# group-writable /usr/local/share/zsh/site-functions is the ordinary state of a
+# Homebrew install, and it is what a GitHub runner has.
+typeset -g _insecure="$SPEC_TMP/insecure-completions"
+[[ -d $_insecure ]] || mkdir -p -- "$_insecure"
+print -r -- '#compdef spec-nonexistent-command' >| "$_insecure/_spec_nonexistent"
+chmod g+w,o+w -- "$_insecure"
+
+# The default fpath is kept: replacing it wholesale would break the shell for
+# reasons that have nothing to do with the audit.
+typeset -g _default_fpath
+_default_fpath=$(command zsh -fc 'print -r -- $FPATH')
+
+# A cache directory of its own, so these run the *full* compinit pass. The fast
+# path skips the audit altogether, which would make the assertion pass without
+# testing anything.
+typeset -g _insecure_cache="$SPEC_TMP/insecure-cache"
+[[ -d $_insecure_cache ]] || mkdir -p -- "$_insecure_cache"
+
+assert_empty 'an insecure completion directory does not break startup' \
+  "$(XDG_CACHE_HOME=$_insecure_cache FPATH="$_insecure:$_default_fpath" \
+    spec_zsh_stderr -i -c true)"
+
+assert_eq 'completion still works with one skipped' 'ready' \
+  "$(XDG_CACHE_HOME=$_insecure_cache FPATH="$_insecure:$_default_fpath" \
+    spec_zsh -i -c '(( $+functions[compdef] )) && print -r -- ready' 2>/dev/null)"
+
 spec_section 'environment that scripts and editors depend on'
 
 # EDITOR has to come from .zshenv, not .zshrc: `git commit` from a script, a

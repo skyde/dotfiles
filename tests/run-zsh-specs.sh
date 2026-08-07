@@ -90,17 +90,25 @@ for spec in tests/zsh_*_spec.zsh; do
   printf '\n=== %s ===\n' "$name"
   ran=$((ran + 1))
 
-  # SPEC_REPO lets a spec reach back into the checkout (to grep a config file,
-  # or run a script) without guessing where it lives.
+  # The paths go in as environment variables and the -c string is single-quoted,
+  # so nothing has to be quoted into it. The previous version interpolated them
+  # with ${var@Q}, which is bash 4.4 and later: on macOS, where /bin/bash is
+  # still 3.2, every spec died with "bad substitution" — and the job reported
+  # success, which is worse than failing.
+  #
+  # SPEC_REPO lets a spec reach back into the checkout (to grep a config file, or
+  # run a script) without guessing where it lives.
   if HOME="$spec_home" \
     ZDOTDIR="$spec_home" \
     SPEC_TMP="$spec_tmp" \
     SPEC_REPO="$repo" \
-    zsh --no-globalrcs -i -c "
-      source ${repo@Q}/tests/zsh_spec_helper.zsh || exit 1
-      source ${repo@Q}/${spec@Q} || exit 1
+    SPEC_HELPER="$repo/tests/zsh_spec_helper.zsh" \
+    SPEC_FILE="$repo/$spec" \
+    zsh --no-globalrcs -i -c '
+      source $SPEC_HELPER || exit 1
+      source $SPEC_FILE || exit 1
       spec_finish
-    "; then
+    '; then
     printf '%s: OK\n' "$name"
   else
     printf '%s: FAILED\n' "$name" >&2
@@ -112,6 +120,12 @@ if ((ran == 0)); then
   echo "no specs matched ${filter:-*}" >&2
   exit 1
 fi
+
+# A line the caller can look for. The reason it exists: a bash-4-only expansion
+# in this file made every spec die on macOS with "bad substitution", and the CI
+# job reported success — a run that ends early must not be indistinguishable
+# from one that passed. `grep -q 'zsh specs:'` in a pipeline catches that.
+printf '\nzsh specs: %s file(s) run\n' "$ran"
 
 if [[ -n "$tree_before" || -n "$(git status --porcelain 2>/dev/null)" ]]; then
   tree_after="$(git status --porcelain 2>/dev/null)"

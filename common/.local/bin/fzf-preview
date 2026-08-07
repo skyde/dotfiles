@@ -64,7 +64,9 @@ fi
 
 # An image is worth showing when the terminal can: chafa renders to cells, so it
 # works over ssh and inside tmux where the graphics protocols often do not.
-case "${target,,}" in
+# tr rather than ${target,,}: that form is bash 4, and /bin/bash on macOS is 3.2.
+lower_target="$(printf '%s' "$target" | tr '[:upper:]' '[:lower:]')"
+case "$lower_target" in
   *.png | *.jpg | *.jpeg | *.gif | *.bmp | *.webp | *.avif)
     if have chafa; then
       chafa --size="${width}x${height}" -- "$target" && exit 0
