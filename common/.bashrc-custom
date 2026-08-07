@@ -9,7 +9,8 @@
 
 # Use zsh if available for interactive shells
 if [ -t 1 ] && command -v zsh >/dev/null 2>&1; then
-  export SHELL="$(command -v zsh)"
+  SHELL="$(command -v zsh)"
+  export SHELL
   exec zsh -l
 fi
 
@@ -100,10 +101,19 @@ if command -v fzf >/dev/null 2>&1; then
     fi
   done
 
-  if command -v fd >/dev/null 2>&1; then
-    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
-    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-  fi
+  # Debian and Ubuntu ship fd as `fdfind`, which is why there is an
+  # `alias fd=fdfind` further down this file. That alias is defined long after
+  # this block and would not help it anyway, so on those distros — the ones
+  # init.sh installs fd from — this test simply failed and fzf fell back to its
+  # own `find` walk, ignoring .gitignore and hidden-file rules entirely.
+  for _fd_bin in fd fdfind; do
+    if command -v "$_fd_bin" >/dev/null 2>&1; then
+      export FZF_DEFAULT_COMMAND="$_fd_bin --type f --hidden --follow --exclude .git"
+      export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+      break
+    fi
+  done
+  unset _fd_bin
 
   # Layout + Tokyo Night colours, shared with zsh. See docs/tokyonight.md.
   # shellcheck disable=SC1091
@@ -160,10 +170,13 @@ code() {
 
 # -------- aliases
 alias grep='grep --color=auto'
-alias stow_apply="$HOME/dotfiles/apply.sh"
-alias stow_init="$HOME/dotfiles/init.sh"
-alias stow_update="$HOME/dotfiles/update.sh && $HOME/dotfiles/apply.sh"
-alias stow_update_init_auto="$HOME/dotfiles/update.sh && AUTO_INSTALL=1 $HOME/dotfiles/init.sh"
+# $HOME stays unexpanded until the alias runs. Double quotes baked in whatever
+# HOME happened to be when this file was sourced, which is the wrong answer for
+# anything that changes it afterwards (su, a sandbox, a test harness).
+alias stow_apply='"$HOME"/dotfiles/apply.sh'
+alias stow_init='"$HOME"/dotfiles/init.sh'
+alias stow_update='"$HOME"/dotfiles/update.sh && "$HOME"/dotfiles/apply.sh'
+alias stow_update_init_auto='"$HOME"/dotfiles/update.sh && AUTO_INSTALL=1 "$HOME"/dotfiles/init.sh'
 
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 export BAT_THEME="Visual Studio Dark+"

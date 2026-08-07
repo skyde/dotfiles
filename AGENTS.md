@@ -13,7 +13,12 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 ## Optional checks
 
-- Run ShellCheck on modified shell scripts if available: `shellcheck <changed .sh files>`
+- Run ShellCheck on modified shell scripts if available. The repo is clean at
+  `--severity=warning` and CI enforces that, so keep it there. Note most of the
+  shell here is *not* named `*.sh` — the tools in `common/.local/bin` have no
+  extension, and `.bashrc-custom` has no shebang either; CI selects by shebang
+  or by a leading `# shellcheck shell=` directive. `.zshrc` and `.zshenv` are
+  exempt because ShellCheck cannot parse zsh.
 - Run Stylua on modified Neovim Lua files if available: `stylua common/.config/nvim`
   (the tree is clean, so `stylua --check common/.config/nvim` should report nothing)
 - Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`
