@@ -445,25 +445,25 @@ function M.render(buf)
       -- The full-row wash is an eol range highlight, NOT line_hl_group: a
       -- range hl_group never paints over line_hl_group whatever its
       -- priority, so a line_hl wash would swallow the token emphasis and
-      -- the whitespace flag. The range spans exactly this line — an end on
-      -- the next row would tint that row's line number too. Empty lines
-      -- have no range to span; they fall back to line_hl_group, which is
-      -- fine there because an empty line has nothing to layer on top.
-      if #text > 0 then
-        vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
-          end_col = #text,
-          hl_group = line_hl,
-          hl_eol = true,
-          number_hl_group = nr_hl,
-          priority = 50,
-        })
-      else
-        vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
-          line_hl_group = line_hl,
-          number_hl_group = nr_hl,
-          priority = 50,
-        })
-      end
+      -- the whitespace flag. hl_eol in turn only paints past the EOL when
+      -- the range actually covers the EOL, so the range runs to the start
+      -- of the next line — the same full-width wash the deleted side gets
+      -- from its padded virtual lines (strict=false clamps the end on the
+      -- last buffer line while still covering its EOL). The number tint
+      -- rides a separate single-line mark: on the wash itself it would
+      -- bleed onto the next line's number.
+      vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
+        end_row = row,
+        end_col = 0,
+        hl_group = line_hl,
+        hl_eol = true,
+        priority = 50,
+        strict = false,
+      })
+      vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
+        number_hl_group = nr_hl,
+        priority = 50,
+      })
       for _, s in ipairs(spans or {}) do
         if s[2] > s[1] then
           vim.api.nvim_buf_set_extmark(buf, ns, row - 1, s[1], {
