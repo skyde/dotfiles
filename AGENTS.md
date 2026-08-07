@@ -11,6 +11,26 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 3. If you changed already-installed packages, verify a restow preview:
    - `./apply.sh --no --restow`
 
+## Required checks for the shell
+
+If you touched `common/.zshrc`, `common/.zshenv`, `common/.bashrc-custom`,
+`common/.config/shell/`, or anything in `common/.local/bin` that fzf runs:
+
+4. Run the zsh specs: `./tests/run-zsh-specs.sh`
+   They start a shell in a throwaway HOME whose dotfiles are symlinks into the
+   checkout, and the ones that need a line editor drive a real terminal — so a
+   binding is tested by pressing the key, and completion by pressing Tab. See
+   `docs/zsh.md` for what each spec file covers.
+5. If the change could affect startup: `./tests/zsh-startup-bench.sh`
+   The number that matters is time to prompt (~50ms with the plugins
+   installed). `--profile` shows where it goes; `--to-exit` is the older
+   measurement and no longer the interesting one.
+
+Both are also run by `.github/workflows/zsh.yml`, on Linux and macOS with the
+optional tools installed and on Linux with none of them — that last one matters,
+because "works on a fresh clone before ./init.sh has run" is a property this
+config is meant to have.
+
 ## Optional checks
 
 - Run ShellCheck on modified shell scripts if available: `shellcheck <changed .sh files>`
