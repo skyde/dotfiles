@@ -497,13 +497,17 @@ curl -fsSL https://raw.githubusercontent.com/dandavison/delta/main/src/cli.rs \
 # btop — the key list is its Default_theme map
 curl -fsSL https://raw.githubusercontent.com/aristocratos/btop/main/src/btop_theme.cpp \
   | sed -n '/Default_theme/,/};/p' | grep -oE '"\w+"' | sort -u
+
+# lazygit — its published JSON schema is the list
+curl -fsSL https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json
 ```
 
 What they found: yazi had moved two keys out from under us (see the gotcha
-above), delta has no `blame-timestamp-style` and never did, and btop left six
-process-state colours at hardcoded off-palette fallbacks. Compare against the
-CHANGELOG of the release you are running, not just `main` — an upstream preset
-includes renames that have not shipped yet.
+above), delta has no `blame-timestamp-style` and never did, btop left six
+process-state colours at hardcoded off-palette fallbacks, and lazygit's
+`lightTheme` is gone from both its config struct and its schema. Compare
+against the CHANGELOG of the release you are running, not just `main` — an
+upstream preset includes renames that have not shipped yet.
 
 ### The other half: `./doctor-theme.sh`
 
