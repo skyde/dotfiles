@@ -191,6 +191,11 @@ I'm using a few plugins:
 - Yazi
 - clangd for C++ language features
 
+In a Chromium checkout, Neovim keeps clangd fed the same way the ChromiumIDE
+VS Code extension does — bundled clangd, auto-regenerated
+`compile_commands.json`, shared `out/current_link` build-dir convention. See
+[`docs/chromium-clangd.md`](docs/chromium-clangd.md).
+
 Extensions listed in `vscode_extensions.txt` will be installed automatically
 when these dotfiles are applied. Custom keybindings are documented in
 [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md); the Neovim
