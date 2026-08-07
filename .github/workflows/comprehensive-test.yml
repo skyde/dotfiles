@@ -57,6 +57,15 @@ jobs:
 
           python3 -m unittest discover -s tests -p 'test_*.py'
 
+      - name: Check the lazygit config against the current lazygit
+        run: |
+          # lazygit ignores config keys it does not recognise, so a release
+          # that renames one breaks this config silently. Installing the
+          # latest release here means the day that happens, this job says so.
+          ./install-lazygit.sh
+          PATH="$HOME/.local/bin:$PATH" ./tests/check-lazygit-config.sh
+        shell: bash
+
   unix-install:
     name: Install lifecycle (${{ matrix.os }})
     needs: validate

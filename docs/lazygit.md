@@ -91,13 +91,19 @@ id are unaffected (`git.commitPrefix`).
   fast.
 - **Branches sort by when you last used them**, not by commit date
   (`git.localBranchSortOrder: recency`).
-- **The branches panel shows divergence from the base branch** as `↑3↓12`
-  (`gui.showDivergenceFromBaseBranch`), which is the number that decides whether
-  a rebase is due.
+- **The branches panel marks how far behind the base branch each branch is**, as
+  `↓12` (`gui.showDivergenceFromBaseBranch`) — the number that says a rebase is
+  due. Behind only, measured against `origin/main` when that exists, and filled
+  in by a background worker a moment after the panel paints.
 - **`/` filters fuzzily**, so `cfgyml` finds `common/.config/lazygit/config.yml`.
 - **Panel jump keys cycle tabs**: `2` `2` reaches Worktrees, `3` `3` Remotes.
 - **`a` in the status panel cycles two graph commands**: the full graph, then a
   `--simplify-by-decoration` overview that stays readable in a huge repository.
+- **`o` (open in browser) works over ssh**: `os.openLink` goes through
+  `tmux-open-helper.sh`, which hands the URL to VS Code Remote's browser bridge
+  so it opens on the machine in front of you, and copies it over OSC 52 when
+  there is no bridge. The default, `xdg-open`, has nothing to open it with on a
+  headless box.
 
 ## Where the config lives
 

@@ -6,28 +6,51 @@ socket_is_live() {
 }
 
 resolve_vscode_socket() {
-  socket_is_live "${VSCODE_IPC_HOOK_CLI:-}" && return
+  if socket_is_live "${VSCODE_IPC_HOOK_CLI:-}"; then
+    return 0
+  fi
   local socket
   for socket in $(ls -t "/run/user/$UID"/vscode-ipc-*.sock 2>/dev/null); do
     if socket_is_live "$socket"; then
       export VSCODE_IPC_HOOK_CLI="$socket"
-      return
+      return 0
     fi
   done
+  return 0
 }
 
+# Both resolvers return success even when they find nothing: they are optional
+# upgrades, and the fallbacks below handle their absence. Written as `[[ ... ]]
+# && export`, a miss would make the function itself fail, and under `set -e`
+# that aborted the script before it ever opened or copied anything — which is
+# exactly the case that matters on a box with no VS Code server at all.
 resolve_vscode_browser() {
-  [[ -x "${BROWSER:-}" ]] && return
+  if [[ -x "${BROWSER:-}" ]]; then
+    return 0
+  fi
   local helper
-  helper=$(ls -tr "$HOME"/.vscode-server/cli/servers/*/server/bin/helpers/browser.sh 2>/dev/null | tail -n 1)
-  [[ -n "$helper" ]] && export BROWSER="$helper"
+  # `|| true` because with `set -o pipefail` a no-match `ls` makes the whole
+  # substitution fail, and a failing assignment aborts the script under
+  # `set -e` — before either fallback below gets a chance to run.
+  helper=$(ls -tr "$HOME"/.vscode-server/cli/servers/*/server/bin/helpers/browser.sh 2>/dev/null | tail -n 1 || true)
+  if [[ -n "$helper" ]]; then
+    export BROWSER="$helper"
+  fi
+  return 0
 }
 
 copy_or_fail() {
   local value="$1" label="$2"
   if command -v osc-copy >/dev/null 2>&1; then
     printf '%s' "$value" | osc-copy
-    tmux display-message "Copied $label to clipboard"
+    # Callers other than the tmux keybinding use this too — lazygit's
+    # os.openLink, for one — and `tmux display-message` outside tmux fails,
+    # which under `set -e` would turn a successful copy into an error.
+    if [[ -n "${TMUX:-}" ]]; then
+      tmux display-message "Copied $label to clipboard"
+    else
+      echo "Copied $label to clipboard"
+    fi
   else
     echo "Error: cannot open $label and osc-copy is unavailable" >&2
     exit 1

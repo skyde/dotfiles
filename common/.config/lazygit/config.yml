@@ -32,9 +32,12 @@ gui:
   # row per file; the counts say which of those rows is worth opening.
   showNumstatInFilesView: true
 
-  # Branches panel shows how far each branch has drifted from the base branch
-  # (`↑3↓12`), not just from its upstream — the number that decides whether a
-  # rebase is due.
+  # Branches panel marks how many commits each branch is *behind* its base
+  # branch (`↓12`) — the number that says a rebase is due, which the ahead/
+  # behind counts against its own upstream never tell you. Only "behind" is
+  # ever drawn, and it is measured against the main branch's remote ref
+  # (origin/main) when there is one; the count arrives from a background
+  # worker a moment after the panel first paints.
   showDivergenceFromBaseBranch: arrowAndNumber
 
   # `/` filtering matches subsequences, not substrings, so `cfgyml` finds
@@ -159,6 +162,11 @@ os:
   # common/.local/bin.
   copyToClipboardCmd: "printf '%s' {{text}} | osc-copy"
   readFromClipboardCmd: "osc-paste"
+  # `o` on a commit or a PR opens a URL, and the default (xdg-open) has nothing
+  # to open it with on a remote box. This helper hands the link to VS Code
+  # Remote's browser bridge so it opens on the machine in front of you, and
+  # copies it over OSC 52 when there is no bridge.
+  openLink: "tmux-open-helper.sh {{link}}"
 
 # Auto-fetching is a background `git fetch` on a timer; at 60s that is a lot of
 # network for a repo the size of Chromium, and the answer rarely changes that
@@ -306,15 +314,20 @@ customCommands:
       - key: "u"
         context: "global"
         description: "Remove stale git lock files"
+        # In the terminal rather than a popup: git-unlock asks for confirmation
+        # when it sees git processes running, and lazygit keeps a few of those
+        # alive, so a popup would answer that prompt with EOF and abort.
         command: "git-unlock"
-        output: popup
-        outputTitle: "git-unlock"
+        output: terminal
 
       - key: "m"
         context: "global"
         description: "Run git maintenance now"
-        # The repo-size chores — commit-graph, incremental repack, loose object
-        # prune — that [maintenance] in the git config schedules.
-        command: "git maintenance run --task=commit-graph --task=loose-objects --task=incremental-repack"
+        # Whichever tasks [maintenance] in common/.config/git/config enables —
+        # `strategy = incremental` means commit-graph, loose objects and
+        # incremental repack, and never a full gc. Naming the tasks explicitly
+        # instead would fail on any repository small enough to have no pack
+        # files yet ("error: no pack files to index").
+        command: "git maintenance run"
         loadingText: "Running git maintenance"
         output: log
