@@ -252,6 +252,13 @@
     line-numbers-zero-style = "#545c7e"
     line-numbers-plus-style = "#9ece6a dim"   # additions → Tokyo Night green, dimmed
     line-numbers-minus-style = "#f7768e dim"  # deletions → Tokyo Night red, dimmed
+    # One four-wide column carrying the new file's line number. Emptying the
+    # left column is what makes it one instead of delta's two-column
+    # "{nm:>4}⋮{np:>4}│" — six columns of gutter back, at the price of deleted
+    # lines having no number of their own, since they have no new-file line.
+    # That also leaves minus-style above unrendered here: the minus colour only
+    # paints the left column, so it shows up in the `sbs` alias at the bottom
+    # (which restores that column) and nowhere else. It is not dead config.
     line-numbers-left-format = ""
     line-numbers-right-format = "{np:<4}"
 
@@ -297,6 +304,31 @@
     grep-line-number-style = "#545c7e"
     grep-match-line-style = syntax
     grep-match-word-style = "#e0af68 bold reverse"
+
+    # Left unset on purpose, each one tried and measured first, so the next
+    # person reading delta --help does not have to repeat the experiment:
+    #
+    #   grep-output-type   "ripgrep" is for `rg --json`; forcing it on git grep
+    #                      drops the styling entirely and hands back git's raw
+    #                      colours. The auto-detected "classic" is the one that
+    #                      works, and the grep-header-* keys only feed the other.
+    #   relative-paths     Documented to rewrite paths relative to the cwd so
+    #                      they resolve when clicked. Run from a subdirectory it
+    #                      changed neither the file header nor the hunk header;
+    #                      it does nothing on 0.18.2.
+    #   max-line-length    Defaults to 3000 and truncates past it, but the cut
+    #                      is marked with a → so it is not silent. Raising it
+    #                      buys unreadable minified lines; 0 uncaps them.
+    #   hyperlinks         Needs an editor registered for the URL scheme to
+    #                      reach a line number at all, and less ≥ 581 with -R.
+    #                      lazygit opts in on its own pager line, where it has a
+    #                      real handler (lazygit-edit://) to point at.
+    #   detect-dark-light  Ignored whenever --dark or --light is given, and
+    #                      `dark = true` is set above.
+    #   wrap-*             Wrapping only happens in side-by-side; unified mode
+    #                      lets long lines run off the edge, which is why `tabs`
+    #                      above is worth spending time on. inline-hint-style
+    #                      already colours the ↵ the `sbs` alias produces.
 
 # What `git grep` looks like on the runs where delta's grep handler does not
 # engage (see above). Without this the fallback is git's stock magenta, green
