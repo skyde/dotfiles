@@ -41,10 +41,14 @@ fi
 
 if (( $+commands[fzf] )); then
   export FZF_DEFAULT_COMMAND='rg --files --follow'
-  # Layout + Tokyo Night colours, shared with bash. See docs/tokyonight.md.
-  # shellcheck disable=SC1091
-  [ -r "$HOME/.config/shell/theme.sh" ] && . "$HOME/.config/shell/theme.sh"
 fi
+
+# Tokyo Night colours for shell tooling, shared with bash. See
+# docs/tokyonight.md. Sourced outside the fzf guard above because only one of
+# its sections is about fzf: LS_COLORS (ls, eza, fd, the completion menu) and
+# the man page colours have to be set on machines with no fzf too.
+# shellcheck disable=SC1091
+[ -r "$HOME/.config/shell/theme.sh" ] && . "$HOME/.config/shell/theme.sh"
 
 # ripgrep: hidden files, smart case, ignore common junk
 export RIPGREP_CONFIG_PATH=~/.ripgreprc
