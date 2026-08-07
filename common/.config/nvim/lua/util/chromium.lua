@@ -44,6 +44,9 @@ local root_cache = {} ---@type table<string, string|false>
 ---@param path string|nil  file or directory; defaults to the cwd
 ---@return string|nil
 function M.src_root(path)
+  if path and path:find("://", 1, true) then
+    return nil -- URL-ish buffer names (health://, fugitive://) are not paths
+  end
   local dir = vim.fn.fnamemodify(path or assert(vim.uv.cwd()), ":p")
   if vim.fn.isdirectory(dir) == 0 then
     dir = vim.fn.fnamemodify(dir, ":h")
@@ -85,12 +88,11 @@ function M.clangd_path(root)
   return "clangd"
 end
 
----clangd invocation for a session rooted at `path` (or anywhere else — the
----flags are the ones Chromium's docs recommend and are harmless elsewhere).
----@param path string|nil
+---The argv for a given checkout root (nil = the stock command, outside
+---any checkout).
+---@param root string|nil
 ---@return string[]
-function M.clangd_cmd(path)
-  local root = M.src_root(path)
+local function build_cmd(root)
   local cmd = {
     M.clangd_path(root),
     "--background-index",
@@ -115,6 +117,14 @@ function M.clangd_cmd(path)
   return cmd
 end
 
+---clangd invocation for a session rooted at `path` (or anywhere else — the
+---flags are the ones Chromium's docs recommend and are harmless elsewhere).
+---@param path string|nil  defaults to the cwd
+---@return string[]
+function M.clangd_cmd(path)
+  return build_cmd(M.src_root(path))
+end
+
 -- What each clangd was actually spawned with, by workspace root ("" when
 -- rootless). vim.lsp.config holds one cmd for every clangd client, so a
 -- static argv would leak one checkout's --compile-commands-dir (and
@@ -125,12 +135,15 @@ end
 -- can later tell a running client no longer matches what its root wants.
 local spawned = {} ---@type table<string, string[]>
 
----argv for a client about to spawn, derived from its resolved root.
+---argv for a client about to spawn, derived from its resolved root. A nil
+---root stays stock deliberately: M.clangd_cmd(nil) would ask the *cwd*,
+---quietly re-attaching a rootless client (markerless tree, scratch
+---buffer) to whatever checkout the session happens to sit in.
 ---@param config? { root_dir?: string }
 ---@return string[]
 function M.spawn_cmd(config)
   local root_dir = config and config.root_dir or nil
-  local cmd = M.clangd_cmd(root_dir)
+  local cmd = build_cmd(root_dir and M.src_root(root_dir) or nil)
   spawned[root_dir or ""] = cmd
   return cmd
 end
@@ -300,6 +313,11 @@ function M.file_contains(path, needle, cb, opts)
 end
 
 local inflight = {} ---@type table<string, true>
+-- build.ninja mtime a generation failed against, per root: refresh must
+-- not hammer a broken generator every other buffer switch — each run is a
+-- whole `ninja -t compdb` plus an error toast. Retried once the build
+-- rules actually change (or on an explicit :ChromiumCompdb).
+local failed_against = {} ---@type table<string, integer>
 local on_idle = {} ---@type fun()[]  test hook: callbacks when a run finishes
 
 local function flush_idle()
@@ -350,11 +368,14 @@ function M.generate(opts)
     vim.schedule(function()
       inflight[root] = nil
       if res.code == 0 then
+        failed_against[root] = nil
         if not opts.silent then
           vim.notify(("compile_commands.json regenerated (%s)"):format(out), vim.log.levels.INFO)
         end
-        M.restart_clangd()
+        M.restart_clangd(root)
       else
+        local ninja = vim.uv.fs_stat(("%s/%s/build.ninja"):format(root, out))
+        failed_against[root] = ninja and ninja.mtime.sec or -1
         local err = vim.trim(res.stderr or "")
         vim.notify("generate_compdb.py failed: " .. err:sub(-400), vim.log.levels.ERROR)
       end
@@ -390,9 +411,17 @@ function M.refresh(root)
     return
   end
   last_refresh[root] = now
-  if M.stale(root) then
-    M.generate({ root = root, force = true })
+  if not M.stale(root) then
+    return
   end
+  local out = M.out_dir(root)
+  if out then
+    local ninja = vim.uv.fs_stat(("%s/%s/build.ninja"):format(root, out))
+    if ninja and failed_against[root] == ninja.mtime.sec then
+      return -- the last run failed against these very rules; wait for them to move
+    end
+  end
+  M.generate({ root = root, force = true })
 end
 
 local probed = {} ---@type table<string, true>
@@ -447,7 +476,11 @@ function M.compdb_probe(root, file)
   M.file_contains(db, "/" .. rel .. '"', function(found)
     vim.schedule(function()
       probing[root] = nil
-      if found ~= false then
+      if found == nil then
+        probed[key] = nil -- unreadable scan proves nothing; retry later
+        return
+      end
+      if found then
         return
       end
       -- The database can be rewritten in place *under* the scan (a gn
@@ -466,18 +499,27 @@ function M.compdb_probe(root, file)
   end)
 end
 
----Restart clangd so it re-reads the compilation database — ChromiumIDE's
----`clangd.restart` step. nvim-lspconfig's :LspRestart when present, a
----manual stop-and-reattach otherwise.
-function M.restart_clangd()
+---The clangd clients serving `root` (nil = all of them).
+---@param root string|nil
+---@return vim.lsp.Client[]
+local function clangd_clients(root)
   local clients = vim.lsp.get_clients({ name = "clangd" })
-  if #clients == 0 then
-    return
+  if not root then
+    return clients
   end
-  if pcall(vim.cmd, "LspRestart clangd") then
-    return
-  end
-  for _, client in ipairs(clients) do
+  return vim.tbl_filter(function(c)
+    return (c.config and c.config.root_dir) == root
+  end, clients)
+end
+
+---Restart clangd so it re-reads the compilation database — ChromiumIDE's
+---`clangd.restart` step, scoped to `root`'s clients so other checkouts
+---(and unrelated C++ projects) keep their warm ASTs. Stop-and-reattach
+---rather than :LspRestart: under nvim 0.12's native :lsp command,
+---nvim-lspconfig defines no Lsp* commands at all.
+---@param root string|nil  nil restarts every clangd
+function M.restart_clangd(root)
+  for _, client in ipairs(clangd_clients(root)) do
     local bufs = vim.tbl_keys(client.attached_buffers or {})
     client:stop()
     vim.defer_fn(function()
@@ -661,25 +703,25 @@ end
 -- client's very first spawn already carries the right binary and flags —
 -- there is nothing to reconfigure when a Chromium buffer first appears.
 -- What can still drift is a *running* client: the bundled clangd landing
--- mid-session (gclient sync) changes what its root wants. ensure_clangd
--- notices that drift and restarts. One wrinkle: vim.lsp.get_clients hides
--- clients that have not finished the initialize handshake, so a restart
--- issued the instant after a spawn silently restarts nothing — hence the
--- bounded retry until the client is visible.
-local tuned = {} ---@type table<string, true>
+-- mid-session (a gclient sync in some terminal) changes what its root
+-- wants. ensure_clangd runs on every buffer touch, compares the recorded
+-- spawn against the root's current want, and restarts on drift — the
+-- comparison is what gates it, not a once-per-session flag (which would
+-- spend itself before any drift could exist). One wrinkle: get_clients
+-- hides clients that have not finished the initialize handshake, so the
+-- restart retries, bounded, until this root's client is visible.
+local drift_watch = {} ---@type table<string, true>
 
 ---@param root string
 ---@param tries integer
 local function restart_when_visible(root, tries)
-  if not spawned[root] then
-    return -- nothing has spawned for this root; its first spawn will be right
+  if not spawned[root] or vim.deep_equal(spawned[root], M.clangd_cmd(root)) then
+    drift_watch[root] = nil
+    return -- nothing spawned yet, or what runs is already right
   end
-  local want = M.clangd_cmd(root)
-  if vim.deep_equal(spawned[root], want) then
-    return -- what runs is already right
-  end
-  if #vim.lsp.get_clients({ name = "clangd" }) > 0 then
-    M.restart_clangd()
+  if #clangd_clients(root) > 0 then
+    drift_watch[root] = nil
+    M.restart_clangd(root)
     return
   end
   if tries > 0 then
@@ -688,23 +730,24 @@ local function restart_when_visible(root, tries)
     vim.defer_fn(function()
       restart_when_visible(root, tries - 1)
     end, 500)
+  else
+    drift_watch[root] = nil
   end
 end
 
 ---@param root string
 function M.ensure_clangd(root)
-  if tuned[root] then
-    return
+  if drift_watch[root] then
+    return -- a retry chain is already watching this root
   end
-  tuned[root] = true
+  drift_watch[root] = true
   restart_when_visible(root, 10)
 end
 
----Forget the per-root tuning and re-run ensure_clangd — used when the
----bundled clangd appears mid-session, so the new binary actually attaches.
+---Re-check immediately — used when the bundled clangd appears
+---mid-session, so the new binary actually attaches.
 ---@param root string
 function M.refit_clangd(root)
-  tuned[root] = nil
   M.ensure_clangd(root)
 end
 
@@ -720,7 +763,7 @@ end
 ---@field msg string
 ---@field advice? string
 
----@param bufnr? integer  buffer to diagnose from; defaults to the current one
+---@param bufnr? integer  buffer to diagnose from; nil detects from the cwd
 ---@return chromium.Finding[]
 function M.diagnose(bufnr)
   local out = {} ---@type chromium.Finding[]
@@ -728,8 +771,10 @@ function M.diagnose(bufnr)
     table.insert(out, { status = status, msg = msg, advice = advice })
   end
 
-  bufnr = bufnr or 0
-  local bufname = vim.api.nvim_buf_get_name(bufnr)
+  local bufname = ""
+  if bufnr then
+    bufname = vim.api.nvim_buf_get_name(bufnr)
+  end
   local root = M.src_root(bufname ~= "" and bufname or nil)
   if not root then
     add("info", "not inside a Chromium checkout — nothing to check")
@@ -785,18 +830,27 @@ function M.diagnose(bufnr)
     add("ok", ("compile_commands.json: %.1f MB, current"):format(db_stat.size / 2 ^ 20))
   end
 
-  -- The running client. :ChromiumCompdb is the advice because it both
-  -- regenerates and restarts — and unlike :LspRestart it always exists
-  -- (nvim 0.12's native :lsp command makes nvim-lspconfig skip defining
-  -- its Lsp* commands entirely).
-  local clients = vim.lsp.get_clients({ name = "clangd" })
+  -- The running client — this checkout's, not whichever clangd happens
+  -- to be first (two checkouts open at once each run their own, by
+  -- design). :ChromiumCompdb is the advice because it both regenerates
+  -- and restarts — and unlike :LspRestart it always exists (nvim 0.12's
+  -- native :lsp command makes nvim-lspconfig skip defining its Lsp*
+  -- commands entirely).
+  local all_clangd = vim.lsp.get_clients({ name = "clangd" })
+  local clients = vim.tbl_filter(function(c)
+    return (c.config and c.config.root_dir) == root
+  end, all_clangd)
   if #clients == 0 then
-    add("info", "clangd is not running yet (it starts with the first C++ buffer)")
+    if #all_clangd > 0 then
+      add("info", "clangd runs for other roots, but not this checkout yet (starts with its first C++ buffer)")
+    else
+      add("info", "clangd is not running yet (it starts with the first C++ buffer)")
+    end
   else
     if #clients > 1 then
       add(
         "warn",
-        #clients .. " clangd instances are running; one per checkout is intended",
+        #clients .. " clangd instances serve this checkout; one is intended",
         "duplicate instances double memory and race the index — :ChromiumCompdb restarts clangd"
       )
     end
@@ -810,14 +864,6 @@ function M.diagnose(bufnr)
       )
     else
       add("ok", ("clangd running, %d buffers attached"):format(#vim.tbl_keys(client.attached_buffers or {})))
-    end
-    local croot = client.config and client.config.root_dir
-    if croot and croot ~= root then
-      add(
-        "warn",
-        "clangd's workspace root is " .. croot .. ", not the checkout root",
-        ":ChromiumCompdb restarts clangd"
-      )
     end
   end
 
@@ -860,7 +906,7 @@ function M.diagnose(bufnr)
   end
 
   -- This buffer.
-  local ft = vim.bo[bufnr].filetype
+  local ft = bufnr and vim.bo[bufnr].filetype or ""
   if (ft == "c" or ft == "cpp" or ft == "objc" or ft == "objcpp") and db_stat and not M.stale(root) then
     local rel = bufname:sub(#root + 2)
     local ext = bufname:match("%.(%a+)$")

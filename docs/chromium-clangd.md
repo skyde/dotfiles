@@ -81,7 +81,7 @@ plus what a checkout of this size forces:
 - **The first background index takes hours** on a fresh checkout; until it
   finishes, find-references is incomplete. The index lives in
   `src/.cache/clangd/` — do not delete it casually, and it stays warm across
-  sessions. `:ChromiumHealth` reports its size and shard count.
+  sessions. `:ChromiumHealth` reports its shard count.
 - **Generated headers need a build.** Files including mojom/proto headers
   cannot be parsed until the target has been built once
   (`autoninja -C out/Default chrome`).

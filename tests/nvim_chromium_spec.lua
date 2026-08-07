@@ -389,8 +389,44 @@ local popts = { servers = {} }
 plug[1].opts(nil, popts)
 local clangd_opts = popts.servers.clangd
 check("plugin: cmd is a per-client function", type(clangd_opts.cmd) == "function")
-eq("spawn: argv follows the client's root", chromium.clangd_cmd(root), chromium.spawn_cmd({ root_dir = root }))
-eq("spawn: rootless argv is the stock one", chromium.clangd_cmd(nil), chromium.spawn_cmd({}))
+local spawn = chromium.spawn_cmd({ root_dir = root })
+eq("spawn: argv follows the client's root", bundled, spawn[1])
+check("spawn: argv pins the root's database dir", vim.tbl_contains(spawn, "--compile-commands-dir=" .. root))
+-- A rootless client gets the stock command even when the cwd *is* a
+-- checkout — the cwd fallback is for sessions, not clients.
+local prev_cwd = vim.fn.getcwd()
+vim.cmd("cd " .. vim.fn.fnameescape(root))
+local rootless = chromium.spawn_cmd({})
+vim.cmd("cd " .. vim.fn.fnameescape(prev_cwd))
+eq("spawn: rootless argv uses PATH clangd", "clangd", rootless[1])
+local rootless_pin = false
+for _, arg in ipairs(rootless) do
+  rootless_pin = rootless_pin or arg:find("--compile-commands-dir", 1, true) ~= nil
+end
+check("spawn: rootless argv has no database pin", not rootless_pin)
+
+-- Drift: a client spawned before the bundled clangd landed restarts as
+-- soon as its root wants a different command; a matching one is left be.
+local root3 = temp .. "/chrome3/src"
+write(root3 .. "/tools/clang/scripts/generate_compdb.py", "pass\n")
+chromium.spawn_cmd({ root_dir = root3 }) -- records the PATH-clangd argv
+local bundled3 = root3 .. "/third_party/llvm-build/Release+Asserts/bin/clangd"
+write(bundled3, "#!/bin/sh\n")
+assert(vim.uv.fs_chmod(bundled3, 493))
+local real_get_clients, real_restart = vim.lsp.get_clients, chromium.restart_clangd
+local restarts = 0
+vim.lsp.get_clients = function() ---@diagnostic disable-line: duplicate-set-field
+  return { { config = { root_dir = root3 } } }
+end
+chromium.restart_clangd = function()
+  restarts = restarts + 1
+end
+chromium.ensure_clangd(root3)
+eq("ensure: a drifted spawn restarts clangd", 1, restarts)
+chromium.spawn_cmd({ root_dir = root3 }) -- the respawn records the bundled argv
+chromium.ensure_clangd(root3)
+eq("ensure: a matching spawn does not restart", 1, restarts)
+vim.lsp.get_clients, chromium.restart_clangd = real_get_clients, real_restart
 local called, got_root = false, nil
 clangd_opts.root_dir(vim.api.nvim_get_current_buf(), function(r)
   called, got_root = true, r
@@ -439,6 +475,56 @@ check("diagnose: flags a buffer missing from the compdb", member ~= nil and memb
 vim.cmd("edit " .. vim.fn.fnameescape(temp .. "/outside.cc"))
 local outside_findings = chromium.diagnose(vim.api.nvim_get_current_buf())
 eq("diagnose: one line outside a checkout", 1, #outside_findings)
+
+-- URL-ish buffer names (health://, fugitive://) are not paths and must
+-- not resolve to a cwd-relative "checkout".
+eq("root: URL-ish names are not paths", nil, chromium.src_root("health://health"))
+
+-- :checkhealth runs inside its own scratch buffer; the report must target
+-- the C++ buffer the user came from, not wherever checkhealth put them.
+vim.cmd("edit " .. vim.fn.fnameescape(root .. "/base/logging.cc"))
+vim.bo.filetype = "cpp"
+local cpp_buf = vim.api.nvim_get_current_buf()
+vim.cmd("enew") -- stand-in for the health:// scratch buffer
+eq("health: targets the last C++ buffer, not the current one", cpp_buf, health.target_buf())
+
+--------------------------------------------------------------------------
+-- a failing generator backs off instead of retrying every buffer switch
+--------------------------------------------------------------------------
+
+local root4 = temp .. "/chrome4/src"
+write(root4 .. "/tools/clang/scripts/generate_compdb.py", table.concat({
+  "import sys",
+  'open("fail.log", "a").write("x\\n")',
+  "sys.exit(1)",
+}, "\n") .. "\n")
+write(root4 .. "/out/Default/build.ninja", "ninja\n")
+local function fail_log()
+  local ok, lines = pcall(vim.fn.readfile, root4 .. "/fail.log")
+  return ok and lines or {}
+end
+
+chromium.refresh(root4)
+vim.wait(5000, function()
+  return #fail_log() >= 1 and not chromium.busy()
+end)
+eq("backoff: a failing generation runs once", 1, #fail_log())
+
+vim.wait(2100) -- past the refresh throttle: only the backoff can stop it now
+chromium.refresh(root4)
+vim.wait(500)
+settle()
+eq("backoff: no retry while build.ninja is unchanged", 1, #fail_log())
+
+local moved = os.time() + 300
+assert(vim.uv.fs_utime(root4 .. "/out/Default/build.ninja", moved, moved))
+vim.wait(2100) -- past the throttle again
+chromium.refresh(root4)
+vim.wait(5000, function()
+  return #fail_log() >= 2
+end)
+settle()
+eq("backoff: a moved build.ninja retries", 2, #fail_log())
 
 --------------------------------------------------------------------------
 

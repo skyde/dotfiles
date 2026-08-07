@@ -30,10 +30,11 @@ return {
       opts.servers = opts.servers or {}
       opts.servers.clangd = vim.tbl_deep_extend("force", opts.servers.clangd or {}, {
         cmd = function(dispatchers, config)
-          return vim.lsp.rpc.start(chromium.spawn_cmd(config), dispatchers, {
-            cwd = config and config.cmd_cwd or nil,
-            env = config and config.cmd_env or nil,
-            detached = config and config.detached or nil,
+          local cfg = config or {}
+          return vim.lsp.rpc.start(chromium.spawn_cmd(cfg), dispatchers, {
+            cwd = cfg.cmd_cwd,
+            env = cfg.cmd_env,
+            detached = cfg.detached,
           })
         end,
         ---@param bufnr integer
