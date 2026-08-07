@@ -62,6 +62,19 @@ return {
         end,
         desc = "Debug: Select and Start",
       },
+      -- The counterpart to <leader>mr, and VS Code's own
+      -- workbench.action.debug.stop on the same key. It was the one member of
+      -- the m-cluster never carried over: settings.json bound it, both
+      -- docs/vim-bindings.md and docs/nvim-vscode-parity.md listed it, and
+      -- pressing it in Neovim did nothing. Shares config.vscode_debug.stop with
+      -- the Shift+F7 footpedal key, so "stop" means the same thing everywhere.
+      {
+        "<leader>ms",
+        function()
+          require("config.vscode_debug").stop()
+        end,
+        desc = "Debug: Stop (VS Code)",
+      },
       {
         "<leader>mp",
         -- Break at cursor: prefer run_to_cursor, which sets a temporary bp.

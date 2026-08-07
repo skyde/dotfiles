@@ -18,6 +18,9 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 - Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`
   (self-contained, no plugins required), and `./tests/check-nvim-keymaps.sh` to
   invoke every binding against the real config.
+- If you changed a keybinding or `docs/nvim-vscode-parity.md`, run
+  `./tests/check-doc-keymaps.py` — it fails when the table documents a key the
+  config does not actually map.
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines

@@ -170,6 +170,10 @@ local keys = {
   " dw",
   " dx",
   " db",
+  -- the VS Code debug cluster on <leader>m. `ms` in particular was documented
+  -- in two places and bound in settings.json but never mapped in Neovim, which
+  -- nothing here noticed because the cluster was not covered at all.
+  " ms",
   -- hover cluster
   "<BS><BS>",
   "<BS> ",

@@ -211,7 +211,7 @@ it works in every backend and on files handed over by any other tool.
 | `<leader>ca` | code action (LazyVim default) |
 | `<leader>cI`, `<BS><leader>` | signature help |
 | `<BS><BS>` | hover |
-| `<leader>Backspace` | debug hover / evaluate |
+| `<leader><BS>` | debug hover / evaluate |
 | `]d` / `[d` | next / previous diagnostic |
 | `<leader>xx` | problems list (Trouble) |
 
@@ -250,6 +250,7 @@ runner. This is why the neotest keys are re-declared in
 | `<leader>Td` `<leader>To` `<leader>Te` `<leader>TS` | debug nearest / output / explorer / stop |
 | `<leader>mb` `<leader>mB` `<leader>mT` `<leader>mt` `<leader>mc` | build / pick build / run task / re-run / terminate |
 | `<leader>mr` `<leader>mR` `<leader>ms` | start debugging / pick config / stop |
+| `<leader>mp` | break at cursor — Neovim only, no VS Code equivalent |
 
 Tasks come from `.vscode/tasks.json` via Overseer and launch configs from
 `.vscode/launch.json` via nvim-dap, so a repo set up for VS Code works
@@ -315,7 +316,19 @@ Invokes every binding against the real config inside a throwaway repository.
 Callback maps must not raise even with no language server and no debug session
 attached — degrading with a message is fine, throwing is not.
 
-Neither is wired into CI; they are run by hand, like `nvim_clipboard_spec.lua`.
+```bash
+tests/check-doc-keymaps.py
+```
+
+Checks the tables on this page against the config's actual global mappings, so a
+key can no longer be documented here without existing. It is what would have
+caught `<leader>ms` — listed above and bound in `settings.json`, but never
+mapped in Neovim — and `<leader>Backspace`, written in a spelling Neovim does
+not accept. Buffer-local bindings (the panel keys, LSP keys, treesitter
+motions) are out of its reach and exempted explicitly in the script.
+
+None of these are wired into CI; they are run by hand, like
+`nvim_clipboard_spec.lua`.
 
 ## Backend notes
 
