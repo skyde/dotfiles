@@ -57,5 +57,15 @@ jobs:
       - name: Install zsh
         run: sudo apt-get install -y --no-install-recommends zsh
 
+      # delta is the oracle for its own option names: it rejects an unknown
+      # flag, and a git config section otherwise accepts any key you write in
+      # it, so a name that is subtly wrong is a setting that silently never
+      # applies. Not fatal if the package is unavailable — the check skips
+      # itself when delta is missing, which is worse than running it but better
+      # than failing the build over an apt mirror.
+      - name: Install delta
+        run: sudo apt-get install -y --no-install-recommends git-delta
+          || echo "git-delta unavailable; delta option check will skip"
+
       - name: Check the theme
         run: tests/check-theme.py --verbose

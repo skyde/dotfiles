@@ -233,9 +233,14 @@
     blame-code-style = syntax
     blame-palette = "#1a1b26 #1f2335 #24283b #292e42"
     blame-separator-style = "#3b4261"
-    # dark5, not comment: the timestamp has to stay legible on all four
-    # stripes, and comment grey on the lightest of them is 2.17:1.
-    blame-timestamp-style = "#737aa2"
+    # There is no blame-timestamp-style. This config carried one for a long
+    # time and it never did anything: delta has blame-timestamp-format and
+    # blame-timestamp-output-format, but the timestamp's colour is not
+    # separately settable — it comes from blame-code-style like the rest of the
+    # line. Verified against `delta --help` and against delta's source back to
+    # 0.16; the option has never existed. Left as a note rather than deleted
+    # silently, because a plausible-looking key that does nothing is exactly
+    # what gets re-added.
 
     # Merge conflicts (merge.conflictstyle = zdiff3 above shows all three sides)
     merge-conflict-begin-symbol = "▼"
@@ -252,6 +257,18 @@
     grep-line-number-style = "#545c7e"
     grep-match-line-style = syntax
     grep-match-word-style = "#e0af68 bold reverse"
+    # `rg --heading`-shaped output puts the file on its own row instead of at
+    # the start of every line. Same blue, and no decoration, for the same
+    # reason the hunk header has none.
+    grep-header-file-style = "#7aa2f7 bold"
+    grep-header-decoration-style = omit
+    grep-context-line-style = syntax
+
+    # Delta's own annotations in the margin -- the marker on a wrapped line,
+    # the "+N" on a collapsed one. They are notes about the diff rather than
+    # part of it, so they take the tertiary grey instead of delta's default
+    # blue, which reads as though it belonged to the code.
+    inline-hint-style = "#737aa2"
 
 [index]
     threads = 10

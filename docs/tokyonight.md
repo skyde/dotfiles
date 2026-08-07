@@ -220,6 +220,24 @@ the peek job; in `seek` the live offset is `cx.active.preview.skip`, and
 reading the wrong one throws silently, which looks exactly like J/K doing
 nothing.
 
+### Gotcha: delta options that do not exist
+
+A `[delta]` section in git config is a dumping ground. Git stores whatever you
+put there and delta reads the keys it knows, so a key with a name that is
+subtly wrong is not an error — it is a setting that silently never applies.
+
+This config carried `blame-timestamp-style` for a long time. It reads exactly
+like the real options around it and delta has never had it: there is
+`blame-timestamp-format` and `blame-timestamp-output-format`, but the
+timestamp's colour is not separately settable — it comes from
+`blame-code-style` with the rest of the line. Confirmed against the binary,
+which rejects `--blame-timestamp-style` outright, and against delta's source
+back to 0.16.
+
+`tests/check-theme.py parity` now asks delta about every key in the section
+whenever delta is installed. The binary is the only reliable oracle here:
+`--help` summarises rather than listing.
+
 ### Gotcha: delta feature sections
 
 Delta's colours must sit in the plain `[delta]` section, **not** in a named
@@ -289,7 +307,13 @@ quietly approximating it.
 - **parity** — the copies agree: the 16 ANSI slots across kitty, wezterm and
   the VS Code integrated terminal; the tab bar across kitty and wezterm; the
   per-extension file colours across lf, yazi and the `LS_COLORS` the shell
-  exports.
+  exports; and everything `theme.sh` exports, sourced in *both* bash and zsh
+  and compared byte for byte — `$var:s` is a history modifier in zsh, so text
+  that is unremarkable to bash can be a parse error there.
+
+  When `delta` is installed it is also asked whether every key under `[delta]`
+  is an option it actually has. See the note below on why that is not
+  paranoia.
 - **contrast** — every foreground/background pair clears the floor for the job
   it does, and every focused fill stands off the page behind it. The tiers, and
   why they are not simply WCAG AA, are in the script.

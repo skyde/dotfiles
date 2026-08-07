@@ -385,6 +385,56 @@ def _check_shell_parity(verbose):
     return problems
 
 
+def _check_delta_options(verbose):
+    """Ask delta whether every key under [delta] is an option it has.
+
+    Worth doing because a git config section is a dumping ground: git stores
+    whatever you write there and delta reads the keys it recognises, so a name
+    that is subtly wrong is not an error, it is a setting that never applies.
+    This config carried `blame-timestamp-style` for a long time -- a name that
+    reads exactly like the real ones around it, and that delta has never had.
+
+    delta's --help is not a usable list (it summarises), but the binary itself
+    is a perfect oracle: it rejects an unknown flag by name. Only that specific
+    complaint counts, so a key delta knows but dislikes the *value* of does not
+    turn into a false positive here.
+    """
+    import shutil
+    import subprocess
+
+    if shutil.which("delta") is None:
+        if verbose:
+            print("  delta not installed, its option names not checked")
+        return []
+
+    cfg = open(os.path.join(REPO, GIT), encoding="utf-8").read()
+    section = re.search(r"^\[delta\]\n(.*?)(?=^\[)", cfg, re.M | re.S)
+    if not section:
+        return ["no [delta] section found in %s" % GIT]
+
+    problems = []
+    checked = 0
+    for key, value in re.findall(r"^\s*([a-z0-9-]+)\s*=\s*(.*)$",
+                                 section.group(1), re.M):
+        checked += 1
+        value = value.split("#")[0].strip().strip('"')
+        try:
+            out = subprocess.run(
+                ["delta", "--%s=%s" % (key, value)],
+                input="", capture_output=True, text=True, timeout=15,
+            )
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if "unexpected argument" in out.stderr and key in out.stderr:
+            problems.append(
+                "delta has no --%s: it is set in %s and has never applied"
+                % (key, GIT)
+            )
+    if verbose and not problems:
+        print("  %d [delta] keys are options delta actually has" % checked)
+    return problems
+
+
 def _check_ls_colors(lf_entries):
     """Compare the LS_COLORS theme.sh exports against lf's own table."""
     import subprocess
@@ -498,6 +548,7 @@ def check_parity(doc, verbose):
     # that it is still valid shell.
     problems.extend(_check_ls_colors(lf_entries))
     problems.extend(_check_shell_parity(verbose))
+    problems.extend(_check_delta_options(verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")
@@ -627,9 +678,11 @@ PAIRS = [
     ("text", "#c0caf5", "#532727", GIT, "delta removed line"),
     ("text", "#c0caf5", "#2e2547", GIT, "delta moved-from line"),
     ("text", "#c0caf5", "#12384a", GIT, "delta moved-to line"),
-    # The blame stripes cycle four backgrounds; the timestamp has to stay
-    # legible on the lightest of them, which is the worst case.
-    ("muted", "#737aa2", "#292e42", GIT, "delta blame timestamp, lightest stripe"),
+    # The blame stripes cycle four backgrounds, so the code on top has to stay
+    # legible on the lightest of them, which is the worst case. It is the code
+    # style that matters here and not a timestamp style: delta has no
+    # blame-timestamp-style, whatever its option list looks like it should have.
+    ("text", "#c0caf5", "#292e42", GIT, "delta blame line, lightest stripe"),
 
     # lazygit
     ("text", "#c0caf5", "#283457", LAZYGIT, "lazygit selected line"),
