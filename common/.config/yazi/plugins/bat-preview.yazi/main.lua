@@ -301,8 +301,17 @@ end
 -- matching VS Code. pcall because `Command:env` is newer than some of the
 -- yazi versions this config has to survive on; losing it only costs colour
 -- depth, not the preview.
-local function spawn_bat(req)
-	local cmd = Command("bat")
+-- Debian and Ubuntu install bat as `batcat`. Spawning a bare "bat" simply
+-- fails there, and a failed spawn falls through to plain_rows below — so on
+-- those distros every preview quietly lost its colours, BAT_THEME and the
+-- custom syntaxes in ~/.config/bat/syntaxes, which is the entire reason this
+-- previewer exists instead of yazi's built-in one. Try both names and remember
+-- the one that worked, so this costs an extra spawn once per session at most.
+local BAT_NAMES = { "bat", "batcat" }
+local bat_name
+
+local function spawn_bat_named(name, req)
+	local cmd = Command(name)
 	pcall(function()
 		cmd = cmd:env("COLORTERM", "truecolor")
 	end)
@@ -322,6 +331,17 @@ local function spawn_bat(req)
 	return child
 end
 
+local function spawn_bat(req)
+	for _, name in ipairs(bat_name and { bat_name } or BAT_NAMES) do
+		local child = spawn_bat_named(name, req)
+		if child then
+			bat_name = name
+			return child
+		end
+	end
+	return nil
+end
+
 -- For files bigger than the byte cap, don't let bat read the whole thing:
 -- a one-line 20MB JSON forces bat to slurp and highlight all 20MB before it
 -- can emit the first wrapped row. `head -c` bounds that to what the
@@ -330,8 +350,11 @@ end
 -- fill up and deadlock. The url rides in as "$1" rather than being spliced
 -- into the script, so no filename can break out of the quoting.
 local function spawn_bat_capped(req)
+	-- Same bat/batcat dance as above, resolved inside the script since this
+	-- side goes through sh anyway.
 	local script = string.format(
-		'head -c %d -- "$1" | bat --color=always --style=plain --paging=never'
+		'bat=$(command -v bat || command -v batcat) || exit 1;'
+			.. ' head -c %d -- "$1" | "$bat" --color=always --style=plain --paging=never'
 			.. ' --wrap=character --tabs=%d --terminal-width=%d --file-name="$1"',
 		req.cap,
 		req.tabs,

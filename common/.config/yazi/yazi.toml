@@ -27,16 +27,23 @@ run = "bat-preview"
 # until `file` has been spawned and has answered, which on the first hover of
 # a file is a visible extra beat of blank pane. Common text extensions are
 # all listed here so they preview the instant the cursor lands on them.
+#
+# The key is `url`, not `name`. yazi renamed it, and it does not ignore the old
+# spelling — it rejects the rule with "at least one of `url` or `mime` must be
+# specified", and rejecting one rule throws out the *whole file*. Every setting
+# above (the pane ratio, hidden files, the sort order, preview wrapping) and all
+# three previewers were silently inert, with yazi running on preset defaults
+# after a one-line "Press <Enter> to continue" that scrolls past on startup.
 [[plugin.prepend_previewers]]
-name = "*.{zsh,zshrc,bashrc,conf,cfg,ini,lua,rs,go,py,rb,ts,tsx,js,jsx,cs,cpp,hpp,cc,c,h,md,yml,yaml,toml,json,log,txt,csv,tsv,sql,sh,bash,fish,xml,html,css,scss,java,kt,swift,vim,ps1,psm1,patch,diff,env}"
+url = "*.{zsh,zshrc,bashrc,conf,cfg,ini,lua,rs,go,py,rb,ts,tsx,js,jsx,cs,cpp,hpp,cc,c,h,md,yml,yaml,toml,json,log,txt,csv,tsv,sql,sh,bash,fish,xml,html,css,scss,java,kt,swift,vim,ps1,psm1,patch,diff,env}"
 run = "bat-preview"
 
 # [[plugin.prepend_fetchers]]
 # id = "git"
-# name = "*"
+# url = "*"
 # run = "git"
 #
 # [[plugin.prepend_fetchers]]
 # id = "git"
-# name = "*/"
+# url = "*/"
 # run = "git"

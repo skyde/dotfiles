@@ -119,26 +119,30 @@ footer = { fg = "#16161e", bg = "#c0caf5" }
 # Filetype colours. These mirror common/.config/lf/colors so the two file
 # managers agree on what a .zip or a broken symlink looks like.
 #
-# Order matters and follows yazi's own convention: specific mime/name patterns
+# Order matters and follows yazi's own convention: specific mime/url patterns
 # first, then the catch-all `is = ...` rules and the directory glob last. The
 # valid `is` values are exactly: none, hidden, link, orphan, dummy, block,
 # char, fifo, sock, exec, sticky (yazi rejects anything else, including "dir" —
-# directories are matched with the name glob "*/").
+# directories are matched with the url glob "*/").
+#
+# The glob key is `url`, not `name`. yazi renamed it and rejects the old
+# spelling with "at least one of `url` or `mime` must be specified" — which
+# discards the whole theme file, not just the one rule.
 [filetype]
 rules = [
   # --- archives → red ---
-  { name = "*.tar", fg = "#f7768e" },
-  { name = "*.tgz", fg = "#f7768e" },
-  { name = "*.gz", fg = "#f7768e" },
-  { name = "*.bz2", fg = "#f7768e" },
-  { name = "*.xz", fg = "#f7768e" },
-  { name = "*.zst", fg = "#f7768e" },
-  { name = "*.zip", fg = "#f7768e" },
-  { name = "*.7z", fg = "#f7768e" },
-  { name = "*.rar", fg = "#f7768e" },
-  { name = "*.deb", fg = "#f7768e" },
-  { name = "*.rpm", fg = "#f7768e" },
-  { name = "*.dmg", fg = "#f7768e" },
+  { url = "*.tar", fg = "#f7768e" },
+  { url = "*.tgz", fg = "#f7768e" },
+  { url = "*.gz", fg = "#f7768e" },
+  { url = "*.bz2", fg = "#f7768e" },
+  { url = "*.xz", fg = "#f7768e" },
+  { url = "*.zst", fg = "#f7768e" },
+  { url = "*.zip", fg = "#f7768e" },
+  { url = "*.7z", fg = "#f7768e" },
+  { url = "*.rar", fg = "#f7768e" },
+  { url = "*.deb", fg = "#f7768e" },
+  { url = "*.rpm", fg = "#f7768e" },
+  { url = "*.dmg", fg = "#f7768e" },
 
   # --- media → magenta, audio → purple ---
   { mime = "image/*", fg = "#bb9af7" },
@@ -148,67 +152,67 @@ rules = [
   # --- documents → orange ---
   { mime = "application/pdf", fg = "#ff9e64" },
   { mime = "application/epub+zip", fg = "#ff9e64" },
-  { name = "*.docx", fg = "#ff9e64" },
-  { name = "*.xlsx", fg = "#ff9e64" },
-  { name = "*.pptx", fg = "#ff9e64" },
+  { url = "*.docx", fg = "#ff9e64" },
+  { url = "*.xlsx", fg = "#ff9e64" },
+  { url = "*.pptx", fg = "#ff9e64" },
 
   # --- source code → green ---
-  { name = "*.c", fg = "#9ece6a" },
-  { name = "*.h", fg = "#9ece6a" },
-  { name = "*.cc", fg = "#9ece6a" },
-  { name = "*.cpp", fg = "#9ece6a" },
-  { name = "*.hpp", fg = "#9ece6a" },
-  { name = "*.cs", fg = "#9ece6a" },
-  { name = "*.go", fg = "#9ece6a" },
-  { name = "*.rs", fg = "#9ece6a" },
-  { name = "*.py", fg = "#9ece6a" },
-  { name = "*.rb", fg = "#9ece6a" },
-  { name = "*.js", fg = "#9ece6a" },
-  { name = "*.ts", fg = "#9ece6a" },
-  { name = "*.tsx", fg = "#9ece6a" },
-  { name = "*.jsx", fg = "#9ece6a" },
-  { name = "*.lua", fg = "#9ece6a" },
-  { name = "*.sh", fg = "#9ece6a" },
-  { name = "*.zsh", fg = "#9ece6a" },
-  { name = "*.bash", fg = "#9ece6a" },
-  { name = "*.ps1", fg = "#9ece6a" },
+  { url = "*.c", fg = "#9ece6a" },
+  { url = "*.h", fg = "#9ece6a" },
+  { url = "*.cc", fg = "#9ece6a" },
+  { url = "*.cpp", fg = "#9ece6a" },
+  { url = "*.hpp", fg = "#9ece6a" },
+  { url = "*.cs", fg = "#9ece6a" },
+  { url = "*.go", fg = "#9ece6a" },
+  { url = "*.rs", fg = "#9ece6a" },
+  { url = "*.py", fg = "#9ece6a" },
+  { url = "*.rb", fg = "#9ece6a" },
+  { url = "*.js", fg = "#9ece6a" },
+  { url = "*.ts", fg = "#9ece6a" },
+  { url = "*.tsx", fg = "#9ece6a" },
+  { url = "*.jsx", fg = "#9ece6a" },
+  { url = "*.lua", fg = "#9ece6a" },
+  { url = "*.sh", fg = "#9ece6a" },
+  { url = "*.zsh", fg = "#9ece6a" },
+  { url = "*.bash", fg = "#9ece6a" },
+  { url = "*.ps1", fg = "#9ece6a" },
 
   # --- config and data → yellow ---
-  { name = "*.json", fg = "#e0af68" },
-  { name = "*.toml", fg = "#e0af68" },
-  { name = "*.yaml", fg = "#e0af68" },
-  { name = "*.yml", fg = "#e0af68" },
-  { name = "*.ini", fg = "#e0af68" },
-  { name = "*.conf", fg = "#e0af68" },
-  { name = "*.cfg", fg = "#e0af68" },
-  { name = "*.xml", fg = "#e0af68" },
+  { url = "*.json", fg = "#e0af68" },
+  { url = "*.toml", fg = "#e0af68" },
+  { url = "*.yaml", fg = "#e0af68" },
+  { url = "*.yml", fg = "#e0af68" },
+  { url = "*.ini", fg = "#e0af68" },
+  { url = "*.conf", fg = "#e0af68" },
+  { url = "*.cfg", fg = "#e0af68" },
+  { url = "*.xml", fg = "#e0af68" },
 
   # --- prose → foreground ---
-  { name = "*.md", fg = "#c0caf5" },
-  { name = "*.txt", fg = "#c0caf5" },
-  { name = "*.rst", fg = "#c0caf5" },
+  { url = "*.md", fg = "#c0caf5" },
+  { url = "*.txt", fg = "#c0caf5" },
+  { url = "*.rst", fg = "#c0caf5" },
 
   # --- build noise → comment grey ---
-  { name = "*.log", fg = "#565f89" },
-  { name = "*.bak", fg = "#565f89" },
-  { name = "*.tmp", fg = "#565f89" },
-  { name = "*.swp", fg = "#565f89" },
-  { name = "*.o", fg = "#565f89" },
-  { name = "*.pyc", fg = "#565f89" },
-  { name = "*.lock", fg = "#565f89" },
+  { url = "*.log", fg = "#565f89" },
+  { url = "*.bak", fg = "#565f89" },
+  { url = "*.tmp", fg = "#565f89" },
+  { url = "*.swp", fg = "#565f89" },
+  { url = "*.o", fg = "#565f89" },
+  { url = "*.pyc", fg = "#565f89" },
+  { url = "*.lock", fg = "#565f89" },
 
   # --- special file kinds, checked after the patterns above ---
-  { name = "*", is = "orphan", fg = "#f7768e", bold = true },
-  { name = "*", is = "link", fg = "#7dcfff" },
-  { name = "*", is = "block", fg = "#e0af68" },
-  { name = "*", is = "char", fg = "#e0af68" },
-  { name = "*", is = "fifo", fg = "#bb9af7" },
-  { name = "*", is = "sock", fg = "#bb9af7" },
-  { name = "*", is = "sticky", fg = "#c0caf5", bg = "#7aa2f7" },
-  { name = "*", is = "exec", fg = "#9ece6a" },
-  { name = "*", is = "dummy", fg = "#565f89" },
+  { url = "*", is = "orphan", fg = "#f7768e", bold = true },
+  { url = "*", is = "link", fg = "#7dcfff" },
+  { url = "*", is = "block", fg = "#e0af68" },
+  { url = "*", is = "char", fg = "#e0af68" },
+  { url = "*", is = "fifo", fg = "#bb9af7" },
+  { url = "*", is = "sock", fg = "#bb9af7" },
+  { url = "*", is = "sticky", fg = "#c0caf5", bg = "#7aa2f7" },
+  { url = "*", is = "exec", fg = "#9ece6a" },
+  { url = "*", is = "dummy", fg = "#565f89" },
 
   # --- directories, and finally everything else ---
-  { name = "*/", fg = "#7aa2f7", bold = true },
-  { name = "*", fg = "#c0caf5" },
+  { url = "*/", fg = "#7aa2f7", bold = true },
+  { url = "*", fg = "#c0caf5" },
 ]

@@ -27,6 +27,9 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 - If you changed a keybinding or `docs/nvim-vscode-parity.md`, run
   `./tests/check-doc-keymaps.py` — it fails when the table documents a key the
   config does not actually map.
+- If you touched `common/.config/yazi`, run `./tests/check-yazi-config.py`. yazi
+  discards an entire config file over one stale key and quietly falls back to
+  presets, so a broken setting looks like no setting rather than an error.
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines

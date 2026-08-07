@@ -17,7 +17,15 @@ local M = {}
 -- Directories get a listing, everything else goes through bat. COLORTERM is
 -- forced for the same reason as in bat-preview.yazi: without it bat silently
 -- downgrades to 256 colours under tmux and the VS Code terminal.
-local PREVIEW = [[if [ -d {} ]; then ls -A -- {}; else COLORTERM=truecolor bat --style=numbers --color=always --line-range :500 -- {}; fi]]
+--
+-- bat is resolved rather than named, because Debian and Ubuntu install it as
+-- `batcat` and a bare `bat` there put "command not found" in the preview pane
+-- for every file. Plain cat is the last resort, so the pane still shows the
+-- file when neither exists.
+local PREVIEW = [[if [ -d {} ]; then ls -A -- {}; ]]
+	.. [[else bat=$(command -v bat || command -v batcat); ]]
+	.. [[if [ -n "$bat" ]; then COLORTERM=truecolor "$bat" --style=numbers --color=always --line-range :500 -- {}; ]]
+	.. [[else cat -- {}; fi; fi]]
 
 local state = ya.sync(function()
 	local selected = {}

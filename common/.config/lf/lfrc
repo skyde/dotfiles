@@ -29,8 +29,19 @@ map v toggle
 map V toggle
 map a unselect
 map f search
-# Pager for viewing files with syntax highlighting
-map s $bat --paging=always --style=numbers,changes --color=always --decorations=always "$f"
+# Pager for viewing files with syntax highlighting.
+# Both spellings, then a plain pager: Debian and Ubuntu install bat as
+# `batcat`, and a bare `bat` here made this key do nothing but flash
+# "bat: command not found".
+map s ${{
+	for bin in bat batcat; do
+		if command -v "$bin" >/dev/null 2>&1; then
+			"$bin" --paging=always --style=numbers,changes --color=always --decorations=always "$f"
+			exit
+		fi
+	done
+	"${PAGER:-less}" "$f"
+}}
 # map e nvim -- $fx
 map go cd ~/Documents
 map gd cd ~/Downloads

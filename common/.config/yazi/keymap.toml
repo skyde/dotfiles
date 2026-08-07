@@ -16,7 +16,12 @@
 # The yazi wrapper in ~/.local/bin/yazi concatenates that local file onto this
 # one at launch when it exists.
 
-"$schema" = "https://yazi-rs.github.io/schemas/keymap.json"
+# Schema: https://yazi-rs.github.io/schemas/keymap.json
+#
+# A comment, not a `"$schema"` key, matching yazi.toml and theme.toml. yazi
+# validates top-level keys as kebab-case and rejects `$schema` outright — and a
+# rejected key throws out the entire file, so every binding below was inert and
+# yazi ran on its preset keymap.
 
 [[mgr.prepend_keymap]]
 on = "<Esc>"
