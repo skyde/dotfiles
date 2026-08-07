@@ -112,7 +112,10 @@ cursor. Untracked files read as a whole-file add, deleted files show their
 old content struck red. `i` in the panel (or `<leader>ci` anywhere) switches
 to side-by-side: native diff mode, so `]c` / `[c` / `do` / `dp` work and the
 right pane is the real file; on Neovim 0.12+ `diffopt+=inline:char` gives it
-the same char-level emphasis. The delta-rendered unified patch is still there
+the same char-level emphasis. Toggled from inside the diff (the same goes for
+`<leader>cz`), focus and the reading position stay put instead of dropping
+back into the list; from the panel, focus stays in the panel for more
+scrubbing. The delta-rendered unified patch is still there
 on `<leader>gp` / `<leader>gA`.
 The diff opens scrolled to the first change, renamed files diff against their
 old path rather than reading as wholly added, and every diff pane uses hybrid
