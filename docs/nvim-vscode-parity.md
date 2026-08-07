@@ -314,6 +314,11 @@ Every spec is self-contained and needs no plugins:
 * `nvim_plugins_spec.lua` — the `opts` functions in `lua/plugins/`, driven
   with the shapes LazyVim actually passes them. These are where an upstream
   change silently turns a customisation into a no-op.
+* `nvim_options_spec.lua` — `config/options.lua`, whose whole job is side
+  effects: the settings that only make sense together, the clipboard provider
+  choosing itself by environment, and `diffopt` still agreeing with
+  `common/.config/git/config` (which is the entire basis for "a diff reads
+  the same in the editor as in the terminal").
 
 ```bash
 tests/check-nvim-keymaps.sh

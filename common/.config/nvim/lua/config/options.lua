@@ -15,8 +15,11 @@ vim.opt.termguicolors = true
 -- Prevent 'edge hugging'
 vim.o.scrolloff = 8
 
--- Adjust increment of a half page up / down command size
-vim.o.scroll = 16
+-- The half-page step lives in the <C-u>/<C-d> mappings in config/keymaps.lua,
+-- not here. 'scroll' is window-local *and* Neovim recomputes it to half the
+-- window height on every split and resize, so setting it once at startup is
+-- gone by the time the UI has finished laying itself out — it read as the
+-- knob that controlled those keys while doing nothing at all.
 
 vim.opt.fileformats = { "unix", "dos" }
 
