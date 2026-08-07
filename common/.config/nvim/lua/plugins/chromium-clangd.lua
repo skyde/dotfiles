@@ -8,6 +8,14 @@
 -- the flags //docs/clangd.md recommends. The compilation-database freshness
 -- half of the story lives in util/chromium.lua + config/chromium.lua.
 --
+-- root_dir pins every buffer inside a checkout to the src root. Without
+-- that, clangd's stock root markers (.clang-format, .git, …) split the
+-- checkout at every vendored subproject that carries one — v8, blink,
+-- webrtc, skia — and each split spawns its own clangd instance with its
+-- own background indexer: multiplied memory, a raced index, and
+-- find-usages answers that depend on which instance answered. One
+-- checkout, one clangd.
+--
 -- The cmd is computed from the cwd at startup; opening a Chromium buffer in
 -- a session started elsewhere is caught by config/chromium.lua's FileType
 -- autocmd, which reconfigures and restarts clangd.
@@ -15,9 +23,17 @@ return {
   {
     "neovim/nvim-lspconfig",
     opts = function(_, opts)
+      local chromium = require("util.chromium")
       opts.servers = opts.servers or {}
-      opts.servers.clangd = vim.tbl_deep_extend("keep", opts.servers.clangd or {}, {
-        cmd = require("util.chromium").clangd_cmd(),
+      opts.servers.clangd = vim.tbl_deep_extend("force", opts.servers.clangd or {}, {
+        cmd = chromium.clangd_cmd(),
+        ---@param bufnr integer
+        ---@param on_dir fun(root_dir?: string)
+        root_dir = function(bufnr, on_dir)
+          -- nil outside a checkout: vim.lsp.start then falls back to the
+          -- config's stock root_markers, so non-Chromium C++ is untouched.
+          on_dir(chromium.src_root(vim.api.nvim_buf_get_name(bufnr)))
+        end,
       })
     end,
   },
