@@ -120,9 +120,12 @@ def themed_files(doc):
             continue
         # The path cell may list two files ("theme.toml`, `plugins/...").
         for path in re.findall(r"`([^`]+)`", cells[2]):
-            # Rows like "(the `# Theme` section)" carry parentheticals that are
-            # not paths; a real row always names something under common/.
-            if not path.startswith("common/"):
+            # Rows also carry backticked things that are not paths at all --
+            # "(the `# Theme` section)", `gui.theme`, `LS_COLORS`. A path has a
+            # separator in it and resolves to a file in this repo; nothing else
+            # does, so that is the whole test. Directories are excluded by the
+            # same rule, which is why the yazi plugin folder is not scanned.
+            if "/" not in path:
                 continue
             full = os.path.join(REPO, path)
             if os.path.isfile(full) and full not in files:

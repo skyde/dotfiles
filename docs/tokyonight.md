@@ -276,6 +276,7 @@ accent chosen to be instantly findable against the blue-violet palette. Keep it.
 | ls, eza, grep, man | `common/.config/shell/theme.sh` (`LS_COLORS`, `EZA_COLORS`, `GREP_COLORS`, `LESS_TERMCAP_*`) |
 | zsh      | `common/.config/shell/theme.sh` (autosuggestions), `common/.zshrc` (completion menu) |
 | zsh syntax | `common/.config/fsh/tokyonight.ini` (fast-syntax-highlighting) |
+| PowerShell | `windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1` (PSReadLine) |
 | ripgrep  | `common/.ripgreprc`                                   |
 | search pickers | `common/.local/bin/st-rg`, `common/.local/bin/st-zoekt` (the awk prefix) |
 | yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
