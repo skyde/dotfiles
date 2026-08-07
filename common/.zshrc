@@ -465,6 +465,27 @@ if (( $+commands[fzf] )); then
   [[ -t 0 ]] && _zcache_source fzf-init "$commands[fzf]" -- _fzf_init_text
   unset -f _fzf_init_text
 
+  # ---- options that only exist in a recent fzf
+  #
+  # --style and --wrap are 0.54 and later, and fzf treats an unknown option as
+  # fatal — so carrying them unconditionally meant every picker on Ubuntu's 0.44
+  # exited with "unknown option" before drawing anything. The version is read
+  # once and the answer cached, so this costs a file read rather than a fork.
+  _fzf_version_opts() {
+    local version
+    version=${${(f)"$(fzf --version 2>/dev/null)"}[1]%% *}
+    autoload -Uz is-at-least
+    if [[ -n $version ]] && is-at-least 0.54 "$version"; then
+      print -r -- 'FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --style=minimal"'
+      print -r -- 'export FZF_DEFAULT_OPTS'
+      print -r -- 'typeset -ga _fzf_recent_opts=(--wrap)'
+    else
+      print -r -- 'typeset -ga _fzf_recent_opts=()'
+    fi
+  }
+  _zcache_source fzf-version-opts "$commands[fzf]" -- _fzf_version_opts
+  unset -f _fzf_version_opts
+
   # ---- history search (Ctrl-R), deduped & reverse-chronological
   _fzf_history_widget() {
     local selected
@@ -486,10 +507,10 @@ if (( $+commands[fzf] )); then
       fc -nrl 1 2>/dev/null | LC_ALL=C awk 'length && !seen[$0]++' | \
       fzf_history_highlight | \
       fzf --height=80% --layout=reverse --min-height=20 --ansi \
-          --scheme=history --tiebreak=index --wrap \
+          --scheme=history --tiebreak=index \
           --preview="$FZF_HISTORY_PREVIEW" --preview-window='down,4,wrap' \
           --bind='ctrl-/:toggle-preview' --bind='ctrl-s:toggle-sort' \
-          --prompt='History> ' --style=minimal --query="$LBUFFER"
+          --prompt='History> ' $_fzf_recent_opts --query="$LBUFFER"
     ) || return
     BUFFER=$selected
     CURSOR=${#BUFFER}

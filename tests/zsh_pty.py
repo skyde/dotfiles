@@ -16,10 +16,13 @@ is copied to stdout, which is for looking at when a spec fails.
 
 --send writes its argument to the terminal as if typed, after the script has been
 sourced, with the usual backslash escapes understood (\\t for Tab, \\e for
-Escape, \\x18 for Ctrl-X, \\n for Return). That is how a binding gets tested by
-pressing the key rather than by reading what `bindkey` claims: the shell cannot
-tell the difference between this and a keyboard. Several --send arguments are
-written in order.
+Escape, \\x18 for Ctrl-X). That is how a binding gets tested by pressing the key
+rather than by reading what `bindkey` claims: the shell cannot tell the difference
+between this and a keyboard. Several --send arguments are written in order.
+
+Return is \\r, not \\n. A terminal sends carriage return when Enter is pressed,
+and while zle accepts either, a program that reads the terminal itself may not:
+fzf ignores \\n, so a picker driven with it sits there until the timeout.
 
 There is deliberately no bracketed-paste marker around them. With the markers
 zsh would treat the whole run as pasted text and insert a literal tab instead of

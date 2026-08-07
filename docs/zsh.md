@@ -61,6 +61,19 @@ The `Ctrl-R` picker dedupes, ranks by match quality with recency as the
 tiebreak, and highlights the list with the same `bat` theme as everything else.
 It is bound *after* fzf's own history widget so this one wins.
 
+It streams: with a full 100,000-entry history the list takes about half a second
+to finish arriving, but the picker is up and searchable in ~25ms, so there is
+nothing to be gained by truncating the history that is fed to it.
+
+One known limitation. A history entry that spans several lines is shown on one
+line, with its newlines as `\n`, and that is also what lands on the command line
+when you pick it — so a recalled `for` loop needs its newlines put back. Fixing
+it means asking `$history` for the real text by event number, because `fc`'s
+rendering is ambiguous: a command containing a literal backslash-n and one
+containing a real newline come out identical, so simply unescaping would corrupt
+the first. Not worth risking the picker that gets used constantly for the case
+that comes up rarely.
+
 ### Finding things
 
 | Key                | Does                                                       |
@@ -212,6 +225,7 @@ none of them installed — that being the state of a fresh clone before
 | `fzf`       | no Ctrl-T/Alt-C/Ctrl-R picker; Tab completion unaffected          |
 | `fd`        | Ctrl-T falls back to fzf's own walker                            |
 | `bat`       | `cat` stays `cat`, previews use `head`, man pages use `less`      |
+| an old `fzf` | `--style`/`--wrap` are dropped (they are 0.54+, and fzf treats an unknown option as fatal) |
 | `eza`       | `ls` stays `ls`                                                  |
 | `delta`     | git pages through `less`                                         |
 | `code`      | git's merge tool becomes `nvimdiff3`, or `vimdiff`                |

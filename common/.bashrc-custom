@@ -108,6 +108,19 @@ if command -v fzf >/dev/null 2>&1; then
   # shellcheck disable=SC1091
   [ -r "$HOME/.config/shell/theme.sh" ] && . "$HOME/.config/shell/theme.sh"
 
+  # --style and --wrap are fzf 0.54 and later, and an unknown option makes fzf
+  # exit before drawing anything — so on a box with an older build (Ubuntu 24.04
+  # ships 0.44) every picker was broken. Checked once here; theme.sh deliberately
+  # leaves both out of FZF_DEFAULT_OPTS.
+  FZF_RECENT_OPTS=""
+  if fzf_version="$(fzf --version 2>/dev/null | cut -d' ' -f1)" &&
+    [[ -n "$fzf_version" ]] &&
+    [[ "$(printf '%s\n0.54\n' "$fzf_version" | sort -V | head -n1)" == "0.54" ]]; then
+    FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --style=minimal"
+    export FZF_DEFAULT_OPTS
+    FZF_RECENT_OPTS="--wrap"
+  fi
+
   __fzf_history_widget() {
     local selected
     # --ansi is explicit here for the same reason as in .zshrc: it is what makes
@@ -120,7 +133,7 @@ if command -v fzf >/dev/null 2>&1; then
       fzf --height=80% --reverse --ansi --scheme=history --tiebreak=index \
           --preview="$FZF_HISTORY_PREVIEW" --preview-window='down,4,wrap' \
           --bind='ctrl-s:toggle-sort' \
-          --prompt='History> ' --style=minimal --query "$READLINE_LINE") || return
+          --prompt='History> ' $FZF_RECENT_OPTS --query "$READLINE_LINE") || return
     READLINE_LINE=$selected
     READLINE_POINT=${#selected}
   }

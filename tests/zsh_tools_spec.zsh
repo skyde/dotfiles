@@ -246,6 +246,52 @@ if spec_have fzf; then
   fi
 fi
 
+spec_section 'fzf actually runs with the options it is given'
+
+if spec_have fzf; then
+  # The assertion that matters most about FZF_DEFAULT_OPTS: fzf treats an unknown
+  # option as fatal, so one flag from a newer release than the installed one
+  # breaks *every* picker — Ctrl-R, Ctrl-T, Alt-C and the st-* scripts — before
+  # anything is drawn. --filter runs the whole option parse without a terminal.
+  typeset -g _filter_out _filter_err
+  _filter_err=$(print -l alpha beta | fzf --filter=al 2>&1 >/dev/null)
+  _filter_out=$(print -l alpha beta | fzf --filter=al 2>/dev/null)
+  assert_empty 'fzf accepts every option in FZF_DEFAULT_OPTS' "$_filter_err"
+  assert_eq 'fzf filters with those options in effect' 'alpha' "$_filter_out"
+
+  # Same question for the flags the shell adds only when the version supports
+  # them.
+  typeset -g _recent_err
+  _recent_err=$(print -l alpha | fzf $_fzf_recent_opts --filter=al 2>&1 >/dev/null)
+  assert_empty 'the version-gated options are ones this fzf knows' "$_recent_err"
+
+  assert_contains 'the history picker previews the focused entry' '{}' \
+    "$(spec_env_value FZF_HISTORY_PREVIEW)"
+fi
+
+spec_section 'the Ctrl-R list is highlighted'
+
+if (( $+commands[bat] || $+commands[batcat] )); then
+  # The highlighter resolves the binary once, outside the function, because
+  # `command -v bat` inside it is true even where the only bat is `batcat` and
+  # `bat` is merely an interactive alias — which made every Ctrl-R print
+  # "command not found: bat" and return an unhighlighted list.
+  assert_nonempty 'a bat binary was resolved for the highlighter' \
+    "$(spec_env_value FZF_HISTORY_BAT)"
+
+  typeset -g _highlighted _highlighted_plain
+  _highlighted=$(print -r -- 'git commit -m hello' | fzf_history_highlight 2>&1)
+  # The colours sit between the words, so the comparison is against the text with
+  # the escape sequences taken back out — which is also what fzf hands back when
+  # an entry is chosen.
+  _highlighted_plain=${_highlighted//$'\e'\[[0-9;]##m/}
+  assert_eq 'the highlighter passes the command through unchanged' \
+    'git commit -m hello' "$_highlighted_plain"
+  refute_contains 'the highlighter does not report a missing bat' \
+    'not found' "$_highlighted"
+  assert_contains 'the highlighter adds colour' $'\e[' "$_highlighted"
+fi
+
 spec_section 'fzf-preview'
 
 if (( $+commands[fzf-preview] )); then

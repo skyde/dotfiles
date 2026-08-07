@@ -30,7 +30,15 @@ _fzf_tn="$_fzf_tn --color=prompt:#7aa2f7,spinner:#ff9e64,pointer:#ff5000"
 _fzf_tn="$_fzf_tn --color=header:#7aa2f7,border:#292e42,separator:#292e42"
 _fzf_tn="$_fzf_tn --color=scrollbar:#3b4261,gutter:-1,label:#565f89,query:#c0caf5"
 
-FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --reverse --ansi --info=inline --style=minimal --no-cycle $_fzf_tn"
+# --style is deliberately not here, and neither is --wrap. Both arrived in fzf
+# 0.54, and fzf treats an unknown option as fatal: with them in
+# FZF_DEFAULT_OPTS, *every* picker on a box with an older build — Ubuntu 24.04
+# ships 0.44 — died with "unknown option: --style=minimal" before drawing
+# anything. Ctrl-R, Ctrl-T, Alt-C and the st-* scripts all of them.
+#
+# The shells add those flags when the installed fzf is new enough; see the
+# version check in .zshrc and .bashrc-custom.
+FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --reverse --ansi --info=inline --no-cycle $_fzf_tn"
 export FZF_DEFAULT_OPTS
 unset _fzf_tn
 
@@ -87,9 +95,31 @@ fi
 # 24-bit vs the 256-colour cube from it, and it is not reliably set under tmux,
 # the VS Code terminal, or over ssh. Without it the history quietly renders in
 # approximated colours that do not match anything else.
+# The binary is resolved once, here, and the function uses the answer.
+#
+# `if command -v bat` inside the function looked equivalent and was not. Debian
+# and Ubuntu ship bat as `batcat`, and .zshrc aliases `bat=batcat` — after which
+# `command -v bat` is *true*, because it reports aliases as well as commands. The
+# alias does not help inside this function, which was parsed by .zshenv before
+# the alias existed, so every Ctrl-R printed
+#
+#   fzf_history_highlight:2: command not found: bat
+#
+# twice and returned an unhighlighted list. Resolving here, before any alias
+# exists, and preferring the name that is a real binary, cannot go wrong that
+# way.
+if command -v batcat >/dev/null 2>&1; then
+	FZF_HISTORY_BAT=batcat
+elif command -v bat >/dev/null 2>&1; then
+	FZF_HISTORY_BAT=bat
+else
+	FZF_HISTORY_BAT=''
+fi
+export FZF_HISTORY_BAT
+
 fzf_history_highlight() {
-	if command -v bat >/dev/null 2>&1; then
-		COLORTERM=truecolor bat --color=always --language=bash \
+	if [ -n "$FZF_HISTORY_BAT" ]; then
+		COLORTERM=truecolor "$FZF_HISTORY_BAT" --color=always --language=bash \
 			--style=plain --paging=never --wrap=never
 	else
 		cat
@@ -100,9 +130,13 @@ fzf_history_highlight() {
 # a long command is readable in full rather than cut off at the pane edge.
 # Single-quoted on purpose — {} and FZF_PREVIEW_COLUMNS are expanded by fzf when
 # it runs the preview, not by this shell when the string is defined.
+#
+# Uses the binary resolved above, for the same reason: the preview runs in a
+# fresh `sh`, where the interactive alias does not exist and a plain `bat` is a
+# command-not-found on Debian.
 # shellcheck disable=SC2016,SC2089
-if command -v bat >/dev/null 2>&1; then
-	FZF_HISTORY_PREVIEW='printf "%s\n" {} | COLORTERM=truecolor bat --color=always --language=bash --style=plain --paging=never --wrap=character --terminal-width=${FZF_PREVIEW_COLUMNS:-80}'
+if [ -n "$FZF_HISTORY_BAT" ]; then
+	FZF_HISTORY_PREVIEW='printf "%s\n" {} | COLORTERM=truecolor '"$FZF_HISTORY_BAT"' --color=always --language=bash --style=plain --paging=never --wrap=character --terminal-width=${FZF_PREVIEW_COLUMNS:-80}'
 else
 	FZF_HISTORY_PREVIEW='printf "%s\n" {}'
 fi
