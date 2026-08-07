@@ -154,6 +154,10 @@ git:
       replace: "$1: "
 
 os:
+  # `e` opens Neovim. This is the standalone case; when lazygit is launched
+  # from inside Neovim (<leader>gg), snacks layers its own config on top and
+  # switches this to `nvim-remote`, so the file opens in the Neovim you came
+  # from instead of a nested one.
   editPreset: nvim
   open: "code --reuse-window {{filename}}"
   openDirInEditor: "code --reuse-window {{dir}}"
@@ -203,7 +207,13 @@ customCommands:
   - key: "Y"
     context: "commits, subCommits"
     description: "Copy diff of selected commit(s) to clipboard"
-    command: 'git diff --no-color {{if .SelectedCommitRange}}{{.SelectedCommitRange.From}}^..{{.SelectedCommitRange.To}}{{else}}{{.SelectedCommit.Hash}}^!{{end}} | osc-copy'
+    # SelectedCommitRange is always set — a single selection is a range of one
+    # — so there is no separate single-commit branch to write. The parent
+    # lookup is what makes the range work on a repository's first commit,
+    # where `<root>^` does not resolve: fall back to the empty tree, asked for
+    # by hashing one rather than hard-coding 4b825dc, which is only the SHA-1
+    # answer.
+    command: 'sh -c ''base=$(git rev-parse -q --verify "$1^" || git hash-object -t tree /dev/null); git diff --no-color "$base" "$2" | osc-copy'' -- {{.SelectedCommitRange.From}} {{.SelectedCommitRange.To}}'
 
   - key: "<c-n>"
     context: "files"
@@ -261,6 +271,19 @@ customCommands:
         description: "History of this file (follows renames)"
         command: "git log --follow --patch -- {{if .SelectedCommitFile}}{{.SelectedCommitFile.Name | quote}}{{else}}{{.SelectedFile.Name | quote}}{{end}}"
         output: terminal
+
+      - key: "s"
+        context: "global"
+        description: "Search commit contents (git log -S)"
+        # The one search lazygit has no panel for: which commit introduced or
+        # removed this string. Filtering (`<ctrl+s>`) covers path and author,
+        # not content.
+        command: "git log -S{{.Form.Needle | quote}} --patch --stat"
+        output: terminal
+        prompts:
+          - type: "input"
+            key: "Needle"
+            title: "Added or removed text"
 
       - key: "d"
         context: "global"

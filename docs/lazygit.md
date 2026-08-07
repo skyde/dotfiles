@@ -151,10 +151,13 @@ stopped validating looks exactly like a config with no problems.
 
 ## Neovim and tmux
 
-`<leader>gg` opens lazygit inside Neovim through snacks, which generates a theme
-from the current colorscheme and layers it on top of this config — so the
-colours match the editor rather than this file when opened that way. Everything
-else (keys, custom commands, renderers) is this config.
+`<leader>gg` opens lazygit inside Neovim through snacks, which layers a second
+config file on top of this one (`LG_CONFIG_FILE` holds both). It sets two
+things: a theme generated from the current colorscheme — so the chrome follows
+the editor rather than this file when opened that way — and
+`os.editPreset: nvim-remote`, so `e` opens the file in the Neovim you came from
+instead of a nested one. Everything else — keys, custom commands, diff
+renderers, git behaviour — is this config either way.
 
 tmux-resurrect restores lazygit panes (`@resurrect-processes` in `.tmux.conf`).
 

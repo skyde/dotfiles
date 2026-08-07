@@ -104,6 +104,13 @@
 # delta.<option>=<value>` alias instead — git exports -c to the pager through
 # GIT_CONFIG_PARAMETERS, which delta reads like any other git config. See the
 # `sbs` alias at the bottom for the side-by-side example.
+#
+# `tabs` is another key delta ignores here: on 0.18.2 neither `delta.tabs` nor
+# `delta.tab-width` in git config changes anything, only the `--tabs` flag does
+# (verified against a tab-indented diff at 2, 4 and 8). So tabs render 8 wide
+# on the command line, while lazygit's delta renderer passes --tabs=4 to match
+# its own staging view. Putting a value here does nothing — the fix, if the
+# difference ever matters, is `core.pager = delta --tabs=4`.
 # Palette reference: docs/tokyonight.md
 [delta]
     # Syntax highlighting stays Visual Studio Dark+ on purpose, matching bat and
