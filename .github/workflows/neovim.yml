@@ -23,12 +23,20 @@ env:
 
 jobs:
   specs:
-    name: Specs (${{ matrix.os }})
+    name: Specs (${{ matrix.os }}, ${{ matrix.nvim }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        nvim: [stable]
+        include:
+          # The floor dotfiles/health.lua claims, tested rather than asserted:
+          # it reports an error below this version, and the deprecation shims in
+          # util.text and util.vcs_ui exist precisely so the config keeps
+          # working this far back. Bump both together or neither.
+          - os: ubuntu-latest
+            nvim: v0.10.4
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,7 +45,7 @@ jobs:
         uses: rhysd/action-setup-vim@v1
         with:
           neovim: true
-          version: ${{ env.NVIM_VERSION }}
+          version: ${{ matrix.nvim }}
 
       - name: Report the version under test
         run: nvim --version | head -3

@@ -49,9 +49,10 @@ end
 -- Neovim itself
 --------------------------------------------------------------------------
 
--- Below this the diff UI loses `vim.diff` entirely and options.lua's diffopt
--- has nothing to append; 0.10 is where vim.uv and the modern option API landed,
--- both of which the config uses unconditionally.
+-- 0.10 is where vim.uv and the modern option API landed, both of which this
+-- config uses unconditionally. Not a guess: .github/workflows/neovim.yml runs
+-- the whole spec suite against this exact version, so the floor is tested. Bump
+-- the two together or neither.
 local MIN_VERSION = { 0, 10, 0 }
 
 local function check_neovim()

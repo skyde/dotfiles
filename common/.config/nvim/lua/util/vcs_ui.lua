@@ -995,6 +995,11 @@ end
 
 ---All renders funnel through here so the navigation autocmds can tell the
 ---view placing its own buffers apart from an actual jump landing in a pane.
+---
+---Re-raises, so the pcall is only about clearing the `rendering` flag: a render
+---that threw must not leave every later navigation looking like the view's own
+---work. Callers decide what to do with the error; every one of them goes
+---through report_render_failure below.
 local function render_file(file, focus)
   rendering = true
   local ok, err = pcall(do_render_file, file, focus)
@@ -1002,6 +1007,22 @@ local function render_file(file, focus)
   if not ok then
     error(err, 0)
   end
+end
+
+---Render, and report a failure the way the async path already did.
+---
+---A diff that cannot be drawn is worth saying out loud once; it is not worth an
+---unhandled error. The debounce timer and the panel keys used to call
+---render_file bare, so a render that threw surfaced as Neovim's raw
+---"vim.schedule callback" traceback — mid-scrub, with the view left half drawn
+---and nothing said about which file caused it.
+---@return boolean ok
+local function try_render(file, focus)
+  local ok, err = pcall(render_file, file, focus)
+  if not ok then
+    vim.notify(("vcs render: %s%s"):format(file and (file.path .. ": ") or "", tostring(err)), vim.log.levels.ERROR)
+  end
+  return ok
 end
 
 ---Render whatever the panel cursor is on. `focus` moves the cursor into the
@@ -1069,7 +1090,7 @@ local function show(focus, opts)
     return
   end
 
-  render_file(file, focus)
+  try_render(file, focus)
 end
 
 ---Warm the base cache for the listed files in the background, so a diff is
@@ -2293,7 +2314,7 @@ local function rerender_for_toggle()
     -- the other mode, and re-rendering the panel selection would replace
     -- what is being looked at; the flipped setting takes hold next render.
     if state.shown then
-      render_file(state.shown, true)
+      try_render(state.shown, true)
     end
     return
   end
@@ -2302,7 +2323,7 @@ local function rerender_for_toggle()
   if current_file() or #state.files == 0 then
     show(false)
   elseif state.shown then
-    render_file(state.shown, false)
+    try_render(state.shown, false)
   end
 end
 
