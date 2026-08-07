@@ -680,6 +680,54 @@ def check_parity(doc, verbose):
             if m:
                 yazi_map[m.group(1)] = norm(m.group(2))
 
+    # lf's chrome, against yazi's. The file colours below are the obvious
+    # mirror, but the two file managers also mark the same *actions* -- yank,
+    # cut, select, the row under the cursor -- and lf spent a long time doing
+    # it in plain ANSI while yazi's were spelled out.
+    yazi_src = open(yazi_path, encoding="utf-8").read()
+    lfrc = open(os.path.join(REPO, "common/.config/lf/lfrc"), encoding="utf-8").read()
+
+    def lf_fmt(option):
+        m = re.search(r'^set\s+%s\s+"([^"]*)"' % option, lfrc, re.M)
+        if not m:
+            return None
+        found = DECIMAL_TRIPLE.findall(m.group(1))
+        return "#%02x%02x%02x" % tuple(int(x) for x in found[0]) if found else None
+
+    def yazi_key(section, key):
+        """The colour of a yazi key: its bg if it has one, else its fg.
+
+        lf paints a whole row, so what it is comparable to is yazi's fill.
+        Reading the first hex on the line instead would pick up `current`'s
+        foreground and compare a text colour against a background.
+        """
+        sec = re.search(r"^\[%s\]\n(.*?)(?=^\[|\Z)" % section, yazi_src, re.M | re.S)
+        if not sec:
+            return None
+        m = re.search(r"^%s\s*=(.*)$" % key, sec.group(1), re.M)
+        if not m:
+            return None
+        for attr in ("bg", "fg"):
+            hit = re.search(r'%s\s*=\s*"(#[0-9a-fA-F]{6})"' % attr, m.group(1))
+            if hit:
+                return norm(hit.group(1))
+        return None
+
+    for option, section, key, what in [
+        ("copyfmt", "mgr", "marker_copied", "the yank marker"),
+        ("cutfmt", "mgr", "marker_cut", "the cut marker"),
+        ("selectfmt", "mgr", "marker_selected", "the selection marker"),
+        ("cursoractivefmt", "indicator", "current", "the hovered row"),
+        ("cursorpreviewfmt", "indicator", "preview", "the preview pane's row"),
+        ("borderfmt", "mgr", "border_style", "the pane border"),
+    ]:
+        a, b = lf_fmt(option), yazi_key(section, key)
+        if a and b and a != b:
+            problems.append(
+                "%s is %s in lf (%s) but %s in yazi (%s.%s)"
+                % (what, a, option, b, section, key)
+            )
+
     for ext in sorted(set(lf_map) & set(yazi_map)):
         if lf_map[ext] != yazi_map[ext]:
             problems.append(

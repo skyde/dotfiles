@@ -15,6 +15,56 @@ set filesep "\n"
 set sortby time
 set reverse true
 
+# --- Theme -----------------------------------------------------------------
+# Tokyo Night, matching common/.config/yazi/theme.toml. Palette reference:
+# docs/tokyonight.md.
+#
+# `colors` beside this file only covers *file names*; everything below is lf's
+# chrome, and all of it was on lf's built-in defaults — plain 16-colour ANSI,
+# and in three places the opposite of the decisions already made for yazi:
+#
+#   - the cursor was a reverse-video flip, which is what yazi's theme
+#     deliberately replaced with a fill so the icon and git colours survive
+#     underneath it
+#   - the preview cursor was an underline, "a hard rule across an unfocused
+#     pane" in that file's words
+#   - copy was yellow and select was magenta, while yazi marks copied files
+#     green and selected files yellow — so the same two keys meant different
+#     colours in the two file managers
+#
+# Written as raw SGR because that is lf's format: 38;2;R;G;B is a foreground,
+# 48;2;R;G;B a background, and a leading 7 swaps them the way lf's own
+# defaults do.
+
+# Boxes (drawbox is on above), in the same border colour as yazi's panes.
+set borderfmt "\033[38;2;41;46;66m"
+
+# The hovered row, in the three panes. Focused gets bg_visual, the fill that
+# marks the current row in fzf, yazi, lazygit, btop and tmux's copy mode; the
+# other two get the quieter fill, because nothing there has your attention.
+set cursoractivefmt "\033[48;2;40;52;87;38;2;192;202;245m"
+set cursorparentfmt "\033[48;2;41;46;66m"
+set cursorpreviewfmt "\033[48;2;41;46;66m"
+
+# Yank, cut and select markers, matching yazi's marker_* colours exactly.
+set copyfmt "\033[7;38;2;158;206;106m"
+set cutfmt "\033[7;38;2;247;118;142m"
+set selectfmt "\033[7;38;2;224;175;104m"
+
+# Line numbers in dark3 — the palette's own colour for them, and the one
+# delta uses in a diff.
+set numberfmt "\033[38;2;84;92;126m"
+
+# Errors were reverse red on white, the only white in the whole theme.
+set errorfmt "\033[7;38;2;219;75;75m"
+
+# The stat line's permission string, in the blue yazi gives permission type.
+set statfmt "\033[38;2;122;162;247m%p\033[0m| %c| %u| %g| %S| %t| -> %l"
+
+# "you", in the teal starship gives your username and eza gives your own files;
+# the directory in the blue every directory has here; the file name plain.
+set promptfmt "\033[38;2;26;188;156m%u@%h\033[0m:\033[1;38;2;122;162;247m%d\033[0m\033[1m%f\033[0m"
+
 map <esc> quit
 map x cut
 map y copy
