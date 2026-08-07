@@ -55,7 +55,7 @@ spec_section 'a machine with an insecure completion directory'
 typeset -g _insecure="$SPEC_TMP/insecure-completions"
 [[ -d $_insecure ]] || mkdir -p -- "$_insecure"
 print -r -- '#compdef spec-nonexistent-command' >| "$_insecure/_spec_nonexistent"
-chmod g+w,o+w -- "$_insecure"
+chmod g+w,o+w "$_insecure"  # no `--`: BSD chmod has no such option
 
 # The default fpath is kept: replacing it wholesale would break the shell for
 # reasons that have nothing to do with the audit.

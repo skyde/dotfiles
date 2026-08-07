@@ -367,7 +367,8 @@ spec_stub() {
     print -r -- '#!/bin/sh'
     print -r -- "$body"
   } >| "$dir/$name"
-  chmod +x -- "$dir/$name"
+  # No `--`: BSD chmod does not take it, and reports it as a missing file.
+  chmod +x "$dir/$name"
   # Prepended, and any earlier copy of the directory dropped, so repeated calls
   # cannot grow PATH. Assigning to path clears zsh's command hash table, so the
   # new stub is found even where a real binary of the same name was cached.
@@ -414,6 +415,23 @@ spec_bare_path() {
     done
   fi
   print -r -- "$dir"
+}
+
+# spec_bare_hides <tool>
+#   True when a shell started with spec_bare_path genuinely cannot see the tool.
+#
+#   spec_bare_path is not able to hide everything, and the reason is in the config
+#   itself: .zshenv prepends /usr/local/bin and /opt/homebrew/bin to PATH
+#   unconditionally, so a tool installed in either is back on PATH whatever PATH
+#   the shell was started with. That is right for the config and inconvenient
+#   here — a GitHub runner installs starship into /usr/local/bin, so the
+#   "starship is missing" assertions were testing a shell that could still see it.
+#   Ask first, and skip when the situation cannot be arranged.
+spec_bare_hides() {
+  local tool=$1 answer
+  answer=$(PATH=$(spec_bare_path) command zsh --no-globalrcs -i -c \
+    "(( \$+commands[$tool] )) && print -r -- present" 2>/dev/null)
+  [[ -z $answer ]]
 }
 
 spec_finish() {

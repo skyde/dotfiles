@@ -107,7 +107,10 @@ assert_function 'code is defined' code
 # Two sockets: one nothing is listening on, one with a live listener. code()
 # has to skip the dead one and export the live one, because VS Code leaves the
 # sockets of previous sessions lying around and writing to a stale one hangs.
-typeset -g _sockdir="$SPEC_TMP/sockets"
+# Not under $SPEC_TMP: macOS caps a unix socket path at 104 bytes, and a
+# TMPDIR of /var/folders/g3/pffjr_y96bq06blnkf72x_hw0000gn/T/tmp.XXXXXX is most
+# of that before the socket's own name is added. Short and unique instead.
+typeset -g _sockdir="/tmp/zsh-spec-sockets.$$"
 [[ -d $_sockdir ]] || mkdir -p -- "$_sockdir"
 typeset -g _dead="$_sockdir/vscode-ipc-dead.sock" _live="$_sockdir/vscode-ipc-live.sock"
 
@@ -155,6 +158,7 @@ s.bind(sys.argv[1])
   # decides which fallbacks to pass on *every call*, so a `code` on PATH — even
   # a stub — is enough to make it stop adding a terminal merge tool.
   command rm -f -- "$SPEC_TMP/stub-bin/code"
+  command rm -rf -- "$_sockdir"
   rehash
 else
   spec_skip 'code socket selection' 'python3 is not available to hold a socket open'

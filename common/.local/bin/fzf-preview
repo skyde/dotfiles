@@ -76,8 +76,14 @@ esac
 
 # Anything that is not text: say what it is and how big, rather than pouring
 # bytes into the terminal.
-if have file && [[ $(file --mime-encoding --brief -- "$target" 2>/dev/null) == binary ]]; then
-  file --brief -- "$target"
+# `grep -qI` — "treat a binary file as having no matches" — is the portable way
+# to ask this. `file --mime-encoding` would be clearer and is GNU-only: BSD file,
+# which is what macOS has, does not take long options at all and the check then
+# always came out false, so a binary was fed to bat instead.
+if have grep && [[ -s $target ]] && ! grep -qI '' "$target" 2>/dev/null; then
+  if have file; then
+    file -b "$target"
+  fi
   bytes="$(wc -c <"$target" | tr -d ' ')"
   if have numfmt; then
     printf 'size: %s\n' "$(printf '%s\n' "$bytes" | numfmt --to=iec --suffix=B)"
