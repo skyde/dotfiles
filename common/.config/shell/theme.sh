@@ -25,6 +25,7 @@ _tn_cyan='38;2;125;207;255'    # cyan     #7dcfff
 _tn_orange='38;2;255;158;100'  # orange   #ff9e64
 _tn_purple='38;2;157;124;216'  # purple   #9d7cd8
 _tn_teal='38;2;26;188;156'     # teal     #1abc9c
+_tn_bg_search='48;2;61;89;161' # blue0    #3d59a1 (as a background)
 
 # --- fzf -------------------------------------------------------------------
 # The pointer stays #ff5000, the same hot orange as the terminal and Neovim
@@ -195,13 +196,18 @@ LESS_TERMCAP_md=$(printf '\033[1;%sm' "${_tn_blue}")   # bold
 LESS_TERMCAP_me=$(printf '\033[0m')                    # end of every mode
 LESS_TERMCAP_us=$(printf '\033[4;%sm' "${_tn_cyan}")   # underline
 LESS_TERMCAP_ue=$(printf '\033[0m')
-# Standout is the inverted yellow block, because less uses it for search
-# matches — verified by running `less -p` under a pty and reading back what it
-# wrapped the match in. So this is the same gesture as fzf's hl, ripgrep's
-# match and delta's grep, and it has to look the same. The bottom status line
-# is drawn in standout too and comes along with it, which is no louder than
-# the reverse video it would otherwise get by default.
-LESS_TERMCAP_so=$(printf '\033[1;7;%sm' "${_tn_yellow}")
+# Standout is what less paints search matches with — verified by running
+# `less -p` under a pty and reading back what it wrapped the match in — so it
+# takes bg_search, the blue that marks a match *inside text you are reading*
+# in tmux's copy mode, wezterm's copy mode and Neovim. Not the inverted yellow
+# of fzf and ripgrep: that one belongs to the query you typed into a filter.
+# See "Two kinds of match" in docs/tokyonight.md.
+#
+# less has one standout attribute and no notion of a current match, so it
+# cannot do the orange-for-the-current-one half of that convention. The bottom
+# status line is drawn in standout too and comes along with it, which reads
+# fine and is quieter than the reverse video it gets by default.
+LESS_TERMCAP_so=$(printf '\033[%s;%sm' "${_tn_fg}" "${_tn_bg_search}")
 LESS_TERMCAP_se=$(printf '\033[0m')
 export LESS_TERMCAP_md LESS_TERMCAP_me LESS_TERMCAP_us LESS_TERMCAP_ue
 export LESS_TERMCAP_so LESS_TERMCAP_se
@@ -212,4 +218,4 @@ export GROFF_NO_SGR=1
 
 unset _tn_fg _tn_fg_dark _tn_comment _tn_dark5 _tn_gutter
 unset _tn_red _tn_green _tn_yellow _tn_blue _tn_magenta _tn_cyan
-unset _tn_orange _tn_purple _tn_teal
+unset _tn_orange _tn_purple _tn_teal _tn_bg_search

@@ -205,10 +205,10 @@ marks the argument you substitute, so `cyan`.
 
 Standout is the interesting one. `less` uses it for **search matches**, not
 only for the status line — verified by running `less -p` under a pty and
-reading back what it wrapped the match in — so it is the same inverted yellow
-block as fzf, ripgrep and delta. The bottom status line is drawn in standout
-too and comes along with it, which is no louder than the reverse video it gets
-by default.
+reading back what it wrapped the match in — so it takes `bg_search`, the blue
+of an in-buffer match, per "Two kinds of match" above. The bottom status line
+is drawn in standout too and comes along with it, which reads fine and is
+quieter than the reverse video it gets by default.
 
 `GROFF_NO_SGR=1` is set alongside them and is not optional: without it groff
 emits its own SGR sequences and `less` never consults termcap at all, so the
@@ -260,6 +260,26 @@ there are load-bearing: bat must run with `--wrap=never` (a wrapped long
 command would reach fzf as several separate, unrunnable candidates), and fzf
 must get `--ansi` explicitly (that is what makes it hand back the plain command
 instead of one full of escape sequences).
+
+### Two kinds of match
+
+Highlighted matches come in two flavours here, and they deliberately look
+different, because they answer different questions.
+
+**A match inside text you are reading** — `/` in Neovim, tmux copy mode,
+wezterm copy mode, a search in `less` — is `blue0` `#3d59a1` behind the normal
+foreground, and where the tool has a notion of a *current* match, that one is
+`orange` `#ff9e64`. You are moving through a body of text and the colour says
+"here is one of them, and here is the one you are on".
+
+**The query you typed into a filter** — fzf, ripgrep, `delta --grep` — is an
+inverted yellow block. Nothing is "current"; every visible line already
+matched, and the highlight is showing you *which characters* earned it.
+
+Reach for the right one when theming something new. `less` is the case that
+looks ambiguous and is not: it is a pager, you search *within* it, so it takes
+the blue. It has only one standout attribute and no concept of a current
+match, so it gets the first half of that convention and not the second.
 
 ### Why matches are inverted, not just recoloured
 

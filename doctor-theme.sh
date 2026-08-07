@@ -136,8 +136,8 @@ printf '%s[90mbright black (slot 8) should be readable grey, not near-invisible%
 
 echo
 echo "-- house styles --"
-printf 'a search match:   alpha %s[1;7;38;2;224;175;104mmatch%s beta\n' "$esc" "$reset"
-printf '                  (fzf, ripgrep, delta --grep and less all look like that)\n'
+printf 'a filter match:   alpha %s[1;7;38;2;224;175;104mmatch%s beta   (fzf, ripgrep, delta --grep)\n' "$esc" "$reset"
+printf 'an in-buffer one: alpha %s[38;2;192;202;245;48;2;61;89;161mmatch%s beta   (less, tmux copy mode, nvim)\n' "$esc" "$reset"
 printf 'man page bold:    %sHEADING%s\n' "${LESS_TERMCAP_md:-${esc}[1m}" "$reset"
 printf 'man page arg:     %sfilename%s\n' "${LESS_TERMCAP_us:-${esc}[4m}" "$reset"
 printf 'a directory:      %s[1;38;2;122;162;247msrc/%s\n' "$esc" "$reset"
