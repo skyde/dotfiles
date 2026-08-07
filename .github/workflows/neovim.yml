@@ -42,11 +42,24 @@ jobs:
       - name: Report the version under test
         run: nvim --version | head -3
 
-      # Plugin-free and hermetic: no network, no ~/.local/share/nvim, no system
-      # clipboard, and no assumption about what is installed — the two runners
-      # differ (Ubuntu has mercurial, macOS has no ripgrep), and a spec that
-      # quietly changes what it asserts based on that is worse than one that
-      # skips out loud.
+      # Neither runner ships ripgrep, and without it nvim_ripgrep_spec skips the
+      # half that matters most: checking util.ripgrep's filetype aliases against
+      # the type list of a real `rg`, which is what stops them rotting when
+      # ripgrep renames or adds one. The specs skip cleanly without it — that is
+      # why this went unnoticed — so install it and let the check run.
+      - name: Install ripgrep
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            brew install ripgrep
+          else
+            sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
+          fi
+          rg --version | head -1
+
+      # Plugin-free and hermetic otherwise: no network, no ~/.local/share/nvim,
+      # no system clipboard. What a spec asserts must not quietly change with
+      # what happens to be installed; where it genuinely cannot run, it skips
+      # out loud.
       - name: Run the Neovim specs
         run: ./tests/run-nvim-specs.sh
 
