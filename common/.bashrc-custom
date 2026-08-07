@@ -70,6 +70,13 @@ if command -v zoxide >/dev/null 2>&1; then
   eval "$(zoxide init bash)"
 fi
 
+# -------- Tokyo Night colours for the shell's tooling
+# Outside the fzf block below, and deliberately: this file themes ls, eza,
+# grep, man pages and the line editor as well as fzf's own layout, and a box
+# without fzf installed still has every one of those. See docs/tokyonight.md.
+# shellcheck disable=SC1091
+[ -r "$HOME/.config/shell/theme.sh" ] && . "$HOME/.config/shell/theme.sh"
+
 # -------- fzf setup
 if command -v fzf >/dev/null 2>&1; then
   for dir in \
@@ -104,10 +111,6 @@ if command -v fzf >/dev/null 2>&1; then
     export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
   fi
-
-  # Layout + Tokyo Night colours, shared with zsh. See docs/tokyonight.md.
-  # shellcheck disable=SC1091
-  [ -r "$HOME/.config/shell/theme.sh" ] && . "$HOME/.config/shell/theme.sh"
 
   __fzf_history_widget() {
     local selected

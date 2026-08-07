@@ -41,10 +41,17 @@ fi
 
 if (( $+commands[fzf] )); then
   export FZF_DEFAULT_COMMAND='rg --files --follow'
-  # Layout + Tokyo Night colours, shared with bash. See docs/tokyonight.md.
-  # shellcheck disable=SC1091
-  [ -r "$HOME/.config/shell/theme.sh" ] && . "$HOME/.config/shell/theme.sh"
 fi
+
+# Tokyo Night colours for the shell's tooling, shared with bash.
+# See docs/tokyonight.md.
+#
+# Outside the fzf guard above, and deliberately: this file themes ls, eza,
+# grep, man pages and the line editor as well as fzf's own layout, and a box
+# without fzf installed still has every one of those. It starts no processes
+# and reads no files, so it is safe on the path of every non-interactive zsh.
+# shellcheck disable=SC1091
+[ -r "$HOME/.config/shell/theme.sh" ] && . "$HOME/.config/shell/theme.sh"
 
 # ripgrep: hidden files, smart case, ignore common junk
 export RIPGREP_CONFIG_PATH=~/.ripgreprc

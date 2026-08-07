@@ -56,6 +56,25 @@ unset _compdump
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
+# Colour the completion menu with the same table `ls` uses, exported by
+# ~/.config/shell/theme.sh from the data lf reads. A directory offered by
+# completion is then the same blue it is in `ls`, in lf and in yazi, instead of
+# the monochrome list zsh shows by default.
+#
+# `ma` is the highlight on the selected entry under `menu select`. It is worth
+# setting explicitly because zsh's default is plain reverse video, which
+# inverts whatever colour the entry already had -- so with list-colors on, the
+# selected directory would flip to blue-on-blue. bg_visual is the same fill
+# that marks the current row in fzf, yazi, lazygit and tmux's copy mode.
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS} \
+  'ma=48;2;40;52;87;38;2;192;202;245'
+
+# The labels zsh prints above and around a completion list.
+zstyle ':completion:*:*:*:*:descriptions' format '%F{#7aa2f7}%d%f'
+zstyle ':completion:*:*:*:*:corrections' format '%F{#e0af68}%d (errors: %e)%f'
+zstyle ':completion:*:*:*:*:warnings' format '%F{#f7768e}no matches for %d%f'
+zstyle ':completion:*:messages' format '%F{#bb9af7}%d%f'
+
 # # -------- prompt (Starship)
 eval "$(starship init zsh)"
 

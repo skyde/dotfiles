@@ -95,6 +95,62 @@
     cmd = nvim -f -d "$LOCAL" "$MERGED" "$REMOTE"
     trustExitCode = false
 
+# --- git's own colours ---
+# Delta only ever sees diffs. Everything else git prints -- status, branch,
+# the decorations on a log line, the prompts in `add -p` -- was still on git's
+# stock eight-colour defaults, which land wherever the terminal's ANSI palette
+# happens to put them.
+#
+# The roles follow docs/tokyonight.md rather than being picked by eye: magenta
+# is the palette's branch colour, which is what starship and lazygit already
+# use for the branch, and teal is its "untracked / new". HEAD gets the orange
+# of the shared "you are here" accent.
+#
+# Two sections are deliberately absent. `color.diff` is delta's input, and
+# `diff.colorMoved` above works by having delta recognise the *specific*
+# colours git paints moved lines with -- see map-styles below -- so recolouring
+# them here would quietly turn every move back into an add and a remove.
+# `color.grep` is the same story for `delta --grep`, which does its own match
+# styling further down.
+[color "branch"]
+    current = "#bb9af7 bold"
+    local = "#a9b1d6"
+    remote = "#9d7cd8"
+    upstream = "#7dcfff"
+    plain = "#c0caf5"
+
+[color "status"]
+    header = "#565f89"
+    added = "#9ece6a"
+    updated = "#9ece6a"
+    changed = "#e0af68"
+    untracked = "#1abc9c"
+    unmerged = "#f7768e"
+    branch = "#bb9af7 bold"
+    nobranch = "#db4b4b bold"
+    localBranch = "#bb9af7"
+    remoteBranch = "#9d7cd8"
+
+[color "decorate"]
+    HEAD = "#ff9e64 bold"
+    branch = "#bb9af7 bold"
+    remoteBranch = "#9d7cd8"
+    tag = "#e0af68"
+    stash = "#7dcfff"
+    grafted = "#f7768e"
+
+[color "interactive"]
+    prompt = "#7aa2f7"
+    header = "#c0caf5 bold"
+    help = "#565f89"
+    error = "#f7768e bold"
+
+[color "remote"]
+    hint = "#565f89"
+    warning = "#e0af68"
+    success = "#9ece6a"
+    error = "#f7768e bold"
+
 # --- Delta styling ---
 # Everything lives in this one [delta] section on purpose. On delta 0.18 named
 # [delta "..."] features are effectively dead: beyond the long-known dropping

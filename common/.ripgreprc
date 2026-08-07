@@ -6,7 +6,28 @@
 # General config
 --hidden
 --smart-case
---colors=match:fg:243,178,109
+
+# --- Colours (Tokyo Night; palette reference: docs/tokyonight.md) ---
+# A match is an inverted yellow block, the same as it is in fzf, in grep and in
+# `delta --grep`. See docs/tokyonight.md for why matches invert rather than
+# recolour: a match painted only on the foreground disappears into a line that
+# some other tool has already syntax-coloured, and inverting cannot.
+#
+# ripgrep has no `reverse` style -- its styles are only bold/intense/underline
+# -- so the inversion is written out as the two colours swapped by hand.
+#
+# The old single line here was `match:fg:243,178,109`, which is #f3b26d: a
+# near-miss of the palette's #e0af68 that nothing else in the tree used. It is
+# also why tests/check-theme.py reads decimal triplets and not just hex.
+--colors=match:fg:26,27,38
+--colors=match:bg:224,175,104
+--colors=match:style:bold
+
+# The surrounding fields borrow delta's grep styling exactly, so `rg`,
+# `grep -rn` and `git grep` produce three sets of output that line up.
+--colors=path:fg:122,162,247
+--colors=line:fg:84,92,126
+--colors=column:fg:84,92,126
 
 # Exclude compile_commands.json
 --glob=!/compile_commands.json

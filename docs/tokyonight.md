@@ -214,8 +214,35 @@ accent chosen to be instantly findable against the blue-violet palette. Keep it.
 | Neovim   | `common/.config/nvim/lua/plugins/tokyonight.lua`      |
 | lazygit  | `common/.config/lazygit/config.yml` (`gui.theme`)     |
 | delta    | `common/.config/git/config` (`[delta]`)               |
+| git      | `common/.config/git/config` (the `[color "..."]` sections) |
 | starship | `common/.config/starship.toml` (`[palettes.tokyonight]`) |
 | fzf      | `common/.config/shell/theme.sh`                       |
+| ls, eza, grep, man | `common/.config/shell/theme.sh` (`LS_COLORS`, `EZA_COLORS`, `GREP_COLORS`, `LESS_TERMCAP_*`) |
+| zsh      | `common/.config/shell/theme.sh` (autosuggestions), `common/.zshrc` (completion menu) |
+| ripgrep  | `common/.ripgreprc`                                   |
 | yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
 | lf       | `common/.config/lf/colors`                            |
 | btop     | `common/.config/btop/themes/tokyo-night.theme`        |
+
+`tests/check-theme.py` reads this table to decide what to scan, so a tool is
+covered from the moment its row lands here.
+
+## Checking it
+
+```bash
+tests/check-theme.py            # all three checks
+tests/check-theme.py contrast   # just one
+tests/check-theme.py --verbose  # and what passed
+```
+
+- **palette** — every colour literal in every file above is one this document
+  names, including the ones written as SGR escapes (lf) or decimal triplets
+  (ripgrep), and including the values `theme.sh` builds at runtime rather than
+  spelling out.
+- **parity** — the copies agree: the 16 ANSI slots across kitty, wezterm and
+  the VS Code integrated terminal; the tab bar across kitty and wezterm; the
+  per-extension file colours across lf, yazi and the `LS_COLORS` the shell
+  exports.
+- **contrast** — every foreground/background pair clears the floor for the job
+  it does, and every focused fill stands off the page behind it. The tiers, and
+  why they are not simply WCAG AA, are in the script.

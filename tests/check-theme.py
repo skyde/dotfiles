@@ -168,6 +168,53 @@ def check_palette(doc, verbose):
                 )
         if verbose:
             print("  %-58s %3d colours" % (rel, seen))
+
+    problems.extend(_check_shell_exports(known, verbose))
+    return problems
+
+
+# The shell's colours are assembled from palette variables rather than written
+# out, which is what makes them readable -- and what makes a plain text scan
+# useless on them: the file says "38;2;$_tn_yellow", not a colour. So run it
+# and look at what actually comes out the other side. This is the only check
+# that sees the values ls, eza, grep and man are really handed.
+SHELL_EXPORTS = [
+    "LS_COLORS", "EZA_COLORS", "GREP_COLORS",
+    "LESS_TERMCAP_md", "LESS_TERMCAP_mb", "LESS_TERMCAP_us", "LESS_TERMCAP_so",
+    "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE",
+]
+
+
+def _check_shell_exports(known, verbose):
+    import subprocess
+
+    path = os.path.join(REPO, "common/.config/shell/theme.sh")
+    script = '. "$1"; for v in %s; do eval "printf \'%%s\\n\' \\"\\$$v\\""; done' \
+        % " ".join(SHELL_EXPORTS)
+    try:
+        out = subprocess.run(["bash", "-c", script, "_", path],
+                             capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return ["could not source theme.sh: %s" % exc]
+    if out.returncode != 0:
+        return ["theme.sh failed to source: %s" % out.stderr.strip()]
+
+    problems = []
+    seen = 0
+    for name, value in zip(SHELL_EXPORTS, out.stdout.split("\n")):
+        found = set()
+        for r, g, b in DECIMAL_TRIPLE.findall(value):
+            found.add("#%02x%02x%02x" % (int(r), int(g), int(b)))
+        found.update(norm(h) for h in HEX.findall(value))
+        seen += len(found)
+        for colour in sorted(found):
+            if colour not in known:
+                problems.append(
+                    "$%s exports %s, which docs/tokyonight.md does not name%s"
+                    % (name, colour, _nearest(colour, known))
+                )
+    if verbose:
+        print("  %-58s %3d colours" % ("(sourced) $LS_COLORS and friends", seen))
     return problems
 
 
@@ -266,6 +313,43 @@ def vscode_colours():
     return [got.get(k) for k in keys], got
 
 
+def _check_ls_colors(lf_entries):
+    """Compare the LS_COLORS theme.sh exports against lf's own table."""
+    import subprocess
+
+    path = os.path.join(REPO, "common/.config/shell/theme.sh")
+    try:
+        out = subprocess.run(
+            ["bash", "-c", '. "$1"; printf %s "$LS_COLORS"', "_", path],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return ["could not source theme.sh to read LS_COLORS: %s" % exc]
+    if out.returncode != 0:
+        return ["theme.sh failed to source: %s" % out.stderr.strip()]
+
+    shell = {}
+    for entry in out.stdout.split(":"):
+        if "=" in entry:
+            key, val = entry.split("=", 1)
+            shell[key] = val
+
+    problems = []
+    for key in sorted(set(lf_entries) | set(shell)):
+        if key not in shell:
+            problems.append("%s is in lf/colors but not in theme.sh's LS_COLORS"
+                            % key)
+        elif key not in lf_entries:
+            problems.append("%s is in theme.sh's LS_COLORS but not in lf/colors"
+                            % key)
+        elif lf_entries[key] != shell[key]:
+            problems.append(
+                "%s is %s in lf/colors but %s in theme.sh's LS_COLORS"
+                % (key, lf_entries[key], shell[key])
+            )
+    return problems
+
+
 def check_parity(doc, verbose):
     problems = []
 
@@ -318,15 +402,29 @@ def check_parity(doc, verbose):
 
     # lf and yazi are two views of the same directory. A .zip that is red in
     # one and orange in the other is worse than either choice alone.
+    lf_entries = {}
     lf_map = {}
     lf_path = os.path.join(REPO, "common/.config/lf/colors")
     with open(lf_path, encoding="utf-8") as fh:
         for line in fh:
+            code = line.split("#")[0].strip()
+            if code:
+                bits = code.split(None, 1)
+                if len(bits) == 2:
+                    lf_entries[bits[0]] = bits[1].strip()
             m = re.match(r"(\*\.\w+)\s+(?:38|48);2;(\d+);(\d+);(\d+)", line)
             if m:
                 lf_map[m.group(1)] = "#%02x%02x%02x" % tuple(
                     int(m.group(i)) for i in (2, 3, 4)
                 )
+
+    # lf's config *is* an LS_COLORS table, so the shell exports the same data
+    # to ls, eza and the zsh completion menu. It is spelled out a second time
+    # in theme.sh rather than read from this file, to keep a `cat` off the
+    # startup path of every non-interactive shell -- which only stays honest
+    # if something compares the two. Sourcing the file is also the only check
+    # that it is still valid shell.
+    problems.extend(_check_ls_colors(lf_entries))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")
