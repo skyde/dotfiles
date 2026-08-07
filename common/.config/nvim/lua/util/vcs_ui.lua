@@ -676,8 +676,12 @@ end
 
 ---Window options for a pane carrying the inline overlay: hybrid line
 ---numbers, smoothscroll so scrolling up can reveal virtual lines hanging
----above line 1, and folding per the collapse setting.
+---above line 1, and folding per the collapse setting. Applied *after* the
+---buffer is in the window, never before: Neovim keeps window-local options
+---per buffer shown in that window, so anything set ahead of the `:edit` is
+---restored away the moment it lands.
 local function inline_pane(win)
+  no_dim(win)
   wo_local(win, "number", true)
   wo_local(win, "relativenumber", true)
   wo_local(win, "smoothscroll", true)
@@ -834,10 +838,10 @@ local function render_inline(file)
   vim.cmd("vertical rightbelow split")
   local win = vim.api.nvim_get_current_win()
   reset_cursorline(win)
-  no_dim(win)
 
   if not file then
     vim.api.nvim_win_set_buf(win, scratch("vcs://empty", { "(no changes)" }))
+    no_dim(win)
     balance(win)
     return win
   end
@@ -862,6 +866,7 @@ local function render_inline(file)
     for row = 0, #base - 1 do
       vim.api.nvim_buf_set_extmark(buf, ns, row, 0, { line_hl_group = "InlineDiffDelete", priority = 50 })
     end
+    no_dim(win)
     wo_local(win, "number", true)
     wo_local(win, "relativenumber", true)
   end
@@ -926,8 +931,8 @@ local function do_render_file(file, focus)
     vim.cmd("vertical rightbelow split")
     target = vim.api.nvim_get_current_win()
     reset_cursorline(target)
-    no_dim(target)
     vim.api.nvim_win_set_buf(target, scratch("vcs://empty", { "" }))
+    no_dim(target)
     balance(target)
   end
 

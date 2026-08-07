@@ -401,6 +401,20 @@ do
   check("inline: the buffer is editable", vim.bo[buf].modifiable)
   check("inline: the overlay is attached", inline.has(buf))
   eq("inline: cursor sits on the first change", 2, vim.api.nvim_win_get_cursor(wins[2])[1])
+  -- The default rendering must carry the dimming exemption too, and it has to
+  -- outlive the `:edit` that puts the file there: window-local options are
+  -- kept per buffer shown in a window, so setting it before the edit lands
+  -- would silently be undone.
+  check(
+    "inline: the pane rewires NormalNC to Normal",
+    vim.wo[wins[2]].winhighlight:find("NormalNC:Normal", 1, true) ~= nil,
+    vim.wo[wins[2]].winhighlight
+  )
+  check(
+    "inline: and keeps its muted folds alongside",
+    vim.wo[wins[2]].winhighlight:find("Folded:", 1, true) ~= nil,
+    vim.wo[wins[2]].winhighlight
+  )
 
   local virt, added = overlay(buf)
   eq("inline: the old line is drawn as virtual text", { "two" }, virt)
@@ -1402,13 +1416,22 @@ do
 
   -- The dimming exemption: code panes keep their normal background when
   -- unfocused (dim_inactive would otherwise darken them through NormalNC),
-  -- while the panel keeps the theme default.
-  check(
-    "no-dim: diff panes rewire NormalNC to Normal",
-    vim.wo[layout()[2]].winhighlight:find("NormalNC:Normal", 1, true) ~= nil
-      and vim.wo[layout()[3]].winhighlight:find("NormalNC:Normal", 1, true) ~= nil,
-    vim.wo[layout()[2]].winhighlight
-  )
+  -- while the panel keeps the theme default. It has to survive the `:edit`
+  -- that puts the file in the pane — Neovim keeps window-local options per
+  -- buffer shown in a window, so anything set beforehand is restored away —
+  -- and it has to leave the muted fold colours mapped alongside it.
+  for i = 2, 3 do
+    check(
+      ("no-dim: side-by-side pane %d rewires NormalNC to Normal"):format(i - 1),
+      vim.wo[layout()[i]].winhighlight:find("NormalNC:Normal", 1, true) ~= nil,
+      vim.wo[layout()[i]].winhighlight
+    )
+    check(
+      ("no-dim: side-by-side pane %d keeps its muted folds"):format(i - 1),
+      vim.wo[layout()[i]].winhighlight:find("Folded:", 1, true) ~= nil,
+      vim.wo[layout()[i]].winhighlight
+    )
+  end
   eq("no-dim: the panel keeps the default dimming", "", vim.wo[panel].winhighlight)
 
   -- A jump to another listed file: full side-by-side rendering, in place.
@@ -1573,6 +1596,24 @@ do
   end
 
   ui.open({ scope = "working" })
+  if #layout() == 3 then
+    ui.toggle_inline() -- assert the dimming exemption on the default rendering
+  end
+  -- These files have never been displayed, so the pane's options come from the
+  -- render alone. Elsewhere in this spec a buffer has usually been shown in a
+  -- no-dim pane already, and Neovim restores window-local options from the
+  -- last window that held it — which would mask the render forgetting to set
+  -- them. This is the assertion that actually bites.
+  check(
+    "no-dim: a freshly rendered inline pane rewires NormalNC to Normal",
+    vim.wo[layout()[2]].winhighlight:find("NormalNC:Normal", 1, true) ~= nil,
+    vim.wo[layout()[2]].winhighlight
+  )
+  check(
+    "no-dim: and keeps the muted folds mapped alongside it",
+    vim.wo[layout()[2]].winhighlight:find("Folded:", 1, true) ~= nil,
+    vim.wo[layout()[2]].winhighlight
+  )
   -- Re-aim at file 30 straight away: open() returns with at most the first
   -- fetch away, so an unsteered sweep would not reach f030 for 30 more.
   local panel = layout()[1]

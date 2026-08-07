@@ -160,7 +160,7 @@ view opened. It also stands aside while a render holds a subprocess, since the
 file being looked at is worth more than the one being guessed at. The churn
 column fills in as the sweep goes, which is the visible sign of how far it has
 got; a file whose base is still cold renders asynchronously instead of
-freezing the list. `R` distrusts all of it and re-asks the backend from
+freezing the list. `r` distrusts all of it and re-asks the backend from
 scratch.
 
 Neovim's `diffopt` is set in `lua/config/options.lua` to the same algorithm and
