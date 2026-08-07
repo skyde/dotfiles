@@ -464,14 +464,28 @@ if vim.fn.executable("hg") == 1 then
   write(root .. "/a.txt", "one\n")
   run({ "hg", "add", "a.txt" }, root)
   run({ "hg", "--config", "ui.username=Test <t@example.com>", "commit", "-m", "initial" }, root)
+  -- One file per status hg can report against a revision, so the mapping onto
+  -- this interface's letters is covered rather than assumed. `R` and `!` are
+  -- the two that matter: hg's R is *removed*, which reads as "renamed" in the
+  -- panel if it is passed through, and `!` is a tracked file deleted without
+  -- telling hg.
+  write(root .. "/removed.txt", "gone\n")
+  write(root .. "/missing.txt", "vanished\n")
+  run({ "hg", "add", "removed.txt", "missing.txt" }, root)
+  run({ "hg", "--config", "ui.username=Test <t@example.com>", "commit", "-m", "second" }, root)
   write(root .. "/a.txt", "one\ntwo\n")
   write(root .. "/b.txt", "new\n")
+  run({ "hg", "rm", "removed.txt" }, root)
+  assert(os.remove(root .. "/missing.txt"))
 
   local b, detected = vcs.detect(root)
   eq("hg: detected", "hg", b and b.name)
   local map = status_map(b.changed(detected, b.rev(detected, "working")))
   eq("hg: modified", "M", map["a.txt"])
+  -- `?` is not a letter, and a letters-only pattern dropped these silently.
   eq("hg: untracked", "?", map["b.txt"])
+  eq("hg: removed reads as a deletion, not a rename", "D", map["removed.txt"])
+  eq("hg: a file deleted behind hg's back reads as a deletion", "D", map["missing.txt"])
   eq("hg: show returns base content", { "one" }, b.show(detected, ".", "a.txt"))
   truthy("hg: raw_diff produces a patch", #b.raw_diff(detected, ".", nil) > 0)
   truthy("hg: log returns revisions", #b.log(detected, "a.txt") >= 1)

@@ -20,8 +20,6 @@ rest need the tool named, and each skips cleanly when it is missing.
 - `./tests/run-nvim-specs.sh` — the specs. Self-contained: no plugins, no
   network, no system clipboard, everything built in a tempdir. Run these on any
   change to `common/.config/nvim/lua`.
-- `python3 tests/check-footpedal-keys.py` — the Shift+Fn transport, across bare
-  kitty, the VS Code terminal and tmux.
 - `stylua --check --config-path common/.config/nvim/stylua.toml common/.config/nvim tests`
   — formatting. Drop `--check` to apply it.
 - `./tests/check-nvim-types.sh` — lua-language-server over the config: undefined
@@ -31,6 +29,9 @@ rest need the tool named, and each skips cleanly when it is missing.
   real config. Needs the plugins installed.
 - `./tests/check-nvim-syntax-roles.sh` — C++ and Python colour the same
   construct the same way. Needs the plugins and the tree-sitter parsers.
+- `python3 tests/check-footpedal-keys.py` — drives the Shift+Fn macro keys
+  through a real terminal into a real Neovim. Needs the plugins: the keys are
+  registered on VeryLazy.
 
 ## Optional checks
 

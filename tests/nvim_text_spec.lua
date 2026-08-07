@@ -102,6 +102,13 @@ local DEPRECATED = {
 -- has to work on a Neovim too old to have vim.uv at all.
 local LOOP_FALLBACK = "%(vim%.uv or vim%.loop%)"
 
+-- BufModifiedSet, which 0.13 removed in favour of OptionSet with pattern
+-- "modified". nvim_create_autocmd raises on an unknown event, so naming it is
+-- only safe behind an exists() probe — which is what util.vcs_ui does, and what
+-- this allows. Checked per file rather than per line: the probe and the uses it
+-- guards are necessarily several lines apart.
+local EVENT_PROBE = 'vim%.fn%.exists%("##'
+
 local function lua_files()
   local out = {}
   local function walk(dir)
@@ -126,6 +133,7 @@ do
   local hits = {}
   for _, path in ipairs(files) do
     local rel = path:sub(#nvim_dir + 2)
+    local probes_events = io.open(path):read("*a"):find(EVENT_PROBE) ~= nil
     local lnum = 0
     for line in io.lines(path) do
       lnum = lnum + 1
@@ -139,6 +147,15 @@ do
       end
       if code:find("vim%.loop%.") and not code:find(LOOP_FALLBACK) then
         table.insert(hits, ("%s:%d uses vim.loop; use vim.uv (0.10)"):format(rel, lnum))
+      end
+      if code:find("BufModifiedSet") and not probes_events then
+        table.insert(
+          hits,
+          ('%s:%d names BufModifiedSet, removed in 0.13, without an exists() probe; use OptionSet with pattern "modified"'):format(
+            rel,
+            lnum
+          )
+        )
       end
     end
   end

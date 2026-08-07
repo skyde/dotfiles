@@ -119,6 +119,13 @@ LAZYGIT_VERSION=v0.54.2 ./install-lazygit.sh  # pin a specific tag
 Plugin commits are pinned in `common/.config/nvim/lazy-lock.json`. Refresh them
 with `:Lazy sync` inside Neovim and commit the updated lockfile.
 
+One exception, and it is upstream's: a spec that names a branch without a commit
+is not pinned by the lockfile — lazy.nvim follows the branch and rewrites the
+entry. LazyVim does this for `nvim-treesitter` on Neovim 0.12+, so even `:Lazy
+restore` moves it to the branch tip and leaves the lockfile modified. Since the
+file is stowed, that shows up as a dirty file in this repository; committing it
+(or `git checkout` on it) are both fine.
+
 ## Mac
 
 ### Custom Alt Tab

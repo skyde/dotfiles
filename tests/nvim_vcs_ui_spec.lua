@@ -1739,6 +1739,57 @@ do
 end
 
 --------------------------------------------------------------------------
+-- an edited preview earns its place in the buffer list
+--------------------------------------------------------------------------
+
+do
+  -- Previews are unlisted so scrubbing the changed list does not accumulate
+  -- open files. An edit has to promote its buffer into the list, or the file
+  -- someone actually worked on is indistinguishable from the dozen they
+  -- scrolled past.
+  --
+  -- The signal is version-dependent: Neovim 0.13 removed BufModifiedSet in
+  -- favour of OptionSet with pattern "modified", and nvim_create_autocmd raises
+  -- on an unknown event — so naming the wrong one does not degrade, it breaks
+  -- opening the view outright. That is what the first assertion here covers;
+  -- the rest check the promotion is actually wired to whatever this build has.
+  vim.cmd("cd " .. vim.fn.fnameescape(root))
+  vcs.clear_cache()
+  local opened = pcall(open_settled, { scope = "working" })
+  check("preview: opening the view does not raise on this Neovim", opened)
+
+  -- Whichever file the selection landed on: this block is about the promotion,
+  -- not about which row comes first in a repository other blocks have been
+  -- adding files to.
+  local preview
+  for _, w in ipairs(layout()) do
+    local buf = vim.api.nvim_win_get_buf(w)
+    if vim.bo[buf].buftype == "" and vim.api.nvim_buf_get_name(buf) ~= "" then
+      preview = buf
+    end
+  end
+  check("preview: a real file buffer is on screen", preview ~= nil, vim.inspect(panel_lines()))
+  eq("preview: starts out of the buffer list", 0, vim.fn.buflisted(preview))
+
+  -- Setting 'modified' is what both events report, and unlike a synthetic
+  -- keystroke it does not depend on typeahead rules that differ per release.
+  vim.bo[preview].modified = true
+  vim.wait(200, function()
+    return vim.fn.buflisted(preview) == 1
+  end)
+  eq("preview: joins the buffer list once modified", 1, vim.fn.buflisted(preview))
+
+  -- Having earned its place it must survive the view closing, edits and all.
+  ui.close()
+  check("preview: survives the view closing", vim.api.nvim_buf_is_valid(preview))
+  eq("preview: still listed afterwards", 1, vim.fn.buflisted(preview))
+
+  vim.bo[preview].modified = false
+  pcall(vim.api.nvim_buf_delete, preview, { force = true })
+  vcs.clear_cache()
+end
+
+--------------------------------------------------------------------------
 -- degenerate cases
 --------------------------------------------------------------------------
 

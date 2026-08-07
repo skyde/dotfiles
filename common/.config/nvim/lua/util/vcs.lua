@@ -585,14 +585,30 @@ function hg.rev(root, scope)
   return one(sh({ "hg", "log", "-r", ref, "--template", "{node}" }, root)) or ref
 end
 
+---Mercurial's status letters are not this interface's. `R` means removed, not
+---renamed, and `!` is a tracked file deleted without telling hg — both are
+---deletions here. Anything absent from this table (`C` clean, `I` ignored,
+---which only appear with flags we do not pass) is not a change.
+local HG_STATUS = {
+  M = "M",
+  A = "A",
+  R = "D",
+  ["!"] = "D",
+  ["?"] = "?",
+}
+
 function hg.changed(root, rev)
   local res = sh({ "hg", "status", "--rev", rev }, root)
   local out = {}
   if res and res.code == 0 then
     for _, line in ipairs(lines(res.stdout)) do
-      local status, path = line:match("^(%a)%s+(.+)$")
-      if status then
-        table.insert(out, { path = path, status = status == "?" and "?" or status:upper() })
+      -- %S, not %a: `?` and `!` are status codes and neither is a letter, so a
+      -- letters-only pattern silently dropped every untracked and every
+      -- missing file instead of listing it.
+      local status, path = line:match("^(%S)%s+(.+)$")
+      local mapped = status and HG_STATUS[status]
+      if mapped then
+        table.insert(out, { path = path, status = mapped })
       end
     end
   end

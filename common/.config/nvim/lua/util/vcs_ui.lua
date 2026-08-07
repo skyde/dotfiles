@@ -711,6 +711,35 @@ local function inline_pane(win)
   end
 end
 
+-- Neovim 0.13 removed BufModifiedSet, pointing at OptionSet with pattern
+-- "modified" instead (`:h deprecated`) — and nvim_create_autocmd raises on an
+-- unknown event, so naming it unconditionally does not degrade, it breaks the
+-- view outright on 0.13.
+--
+-- Both are watched wherever both exist. They are not quite the same event
+-- across versions (BufModifiedSet is documented as a special case of OptionSet,
+-- and which internal 'modified' changes reach OptionSet differs by release), so
+-- picking one and being wrong means an edited preview quietly stays out of the
+-- buffer list. Watching both costs an autocmd and cannot be wrong; promotion is
+-- idempotent.
+local MODIFIED_EVENTS = vim.fn.exists("##BufModifiedSet") == 1 and { "BufModifiedSet", "OptionSet" } or { "OptionSet" }
+
+---A preview that has actually been edited earns its place in the buffer list.
+---@param buf integer
+---@return true|nil  true retires the per-buffer autocmd that called this
+local function promote_preview(buf)
+  if
+    state
+    and state.previews[buf]
+    and vim.api.nvim_buf_is_valid(buf)
+    and vim.bo[buf].buflisted == false
+    and vim.bo[buf].modified
+  then
+    vim.bo[buf].buflisted = true
+    return true
+  end
+end
+
 ---Track `buf` as a view-opened preview: unlisted — `:edit` lists it as a
 ---side effect, undone on every call, not just on first tracking, or
 ---re-focusing an already-tracked preview would quietly pin it into the
@@ -720,15 +749,18 @@ local function track_preview(buf)
   vim.bo[buf].buflisted = false
   if not state.previews[buf] then
     state.previews[buf] = true
-    vim.api.nvim_create_autocmd("BufModifiedSet", {
-      buffer = buf,
-      callback = function()
-        if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].modified then
-          vim.bo[buf].buflisted = true
-          return true
-        end
-      end,
-    })
+    if vim.tbl_contains(MODIFIED_EVENTS, "BufModifiedSet") then
+      -- Buffer-local, and retires itself once the buffer has been promoted.
+      -- The OptionSet form cannot be either — 'modified' is its pattern, so
+      -- there is one autocmd for every buffer — and it is registered with the
+      -- view's other autocmds in ensure_tab instead.
+      vim.api.nvim_create_autocmd("BufModifiedSet", {
+        buffer = buf,
+        callback = function()
+          return promote_preview(buf)
+        end,
+      })
+    end
   end
 end
 
@@ -1826,6 +1858,18 @@ local function ensure_tab()
       if add_win ~= state.panel_win and vim.api.nvim_win_get_config(add_win).relative == "" then
         nav_listed[ev.buf] = true
       end
+    end,
+  })
+  -- The other half of track_preview's promotion, and the only half on 0.13.
+  -- 'modified' is buffer-local, so OptionSet fires with its buffer current
+  -- rather than naming it in the event — ev.buf is 0 here. Never returns true:
+  -- unlike the per-buffer form this one serves every preview and must outlive
+  -- any single promotion.
+  vim.api.nvim_create_autocmd("OptionSet", {
+    group = group,
+    pattern = "modified",
+    callback = function()
+      promote_preview(vim.api.nvim_get_current_buf())
     end,
   })
   vim.api.nvim_create_autocmd({ "TabEnter", "FocusGained" }, {
