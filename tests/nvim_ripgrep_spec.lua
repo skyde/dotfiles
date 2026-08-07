@@ -169,8 +169,12 @@ if vim.fn.executable("rg") == 1 then
   table.sort(bad)
   check("real rg: every alias names a type it knows", #bad == 0, table.concat(bad, ", "))
 
-  -- And every alias must be needed: a filetype ripgrep already knows under its
-  -- own name does not belong in the table.
+  -- Aliases ripgrep has since made unnecessary by learning the filetype's own
+  -- name. Reported, not asserted: which of these are redundant depends on the
+  -- ripgrep in front of you — Homebrew's has a `proto` type, the one in Debian
+  -- does not — and an alias that is redundant here is still load-bearing on an
+  -- older release. Pruning one is a decision about which ripgrep versions to
+  -- support, not something CI should make by going red.
   local redundant = {}
   for ft in pairs(rg.FT_TO_RG) do
     if types[ft] then
@@ -178,7 +182,14 @@ if vim.fn.executable("rg") == 1 then
     end
   end
   table.sort(redundant)
-  check("real rg: no alias for a filetype it already knows", #redundant == 0, table.concat(redundant, ", "))
+  if #redundant > 0 then
+    print(
+      ("NOTE this ripgrep (%s) knows these filetypes under their own names, so the aliases are redundant here: %s"):format(
+        vim.trim(vim.system({ "rg", "--version" }, { text = true }):wait().stdout:match("^[^\n]*") or "?"),
+        table.concat(redundant, ", ")
+      )
+    )
+  end
 
   -- Spot-check the case that motivated all of this.
   eq("real rg: typescriptreact resolves", "--type=ts", rg.type_arg("typescriptreact"))
