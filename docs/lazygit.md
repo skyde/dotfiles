@@ -22,6 +22,7 @@ Two things about lazygit shape everything below:
 | Piece | Where it comes from |
 | --- | --- |
 | Chrome (borders, selection, branch colours) | `gui.theme` here — Tokyo Night, [`docs/tokyonight.md`](tokyonight.md) |
+| Whether those hexes arrive exactly | `COLORTERM=truecolor`, which `.tmux.conf` sets — lazygit reads that, not terminfo |
 | Diff colours and layout | delta, configured in `common/.config/git/config` |
 | Syntax highlighting inside diffs | `BAT_THEME` (Visual Studio Dark+), via delta |
 

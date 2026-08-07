@@ -77,6 +77,25 @@ Bright ANSI variants (9–15) are the accents lightened:
 | `change`  | `#6183bb` |
 | `delete`  | `#914c54` |
 
+### Gotcha: lazygit ignores unknown keys too
+
+Same failure as yazi's below, without yazi's probe: lazygit accepts any key it
+does not recognise and does nothing with it, and there is no debug output that
+names the offender. Keys move between releases (0.64 renamed `git.pagers` to
+`git.diffRenderers`), so a config that worked last year can be half-inert now,
+looking exactly like one that works. `./tests/check-lazygit-config.sh` is the
+substitute for a probe: it validates the file against the schema published for
+the installed lazygit version. Details in [`lazygit.md`](lazygit.md).
+
+### Gotcha: lazygit reads `COLORTERM`, not terminfo
+
+tmux advertising `RGB` in `terminal-overrides` is not enough for it. Measured
+in tmux without `COLORTERM` set, lazygit paints its entire UI out of the
+256-colour cube — `#9ece6a` arrives as colour 149 — and every hex in
+`common/.config/lazygit/config.yml` is an approximation. `.tmux.conf` therefore
+sets `COLORTERM=truecolor` for every pane, since a pane otherwise only inherits
+it if the client that started the tmux server happened to export it.
+
 ### Gotcha: yazi ignores unknown keys
 
 Yazi validates colour *values* but silently ignores unknown section and key

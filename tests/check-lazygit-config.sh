@@ -45,6 +45,16 @@ if [[ -z "$version" ]]; then
 fi
 echo "🔍 checking ${config} against lazygit ${version}"
 
+# 0.64 renamed the custom-pager settings (git.pagers -> git.diffRenderers) and
+# this config uses the new shape. On an older binary every 0.64 key reads as
+# unknown, so say the one useful thing instead of listing them all.
+readonly minimum="0.64.0"
+if [[ "$(printf '%s\n%s\n' "$minimum" "$version" | sort -V | head -n 1)" != "$minimum" ]]; then
+  echo "❌ this config targets lazygit ${minimum}+, but ${lazygit_bin} is ${version}." >&2
+  echo "   Run ./install-lazygit.sh to update." >&2
+  exit 1
+fi
+
 defaults="$(mktemp)"
 trap 'rm -f "$defaults"' EXIT
 # --config prints the defaults for the *installed* binary, so this is the
