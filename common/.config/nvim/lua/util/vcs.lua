@@ -384,8 +384,13 @@ function jj.rev(root, scope)
     ref = scope == "head" and "@--" or "@-"
   end
   -- Resolved to the commit id for the same reason git resolves "HEAD": cached
-  -- base content keyed by "@-" would survive the parent commit moving.
-  return one(sh(jj_read("log", "--no-graph", "-r", ref, "-T", "commit_id"), root)) or ref
+  -- base content keyed by "@-" would survive the parent commit moving. And
+  -- with the same fallback: `@--` does not exist for the first change, and a
+  -- literal "@--" is not something `jj diff` accepts, so that change would
+  -- read as no changes at all. jj's name for nothing is the root commit.
+  return one(sh(jj_read("log", "--no-graph", "-r", ref, "-T", "commit_id"), root))
+    or one(sh(jj_read("log", "--no-graph", "-r", "root()", "-T", "commit_id"), root))
+    or ref
 end
 
 function jj.changed(root, rev)
@@ -618,8 +623,15 @@ end
 
 function hg.rev(root, scope)
   local ref = scope == "head" and ".^" or "."
-  -- Resolved to the node for the same reason git resolves "HEAD".
-  return one(sh({ "hg", "log", "-r", ref, "--template", "{node}" }, root)) or ref
+  -- Resolved to the node for the same reason git resolves "HEAD" — and with
+  -- the same fallback when the ref does not exist: `.^` of the very first
+  -- commit is nothing, and the literal string is not something `hg status`
+  -- accepts, so the commit would read as no changes at all. Mercurial's name
+  -- for nothing is the null revision, whose node is stable (all zeros) and so
+  -- safe to key the base cache by.
+  return one(sh({ "hg", "log", "-r", ref, "--template", "{node}" }, root))
+    or one(sh({ "hg", "log", "-r", "null", "--template", "{node}" }, root))
+    or ref
 end
 
 -- `hg status` letters, translated into the shared VcsFile vocabulary. Two of

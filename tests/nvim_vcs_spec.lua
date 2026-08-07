@@ -545,6 +545,19 @@ if vim.fn.executable("hg") == 1 then
   eq("hg: removed maps to deleted", "D", map["gone.txt"])
   eq("hg: missing maps to deleted", "D", map["vanished.txt"])
   eq("hg: show returns base content", { "one" }, b.show(detected, ".", "a.txt"))
+
+  -- "Last commit" on a repository whose only commit is the first one: `.^`
+  -- does not resolve, and the literal string is not something `hg status`
+  -- accepts, so the whole commit read as no changes.
+  local first = temp .. "/hg-first"
+  vim.fn.mkdir(first, "p")
+  run({ "hg", "init" }, first)
+  write(first .. "/only.txt", "content\n")
+  run({ "hg", "add", "only.txt" }, first)
+  run({ "hg", "--config", "ui.username=Test <t@example.com>", "commit", "-m", "the only commit" }, first)
+  local head_rev = b.rev(first, "head")
+  eq("hg first commit: rev(head) is not the literal .^", nil, head_rev and head_rev:match("%^"))
+  eq("hg first commit: its files show as added", "A", status_map(b.changed(first, head_rev))["only.txt"])
   truthy("hg: raw_diff produces a patch", #b.raw_diff(detected, ".", nil) > 0)
   truthy("hg: log returns revisions", #b.log(detected, "a.txt") >= 1)
 else
