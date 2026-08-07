@@ -227,4 +227,5 @@ end, { desc = "Copy path of active file" })
 -- Source control / diff keys, and the remaining VS Code parity bindings.
 -- Split out so this file stays about the terminal and movement quirks.
 require("config.vcs")
+require("config.chromium")
 require("config.parity")
