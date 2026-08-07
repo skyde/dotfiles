@@ -2227,17 +2227,36 @@ function M.file_diff(scope)
 end
 
 ---Swap between the side-by-side and the delta-rendered inline patch.
+---Redraw after a rendering toggle, leaving focus (and with it the reading
+---position, which render_file preserves for the file already on show) where
+---it is: a toggle pressed from inside the diff must not dump the cursor back
+---into the file list.
+local function rerender_for_toggle()
+  local in_diff = vim.api.nvim_get_current_tabpage() == state.tab and vim.api.nvim_get_current_win() ~= state.panel_win
+  if in_diff then
+    -- The pane can hold something the view is not rendering — an adopted
+    -- unchanged file, the empty placeholder. There is nothing to redraw in
+    -- the other mode, and re-rendering the panel selection would replace
+    -- what is being looked at; the flipped setting takes hold next render.
+    if state.shown then
+      render_file(state.shown, true)
+    end
+    return
+  end
+  -- On a directory or header row show() would keep the previous rendering;
+  -- redraw that file explicitly so the toggle is never silently deferred.
+  if current_file() or #state.files == 0 then
+    show(false)
+  elseif state.shown then
+    render_file(state.shown, false)
+  end
+end
+
 function M.toggle_inline()
   if valid() then
     state.inline = not state.inline
     remembered_inline = state.inline
-    -- On a directory or header row show() would keep the previous rendering;
-    -- redraw that file explicitly so the toggle is never silently deferred.
-    if current_file() or #state.files == 0 then
-      show(false)
-    elseif state.shown then
-      render_file(state.shown, false)
-    end
+    rerender_for_toggle()
     return
   end
   -- Outside the diff tab this is still the natural "show me the other layout"
@@ -2259,11 +2278,7 @@ function M.toggle_collapse()
     remembered_collapse = state.collapse
     on = state.collapse
     if vim.api.nvim_get_current_tabpage() == state.tab then
-      if current_file() or #state.files == 0 then
-        show(false)
-      elseif state.shown then
-        render_file(state.shown, false)
-      end
+      rerender_for_toggle()
       return
     end
   else

@@ -550,6 +550,39 @@ do
 end
 
 --------------------------------------------------------------------------
+-- toggling the rendering keeps focus where it is
+--------------------------------------------------------------------------
+
+do
+  -- <leader>ci pressed from inside the diff must not dump the cursor back
+  -- into the file list, and the reading position survives the switch.
+  local panel = layout()[1]
+  vim.api.nvim_set_current_win(panel)
+  vim.api.nvim_win_set_cursor(panel, { 4, 0 })
+  feed("\r")
+  eq("toggle focus: starting in the working copy", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  vim.api.nvim_win_set_cursor(0, { 3, 0 })
+  ui.toggle_inline()
+  check("toggle focus: inline keeps focus out of the panel", vim.api.nvim_get_current_win() ~= layout()[1])
+  eq("toggle focus: still on the file", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  eq("toggle focus: the reading position survives", 3, vim.api.nvim_win_get_cursor(0)[1])
+  ui.toggle_inline()
+  check("toggle focus: and back again", vim.api.nvim_get_current_win() ~= layout()[1])
+  eq("toggle focus: position survives the round trip", 3, vim.api.nvim_win_get_cursor(0)[1])
+  -- The collapse toggle takes the same path.
+  ui.toggle_collapse()
+  check("toggle focus: collapse keeps focus out of the panel too", vim.api.nvim_get_current_win() ~= layout()[1])
+  eq("toggle focus: collapse keeps the position", 3, vim.api.nvim_win_get_cursor(0)[1])
+  ui.toggle_collapse()
+  -- From the panel the toggle behaves as before: focus stays in the list
+  -- for more scrubbing.
+  vim.api.nvim_set_current_win(layout()[1])
+  scrub("i")
+  eq("toggle focus: from the panel, focus stays in the panel", layout()[1], vim.api.nvim_get_current_win())
+  scrub("i") -- restore side-by-side for the blocks below
+end
+
+--------------------------------------------------------------------------
 -- refresh keeps the reviewer's place
 --------------------------------------------------------------------------
 
