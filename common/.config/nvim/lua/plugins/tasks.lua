@@ -63,6 +63,17 @@ return {
         desc = "Debug: Select and Start",
       },
       {
+        -- The counterpart to <leader>mr, and the same action Shift+F7 runs
+        -- from the footpedal: terminate the debug session, or failing that the
+        -- build. docs/nvim-vscode-parity.md has listed this key since the
+        -- parity work; only the binding was missing.
+        "<leader>ms",
+        function()
+          require("config.vscode_debug").stop()
+        end,
+        desc = "Debug: Stop",
+      },
+      {
         "<leader>mp",
         -- Break at cursor: prefer run_to_cursor, which sets a temporary bp.
         -- If no session, start default config and run_to_cursor on init.

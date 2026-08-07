@@ -36,6 +36,9 @@ printf 'one\nTWO\nthree\n' > tracked.txt
 printf 'new\n' > untracked.txt
 
 export NVIM_KEYMAP_REPORT="$sandbox/report.txt"
+# The run happens inside a throwaway repository, so the checkout's own path has
+# to be handed over for the parity-doc check to find docs/.
+export NVIM_KEYMAP_REPO="$here"
 
 # VeryLazy is normally fired by UIEnter, which never happens headless.
 nvim --headless \

@@ -174,6 +174,10 @@ local keys = {
   " dw",
   " dx",
   " db",
+  -- <leader>ms is the only <leader>m key safe to invoke here: the others start
+  -- a build or a debug session, which would hang waiting on a picker. Stopping
+  -- with nothing running just says so.
+  " ms",
   -- hover cluster
   "<BS><BS>",
   "<BS> ",
@@ -188,6 +192,71 @@ local keys = {
   "<F21>", -- Shift+F9, jump forward
 }
 
+--------------------------------------------------------------------------
+-- docs/nvim-vscode-parity.md promises these keys exist
+--------------------------------------------------------------------------
+
+-- That document is the config's contract — it is what the README points at and
+-- what the VS Code side was built to match — so a key listed there and bound
+-- nowhere is a broken promise, not a stale comment. Checked here because it
+-- needs the config as actually assembled: LazyVim's defaults, the lazy `keys`
+-- triggers and config/*.lua all have a say in what ends up mapped.
+--
+-- Only table rows count. The prose names key *families* (`<leader>g`,
+-- `<leader>t`) and, in "Deliberate differences", keys it explains are
+-- deliberately absent — neither is a claim that a mapping exists.
+local function check_documented_keys()
+  local doc = vim.fn.fnamemodify(vim.env.NVIM_KEYMAP_REPO or ".", ":p") .. "docs/nvim-vscode-parity.md"
+  local fd = io.open(doc)
+  if not fd then
+    table.insert(errors, "parity doc not found at " .. doc)
+    return
+  end
+
+  -- Keys the document spells differently from Neovim, or that live somewhere
+  -- nvim_get_keymap cannot see them.
+  local ALIASES = { ["<leader>Backspace"] = "<leader><BS>" }
+  -- LazyVim registers these on LspAttach with a `has` capability guard, so they
+  -- exist only in a buffer with a language server attached — which this harness
+  -- deliberately does not have.
+  local LSP_BUFFER_LOCAL = { ["<leader>ca"] = true, ["<leader>cr"] = true }
+
+  local documented = {}
+  for line in fd:lines() do
+    if line:match("^%s*|") then
+      for key in line:gmatch("`(<leader>[^`]+)`") do
+        documented[ALIASES[key] or key] = true
+      end
+    end
+  end
+  fd:close()
+
+  local mapped = {}
+  for _, mode in ipairs({ "n", "x", "v", "o", "i" }) do
+    for _, m in ipairs(vim.api.nvim_get_keymap(mode)) do
+      mapped[m.lhs] = true
+    end
+  end
+
+  local missing, total = {}, 0
+  for key in pairs(documented) do
+    total = total + 1
+    if not LSP_BUFFER_LOCAL[key] then
+      -- Leader is <space>, which nvim_get_keymap reports literally — including
+      -- in <leader><leader>, hence a global substitution.
+      local lhs = key:gsub("<leader>", " ")
+      if not mapped[lhs] then
+        table.insert(missing, key)
+      end
+    end
+  end
+  table.sort(missing)
+  table.insert(results, ("parity doc: %d documented keys"):format(total))
+  for _, key in ipairs(missing) do
+    table.insert(errors, ("%s is in docs/nvim-vscode-parity.md but mapped nowhere"):format(key))
+  end
+end
+
 local ok, err = xpcall(function()
   for _, k in ipairs(keys) do
     invoke(k)
@@ -197,6 +266,7 @@ local ok, err = xpcall(function()
   end
   invoke("ig", "o")
   invoke("ig", "x")
+  check_documented_keys()
 end, debug.traceback)
 
 vim.system, vim.fn.jobstart = real_system, real_jobstart
