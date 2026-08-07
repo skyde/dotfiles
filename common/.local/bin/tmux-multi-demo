@@ -1,0 +1,233 @@
+#!/usr/bin/env bash
+# tmux-multi-demo — a self-contained playground for tmux-multi.
+#
+# Fakes a fleet of machines on this one: an `ssh` shim on PATH answers for
+# two invented hosts (devbox, buildbox) by routing commands to private tmux
+# servers, plus an `offline` host that always times out. Everything lives
+# under one directory and one set of demo-* tmux sockets; nothing reads or
+# writes the real ~/.tmux.conf, ~/.ssh config, or the default tmux server,
+# and the shim refuses hosts it does not know, so it can never stand in for
+# a real connection.
+#
+# Subcommands:
+#   start    (re)build the sandbox and boot the fake machines
+#   attach   attach to the demo (or: tmux -L demo-local attach)
+#   status   what is running, per machine
+#   stop     kill every demo tmux server
+#   clean    stop + delete the sandbox directory
+#
+# Keys inside the demo (the demo sources the SAME tmux-multi config
+# fragment as the real tmux.conf — ~/.config/tmux/tmux-multi.conf — so
+# behavior cannot drift; everything else about the config is demo-local):
+#   prefix s / S   cross-machine session picker      prefix N  new session
+#   prefix prefix  send one prefix to the inner tmux  prefix d  detach
+#
+# The status bar shows a red DEMO so the sandbox is never mistaken for a
+# real session.
+
+set -euo pipefail
+
+D=${TMUX_MULTI_DEMO_DIR:-$HOME/.cache/tmux-multi-demo}
+TMUX_BIN=$(command -v tmux) || { echo 'tmux-multi-demo: tmux is required' >&2; exit 1; }
+
+# The shared tmux-multi config fragment sits next to this script's tree:
+# common/.config/tmux/ in the repo, ~/.config/tmux/ when stowed. Sourcing
+# the SAME file the real tmux.conf sources is what keeps the demo from
+# drifting. The fragment binds ~/.local/bin/tmux-multi, so the dotfiles
+# must be stowed (./apply.sh).
+SELF_DIR=$(cd "$(dirname "$0")" && pwd)
+FLAT_CONF=$SELF_DIR/../../.config/tmux/tmux-multi.conf
+[ -f "$FLAT_CONF" ] || FLAT_CONF=$HOME/.config/tmux/tmux-multi.conf
+[ -f "$FLAT_CONF" ] ||
+  { echo 'tmux-multi-demo: cannot find tmux-multi.conf fragment' >&2; exit 1; }
+[ -x "$HOME/.local/bin/tmux-multi" ] ||
+  { echo 'tmux-multi-demo: ~/.local/bin/tmux-multi missing — stow the dotfiles first' >&2; exit 1; }
+
+REMOTES=(devbox buildbox)
+
+build() {
+  # These paths are spliced into the generated configs; spaces or quotes in
+  # them would shatter the quoting.
+  case "$D$FLAT_CONF" in *[\ \']*)
+    echo "tmux-multi-demo: demo dir and fragment paths must not contain spaces or quotes" >&2
+    exit 1 ;;
+  esac
+  rm -rf "$D"
+  mkdir -p "$D/bin"
+
+  # Per-host tmux wrappers: on "that machine", `tmux` means that machine's
+  # own private server. A tmux machine is really just a socket. laptop is
+  # the demo-local machine — it gets a wrapper too, so the fake remotes can
+  # "ssh" back to it: every machine in the fleet is a hub.
+  local h
+  for h in "${REMOTES[@]}" laptop; do
+    mkdir -p "$D/remote/$h"
+    printf '#!/usr/bin/env bash\nexec %s -L demo-%s "$@"\n' \
+      "$TMUX_BIN" "${h/laptop/local}" >"$D/remote/$h/tmux"
+    chmod +x "$D/remote/$h/tmux"
+  done
+
+  # The ssh shim. Parses like real ssh (queries: `ssh -n -o ... host -- cmd`,
+  # attaches: `ssh -t host -- cmd`), then runs the command locally with the
+  # environment a real remote shell would have. Keep the argument parsing in
+  # sync with SSH_STUB in tests/test_tmux_multi.py.
+  {
+    printf '#!/usr/bin/env bash\nDEMO=%q\n' "$D"
+    cat <<'SHIM'
+host= cmd= gflag=
+args=("$@"); i=0
+while [ $i -lt ${#args[@]} ]; do
+  a=${args[$i]}
+  case $a in
+    -o) i=$((i+1)) ;;              # -o eats its argument
+    -G) gflag=1 ;;                 # doctor probes ControlMaster via ssh -G
+    -t|-n|--) ;;
+    *) if [ -z "$host" ]; then host=$a; else cmd="$cmd $a"; fi ;;
+  esac
+  i=$((i+1))
+done
+[ -n "$gflag" ] && { echo 'controlmaster auto'; exit 0; }
+
+case $host in
+  devbox|buildbox|laptop) ;;
+  offline)
+    sleep 0.3
+    echo "ssh: connect to host $host port 22: Operation timed out" >&2
+    exit 255 ;;
+  *)
+    echo "fake-ssh: refusing unknown host '$host' (demo knows devbox, buildbox, offline)" >&2
+    exit 255 ;;
+esac
+
+# What a real ssh session looks like from the inside: no outer TMUX, the
+# SSH_* markers set, and the fake machine's tmux first on PATH.
+unset TMUX TMUX_PANE
+export SSH_CONNECTION='10.0.0.5 52341 10.0.0.9 22' SSH_TTY=/dev/ttys999
+export PATH="$DEMO/remote/$host:$PATH"
+exec bash -c "$cmd"
+SHIM
+  } >"$D/bin/ssh"
+  chmod +x "$D/bin/ssh"
+
+  printf '# fake machines served by %s/bin/ssh\nlaptop\ndevbox\nbuildbox\noffline\n' \
+    "$D" >"$D/hosts"
+
+  # Config for the fake remotes' servers. Real remotes share the dotfiles,
+  # so they get the same fragment (its flat binds take the local arm there —
+  # remote windows carry no @tmux_multi_target tag).
+  cat >"$D/remote.conf" <<CONF
+set -g default-terminal xterm-256color
+set -g prefix M-a
+set-environment -g TMUX_MULTI_HOSTS_FILE "$D/hosts"
+source-file "$FLAT_CONF"
+set -g base-index 1
+set -g mouse on
+set -g status-position top
+set -g status-style 'bg=#1a1b26,fg=#565f89'
+set -g status-left-length 30
+# No hostname/clock on the right: the real hostname would break the illusion.
+set -g status-right ''
+CONF
+
+  # Config for the local demo server. The tmux-multi behavior (picker binds,
+  # flat view, flat keys) comes from the SAME fragment the real tmux.conf
+  # sources; only the environment differs — PATH puts the ssh shim first for
+  # every pane and popup this server spawns (they inherit the server's
+  # global environment, bypassing login-shell PATH rebuilds), and the hosts
+  # file points at the fake fleet.
+  cat >"$D/demo.conf" <<CONF
+set -g default-terminal xterm-256color
+set -g prefix M-a
+set -g base-index 1
+set -g renumber-windows on
+set -g mouse on
+set -g status-position top
+set -g status-style 'bg=#1a1b26,fg=#565f89'
+set -g status-left "#[bg=#1a1b26,fg=#ff9e64] #S  "
+set -g status-left-length 30
+set -g status-right "#[fg=#f7768e,bold]DEMO "
+set-environment -g PATH "$D/bin:\$PATH"
+set-environment -g TMUX_MULTI_HOSTS_FILE "$D/hosts"
+set-environment -g TMUX_MULTI_SELF laptop
+source-file "$FLAT_CONF"
+CONF
+}
+
+# Run tmux against one demo server, TMUX unset so nesting checks stay quiet.
+t() { # t <socket-suffix> <tmux args...>
+  local sock=$1; shift
+  env -u TMUX "$TMUX_BIN" -L "demo-$sock" "$@"
+}
+
+seed() { # seed <socket-suffix> <session> <text...>
+  local sock=$1 sess=$2; shift 2
+  t "$sock" send-keys -t "=$sess:" "clear; printf '%s\n' \"$*\"" C-m
+}
+
+cmd_start() {
+  cmd_stop >/dev/null 2>&1 || true
+  build
+
+  local h s
+  for h in "${REMOTES[@]}"; do
+    t "$h" -f "$D/remote.conf" new-session -d -s placeholder -x 200 -y 50
+    t "$h" set -g status-left "#[bg=#1a1b26,fg=#9ece6a,bold] $h #[fg=#ff9e64,nobold]#S  "
+    # Per-machine identity, so each fake remote's own picker is a full hub:
+    # it knows who it is, its `tmux` is its own server, and `ssh` is the shim.
+    t "$h" set-environment -g TMUX_MULTI_SELF "$h"
+    t "$h" set-environment -g PATH "$D/remote/$h:$D/bin:$PATH"
+  done
+  for s in api web 'db migrate'; do t devbox new-session -d -s "$s" -x 200 -y 50; done
+  for s in ci release; do t buildbox new-session -d -s "$s" -x 200 -y 50; done
+  t devbox kill-session -t =placeholder
+  t buildbox kill-session -t =placeholder
+  seed devbox web 'server listening on :8080' 'GET /health 200'
+  seed devbox 'db migrate' 'applying 0042_add_index... done'
+  seed buildbox ci 'build #1287 running: 412/509 tests'
+
+  t local -f "$D/demo.conf" new-session -d -s laptop -x 200 -y 50
+  t local new-session -d -s notes
+  seed local notes 'shopping list: milk, coffee'
+
+  echo 'demo up. attach with:'
+  echo '  tmux-multi-demo attach'
+}
+
+cmd_attach() {
+  t local ls >/dev/null 2>&1 || { echo 'demo is not running — start it first' >&2; exit 1; }
+  exec env -u TMUX "$TMUX_BIN" -L demo-local attach -t laptop
+}
+
+cmd_status() {
+  local sock
+  for sock in local "${REMOTES[@]}"; do
+    printf '%-10s ' "demo-$sock"
+    t "$sock" list-sessions -F '#{session_name}' 2>/dev/null | tr '\n' ' ' ||
+      printf 'not running'
+    echo
+  done
+}
+
+cmd_stop() {
+  local sock
+  for sock in local "${REMOTES[@]}"; do
+    t "$sock" kill-server 2>/dev/null && echo "stopped demo-$sock" || true
+  done
+  echo 'demo down (the real tmux server is untouched)'
+}
+
+cmd_clean() {
+  cmd_stop
+  rm -rf "$D"
+  echo "removed $D"
+}
+
+case ${1:-} in
+  start) cmd_start ;;
+  attach) cmd_attach ;;
+  status) cmd_status ;;
+  stop) cmd_stop ;;
+  clean) cmd_clean ;;
+  -h | --help | help | '') sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) echo "tmux-multi-demo: unknown command: $1 (try --help)" >&2; exit 1 ;;
+esac

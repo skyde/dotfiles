@@ -4,3 +4,8 @@
 .dotfiles_backup_*
 
 __pycache__/
+
+# Per-machine tmux-multi host list (only hosts.example is tracked); keeps
+# private hostnames out of the repo even if stow folds the config dir into
+# a symlinked directory.
+common/.config/tmux-multi/hosts
