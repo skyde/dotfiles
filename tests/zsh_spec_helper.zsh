@@ -248,6 +248,36 @@ spec_env_value() {
   command env -u "$var" zsh --no-globalrcs -c "print -r -- \${$var-}" 2>/dev/null
 }
 
+# spec_stub <name> <shell body>
+#   Puts an executable of that name first on PATH and prints its path. Lets a
+#   spec exercise a wrapper function — `gg`, `e`, `code`, the git wrapper —
+#   against a stand-in that records how it was called, on a machine where the
+#   real tool may not be installed at all.
+#
+#   The stub is /bin/sh, not zsh: it stands in for an arbitrary binary, and a
+#   spec should not accidentally depend on zsh syntax being available to it.
+spec_stub() {
+  local name=$1 body=$2
+  local dir="$SPEC_TMP/stub-bin"
+  [[ -d $dir ]] || mkdir -p -- "$dir"
+  {
+    print -r -- '#!/bin/sh'
+    print -r -- "$body"
+  } >| "$dir/$name"
+  chmod +x -- "$dir/$name"
+  # Prepended, and any earlier copy of the directory dropped, so repeated calls
+  # cannot grow PATH. Assigning to path clears zsh's command hash table, so the
+  # new stub is found even where a real binary of the same name was cached.
+  path=("$dir" ${path:#$dir})
+  print -r -- "$dir/$name"
+}
+
+# spec_unstub — drop the stub directory from PATH again.
+spec_unstub() {
+  local dir="$SPEC_TMP/stub-bin"
+  path=(${path:#$dir})
+}
+
 # spec_bare_path
 #   A PATH holding only the handful of binaries any machine has, so a spec can
 #   check the config degrades cleanly on a box where none of the optional tools

@@ -264,10 +264,44 @@ if ((! $+commands[delta] )) || ((! $+commands[code] )); then
 fi
 
 # -------- VS Code Remote SSH: pick a live IPC socket before delegating to code
+#
+# A long-lived shell (tmux, screen, a reattached ssh session) outlives the VS
+# Code window that started it, and the socket in its environment dies with that
+# window. Every later `code .` from that shell then writes to a socket nobody is
+# listening on and hangs. So each call picks the newest socket that answers.
+#
+# Liveness is probed with zsocket, from zsh's own zsh/net/socket module, rather
+# than `nc -z -U`: nc is missing from plenty of minimal images and containers —
+# where the old probe silently failed for every candidate and no socket was ever
+# selected — and this way there is no process spawned per candidate either.
+if zmodload -F zsh/net/socket b:zsocket 2>/dev/null; then
+  _vscode_socket_answers() {
+    zsocket -- "$1" 2>/dev/null || return 1
+    # zsocket leaves the connected descriptor in $REPLY; nothing is sent on it,
+    # the successful connect is the whole answer.
+    exec {REPLY}>&-
+    return 0
+  }
+elif (( $+commands[nc] )); then
+  _vscode_socket_answers() { command nc -z -U "$1" >/dev/null 2>&1; }
+else
+  # Nothing to probe with: prefer the newest socket over giving up, which is
+  # what the caller gets anyway if no socket is chosen.
+  _vscode_socket_answers() { return 0; }
+fi
+
 code() {
-  local socket
-  for socket in "${VSCODE_IPC_HOOK_CLI:-}" /run/user/$UID/vscode-ipc-*.sock(NOm); do
-    if [[ -S "$socket" ]] && nc -z -U "$socket" >/dev/null 2>&1; then
+  local socket dir
+  local -a candidates
+  candidates=("${VSCODE_IPC_HOOK_CLI:-}")
+  # VSCODE_IPC_SOCKET_DIRS is a colon-separated override, used by the specs; the
+  # default covers Linux (/run/user/$UID, where VS Code Server puts them) and
+  # macOS, where they land in $TMPDIR instead.
+  for dir in ${(s.:.)${VSCODE_IPC_SOCKET_DIRS:-/run/user/$UID:${TMPDIR:-/tmp}}}; do
+    candidates+=($dir/vscode-ipc-*.sock(NOm))
+  done
+  for socket in $candidates; do
+    if [[ -S $socket ]] && _vscode_socket_answers "$socket"; then
       export VSCODE_IPC_HOOK_CLI="$socket"
       break
     fi
@@ -300,35 +334,75 @@ if ((! $+commands[fd] )) && (( $+commands[fdfind] )); then
 fi
 
 # -------- file managers that cd to the last visited dir
+#
+# A child process cannot change its parent's directory, so both of these ask the
+# file manager to write where it ended up into a temp file and cd there
+# afterwards.
+#
+# Neither ends with `... && builtin cd -- "$dir" || return`. That reads as "cd if
+# there is somewhere to go", but the `||` applies to the whole chain: quitting in
+# the directory you started in made the test false and ran `return` with $? still
+# 1, so an ordinary look around a directory left the prompt showing an error
+# marker for a command that did exactly what it was asked.
 e() {
   local tmp cwd yazi_cmd
-  tmp="$(mktemp -t yazi-cwd.XXXXXX)"
-  if [[ -x "$HOME/.local/bin/yazi" ]]; then
-    yazi_cmd="$HOME/.local/bin/yazi"
+  # ~/.local/bin first: install-yazi.sh puts a current build there, which is
+  # usually newer than a distro package that may also be installed.
+  if [[ -x $HOME/.local/bin/yazi ]]; then
+    yazi_cmd=$HOME/.local/bin/yazi
   else
-    yazi_cmd="$(command -v yazi)"
+    yazi_cmd=${commands[yazi]-}
   fi
+  if [[ -z $yazi_cmd ]]; then
+    print -ru2 -- "e: yazi is not installed (run ./install-yazi.sh)"
+    return 127
+  fi
+
+  # `|| return` on mktemp, because an unwritable TMPDIR left $tmp empty, which
+  # turned into --cwd-file= and a confusing error from yazi itself.
+  tmp=$(mktemp -t yazi-cwd.XXXXXX) || return
   "$yazi_cmd" "$@" --cwd-file="$tmp"
-  cwd="$(<"$tmp")"
-  rm -f -- "$tmp"
-  [[ -n $cwd && $cwd != "$PWD" ]] && builtin cd -- "$cwd" || return
+  cwd=$(<"$tmp")
+  command rm -f -- "$tmp"
+  if [[ -n $cwd && $cwd != "$PWD" ]]; then
+    builtin cd -- "$cwd"
+  fi
 }
 
 lfcd() {
   local tmp dir
-  tmp="$(mktemp -t lfcd.XXXXXX)"
+  if (( ! $+commands[lf] )); then
+    print -ru2 -- "lf: not installed (it is in packages.txt; run ./init.sh)"
+    return 127
+  fi
+  tmp=$(mktemp -t lfcd.XXXXXX) || return
   command lf -last-dir-path "$tmp" -- "$@"
-  dir="$(<"$tmp")"
-  rm -f -- "$tmp"
-  [[ -n $dir && $dir != "$PWD" ]] && builtin cd -- "$dir"
+  dir=$(<"$tmp")
+  command rm -f -- "$tmp"
+  if [[ -n $dir && $dir != "$PWD" ]]; then
+    builtin cd -- "$dir"
+  fi
 }
 alias lf='lfcd'
 
-# TODO: This needs to be set for some reason to get everything
-# to work in the terminal - find the root cause & remove this
-unset GIT_PAGER
+# -------- keep git's own configuration in charge of paging
+#
+# GIT_PAGER in the environment beats core.pager in git config, so any ancestor
+# process that exports GIT_PAGER=cat — some IDE terminals and git wrappers do —
+# switches delta off for every git command in this shell, and nothing says why:
+# diffs simply come out unstyled. ./doctor-delta.sh reports exactly this case.
+# Clearing it hands the decision back to ~/.config/git/config.
+#
+# A value that already routes through delta is kept, since that one was a
+# deliberate choice (`GIT_PAGER='delta --side-by-side' git log`, say) and used to
+# be thrown away along with the rest.
+case ${GIT_PAGER-} in
+  '' | *delta*) ;;
+  *) unset GIT_PAGER ;;
+esac
 
-gg() { command lazygit; }
+# "$@" so `gg log`, `gg -f`, `gg status` reach lazygit instead of being dropped.
+gg() { command lazygit "$@"; }
 
 # -------- plugins (load AFTER everything else; keep syntax-highlighting last)
 _source_zsh_plugin() {
