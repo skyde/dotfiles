@@ -106,7 +106,8 @@ return {
       "%.mp4$",
       "%.mkv$",
       "%.mov$",
-      --Documents & datasets("%.pdf$"),
+      --  Documents & datasets
+      "%.pdf$",
       "%.docx?$",
       "%.xlsx?$",
       "%.pptx?$",
@@ -174,12 +175,14 @@ return {
       -- Search files by type using the word under cursor
       "<leader>st",
       function()
-        local ft = vim.bo.filetype
+        -- Nil when ripgrep has no type for this filetype, in which case the
+        -- search runs unfiltered rather than erroring out. See util.ripgrep.
+        local type_arg = require("util.ripgrep").type_arg(vim.bo.filetype)
         require("telescope").extensions.live_grep_args.live_grep_args({
           default_text = vim.fn.expand("<cword>"),
           additional_args = function()
-            if ft ~= "" then
-              return vim.list_extend({ "--type=" .. ft }, typed_globs)
+            if type_arg then
+              return vim.list_extend({ type_arg }, typed_globs)
             end
             return typed_globs
           end,
