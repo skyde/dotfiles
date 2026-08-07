@@ -57,6 +57,41 @@ jobs:
 
           python3 -m unittest discover -s tests -p 'test_*.py'
 
+  neovim:
+    name: Neovim configuration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Neovim
+        run: |
+          ./install-nvim.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # The backend spec skips whichever of these is missing, which is how the
+      # Mercurial half went years without ever executing — and with it a status
+      # parser that dropped every untracked file and called deletions renames.
+      - name: Install the version-control backends the specs cover
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mercurial
+
+      - name: Run the Neovim specs
+        run: |
+          hg --version | head -1
+          ./tests/run-nvim-specs.sh
+
+      - name: Check Lua formatting
+        run: |
+          version=2.5.2
+          curl -fsSLo /tmp/stylua.zip \
+            "https://github.com/JohnnyMorganz/StyLua/releases/download/v${version}/stylua-linux-x86_64.zip"
+          unzip -q -o /tmp/stylua.zip -d "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/stylua"
+          "$HOME/.local/bin/stylua" --check common/.config/nvim
+
   unix-install:
     name: Install lifecycle (${{ matrix.os }})
     needs: validate

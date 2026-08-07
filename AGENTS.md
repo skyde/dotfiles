@@ -14,10 +14,13 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 ## Optional checks
 
 - Run ShellCheck on modified shell scripts if available: `shellcheck <changed .sh files>`
-- Run Stylua on modified Neovim Lua files if available: `stylua common/nvim/.config/nvim`
+- Run Stylua on modified Neovim Lua files if available: `stylua common/.config/nvim`
 - Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`
   (self-contained, no plugins required), and `./tests/check-nvim-keymaps.sh` to
-  invoke every binding against the real config.
+  invoke every binding against the real config. The specs and `stylua --check`
+  also run in CI; the checks that need the plugins installed do not.
+  Install `hg` before running the specs if you can — the Mercurial half of
+  `nvim_vcs_spec.lua` skips itself silently when the binary is missing.
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines
@@ -30,7 +33,7 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 - Cross-platform packages live under `common/` (e.g., `shell`, `devtools`, `nvim`, `Code`, `kitty`, `lf`).
 - OS-specific configs live under `mac/` and `windows/` (e.g., `mac/hammerspoon`, `windows/Documents`).
-- Neovim configuration is under `common/nvim/.config/nvim`.
+- Neovim configuration is under `common/.config/nvim`.
 - VS Code extensions are listed in `vscode_extensions.txt` and installed by scripts.
 
 Optional helpers present but not wired into the local scripts:

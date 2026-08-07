@@ -334,7 +334,20 @@ Invokes every binding against the real config inside a throwaway repository.
 Callback maps must not raise even with no language server and no debug session
 attached — degrading with a message is fine, throwing is not.
 
-Neither is wired into CI; they are run by hand, like `nvim_clipboard_spec.lua`.
+`run-nvim-specs.sh` and `stylua --check` run in CI (the `neovim` job in
+`.github/workflows/comprehensive-test.yml`), which also installs Mercurial so
+the backend spec's `hg` half actually executes rather than skipping itself.
+`check-nvim-keymaps.sh` and `check-nvim-syntax-roles.sh` need the plugins and
+the tree-sitter parsers installed, so they stay manual — as does
+`nvim_clipboard_spec.lua`.
+
+A note for anyone writing a new spec: set `showtabline = 0` if you raise
+`'columns'`. Headless Neovim allocates its grid at 80x24 before any script
+runs and never resizes it without a UI attached, while `draw_tabline` still
+draws at the current width — so a spec that widens the terminal, opens a
+second tab and enters command-line mode writes past the end of that grid.
+Valgrind calls it an invalid write every time; whether it aborts is down to
+heap layout.
 
 ## Backend notes
 
