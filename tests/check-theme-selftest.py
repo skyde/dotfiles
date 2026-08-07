@@ -75,6 +75,12 @@ MUTATIONS = [
      '"terminal.ansiBrightBlack": "#414868"',
      "ANSI 8", None),
 
+    # kitty warns about an unknown key and carries on, so a renamed or
+    # misspelled option looks perfectly correct in the file forever.
+    ("a kitty option kitty does not know", "parity", KITTY,
+     r"macos_titlebar_color #16161e", "macos_titlebar_colour #16161e",
+     "unknown config key", "kitty"),
+
     ("a titlebar that disagrees between terminals", "parity", KITTY,
      r"macos_titlebar_color #16161e", "macos_titlebar_color #1a1b26",
      "titlebar disagrees", None),

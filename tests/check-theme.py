@@ -807,6 +807,51 @@ def _check_bat_theme(verbose):
     return problems
 
 
+def _check_kitty_config(verbose):
+    """Have kitty parse its own config and report the keys it ignored.
+
+    kitty warns about an unknown option and carries on, which is the usual
+    trap: a setting that was renamed upstream, or never existed, sits in the
+    file looking correct. It has no --debug-config before 0.36, but it ships
+    its own Python, so `kitty +runpy` can call the real config loader on any
+    version.
+
+    Only unknown *keys* are reported this way. kitty does not object to a
+    colour value it cannot parse -- it silently uses black -- which is what
+    the palette check is for.
+    """
+    import shutil
+    import subprocess
+
+    if shutil.which("kitty") is None:
+        if verbose:
+            print("  kitty not installed, its config not parsed")
+        return []
+
+    conf = os.path.join(REPO, "common/.config/kitty/kitty.conf")
+    script = (
+        "from kitty.config import load_config\n"
+        "o = load_config(%r)\n"
+        "print('background', o.background)\n" % conf
+    )
+    try:
+        out = subprocess.run(["kitty", "+runpy", script], capture_output=True,
+                             text=True, timeout=60, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return ["could not run kitty: %s" % exc]
+
+    problems = []
+    for line in (out.stderr + out.stdout).splitlines():
+        if "unknown config key" in line.lower():
+            problems.append("kitty: %s" % line.split("]", 1)[-1].strip())
+    if out.returncode != 0 and not problems:
+        problems.append("kitty could not load its config: %s"
+                        % out.stderr.strip()[:200])
+    if verbose and not problems:
+        print("  kitty parses its config with no unknown keys")
+    return problems
+
+
 def _check_ripgrep_config(verbose):
     """Let ripgrep parse its own config, since it is strict about colours.
 
@@ -964,6 +1009,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_yazi_configs(verbose))
     problems.extend(_check_starship_config(verbose))
     problems.extend(_check_bat_theme(verbose))
+    problems.extend(_check_kitty_config(verbose))
     problems.extend(_check_nvim_delta_parity(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))

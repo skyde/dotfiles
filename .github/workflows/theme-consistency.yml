@@ -92,6 +92,10 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends bat
           || echo "bat unavailable; the BAT_THEME check will only compare the two shells"
 
+      - name: Install kitty
+        run: sudo apt-get install -y --no-install-recommends kitty
+          || echo "kitty unavailable; its config check will skip"
+
       - name: Check the theme
         run: tests/check-theme.py --verbose
 
