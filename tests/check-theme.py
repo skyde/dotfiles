@@ -324,6 +324,67 @@ def vscode_colours():
     return [got.get(k) for k in keys], got
 
 
+# Everything theme.sh exports, for the shell-parity check below.
+THEME_EXPORTS = [
+    "LS_COLORS", "EZA_COLORS", "GREP_COLORS", "GROFF_NO_SGR",
+    "LESS_TERMCAP_md", "LESS_TERMCAP_mb", "LESS_TERMCAP_me",
+    "LESS_TERMCAP_us", "LESS_TERMCAP_ue", "LESS_TERMCAP_so", "LESS_TERMCAP_se",
+    "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE", "FZF_DEFAULT_OPTS", "FZF_HISTORY_PREVIEW",
+]
+
+
+def _read_exports(shell, path):
+    """Source theme.sh in one shell and return what it exported."""
+    import subprocess
+
+    script = '. "$1"; for v in %s; do eval "printf \'%%s\\034\' \\"\\$$v\\""; done' \
+        % " ".join(THEME_EXPORTS)
+    argv = [shell, "-c", script, "_", path]
+    if shell == "zsh":
+        # -f skips the user's own rc files, which would otherwise set some of
+        # these themselves and mask a difference.
+        argv = [shell, "-fc", script, "_", path]
+    out = subprocess.run(argv, capture_output=True, text=True, timeout=30)
+    if out.returncode != 0 or out.stderr.strip():
+        raise RuntimeError("%s: %s" % (shell, out.stderr.strip() or "non-zero exit"))
+    return dict(zip(THEME_EXPORTS, out.stdout.split("\034")))
+
+
+def _check_shell_parity(verbose):
+    """theme.sh says the two shells "cannot drift". Find out.
+
+    Worth a check of its own because the two shells disagree in ways that are
+    invisible in the one you happen to test in. zsh treats `$var:s` as a
+    history modifier, so `38;2;$_tn_yellow:so=...` -- perfectly ordinary text
+    to bash -- is a parse error there, and LS_COLORS came out empty in the
+    shell this file actually runs in.
+    """
+    import shutil
+
+    if shutil.which("zsh") is None:
+        if verbose:
+            print("  zsh not installed, shell parity not checked")
+        return []
+
+    path = os.path.join(REPO, "common/.config/shell/theme.sh")
+    try:
+        bash = _read_exports("bash", path)
+        zsh = _read_exports("zsh", path)
+    except (OSError, RuntimeError) as exc:
+        return ["theme.sh does not source cleanly: %s" % exc]
+
+    problems = []
+    for name in THEME_EXPORTS:
+        if bash.get(name) != zsh.get(name):
+            problems.append(
+                "$%s differs between the shells: bash gives %r, zsh gives %r"
+                % (name, (bash.get(name) or "")[:60], (zsh.get(name) or "")[:60])
+            )
+    if verbose and not problems:
+        print("  %d exported values identical in bash and zsh" % len(THEME_EXPORTS))
+    return problems
+
+
 def _check_ls_colors(lf_entries):
     """Compare the LS_COLORS theme.sh exports against lf's own table."""
     import subprocess
@@ -436,6 +497,7 @@ def check_parity(doc, verbose):
     # if something compares the two. Sourcing the file is also the only check
     # that it is still valid shell.
     problems.extend(_check_ls_colors(lf_entries))
+    problems.extend(_check_shell_parity(verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")

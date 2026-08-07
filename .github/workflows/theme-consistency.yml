@@ -47,8 +47,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # No dependencies to install: the check is stdlib Python, and the one
-      # thing it shells out to is bash, to source the shell theme and read the
-      # colours it actually exports.
+      # The only dependency, and it earns its 3 seconds: theme.sh is sourced by
+      # zsh on every shell, and the two shells disagree in ways that are
+      # invisible from bash -- `$var:s` is a history modifier in zsh, so text
+      # that is unremarkable to bash can be a parse error there. The check
+      # sources the file in both and compares what comes out, but only if zsh
+      # is actually present, so without this step it would quietly skip the
+      # half that matters most.
+      - name: Install zsh
+        run: sudo apt-get install -y --no-install-recommends zsh
+
       - name: Check the theme
         run: tests/check-theme.py --verbose

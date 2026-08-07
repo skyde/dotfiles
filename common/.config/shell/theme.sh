@@ -138,47 +138,47 @@ export FZF_HISTORY_PREVIEW
 # quietly drift.
 #
 # Grouped and ordered as lf's file is, so the two can be read side by side.
-_ls="ln=38;2;$_tn_cyan:mh=38;2;$_tn_cyan:or=38;2;$_tn_red;1"
-_ls="$_ls:di=38;2;$_tn_blue;1:ex=38;2;$_tn_green:fi=38;2;$_tn_fg"
-_ls="$_ls:pi=38;2;$_tn_yellow:so=38;2;$_tn_magenta"
-_ls="$_ls:bd=38;2;$_tn_yellow;48;2;$_tn_bg_high:cd=38;2;$_tn_yellow;48;2;$_tn_bg_high"
-_ls="$_ls:su=38;2;$_tn_bg_dark;48;2;$_tn_red:sg=38;2;$_tn_bg_dark;48;2;$_tn_yellow"
-_ls="$_ls:tw=38;2;$_tn_bg_dark;48;2;$_tn_green:ow=38;2;$_tn_blue;48;2;$_tn_bg_visual"
-_ls="$_ls:st=38;2;$_tn_fg;48;2;$_tn_blue"
+_ls="ln=38;2;${_tn_cyan}:mh=38;2;${_tn_cyan}:or=38;2;${_tn_red};1"
+_ls="${_ls}:di=38;2;${_tn_blue};1:ex=38;2;${_tn_green}:fi=38;2;${_tn_fg}"
+_ls="${_ls}:pi=38;2;${_tn_yellow}:so=38;2;${_tn_magenta}"
+_ls="${_ls}:bd=38;2;${_tn_yellow};48;2;${_tn_bg_high}:cd=38;2;${_tn_yellow};48;2;${_tn_bg_high}"
+_ls="${_ls}:su=38;2;${_tn_bg_dark};48;2;${_tn_red}:sg=38;2;${_tn_bg_dark};48;2;${_tn_yellow}"
+_ls="${_ls}:tw=38;2;${_tn_bg_dark};48;2;${_tn_green}:ow=38;2;${_tn_blue};48;2;${_tn_bg_visual}"
+_ls="${_ls}:st=38;2;${_tn_fg};48;2;${_tn_blue}"
 
 # archives → red
 for _e in tar tgz gz bz2 xz zst zip 7z rar deb rpm dmg; do
-	_ls="$_ls:*.$_e=38;2;$_tn_red"
+	_ls="${_ls}:*.$_e=38;2;${_tn_red}"
 done
 # images and video → magenta
 for _e in png jpg jpeg gif webp svg ico mp4 mkv mov webm; do
-	_ls="$_ls:*.$_e=38;2;$_tn_magenta"
+	_ls="${_ls}:*.$_e=38;2;${_tn_magenta}"
 done
 # audio → purple
 for _e in mp3 flac wav m4a ogg; do
-	_ls="$_ls:*.$_e=38;2;$_tn_purple"
+	_ls="${_ls}:*.$_e=38;2;${_tn_purple}"
 done
 # documents → orange
 for _e in pdf epub djvu docx xlsx pptx; do
-	_ls="$_ls:*.$_e=38;2;$_tn_orange"
+	_ls="${_ls}:*.$_e=38;2;${_tn_orange}"
 done
 # source code → green
 for _e in c h cc cpp hpp cs go rs py rb js ts tsx jsx lua sh zsh bash ps1; do
-	_ls="$_ls:*.$_e=38;2;$_tn_green"
+	_ls="${_ls}:*.$_e=38;2;${_tn_green}"
 done
 # config and data → yellow
 for _e in json toml yaml yml ini conf cfg xml; do
-	_ls="$_ls:*.$_e=38;2;$_tn_yellow"
+	_ls="${_ls}:*.$_e=38;2;${_tn_yellow}"
 done
 # docs and notes → foreground
 for _e in md txt rst; do
-	_ls="$_ls:*.$_e=38;2;$_tn_fg"
+	_ls="${_ls}:*.$_e=38;2;${_tn_fg}"
 done
 # noise → comment grey
 for _e in log bak tmp swp o pyc lock; do
-	_ls="$_ls:*.$_e=38;2;$_tn_comment"
+	_ls="${_ls}:*.$_e=38;2;${_tn_comment}"
 done
-LS_COLORS="$_ls"
+LS_COLORS="${_ls}"
 export LS_COLORS
 unset _ls _e
 
@@ -190,34 +190,34 @@ unset _ls _e
 # does (type blue, read yellow, write red, execute green), so `ll` and yazi
 # describe a file's mode identically. "You" is teal in the user and group
 # columns, which is the colour starship already gives your username.
-_eza="ur=38;2;$_tn_yellow:uw=38;2;$_tn_red:ux=38;2;$_tn_green:ue=38;2;$_tn_green"
-_eza="$_eza:gr=38;2;$_tn_yellow:gw=38;2;$_tn_red:gx=38;2;$_tn_green"
-_eza="$_eza:tr=38;2;$_tn_yellow:tw=38;2;$_tn_red:tx=38;2;$_tn_green"
-_eza="$_eza:su=38;2;$_tn_orange:sf=38;2;$_tn_orange:xa=38;2;$_tn_dark5"
+_eza="ur=38;2;${_tn_yellow}:uw=38;2;${_tn_red}:ux=38;2;${_tn_green}:ue=38;2;${_tn_green}"
+_eza="${_eza}:gr=38;2;${_tn_yellow}:gw=38;2;${_tn_red}:gx=38;2;${_tn_green}"
+_eza="${_eza}:tr=38;2;${_tn_yellow}:tw=38;2;${_tn_red}:tx=38;2;${_tn_green}"
+_eza="${_eza}:su=38;2;${_tn_orange}:sf=38;2;${_tn_orange}:xa=38;2;${_tn_dark5}"
 # Sizes step warmer as they grow, so a big file catches the eye in a long list.
-_eza="$_eza:sn=38;2;$_tn_green:sb=38;2;$_tn_dark5"
-_eza="$_eza:nb=38;2;$_tn_green:nk=38;2;$_tn_green:nm=38;2;$_tn_yellow"
-_eza="$_eza:ng=38;2;$_tn_orange:nt=38;2;$_tn_red"
-_eza="$_eza:uu=38;2;$_tn_teal:un=38;2;$_tn_dark5"
-_eza="$_eza:gu=38;2;$_tn_teal:gn=38;2;$_tn_dark5"
-_eza="$_eza:da=38;2;$_tn_comment:in=38;2;$_tn_dark3:bl=38;2;$_tn_dark3"
-_eza="$_eza:hd=38;2;$_tn_blue;1:xx=38;2;$_tn_gutter:lp=38;2;$_tn_cyan"
+_eza="${_eza}:sn=38;2;${_tn_green}:sb=38;2;${_tn_dark5}"
+_eza="${_eza}:nb=38;2;${_tn_green}:nk=38;2;${_tn_green}:nm=38;2;${_tn_yellow}"
+_eza="${_eza}:ng=38;2;${_tn_orange}:nt=38;2;${_tn_red}"
+_eza="${_eza}:uu=38;2;${_tn_teal}:un=38;2;${_tn_dark5}"
+_eza="${_eza}:gu=38;2;${_tn_teal}:gn=38;2;${_tn_dark5}"
+_eza="${_eza}:da=38;2;${_tn_comment}:in=38;2;${_tn_dark3}:bl=38;2;${_tn_dark3}"
+_eza="${_eza}:hd=38;2;${_tn_blue};1:xx=38;2;${_tn_gutter}:lp=38;2;${_tn_cyan}"
 # The git column, in the same language the rest of the setup uses for git:
 # teal for new (docs/tokyonight.md gives teal to "untracked / new"), yellow for
 # modified, red for deleted, magenta for renamed. Ignored files recede to
 # comment grey; a conflict is the one thing here that is an error.
-_eza="$_eza:ga=38;2;$_tn_teal:gm=38;2;$_tn_yellow:gd=38;2;$_tn_red"
-_eza="$_eza:gv=38;2;$_tn_magenta:gt=38;2;$_tn_cyan"
-_eza="$_eza:gi=38;2;$_tn_comment:gc=38;2;$_tn_red1"
+_eza="${_eza}:ga=38;2;${_tn_teal}:gm=38;2;${_tn_yellow}:gd=38;2;${_tn_red}"
+_eza="${_eza}:gv=38;2;${_tn_magenta}:gt=38;2;${_tn_cyan}"
+_eza="${_eza}:gi=38;2;${_tn_comment}:gc=38;2;${_tn_red1}"
 
 # Per-repo branch state, for `eza --git-repos`. Magenta is the palette's branch
 # colour, so the main branch keeps it and other branches take the secondary
 # magenta -- the same pairing `git branch` uses in the git config.
-_eza="$_eza:Gm=38;2;$_tn_magenta:Go=38;2;$_tn_purple"
-_eza="$_eza:Gc=38;2;$_tn_green:Gd=38;2;$_tn_yellow"
+_eza="${_eza}:Gm=38;2;${_tn_magenta}:Go=38;2;${_tn_purple}"
+_eza="${_eza}:Gc=38;2;${_tn_green}:Gd=38;2;${_tn_yellow}"
 
 # root, in the red starship already gives a root prompt.
-_eza="$_eza:uR=38;2;$_tn_red:gR=38;2;$_tn_red"
+_eza="${_eza}:uR=38;2;${_tn_red}:gR=38;2;${_tn_red}"
 
 # eza's own file categories. These matter more than they look: LS_COLORS above
 # names 53 extensions, and eza recognises far more kinds than that by itself --
@@ -225,21 +225,21 @@ _eza="$_eza:uR=38;2;$_tn_red:gR=38;2;$_tn_red"
 # which are not this palette. Each category is given the colour its extensions
 # already have above, so the theme reaches every file type eza knows rather
 # than only the ones spelled out.
-_eza="$_eza:im=38;2;$_tn_magenta:vi=38;2;$_tn_magenta"
-_eza="$_eza:mu=38;2;$_tn_purple:lo=38;2;$_tn_purple"
-_eza="$_eza:co=38;2;$_tn_red:do=38;2;$_tn_orange:sc=38;2;$_tn_green"
-_eza="$_eza:cr=38;2;$_tn_yellow:bu=38;2;$_tn_yellow"
+_eza="${_eza}:im=38;2;${_tn_magenta}:vi=38;2;${_tn_magenta}"
+_eza="${_eza}:mu=38;2;${_tn_purple}:lo=38;2;${_tn_purple}"
+_eza="${_eza}:co=38;2;${_tn_red}:do=38;2;${_tn_orange}:sc=38;2;${_tn_green}"
+_eza="${_eza}:cr=38;2;${_tn_yellow}:bu=38;2;${_tn_yellow}"
 # Build output and editor leftovers are the "noise" group: present, not worth
 # reading, exactly like *.o and *.swp above.
-_eza="$_eza:cm=38;2;$_tn_comment:tm=38;2;$_tn_comment"
+_eza="${_eza}:cm=38;2;${_tn_comment}:tm=38;2;${_tn_comment}"
 
 # Structure: link counts recede, mount points and other specials borrow the
 # colours their file kinds already have, and an escaped byte in a filename is
 # the one thing in a listing that wants to look wrong.
-_eza="$_eza:lc=38;2;$_tn_dark3:lm=38;2;$_tn_dark3"
-_eza="$_eza:mp=38;2;$_tn_cyan:sp=38;2;$_tn_magenta"
-_eza="$_eza:bO=38;2;$_tn_red1:cc=38;2;$_tn_red1"
-EZA_COLORS="$_eza"
+_eza="${_eza}:lc=38;2;${_tn_dark3}:lm=38;2;${_tn_dark3}"
+_eza="${_eza}:mp=38;2;${_tn_cyan}:sp=38;2;${_tn_magenta}"
+_eza="${_eza}:bO=38;2;${_tn_red1}:cc=38;2;${_tn_red1}"
+EZA_COLORS="${_eza}"
 export EZA_COLORS
 unset _eza
 
@@ -252,10 +252,10 @@ unset _eza
 # and in ripgrep: see the note above about why matches invert rather than
 # recolour. The surrounding fields borrow delta's grep styling exactly, so
 # `grep -rn`, `rg` and `git grep` produce three sets of output that line up.
-_grep="ms=1;7;38;2;$_tn_yellow:mc=1;7;38;2;$_tn_yellow"
-_grep="$_grep:fn=38;2;$_tn_blue:ln=38;2;$_tn_dark3:bn=38;2;$_tn_dark3"
-_grep="$_grep:se=38;2;$_tn_gutter"
-GREP_COLORS="$_grep"
+_grep="ms=1;7;38;2;${_tn_yellow}:mc=1;7;38;2;${_tn_yellow}"
+_grep="${_grep}:fn=38;2;${_tn_blue}:ln=38;2;${_tn_dark3}:bn=38;2;${_tn_dark3}"
+_grep="${_grep}:se=38;2;${_tn_gutter}"
+GREP_COLORS="${_grep}"
 export GREP_COLORS
 unset _grep
 
@@ -272,12 +272,12 @@ unset _grep
 # `so` is standout, which less uses for two unrelated things -- the status line
 # at the bottom and search matches. Inverted yellow serves both, and matches
 # how a search hit looks in every other tool here.
-LESS_TERMCAP_md=$'\033[1;38;2;'"$_tn_blue"'m'     # bold: defined terms
-LESS_TERMCAP_mb=$'\033[1;38;2;'"$_tn_red"'m'      # blink, which man uses for nothing good
+LESS_TERMCAP_md=$'\033[1;38;2;'"${_tn_blue}"'m'     # bold: defined terms
+LESS_TERMCAP_mb=$'\033[1;38;2;'"${_tn_red}"'m'      # blink, which man uses for nothing good
 LESS_TERMCAP_me=$'\033[0m'
-LESS_TERMCAP_us=$'\033[4;38;2;'"$_tn_cyan"'m'     # underline: substitutable values
+LESS_TERMCAP_us=$'\033[4;38;2;'"${_tn_cyan}"'m'     # underline: substitutable values
 LESS_TERMCAP_ue=$'\033[0m'
-LESS_TERMCAP_so=$'\033[1;38;2;'"$_tn_bg"';48;2;'"$_tn_yellow"'m'
+LESS_TERMCAP_so=$'\033[1;38;2;'"${_tn_bg}"';48;2;'"${_tn_yellow}"'m'
 LESS_TERMCAP_se=$'\033[0m'
 export LESS_TERMCAP_md LESS_TERMCAP_mb LESS_TERMCAP_me
 export LESS_TERMCAP_us LESS_TERMCAP_ue LESS_TERMCAP_so LESS_TERMCAP_se
