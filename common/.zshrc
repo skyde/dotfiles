@@ -41,14 +41,109 @@ SAVEHIST=100000
 HISTFILE="$HOME/.zsh_history"
 
 # -------- key bindings
+#
+# All of them live here, before the plugins at the bottom of the file, because
+# zsh-autosuggestions wraps the widgets that are bound when it loads.
+#
+# The full list, and what each key does, is in docs/zsh.md. Every binding below
+# is checked by tests/zsh_keys_spec.zsh, which presses the key in a real terminal
+# rather than asking bindkey what it thinks.
 bindkey -e                              # Emacs keybindings
 bindkey '^_' undo                       # Ctrl+_
-bindkey '^[[1;5C' forward-word          # Ctrl+Right
-bindkey '^[[1;5D' backward-word         # Ctrl+Left
 autoload -Uz edit-command-line
 zle -N edit-command-line
 bindkey '^G' edit-command-line          # Ctrl+G opens current prompt in $EDITOR
 bindkey '^X^E' edit-command-line        # Ctrl+X Ctrl+E (standard)
+
+# ---- keys whose escape sequence depends on the terminal
+#
+# Home, End, Delete and the arrows arrive as one sequence in a terminal's normal
+# mode and another in "application" mode, and terminfo only knows the second.
+# Which mode you are in depends on the terminal, on tmux, and on whether
+# something earlier in the session sent smkx — so both forms are bound, along
+# with terminfo's answer where there is one. Unbound, Home does not go to the
+# start of the line: it inserts a tilde.
+#
+# Only sequences that belong to one key are listed. \eOC, for instance, is the
+# plain Right arrow in application mode, so binding it to forward-word would
+# break the arrow itself.
+zmodload -i zsh/terminfo
+
+_bindkey_all() {
+  local widget=$1 seq
+  shift
+  for seq in "$@"; do
+    [[ -n $seq ]] && bindkey -- "$seq" "$widget"
+  done
+}
+
+_bindkey_all beginning-of-line "${terminfo[khome]}" '^[[H' '^[[1~' '^[OH'
+_bindkey_all end-of-line       "${terminfo[kend]}"  '^[[F' '^[[4~' '^[OF'
+_bindkey_all delete-char       "${terminfo[kdch1]}" '^[[3~'
+# Ctrl-Right / Ctrl-Left in xterm, older xterm, and rxvt; plus Alt-Right and
+# Alt-Left, which several terminals send instead.
+_bindkey_all forward-word  '^[[1;5C' '^[[5C' '^[Oc' '^[[1;3C'
+_bindkey_all backward-word '^[[1;5D' '^[[5D' '^[Od' '^[[1;3D'
+
+# ---- Up and Down search the history for what you have already typed
+#
+# Type `git com` and press Up: only the git commands that start that way come
+# back, rather than every command in order. With nothing typed it is the plain
+# history walk, so nothing is lost. The cursor lands at the end of the recalled
+# line, which is where you want it to carry on typing.
+autoload -Uz up-line-or-beginning-search down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+_bindkey_all up-line-or-beginning-search   "${terminfo[kcuu1]}" '^[[A' '^[OA'
+_bindkey_all down-line-or-beginning-search "${terminfo[kcud1]}" '^[[B' '^[OB'
+bindkey '^P' up-line-or-beginning-search
+bindkey '^N' down-line-or-beginning-search
+
+unset -f _bindkey_all
+
+# ---- what counts as a word
+#
+# The default WORDCHARS includes / and =, so Ctrl-W on `rm -rf /a/b/c` deletes
+# the entire path in one go and Alt-B walks over `FOO=bar` as a single word.
+# Removing those two makes both operate on one path component, or on the name
+# and the value, which is nearly always what was meant. The rest of the default
+# is left alone.
+WORDCHARS=${WORDCHARS//[\/=]/}
+
+# ---- Alt-S: add or remove a sudo in front of the line
+#
+# For the moment after you press Enter and are told permission was denied: Up,
+# Alt-S, Enter. On an empty line it pulls the last command back first, so the
+# whole recovery is Alt-S, Enter.
+_toggle_sudo_prefix() {
+  [[ -z $BUFFER ]] && zle up-history
+  if [[ $BUFFER == 'sudo '* ]]; then
+    BUFFER=${BUFFER#sudo }
+    (( CURSOR -= 5 ))
+  else
+    BUFFER="sudo $BUFFER"
+    (( CURSOR += 5 ))
+  fi
+}
+zle -N _toggle_sudo_prefix
+bindkey '^[s' _toggle_sudo_prefix
+
+# ---- Ctrl-Z at an empty prompt returns to the job you suspended
+#
+# Ctrl-Z out of an editor, run something, Ctrl-Z back into it — the same key both
+# ways instead of `fg`. With something typed it leaves the line alone, and with
+# no suspended job it does nothing, because "fg: no job control" is a worse
+# answer than silence. zsh/parameter is what provides $jobstates.
+zmodload -i zsh/parameter
+_fg_or_ignore() {
+  if [[ -n $BUFFER ]] || (( ! ${#jobstates} )); then
+    return 0
+  fi
+  BUFFER='fg'
+  zle accept-line
+}
+zle -N _fg_or_ignore
+bindkey '^Z' _fg_or_ignore
 
 # -------- cache directory
 : "${XDG_CACHE_HOME:=$HOME/.cache}"
@@ -551,6 +646,33 @@ esac
 gg() { command lazygit "$@"; }
 
 # -------- plugins (load AFTER everything else; keep syntax-highlighting last)
+#
+# zsh-autosuggestions reads these when it loads, so they have to be set first.
+#
+# The suggestion colour is Tokyo Night's comment grey, the same one used for
+# muted text everywhere else (docs/tokyonight.md). The plugin's default is fg=8 —
+# the terminal's "bright black", which upstream Tokyo Night puts at #414868, and
+# which the note in that document calls close to unreadable for exactly this kind
+# of de-emphasised text. Naming the colour also means the suggestion looks the
+# same in a terminal whose ANSI 8 has been adjusted and in one that is untouched.
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#565f89'
+
+# History first, and what completion would offer when the history has nothing.
+# The completion strategy is what suggests a flag or a path you have never typed
+# before.
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+
+# By default the plugin re-binds its widget wrappers before every prompt, so that
+# a binding added at runtime still gets a suggestion. Everything in this file
+# binds before the plugin loads, so that pass has nothing to find; skipping it
+# takes work out of every prompt. The cost of the setting is that a `bindkey`
+# typed at the prompt afterwards will not suggest until the next shell.
+ZSH_AUTOSUGGEST_MANUAL_REBIND=1
+
+# No suggestions for a pasted paragraph: the search is over the whole history and
+# the answer for a 500-character buffer is never useful.
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60
+
 _source_zsh_plugin() {
   local plugin_name="$1"
   local init_file="$2"

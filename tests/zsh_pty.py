@@ -52,11 +52,15 @@ def main(argv):
     script = argv[0]
     rest = argv[1:]
     sends = []
-    while rest and rest[0] == "--send":
+    send_delay = 0.0
+    while rest and rest[0] in ("--send", "--delay"):
         if len(rest) < 2:
-            sys.stderr.write("zsh_pty.py: --send needs an argument\n")
+            sys.stderr.write("zsh_pty.py: %s needs an argument\n" % rest[0])
             return 2
-        sends.append(_unescape(rest[1]))
+        if rest[0] == "--send":
+            sends.append(_unescape(rest[1]))
+        else:
+            send_delay = float(rest[1])
         rest = rest[2:]
     if rest and rest[0] == "--":
         rest = rest[1:]
@@ -139,7 +143,10 @@ def main(argv):
     # `source` rather than pasting the script's text in: the shell echoes what it
     # is sent, and a multi-line paste comes back interleaved with continuation
     # prompts. One line in, one line echoed.
-    os.write(fd, ("source %s\n" % _quote(script)).encode())
+    # Both commands this file types are prefixed with a space, so hist_ignore_space
+    # keeps them out of the history. Without that, a spec that presses Up or asks
+    # for "the last command" gets this scaffolding instead of what it set up.
+    os.write(fd, (" source %s\n" % _quote(script)).encode())
 
     if sends:
         # The keys must not be sent until the line editor is reading.
@@ -157,13 +164,23 @@ def main(argv):
         # is the moment a key press will be read as a key press. A zle line-init
         # hook was tried first and is not equivalent — it runs while the terminal
         # is still canonical.
-        os.write(fd, b"print -r -- '__PTY''_READY__'\n")
+        os.write(fd, b" print -r -- '__PTY''_READY__'\n")
         if not pump_until(b"__PTY_READY__"):
             return _give_up(pid, fd, collected, "the script never finished")
         if not wait_for_raw_mode():
             return _give_up(pid, fd, collected, "the line editor never took the terminal")
 
-        for keys in sends:
+        for index, keys in enumerate(sends):
+            # --delay puts time between one batch of keys and the next, for the
+            # cases where the shell has to *do* something in between: start the
+            # job that the next key suspends, run the command whose output the
+            # next key reacts to. Draining as we wait, so the shell is never
+            # blocked writing to a full terminal buffer.
+            if index and send_delay:
+                until = time.time() + send_delay
+                while time.time() < until:
+                    if not pump_once(min(0.05, until - time.time())):
+                        break
             os.write(fd, keys)
 
         # The shell is then killed rather than asked to exit.

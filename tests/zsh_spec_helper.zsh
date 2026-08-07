@@ -285,6 +285,35 @@ spec_can_pty() { (( $+commands[python3] )); }
 #   highlighting's redraws.
 spec_pty_type() {
   local keys=$1 setup=${2-}
+  _spec_pty_write_script "$setup"
+  command python3 "$SPEC_REPO/tests/zsh_pty.py" "$SPEC_TMP/pty-type.zsh" \
+    --send "$keys" --send '\x18\x18' >/dev/null 2>&1
+  print -r -- "$(<$SPEC_TMP/pty-buffer)"
+}
+
+# spec_pty_run_then_type <command> <keys> [setup code]
+#   Runs a command at the prompt for real, then types <keys>, and returns the
+#   command line that resulted.
+#
+#   For anything that depends on what the *last* command was. The harness types
+#   its own scaffolding with a leading space so hist_ignore_space keeps it out of
+#   the history — but that only half works by design: zsh keeps such a line in the
+#   internal history until the next command is entered, "allowing you to briefly
+#   reuse or edit the line", so until something else runs it is what Up recalls.
+#   Running one real command clears it and makes the answer the spec's own.
+spec_pty_run_then_type() {
+  local command=$1 keys=$2 setup=${3-}
+  _spec_pty_write_script "$setup"
+  # A delay between the two, so the command has run and the editor is back
+  # before the keys arrive.
+  command python3 "$SPEC_REPO/tests/zsh_pty.py" "$SPEC_TMP/pty-type.zsh" \
+    --delay 0.6 --send "$command\\n" --send "$keys" --send '\x18\x18' \
+    >/dev/null 2>&1
+  print -r -- "$(<$SPEC_TMP/pty-buffer)"
+}
+
+_spec_pty_write_script() {
+  local setup=$1
   local script="$SPEC_TMP/pty-type.zsh" out="$SPEC_TMP/pty-buffer"
   : >| "$out"
   {
@@ -294,9 +323,6 @@ spec_pty_type() {
     print -r -- "builtin cd -- ${(q)SPEC_REPO}"
     [[ -n $setup ]] && print -r -- "$setup"
   } >| "$script"
-  command python3 "$SPEC_REPO/tests/zsh_pty.py" "$script" \
-    --send "$keys" --send '\x18\x18' >/dev/null 2>&1
-  print -r -- "$(<$out)"
 }
 
 # spec_stub <name> <shell body>
