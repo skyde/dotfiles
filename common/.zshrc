@@ -709,17 +709,76 @@ _source_zsh_plugin() {
   return 1
 }
 
-_source_zsh_plugin "zsh-autosuggestions" "zsh-autosuggestions.zsh"
+_load_zsh_plugins() {
+  _source_zsh_plugin "zsh-autosuggestions" "zsh-autosuggestions.zsh"
 
-# Prefer fast-syntax-highlighting (usually installs to zsh-fast-syntax-highlighting)
-# but some package managers might use fast-syntax-highlighting
-if ! _source_zsh_plugin "zsh-fast-syntax-highlighting" "fast-syntax-highlighting.plugin.zsh" && \
-   ! _source_zsh_plugin "fast-syntax-highlighting" "fast-syntax-highlighting.plugin.zsh"; then
-  # Fallback to standard zsh-syntax-highlighting
-  _source_zsh_plugin "zsh-syntax-highlighting" "zsh-syntax-highlighting.zsh"
+  # Prefer fast-syntax-highlighting (usually installs to zsh-fast-syntax-highlighting)
+  # but some package managers might use fast-syntax-highlighting
+  if ! _source_zsh_plugin "zsh-fast-syntax-highlighting" "fast-syntax-highlighting.plugin.zsh" && \
+     ! _source_zsh_plugin "fast-syntax-highlighting" "fast-syntax-highlighting.plugin.zsh"; then
+    # Fallback to standard zsh-syntax-highlighting
+    _source_zsh_plugin "zsh-syntax-highlighting" "zsh-syntax-highlighting.zsh"
+  fi
+
+  # Autosuggestions normally starts from a precmd hook. When the plugins load
+  # after the prompt is already up, that hook has missed its turn, so it is
+  # called directly — otherwise the first line you type gets no suggestion.
+  (( $+functions[_zsh_autosuggest_start] )) && _zsh_autosuggest_start
+
+  unset -f _source_zsh_plugin _load_zsh_plugins
+}
+
+# The two plugins are two thirds of what this file costs — 22ms of about 38ms,
+# and the difference between a prompt in 85ms and one in 50ms, measured with
+# tests/zsh-startup-bench.sh --time-to-prompt. Neither is needed to *draw* the
+# prompt: they only matter once there is a line being edited. So they are loaded
+# just after the first prompt appears instead of just before.
+#
+# The mechanism is a descriptor that is already at end of file. `zle -F` runs a
+# handler when a descriptor becomes readable, and /dev/null always is, so the
+# handler runs at the first moment the line editor is idle — which is after the
+# prompt has been drawn and before a human could press a key. No fork, no timer,
+# no zsh-defer.
+#
+# The backstop matters as much as the mechanism. If that handler never runs — a
+# platform where the descriptor behaves differently, a zsh built without it —
+# the failure would otherwise be silent and permanent: no highlighting, no
+# suggestions, and nothing said. Instead the second prompt loads them the
+# ordinary way, which bounds the damage at one prompt. The specs assert that a
+# suggestion and highlighting are both live at the *first* prompt, so a platform
+# where the fast path stops working fails in CI rather than quietly.
+if [[ -t 0 ]]; then
+  typeset -g _plugin_defer_fd _plugin_defer_prompts=0
+
+  _plugin_defer_run() {
+    local fd=$1
+    zle -F "$fd"
+    exec {fd}<&-
+    unset _plugin_defer_fd
+    add-zsh-hook -d precmd _plugin_defer_backstop
+    (( $+functions[_load_zsh_plugins] )) && _load_zsh_plugins
+    unset -f _plugin_defer_run _plugin_defer_backstop
+  }
+
+  _plugin_defer_backstop() {
+    # The first call is the prompt the handler above is expected to fire after,
+    # so it is left alone; by the second one something has gone wrong.
+    (( ++_plugin_defer_prompts < 2 )) && return 0
+    add-zsh-hook -d precmd _plugin_defer_backstop
+    (( $+functions[_load_zsh_plugins] )) && _load_zsh_plugins
+  }
+
+  autoload -Uz add-zsh-hook
+  add-zsh-hook precmd _plugin_defer_backstop
+
+  exec {_plugin_defer_fd}< /dev/null
+  zle -F "$_plugin_defer_fd" _plugin_defer_run
+else
+  # No terminal: no line editor, so nothing will ever fire the handler. A shell
+  # like this has no use for either plugin, but they are loaded anyway so that
+  # `zsh -i -c` behaves as it always has.
+  _load_zsh_plugins
 fi
-
-unset -f _source_zsh_plugin
 
 # -------- terminal title: where you are, and what is running
 #

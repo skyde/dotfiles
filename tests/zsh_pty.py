@@ -53,6 +53,10 @@ def main(argv):
     rest = argv[1:]
     sends = []
     send_delay = 0.0
+    time_to_prompt = False
+    if rest and rest[0] == "--time-to-prompt":
+        time_to_prompt = True
+        rest = rest[1:]
     while rest and rest[0] in ("--send", "--delay"):
         if len(rest) < 2:
             sys.stderr.write("zsh_pty.py: %s needs an argument\n" % rest[0])
@@ -85,6 +89,7 @@ def main(argv):
             sys.stderr.write("zsh_pty.py: cannot exec zsh: %s\n" % exc)
             os._exit(127)
 
+    started = time.time()
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", ROWS, COLS, 0, 0))
 
     collected = bytearray()
@@ -131,7 +136,7 @@ def main(argv):
             if len(collected) != before:
                 last = time.time()
 
-    def wait_for_raw_mode():
+    def wait_for_raw_mode(poll=0.02):
         """Wait for zle to clear ICANON, which it does while editing a line."""
         while time.time() < deadline:
             try:
@@ -139,8 +144,27 @@ def main(argv):
                     return True
             except termios.error:
                 return False
-            pump_once(0.02)
+            pump_once(poll)
         return False
+
+    if time_to_prompt:
+        # How long the shell takes to be ready for a keystroke, which is what
+        # "startup time" means to whoever is waiting for it. ICANON going away is
+        # the moment zle takes the terminal, i.e. the prompt is up and accepting
+        # input — and unlike timing `zsh -i -c exit`, it counts drawing the prompt
+        # and stops counting at the point the shell became usable. Polled finely,
+        # since the number being measured is a few tens of milliseconds.
+        #
+        # The script is not sourced in this mode: it would be measured too.
+        if not wait_for_raw_mode(poll=0.001):
+            return _give_up(pid, fd, collected, "no prompt appeared")
+        elapsed = (time.time() - started) * 1000.0
+        os.kill(pid, signal.SIGKILL)
+        os.waitpid(pid, 0)
+        os.close(fd)
+        sys.stdout.write("%.1f\n" % elapsed)
+        sys.stdout.flush()
+        return 0
 
     # `source` rather than pasting the script's text in: the shell echoes what it
     # is sent, and a multi-line paste comes back interleaved with continuation

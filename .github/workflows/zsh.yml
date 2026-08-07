@@ -105,11 +105,12 @@ jobs:
       - name: Measure time to a prompt
         run: |
           # A shared runner is slower and noisier than a laptop, so the budget is
-          # far above the ~40ms this takes in practice. It is here to catch a
+          # far above the ~50ms this takes in practice. It is here to catch a
           # change that makes startup cost hundreds of milliseconds — a tool
           # invoked per prompt, a cache that never gets used — not to police a
-          # few milliseconds of drift.
-          tests/zsh-startup-bench.sh -n 20 --budget 400 | tee "$RUNNER_TEMP/startup.txt"
+          # few milliseconds of drift. The number itself is in the job summary,
+          # which is the part worth reading.
+          tests/zsh-startup-bench.sh -n 20 --budget 600 | tee "$RUNNER_TEMP/startup.txt"
           {
             echo '### zsh startup'
             echo '~~~text'

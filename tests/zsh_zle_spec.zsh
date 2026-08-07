@@ -61,6 +61,54 @@ if spec_have fzf; then
     '[[ -s $ZSH_CACHE_DIR/fzf-init.zsh.zwc ]]'
 fi
 
+spec_section 'the plugins are live at the first prompt'
+
+# The plugins are loaded just *after* the prompt is drawn, which halves the time
+# to a prompt — and would be a silent, permanent regression on a platform where
+# the mechanism does not fire. These are the assertions that make that loud: they
+# type at the first prompt and look for the two things the plugins do.
+typeset -g _plugin_output
+_plugin_output=$(spec_pty_raw 'echo suggest-me-please' \
+  'print -s "echo suggest-me-please-and-here-is-the-rest"' 0.5)
+
+if [[ -d /usr/share/zsh-autosuggestions || -d /opt/homebrew/share/zsh-autosuggestions ]] \
+  || [[ -d /usr/local/share/zsh-autosuggestions || -d $HOME/.local/share/zsh-autosuggestions ]]; then
+  # The suggestion is the rest of the matching history line, printed after the
+  # cursor in the comment colour.
+  assert_contains 'a suggestion appears while typing' \
+    '-and-here-is-the-rest' "$_plugin_output"
+else
+  spec_skip 'autosuggestions' 'zsh-autosuggestions is not installed'
+fi
+
+typeset -g _highlight_dir_found=0
+for _dir in /usr/share /opt/homebrew/share /usr/local/share "$HOME/.local/share"; do
+  for _name in zsh-fast-syntax-highlighting fast-syntax-highlighting zsh-syntax-highlighting; do
+    [[ -d $_dir/$_name ]] && _highlight_dir_found=1
+  done
+done
+
+# What is loaded by the time a key is pressed. Asserted by state rather than by
+# looking for a particular colour in the output: fast-syntax-highlighting and
+# zsh-syntax-highlighting colour differently, and a spec that pins one of their
+# palettes fails when the other is what is installed. Both define
+# `_zsh_highlight`, which is the thing that has to exist for either to work.
+typeset -g _plugin_state
+_plugin_state=$(spec_pty_state \
+  'print -r -- "highlight=${+functions[_zsh_highlight]} suggest=${+functions[_zsh_autosuggest_start]} deferred_fd=${+_plugin_defer_fd}"')
+
+if (( _highlight_dir_found )); then
+  assert_contains 'the highlighter is loaded before the first keystroke' \
+    'highlight=1' "$_plugin_state"
+else
+  spec_skip 'syntax highlighting' 'no syntax highlighting plugin is installed'
+fi
+
+# The deferred loader closes its descriptor and forgets the variable once it has
+# run. Still set means the handler never fired and the backstop has not yet
+# rescued it — the state this whole arrangement has to be able to detect.
+assert_contains 'the deferred loader has already run' 'deferred_fd=0' "$_plugin_state"
+
 spec_section 'the terminal title'
 
 # Every window said "zsh" before this: the line that was supposed to set a title

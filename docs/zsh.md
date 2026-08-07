@@ -114,17 +114,36 @@ completion. `_match` stays, because `ls a*d<Tab>` demonstrably works.
 
 ## Startup
 
-Around **30–40ms** to a prompt with the plugins installed, measured with a
-terminal attached:
+Around **50ms to a prompt** with the plugins installed — from starting the shell
+to the line editor accepting a keystroke, which is the number you are actually
+waiting for when a terminal opens. It was 85ms.
 
 ```sh
-tests/zsh-startup-bench.sh              # median/p90 over 20 runs
+tests/zsh-startup-bench.sh              # min/median/p90 over 20 runs
 tests/zsh-startup-bench.sh --budget 250 # fail if the median exceeds 250ms
 tests/zsh-startup-bench.sh --profile    # per-function breakdown (zprof)
 tests/zsh-startup-bench.sh --real       # measure the installed ~/ instead
+tests/zsh-startup-bench.sh --to-exit    # the older `zsh -i -c exit` measure
 ```
 
+Where 85ms went, roughly: 24ms of process start and terminal setup that no
+config can touch, 38ms of this file, and 22ms for starship's first render (it
+runs `git status`).
+
 What was done, and what it was worth:
+
+- **The plugins load just after the first prompt, not before it.** They were two
+  thirds of what this file costs, and neither is needed to *draw* a prompt — they
+  matter once there is a line being edited. A descriptor that is already at end
+  of file, handed to `zle -F`, runs a handler at the first moment the line editor
+  is idle: after the prompt is up, before a human could press a key. No fork, no
+  timer, no zsh-defer. **85ms → 50ms.**
+
+  The backstop is half the feature. If that handler never runs, the failure would
+  be silent and permanent — no highlighting, no suggestions, nothing said — so a
+  precmd hook loads them the ordinary way at the second prompt, and the specs
+  assert that both are live at the *first* one. A platform where this stops
+  working fails in CI rather than quietly.
 
 - **`tool init zsh` output is cached and byte-compiled.** starship and zoxide
   each cost a fork, an exec and a few hundred lines of parsing per shell to
@@ -140,20 +159,32 @@ What was done, and what it was worth:
   ~4ms and ~40ms — but taken unconditionally the dump is never rebuilt, and a
   newly installed tool's completions stay invisible until you delete the cache by
   hand. A stamp file older than 20 hours triggers the full pass.
+- **`compinit -i`**, so a group-writable completion directory — the normal state
+  of a Homebrew install — cannot abort the completion system. Without it, compinit
+  tries to *ask* what to do and a shell with no terminal to ask on prints
+  "not interactive and can't open terminal" and carries on with no completions at
+  all. `compaudit` names what is being skipped; `chmod go-w` brings it back.
 - **No `mkdir -p` on every startup** to ensure a directory that already exists.
 - **fzf's integration is skipped without a terminal.** Everything in it is a zle
   widget, so a `zsh -i -c ...` shell cannot use it. It also removes a
   "can't change option: zle" line those shells used to print to stderr, from
   fzf's own restoring of the option array.
 
-Two things that were measured and **not** kept:
+Three things that were measured and **not** kept:
 
 - Byte-compiling `.zshrc` and `.zshenv` themselves: no effect beyond noise, and
   a stale `.zwc` is a confusing failure.
 - Copying fzf's two integration files into the cache so they would be compiled
   with it: no effect either. What they cost is running them, not parsing them.
+- Deferring fzf's integration the way the plugins are deferred: worth about 8ms,
+  but the custom Ctrl-R has to be re-bound after fzf's own, so a deferral that
+  failed would silently leave you with fzf's history widget instead of this one —
+  a changed behaviour rather than a missing one. Not worth 8ms.
 
-The remaining time is mostly the two plugins. `--profile` shows where it goes.
+`--to-exit` measures `zsh -i -c exit` instead. It is the older number, and since
+the plugins were deferred it is no longer the interesting one: that shell never
+reaches a prompt, so it never loads them. It reports ~20ms, and a change that
+improves it while leaving time-to-prompt alone has not made anything faster.
 
 ## Behaviour worth knowing about
 

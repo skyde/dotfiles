@@ -60,7 +60,7 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 
 ## Shell
 
-zsh, no framework and no plugin manager, around 30–40ms to a prompt. Prefix-aware
+zsh, no framework and no plugin manager, about 50ms to a prompt (85ms before). Prefix-aware
 history on the arrows, completion that matches a name from its initials, fzf on
 Ctrl-R/Ctrl-T/Alt-C, and a fallback prompt for machines where starship is not
 installed yet. Every key and every wrapper is covered by specs that press the key

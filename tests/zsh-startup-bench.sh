@@ -1,20 +1,26 @@
 #!/usr/bin/env bash
-# Measure how long an interactive zsh takes to reach a prompt.
+# Measure how long an interactive zsh takes to become usable.
 #
 #   tests/zsh-startup-bench.sh                  # 20 runs against this checkout
 #   tests/zsh-startup-bench.sh -n 50            # more samples
 #   tests/zsh-startup-bench.sh --budget 250     # fail if the median exceeds 250ms
 #   tests/zsh-startup-bench.sh --profile        # per-function breakdown (zprof)
 #   tests/zsh-startup-bench.sh --real           # measure the installed ~/. instead
+#   tests/zsh-startup-bench.sh --to-exit        # time `zsh -i -c exit` instead
 #
-# By default this runs against a throwaway HOME whose dotfiles are symlinks into
-# the checkout, the same way tests/run-zsh-specs.sh does, so the number reflects
-# the config you are about to commit and is comparable between machines. The
-# plugins (autosuggestions, syntax highlighting) are only measured when they are
-# installed system-wide, which is also true of the real shell.
+# What is measured by default is *time to prompt*: from starting the shell to the
+# line editor taking the terminal, which is the moment a keystroke would be read.
+# That is the number someone opening a terminal is waiting for, and it includes
+# drawing the first prompt — starship's own render is a fifth of it.
 #
-# The timing loop runs *inside* zsh -f: EPOCHREALTIME gives microseconds without
-# needing bash 5 (macOS still ships bash 3.2) or a python3 on PATH.
+# `--to-exit` is the older measurement, timing `zsh -i -c exit`. It is cheaper
+# and needs no python3, but it stops before the prompt is drawn and it skips
+# everything the config sets up *after* the prompt, which since the plugins were
+# deferred is most of what they cost. A shell that looks 22ms faster by that
+# measure and identical by this one has not got faster.
+#
+# Both loops keep their timing inside the process being measured, so neither
+# needs bash 5 (macOS still ships bash 3.2).
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
@@ -29,6 +35,7 @@ runs=20
 budget=""
 profile=false
 use_real_home=false
+to_exit=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -48,8 +55,12 @@ while [[ $# -gt 0 ]]; do
       use_real_home=true
       shift
       ;;
+    --to-exit)
+      to_exit=true
+      shift
+      ;;
     -h | --help)
-      sed -n '2,17p' "$0"
+      sed -n '2,24p' "$0"
       exit 0
       ;;
     *)
@@ -99,7 +110,8 @@ if $profile; then
   # ZDOTDIR of its own whose .zshrc wraps the real one. .zshenv is symlinked
   # straight through: it is part of what we want to see.
   prof_dir="$(mktemp -d)"
-  trap 'rm -rf "${sandbox:-}" "$prof_dir"' EXIT
+  # shellcheck disable=SC2064
+  trap "rm -rf '${sandbox:-}' '$prof_dir'" EXIT
   ln -sfn "$bench_home/.zshenv" "$prof_dir/.zshenv"
   # ZDOTDIR is read from the environment by the profiled shell rather than
   # written into this file: ${var@Q} is bash 4.4 and later, and /bin/bash on
@@ -113,25 +125,40 @@ EOF
   exit "$?"
 fi
 
-# The timing loop, run below with a terminal attached if one can be arranged.
+# ---- time to prompt (the default)
 #
-# Measuring `zsh -i -c exit` from a plain pipe would leave out real work: the
-# config skips fzf's key bindings when there is no terminal, because they are
-# widgets nothing without one can reach. A shell you actually sit in front of
-# pays for them, so the number should include them.
-timing_script="$(mktemp)"
-result_file="$(mktemp)"
-trap 'rm -rf "${sandbox:-}" "${prof_dir:-}" "$timing_script" "$result_file"' EXIT
+# Each run is measured inside tests/zsh_pty.py: it opens a terminal, starts the
+# shell on it, and stops the clock when zle clears ICANON — the moment the prompt
+# is up and a keystroke would be read. The harness's own startup is outside the
+# measurement.
+measure_to_prompt() {
+  local i
+  # The first starts build the completion dump and warm the page cache; they are
+  # not what a normal shell start costs.
+  python3 tests/zsh_pty.py /dev/null --time-to-prompt >/dev/null 2>&1
+  python3 tests/zsh_pty.py /dev/null --time-to-prompt >/dev/null 2>&1
+  for ((i = 0; i < runs; i++)); do
+    python3 tests/zsh_pty.py /dev/null --time-to-prompt 2>/dev/null
+  done
+}
 
-cat >"$timing_script" <<'SCRIPT'
+# ---- time to exit (--to-exit)
+#
+# The whole loop runs inside one zsh so the clock never leaves the process being
+# measured. Run under a pty as well, because the config skips fzf's key bindings
+# when no terminal is attached and a shell you sit in front of pays for them.
+measure_to_exit() {
+  local timing_script result_file
+  timing_script="$(mktemp)"
+  result_file="$(mktemp)"
+
+  cat >"$timing_script" <<'SCRIPT'
 zmodload zsh/datetime
 integer runs=${ZSH_BENCH_RUNS:-20}
 local -a samples
 integer i
 float start
 
-# The first startups build the completion dump and warm the page cache; they are
-# not what a normal shell start costs, so they are run and thrown away.
 repeat 2 zsh --no-globalrcs -i -c exit >/dev/null 2>&1
 
 for (( i = 1; i <= runs; i++ )); do
@@ -140,39 +167,49 @@ for (( i = 1; i <= runs; i++ )); do
   samples+=( $(( (EPOCHREALTIME - start) * 1000.0 )) )
 done
 
-samples=( ${(on)samples} )
-integer mid=$(( (runs + 1) / 2 ))
-integer p90=$(( (runs * 9 + 9) / 10 ))
-(( p90 > runs )) && p90=runs
-float total=0
-for s in $samples; do (( total += s )); done
-printf "%.1f %.1f %.1f %.1f %.1f\n" \
-  $samples[1] $samples[mid] $samples[p90] $samples[-1] $(( total / runs )) \
-  >| $ZSH_BENCH_RESULT
+print -rl -- $samples >| $ZSH_BENCH_RESULT
 SCRIPT
 
-export ZSH_BENCH_RUNS="$runs"
-export ZSH_BENCH_RESULT="$result_file"
-
-attached="with a terminal attached"
-if command -v python3 >/dev/null 2>&1; then
-  ZSH_PTY_TIMEOUT=$((60 + runs * 3)) \
+  ZSH_BENCH_RUNS="$runs" ZSH_BENCH_RESULT="$result_file" \
+    ZSH_PTY_TIMEOUT=$((60 + runs * 3)) \
     python3 tests/zsh_pty.py "$timing_script" >/dev/null 2>&1
-else
-  # No python3 to open a pty: measure what can be measured and say what is
-  # missing, rather than quietly reporting a smaller number.
-  attached="without a terminal (no python3 for a pty; fzf's bindings not included)"
-  zsh -f "$timing_script"
-fi
 
-if [[ ! -s "$result_file" ]]; then
-  echo "benchmark failed" >&2
+  cat "$result_file"
+  rm -f "$timing_script" "$result_file"
+}
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 is needed to open a terminal to measure against" >&2
   exit 1
 fi
 
-read -r bmin bmed bp90 bmax bmean <"$result_file"
+if $to_exit; then
+  measured="time to exit (\`zsh -i -c exit\`, no prompt drawn)"
+  samples="$(measure_to_exit)"
+else
+  measured="time to prompt"
+  samples="$(measure_to_prompt)"
+fi
 
-printf 'zsh interactive startup over %s runs, %s (ms)\n' "$runs" "$attached"
+if [[ -z "$samples" ]]; then
+  echo "benchmark failed: no samples" >&2
+  exit 1
+fi
+
+# Statistics in awk: sorting floating point in the shell is not worth the
+# trouble, and awk is on every machine this runs on.
+read -r bmin bmed bp90 bmax bmean <<EOF
+$(printf '%s\n' "$samples" | sort -n | awk '
+  { a[NR] = $1; total += $1 }
+  END {
+    if (NR == 0) exit 1
+    mid = int((NR + 1) / 2)
+    p90 = int((NR * 9 + 9) / 10); if (p90 > NR) p90 = NR
+    printf "%.1f %.1f %.1f %.1f %.1f\n", a[1], a[mid], a[p90], a[NR], total / NR
+  }')
+EOF
+
+printf 'zsh %s over %s runs (ms)\n' "$measured" "$runs"
 printf '  min %8s\n  median %5s\n  p90 %8s\n  max %8s\n  mean %7s\n' \
   "$bmin" "$bmed" "$bp90" "$bmax" "$bmean"
 

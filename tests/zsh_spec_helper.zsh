@@ -323,12 +323,27 @@ spec_pty_raw() {
     --delay "$delay" --send "$keys" 2>/dev/null
 }
 
+# spec_pty_state <zsh code> [setup code]
+#   Runs the code inside a widget at the first prompt and returns what it printed.
+#
+#   For assertions about the shell as it is the moment you touch the keyboard —
+#   which is the only way to check something that is set up *after* the prompt
+#   appears, like the deferred plugins. Pressing the key is itself the first
+#   keystroke, so whatever should be ready by then either is or is not.
+spec_pty_state() {
+  local code=$1 setup=${2-}
+  _spec_pty_write_script "$setup" "$code"
+  command python3 "$SPEC_REPO/tests/zsh_pty.py" "$SPEC_TMP/pty-type.zsh" \
+    --send '\x18\x18' >/dev/null 2>&1
+  print -r -- "$(<$SPEC_TMP/pty-buffer)"
+}
+
 _spec_pty_write_script() {
-  local setup=$1
+  local setup=$1 report=${2:-'print -r -- "$BUFFER"'}
   local script="$SPEC_TMP/pty-type.zsh" out="$SPEC_TMP/pty-buffer"
   : >| "$out"
   {
-    print -r -- "_spec_report_buffer() { print -r -- \"\$BUFFER\" >| ${(q)out} }"
+    print -r -- "_spec_report_buffer() { { $report } >| ${(q)out} }"
     print -r -- 'zle -N _spec_report_buffer'
     print -r -- "bindkey '^X^X' _spec_report_buffer"
     print -r -- "builtin cd -- ${(q)SPEC_REPO}"
