@@ -199,8 +199,16 @@ Tokyo Night by way of the terminal palette.
 ### Man pages
 
 `less` renders man's bold, underline and standout with the terminal's
-defaults. `LESS_TERMCAP_*` in `theme.sh` replaces those three with `blue`,
-`green` and `orange`-on-`bg_highlight`.
+defaults. `LESS_TERMCAP_*` in `theme.sh` replaces those three, each mapped to
+a documented role: bold is headings and command names, so `blue`; underline
+marks the argument you substitute, so `cyan`.
+
+Standout is the interesting one. `less` uses it for **search matches**, not
+only for the status line — verified by running `less -p` under a pty and
+reading back what it wrapped the match in — so it is the same inverted yellow
+block as fzf, ripgrep and delta. The bottom status line is drawn in standout
+too and comes along with it, which is no louder than the reverse video it gets
+by default.
 
 `GROFF_NO_SGR=1` is set alongside them and is not optional: without it groff
 emits its own SGR sequences and `less` never consults termcap at all, so the

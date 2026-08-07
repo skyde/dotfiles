@@ -188,11 +188,20 @@ export EZA_COLORS
 # The values are raw escape sequences; printf builds them so this stays POSIX
 # (no $'...' in sh). \033 rather than \e for the same reason: dash's printf
 # does not know \e.
-LESS_TERMCAP_md=$(printf '\033[%sm' "1;$_tn_blue")    # bold: headings, names
-LESS_TERMCAP_me=$(printf '\033[0m')                   # end of every mode
-LESS_TERMCAP_us=$(printf '\033[4;%sm' "$_tn_green")   # underline: arguments
+# Each of the three maps onto a documented role: bold is headings and command
+# names, which is `blue`'s job; underline marks the argument you substitute,
+# which is `cyan`'s.
+LESS_TERMCAP_md=$(printf '\033[1;%sm' "${_tn_blue}")   # bold
+LESS_TERMCAP_me=$(printf '\033[0m')                    # end of every mode
+LESS_TERMCAP_us=$(printf '\033[4;%sm' "${_tn_cyan}")   # underline
 LESS_TERMCAP_ue=$(printf '\033[0m')
-LESS_TERMCAP_so=$(printf '\033[%s;48;2;41;46;66m' "$_tn_orange") # the prompt line
+# Standout is the inverted yellow block, because less uses it for search
+# matches — verified by running `less -p` under a pty and reading back what it
+# wrapped the match in. So this is the same gesture as fzf's hl, ripgrep's
+# match and delta's grep, and it has to look the same. The bottom status line
+# is drawn in standout too and comes along with it, which is no louder than
+# the reverse video it would otherwise get by default.
+LESS_TERMCAP_so=$(printf '\033[1;7;%sm' "${_tn_yellow}")
 LESS_TERMCAP_se=$(printf '\033[0m')
 export LESS_TERMCAP_md LESS_TERMCAP_me LESS_TERMCAP_us LESS_TERMCAP_ue
 export LESS_TERMCAP_so LESS_TERMCAP_se
