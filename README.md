@@ -100,12 +100,17 @@ unpacked automatically when FUSE is missing. On macOS use `brew install neovim`.
 
 `<leader>gg` opens lazygit inside Neovim, and
 `common/.config/lazygit/config.yml` uses recent options, so lazygit needs to be
-current as well. Debian and Ubuntu do not package it at all, so grab the release
-binary (`init.sh` offers this too):
+current as well. **v0.64.0 or newer**: that release renamed `git.pagers` to
+`git.diffRenderers` (and the entry's `pager` field to `command`), which is what
+the config now uses. On an older lazygit those keys are silently ignored and
+diffs render as raw git output instead of going through delta.
+
+Debian and Ubuntu do not package it at all, so grab the release binary
+(`init.sh` offers this too):
 
 ```sh
 ./install-lazygit.sh                          # latest release into ~/.local/bin
-LAZYGIT_VERSION=v0.54.2 ./install-lazygit.sh  # pin a specific tag
+LAZYGIT_VERSION=v0.64.0 ./install-lazygit.sh  # pin a specific tag
 ```
 
 ### Plugin Versions

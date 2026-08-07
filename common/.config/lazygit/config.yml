@@ -1,13 +1,22 @@
 git:
-  # The key is `pagers` — a LIST — on lazygit 0.63 (`lazygit --config` prints
-  # the default config, which shows `pagers: []`; older docs say `paging:`, an
-  # object). lazygit silently ignores unknown keys, so the wrong shape doesn't
-  # error — it just disconnects delta and diffs quietly render as raw git
-  # output. Verify against `lazygit --config` output after touching this
-  # section, not by eyeballing the YAML.
-  pagers:
+  # The key is `diffRenderers` — a LIST — as of lazygit 0.64, which renamed it
+  # from `pagers` and renamed the entry's `pager` field to `command`. Before
+  # that it was `pagers`, and older docs say `paging:`, an object.
+  #
+  # This is not cosmetic. lazygit rewrites the config file in place when it
+  # finds the old names, and this file is a stow symlink into the dotfiles
+  # repository — so the first `<leader>gg` on lazygit 0.64 edited a tracked file
+  # and left the repo dirty with a change nobody made.
+  #
+  # lazygit silently ignores unknown keys, so the wrong shape does not error —
+  # it just disconnects delta and diffs quietly render as raw git output. That
+  # is the failure mode on lazygit older than 0.64, which is another reason to
+  # run install-lazygit.sh (README says as much). Verify against
+  # `lazygit --config` output after touching this section, not by eyeballing
+  # the YAML.
+  diffRenderers:
     - colorArg: always # Delta wants colored input; LazyGit handles paging itself
-      pager: delta --dark --paging=never --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
+      command: delta --dark --paging=never --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
   parseEmoji: false
 promptToReturnFromSubprocess: false
 promptToOpenMergeTool: false
