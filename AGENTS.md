@@ -13,6 +13,9 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 ## Optional checks
 
+- If you touched a colour anywhere, run `./tests/check-theme.py`. It needs
+  nothing installed, and it is the only thing keeping a dozen configs in four
+  syntaxes agreeing on the same palette. See `docs/tokyonight.md`.
 - Run ShellCheck on modified shell scripts if available: `shellcheck <changed .sh files>`
 - Run Stylua on modified Neovim Lua files if available: `stylua common/nvim/.config/nvim`
 - Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`

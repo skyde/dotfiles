@@ -1,0 +1,54 @@
+name: Theme Consistency
+
+# The Tokyo Night theme is spread across a dozen configs in four syntaxes, and
+# nothing in any of them refers to any other. This is what stops the copies
+# drifting apart between the times someone remembers to look.
+#
+# Triggered on the theme files themselves and on the palette doc, because
+# tests/check-theme.py treats that doc as the source of truth: it reads the
+# "Where the theme lives" table to decide what to scan, and a colour the doc
+# does not name is a failure wherever it appears.
+
+#
+# The two path lists below are duplicated rather than shared through a YAML
+# anchor: GitHub Actions' workflow parser does not expand anchors, and the
+# repo's other workflows spell theirs out for the same reason. Keep them equal.
+
+on:
+  push:
+    paths:
+      - "docs/tokyonight.md"
+      - "tests/check-theme.py"
+      - "common/.tmux.conf"
+      - "common/.zshrc"
+      - "common/.zshenv"
+      - "common/.bashrc-custom"
+      - "common/.ripgreprc"
+      - "common/.config/**"
+      - ".github/workflows/theme-consistency.yml"
+  pull_request:
+    paths:
+      - "docs/tokyonight.md"
+      - "tests/check-theme.py"
+      - "common/.tmux.conf"
+      - "common/.zshrc"
+      - "common/.zshenv"
+      - "common/.bashrc-custom"
+      - "common/.ripgreprc"
+      - "common/.config/**"
+      - ".github/workflows/theme-consistency.yml"
+  workflow_dispatch:
+
+jobs:
+  theme:
+    name: Palette, parity and contrast
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # No dependencies to install: the check is stdlib Python, and the one
+      # thing it shells out to is bash, to source the shell theme and read the
+      # colours it actually exports.
+      - name: Check the theme
+        run: tests/check-theme.py --verbose

@@ -70,6 +70,23 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 - `lazygit` for a simple git TUI
 - `starship` for a customizable cross-shell prompt
 
+## Theme
+
+Everything above wears **Tokyo Night (night)**, from the terminal down to the
+colour of a `.zip` in a completion menu — see [docs/tokyonight.md](docs/tokyonight.md)
+for the palette, which tool reads it from where, and the deliberate deviations
+(the `#ff5000` cursor, the lightened ANSI 8). Syntax highlighting is
+deliberately *not* Tokyo Night: `bat`, `delta`, VS Code and yazi's preview all
+use `Visual Studio Dark+`, driven by the single `BAT_THEME` setting.
+
+Nothing keeps a dozen configs in four syntaxes agreeing on one palette except
+`tests/check-theme.py`, which needs nothing installed:
+
+```bash
+tests/check-theme.py            # palette, parity and contrast
+tests/check-theme.py --verbose  # and what passed
+```
+
 ## Neovim
 
 LazyVim, configured to match the VS Code setup key-for-key — see
