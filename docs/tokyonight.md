@@ -308,6 +308,21 @@ the peek job; in `seek` the live offset is `cx.active.preview.skip`, and
 reading the wrong one throws silently, which looks exactly like J/K doing
 nothing.
 
+### Gotcha: do not colour git's diff
+
+Delta paints diffs; git paints everything else it prints, and the
+`[color "status"]`, `[color "branch"]` and `[color "decorate"]` sections give
+those the palette's roles — green added, yellow modified, teal untracked,
+magenta branch, cyan remote, and `orange` for HEAD, which is the same "you are
+here" colour as the cursor and the current search match.
+
+There is deliberately **no `[color "diff"]` section**, and there must not be
+one. `delta.map-styles` recognises moved code by matching the exact colours
+git emits for it — `bold purple`, `bold cyan` and friends — so overriding
+git's diff colours would quietly stop delta from recognising a move, and
+relocated code would go back to reading as a plain add plus a plain remove.
+The failure is silent: diffs still render, they just stop being as useful.
+
 ### Gotcha: delta feature sections
 
 Delta's colours must sit in the plain `[delta]` section, **not** in a named
@@ -345,7 +360,7 @@ it fails the test.
 | Neovim   | `common/.config/nvim/lua/plugins/tokyonight.lua`      |
 | Neovim   | `common/.config/nvim/lua/util/inline_diff.lua` (the diff tints) |
 | lazygit  | `common/.config/lazygit/config.yml` (`gui.theme`)     |
-| delta    | `common/.config/git/config` (`[delta]`)               |
+| delta, git | `common/.config/git/config` (`[delta]`, and git's own `[color "…"]`) |
 | starship | `common/.config/starship.toml` (`[palettes.tokyonight]`) |
 | fzf, ls, man | `common/.config/shell/theme.sh`                   |
 | zsh      | `common/.zshrc` (completion menu, command line, suggestions) |
