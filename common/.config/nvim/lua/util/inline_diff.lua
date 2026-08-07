@@ -59,6 +59,22 @@ local PALETTE = {
   InlineDiffMovedDelete = { bg = "#2e2547" },
   InlineDiffWsError = { bg = "#db4b4b" },
   InlineDiffMovedHint = { fg = "#565f89", italic = true },
+  InlineDiffMovedGhost = { bg = "#2e2547", fg = "#565f89" },
+  -- Family-coloured move candidates: the departure stays in the red family,
+  -- the arrival in the green family, each held apart from a real delete/add
+  -- by dimming, a hue lean, or a strikethrough.
+  InlineDiffMovedFromDim = { bg = "#3f1f1f", fg = "#8a7080" },
+  InlineDiffMovedToDim = { bg = "#17311f" },
+  -- The dim pair with a whisper of the delta move hues: the red leans
+  -- violet, the green leans teal — enough to say "not a real delete/add"
+  -- without leaving the red/green families. Two intensities.
+  InlineDiffMovedFromSubtle = { bg = "#3a212b", fg = "#8a7080" },
+  InlineDiffMovedToSubtle = { bg = "#16332c" },
+  InlineDiffMovedFromSubtle2 = { bg = "#352337", fg = "#8a7080" },
+  InlineDiffMovedToSubtle2 = { bg = "#143539" },
+  InlineDiffMovedFromTint = { bg = "#4a2139" },
+  InlineDiffMovedToTint = { bg = "#175035" },
+  InlineDiffMovedFromStrike = { bg = "#3f1f1f", fg = "#8a7080", strikethrough = true },
   -- Line numbers, fg only: delta's line-numbers-plus-style "#9ece6a dim",
   -- pre-dimmed toward the background since highlights have no dim attribute.
   -- fg-only matters: a number_hl_group background bleeds into the blank
@@ -182,6 +198,77 @@ end
 --------------------------------------------------------------------------
 -- move detection
 --------------------------------------------------------------------------
+
+-- How the two ends of a move refer to each other:
+-- Move presentation, two independent knobs.
+--
+-- Colours (`M.move_colors`) — which pair of groups paints the two ends:
+--   "delta"      the delta map-styles violet / cyan
+--   "dim"        red family, dimmed: faded dim-red departure, dim-green arrival
+--   "strike"     dim-red struck-through departure, plain add-green arrival
+--   "strikedim"  dim-red struck-through departure, dim-green arrival
+--   "tint"       red-plum departure, emerald arrival — full strength, held
+--                apart from real delete/add by hue
+--   "ghost"      violet with faded text at the departure, cyan arrival
+--
+-- Hints (`M.move_hint`) — the small grey pointer each end carries:
+--   "absolute"  buffer line numbers: "→ 92" / "← 20"
+--   "relative"  direction arrows with the row distance: "↓ 18" / "↑ 18"
+--   "signed"    relative-jump offsets, no arrows: "+18" at the departure
+--               (partner is 18 below), "-18" at the arrival — the address a
+--               :+18 / 18j jump uses, and nothing that reads as motion
+--   "elbow"     the glyph says where the partner is: "↴ 18" partner below,
+--               "↳ 18" partner up there (the continuation elbow — comes from
+--               above, lands here; no upward arrow anywhere)
+--   "deponly"   only the departure points ("↓ 18"); the arrival is colour only
+--   "none"      colour only, the way git --color-moved and delta render moves
+--
+-- The shipped look: the dim red/green family pair with a violet/teal lean
+-- ("subtle2" — quiet like a dimmed delete/add, but recognizably neither),
+-- and no hints at all. The alternatives stay selectable for tuning.
+M.move_colors = "subtle2"
+M.move_hint = "none"
+
+local MOVE_COLOR_GROUPS = {
+  delta = { from = "InlineDiffMovedDelete", to = "InlineDiffMovedAdd" },
+  dim = { from = "InlineDiffMovedFromDim", to = "InlineDiffMovedToDim" },
+  subtle = { from = "InlineDiffMovedFromSubtle", to = "InlineDiffMovedToSubtle" },
+  subtle2 = { from = "InlineDiffMovedFromSubtle2", to = "InlineDiffMovedToSubtle2" },
+  strike = { from = "InlineDiffMovedFromStrike", to = "InlineDiffAdd" },
+  strikedim = { from = "InlineDiffMovedFromStrike", to = "InlineDiffMovedToDim" },
+  tint = { from = "InlineDiffMovedFromTint", to = "InlineDiffMovedToTint" },
+  ghost = { from = "InlineDiffMovedGhost", to = "InlineDiffMovedAdd" },
+}
+
+---Highlight groups for the two ends of a move under the current colours.
+---@return string from_hl, string to_hl
+local function move_colors()
+  local c = MOVE_COLOR_GROUPS[M.move_colors] or MOVE_COLOR_GROUPS.delta
+  return c.from, c.to
+end
+
+---Hint texts for a move: what the departure's virtual line appends, and
+---what the arrival shows at end of line. Either can be nil for "no hint".
+---@param dep integer  buffer row the departure marker is drawn at
+---@param arr integer  buffer row the line landed on
+---@return string|nil dep_hint, string|nil arr_hint
+local function move_hints(dep, arr)
+  local down = arr >= dep
+  local dist = math.abs(arr - dep)
+  local hint = M.move_hint
+  if hint == "none" then
+    return nil, nil
+  elseif hint == "signed" then
+    return ("  %+d"):format(down and dist or -dist), ("%+d"):format(down and -dist or dist)
+  elseif hint == "elbow" then
+    return ("  %s %d"):format(down and "↴" or "↳", dist), ("%s %d"):format(down and "↳" or "↴", dist)
+  elseif hint == "deponly" then
+    return ("  %s %d"):format(down and "↓" or "↑", dist), nil
+  elseif hint == "relative" then
+    return ("  %s %d"):format(down and "↓" or "↑", dist), ("%s %d"):format(down and "↑" or "↓", dist)
+  end
+  return ("  → %d"):format(arr), ("← %d"):format(dep)
+end
 
 -- A line has to say something to count as moved: `}` or `end` appearing on
 -- both sides of a diff is coincidence, not relocation.
@@ -318,15 +405,22 @@ function M.render(buf)
         -- part dims and the changed tokens brighten; a line without one gets
         -- the plain wash. The dimming is what makes the emphasis carry.
         local spans = old_spans[i - start_a]
-        local base_hl = old_moved[i] and "InlineDiffMovedDelete" or (spans and "InlineDiffDeleteDim" or "InlineDiffDelete")
+        local moved_hl = (move_colors())
+        local base_hl = old_moved[i] and moved_hl or (spans and "InlineDiffDeleteDim" or "InlineDiffDelete")
         local chunks = virt_chunks(st.base[i] or "", base_hl, "InlineDiffDeleteEmph", spans)
         if old_moved[i] then
-          chunks[#chunks + 1] = { ("  → %d"):format(old_moved[i]), "InlineDiffMovedHint" }
+          local dep_hint = move_hints(departure_row[i] or 0, old_moved[i])
+          if dep_hint then
+            chunks[#chunks + 1] = { dep_hint, "InlineDiffMovedHint" }
+          end
         end
         -- Wash the rest of the row too, the way line_hl_group washes the
         -- added lines — a virtual line only paints under its chunks. The
         -- window truncates whatever does not fit.
-        chunks[#chunks + 1] = { (" "):rep(500), base_hl }
+        -- A struck-through wash would draw its line across the padding too;
+        -- pad with the same background minus the decoration.
+        local pad_hl = base_hl == "InlineDiffMovedFromStrike" and "InlineDiffMovedFromDim" or base_hl
+        chunks[#chunks + 1] = { (" "):rep(500), pad_hl }
         virt[#virt + 1] = chunks
       end
       if count_b > 0 then
@@ -345,7 +439,7 @@ function M.render(buf)
 
     for row = start_b, start_b + count_b - 1 do
       local spans = new_spans[row - start_b]
-      local line_hl = new_moved[row] and "InlineDiffMovedAdd" or (spans and "InlineDiffAddDim" or "InlineDiffAdd")
+      local line_hl = new_moved[row] and select(2, move_colors()) or (spans and "InlineDiffAddDim" or "InlineDiffAdd")
       local nr_hl = new_moved[row] and "InlineDiffMovedAddNr" or "InlineDiffAddNr"
       local text = lines[row] or ""
       -- The full-row wash is an eol range highlight, NOT line_hl_group: a
@@ -380,10 +474,13 @@ function M.render(buf)
         end
       end
       if new_moved[row] then
-        vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
-          virt_text = { { ("← %d"):format(departure_row[new_moved[row]] or 0), "InlineDiffMovedHint" } },
-          virt_text_pos = "eol",
-        })
+        local arr_hint = select(2, move_hints(departure_row[new_moved[row]] or 0, row))
+        if arr_hint then
+          vim.api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
+            virt_text = { { arr_hint, "InlineDiffMovedHint" } },
+            virt_text_pos = "eol",
+          })
+        end
       end
       -- Delta's whitespace-error: trailing whitespace on a new line, painted
       -- the hard red that means "you probably did not want this".
