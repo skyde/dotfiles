@@ -212,6 +212,13 @@ of 40, while `bold reverse red` kept it (24/40, better than git's own default
 of 17/40). Named `red` resolves through the terminal palette, which is Tokyo
 Night here, so it lands on `#f7768e` anyway.
 
+### Gotcha: `--graph` and `-p` do not mix
+
+`git log --graph -p` prefixes every line of the patch with the graph's `| | `,
+which defeats delta's parser completely: the diff comes through raw, `diff
+--git`, `---`, `+++`, `@@` and all, with no colour. No delta setting changes
+this. Use `--graph` for topology and `git log -p` (no graph) to read patches.
+
 ### Gotcha: delta cannot render a merge commit
 
 `git show <merge>` gives git's combined `--cc` diff, whose two-column `- `,

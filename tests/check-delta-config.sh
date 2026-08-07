@@ -46,6 +46,12 @@ if ! command -v delta >/dev/null 2>&1; then
   exit 0
 fi
 
+# The escape is spelled with printf rather than \x1b: BSD sed, which is the sed
+# on macOS, does not understand \x escapes and would leave every colour code in
+# place — the assertions below would then all fail for the wrong reason.
+esc=$(printf '\033')
+plain() { sed "s/${esc}\\[[0-9;]*m//g; s/${esc}\\[0K//g"; }
+
 status=0
 pass() { printf 'PASS  %s\n' "$1"; }
 fail() {
@@ -60,11 +66,13 @@ printf 'delta: %s\n\n' "$(delta --version)"
 # --help is the only machine-readable list of options delta offers. Long-only
 # forms are indented six spaces; the handful that also have a short form
 # ("  -n, --line-numbers") sit at two, so the pattern has to accept both — miss
-# that and -n/-s/-w read as keys delta does not have.
+# that and -n/-s/-w read as keys delta does not have. Delta before 0.18 colours
+# its own --help even into a pipe, which buries the indentation under escape
+# codes, hence the strip.
 opts="$(mktemp)"
 keys="$(mktemp)"
 trap 'rm -f "$opts" "$keys"' EXIT
-delta --help 2>&1 |
+delta --help 2>&1 | plain |
   sed -n 's/^ \{2,7\}\(-[a-zA-Z], \)\?--\([a-z0-9-]*\).*/\2/p' |
   sort -u >"$opts"
 # Keys in the [delta] section: indented assignments between "[delta]" and the
@@ -224,7 +232,6 @@ raw_diff() {
     diff --cached -M
 }
 paint() { delta --config "$cfg" --paging=never --width="${COLUMNS:-100}"; }
-plain() { sed 's/\x1b\[[0-9;]*m//g; s/\x1b\[0K//g'; }
 out="$(raw_diff | paint | plain)"
 
 expect() {
@@ -238,8 +245,12 @@ expect "a modified file is named"        '^M keep\.txt'
 expect "a new file is named"             '^A created\.txt'
 expect "a deleted file is named"         '^D delete_me\.txt'
 expect "a rename shows both names"       '^R rename_me\.txt .* renamed\.txt'
-expect "a binary change is visible"      '^M blob\.bin \(binary file\)'
-expect "a mode change is visible"        '^M mode\.sh \(mode \+x\)'
+# Delta only started folding these into its file header at 0.17; 0.16 passes
+# git's own "Binary files … differ" and "old mode/new mode" lines through
+# instead. Either is fine — the point is that something reaches the screen.
+# With file-style = omit all three versions render exactly nothing here.
+expect "a binary change is visible"      '^M blob\.bin \(binary file\)|Binary files .*blob\.bin'
+expect "a mode change is visible"        '^M mode\.sh \(mode \+x\)|^new mode'
 expect "hunk headers carry file:line"    '^• keep\.txt:[0-9]+:'
 expect "tabs are not delta's default 8"  '^[0-9]+ {2,4}( {2}| {4})tab indented deeper'
 
