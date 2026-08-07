@@ -139,7 +139,8 @@ two muted foregrounds for ghosted text and line numbers. Those live in
 
 The zsh line editor is the one piece of chrome that is also *code*, and it is
 coloured as code — from `BAT_THEME`'s Visual Studio Dark+, set on
-`FAST_HIGHLIGHT_STYLES` / `ZSH_HIGHLIGHT_STYLES` in `~/.zshrc`.
+`FAST_HIGHLIGHT_STYLES` / `ZSH_HIGHLIGHT_STYLES` in `~/.zshrc`. PSReadLine
+gets the same table on Windows, so a pipeline reads the same on both.
 
 The reason is Ctrl-R. That picker pipes history through `bat`, so the same
 command is already being painted in Dark+ one keystroke before it lands on the
@@ -153,6 +154,7 @@ prompt; anything else would mean accepting a history entry recoloured it.
 | commands, functions, aliases, `$(…)`        | `#dcdcaa` |
 | control words, and precommands like `sudo`  | `#c586c0` |
 | variables, assignments, interpolation       | `#9cdcfe` |
+| type names                                  | `#4ec9b0` |
 | globs, history expansion, escapes           | `#d7ba7d` |
 | options                                     | `#569cd6` |
 | numbers and file descriptors                | `#b5cea8` |
@@ -320,6 +322,7 @@ it fails the test.
 | fzf, ls, man | `common/.config/shell/theme.sh`                   |
 | zsh      | `common/.zshrc` (completion menu, command line, suggestions) |
 | ripgrep  | `common/.ripgreprc`                                   |
+| PowerShell | `windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1` (PSReadLine, rg) |
 | search   | `common/.local/bin/st-rg`, `common/.local/bin/st-zoekt` |
 | yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
 | lf       | `common/.config/lf/colors`                            |
