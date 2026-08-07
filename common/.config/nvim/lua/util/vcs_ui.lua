@@ -2194,6 +2194,48 @@ function M.revert_current(opts)
   end)
 end
 
+---The path `path` had at `rev`, when the backend says it was renamed since.
+---Asking for the base of a renamed file under its *new* name gets nothing
+---back, and a diff against nothing renders the whole file as added — which
+---is exactly what `<leader>gd` used to show for anything that had been moved.
+---The changed listing already knows the old name; this is the one extra
+---subprocess it takes to find out, paid only when the direct lookup failed.
+---@return string|nil
+local function renamed_from(backend, root, rev, path)
+  local ok, files = pcall(backend.changed, root, rev)
+  if not ok then
+    return nil
+  end
+  for _, file in ipairs(files or {}) do
+    if file.path == path and file.orig and file.orig ~= path then
+      return file.orig
+    end
+  end
+  return nil
+end
+
+---Base content for an ad-hoc diff of one file, following a rename. The pane
+---keeps the file's *current* name whatever happens, since that is what
+---`<leader>fl` and `<leader>gw` parse back out of it; where the content came
+---from is said out loud instead.
+---@return string[] base
+local function adhoc_base(backend, root, rev, path)
+  local base = backend.show(root, rev, path)
+  if base then
+    return base
+  end
+  local orig = renamed_from(backend, root, rev, path)
+  if orig then
+    local moved = backend.show(root, rev, orig)
+    if moved then
+      vim.notify(("%s was %s at %s"):format(path, orig, rev:sub(1, 12)))
+      return moved
+    end
+  end
+  vim.notify(("%s has no version at %s (new file?)"):format(path, rev:sub(1, 12)), vim.log.levels.INFO)
+  return {}
+end
+
 ---Diff just the current buffer's file, without the file list.
 ---@param scope string
 function M.file_diff(scope)
@@ -2207,11 +2249,7 @@ function M.file_diff(scope)
     return
   end
   local rev = backend.rev(root, scope)
-  local base = backend.show(root, rev, path)
-  if not base then
-    vim.notify(("%s has no version at %s (new file?)"):format(path, rev:sub(1, 12)), vim.log.levels.INFO)
-    base = {}
-  end
+  local base = adhoc_base(backend, root, rev, path)
 
   local line = vim.api.nvim_win_get_cursor(0)[1]
   vim.cmd("tab split")
@@ -2485,9 +2523,12 @@ function M.history()
     if not choice then
       return
     end
-    local base = backend.show(root, choice.rev, path)
+    -- Backends that walk through renames say which name the file had at that
+    -- revision; asking under the current one would come back empty.
+    local at = choice.path or path
+    local base = backend.show(root, choice.rev, at)
     if not base then
-      vim.notify(("%s does not exist at %s"):format(path, choice.rev:sub(1, 10)), vim.log.levels.WARN)
+      vim.notify(("%s does not exist at %s"):format(at, choice.rev:sub(1, 10)), vim.log.levels.WARN)
       return
     end
     vim.cmd("tab split")

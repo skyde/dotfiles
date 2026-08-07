@@ -63,6 +63,15 @@ return {
         desc = "Debug: Select and Start",
       },
       {
+        -- The same action Shift+F7 (the footpedal's "stop build") runs: a
+        -- live debug session first, then a CMake build, then the last task.
+        "<leader>ms",
+        function()
+          require("config.vscode_debug").stop()
+        end,
+        desc = "Debug: Stop (session, build or task)",
+      },
+      {
         "<leader>mp",
         -- Break at cursor: prefer run_to_cursor, which sets a temporary bp.
         -- If no session, start default config and run_to_cursor on init.

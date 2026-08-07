@@ -790,6 +790,27 @@ do
     win_name(layout()[2])
   )
   ui.close()
+
+  -- The ad-hoc diff (<leader>gd) has no listing to consult, so it used to ask
+  -- for the base under the *new* name, get nothing, and render the whole file
+  -- as freshly added.
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/c_renamed.txt"))
+  ui.file_diff("working")
+  eq(
+    "file_diff: a renamed file still diffs against its pre-rename content",
+    vim.split(string.rep("stable\n", 8), "\n", { trimempty = true }),
+    win_lines(layout()[1])
+  )
+  -- ...but the pane keeps the current name, which is what <leader>fl and
+  -- <leader>gw parse back out of it.
+  check(
+    "file_diff: the base pane is named after the current path",
+    win_name(layout()[1]):find("c_renamed.txt", 1, true),
+    win_name(layout()[1])
+  )
+  vim.cmd("wincmd h")
+  eq("file_diff: current_path resolves through the rename", root .. "/c_renamed.txt", ui.current_path())
+  vim.cmd("tabclose")
 end
 
 --------------------------------------------------------------------------

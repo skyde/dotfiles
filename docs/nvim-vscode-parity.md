@@ -38,7 +38,7 @@ Commands do the same without leader keys: `:VcsChanges [working|branch|head]`,
 The list is a tree, VS Code explorer style: directories first, chains of
 single-child directories compacted onto one line (`a/b/c/`), and every
 filename shown whole instead of a full path truncated against the panel
-edge. Status letters (`M` `A` `D` `R` `?` `!`) sit in the left column,
+edge. Status letters (`M` `A` `D` `R` `C` `?`) sit in the left column,
 filetype icons follow when mini.icons is around, renamed files read
 `new ← old`, and the header tracks the selection as `file 3 of 12` plus the
 listing's total churn (`+125 -40`). The right edge of each row carries the
@@ -211,7 +211,7 @@ it works in every backend and on files handed over by any other tool.
 | `<leader>ca` | code action (LazyVim default) |
 | `<leader>cI`, `<BS><leader>` | signature help |
 | `<BS><BS>` | hover |
-| `<leader>Backspace` | debug hover / evaluate |
+| `<leader><BS>` | debug hover / evaluate |
 | `]d` / `[d` | next / previous diagnostic |
 | `<leader>xx` | problems list (Trouble) |
 
@@ -259,7 +259,7 @@ unchanged.
 
 | Key | Action |
 | --- | --- |
-| `<leader>uw` `<leader>uz` `<leader>uc` `<leader>uh` | wrap / zen / whitespace / inlay hints |
+| `<leader>uw` `<leader>uz` `<leader>uc` `<leader>uh` | wrap / zen / conceal level / inlay hints |
 | `<leader>up` `<leader>um` `<leader>ur` | font bigger / smaller / reset (Neovide, or kitty with remote control on) |
 | `<leader>uk` | key-press debugging |
 | `<leader>p` | command palette |
@@ -292,13 +292,14 @@ unchanged.
 tests/run-nvim-specs.sh
 ```
 
-Three specs, no plugins needed, each self-contained:
+Every spec is self-contained and needs no plugins:
 
-* `nvim_vcs_spec.lua` — the backends, against throwaway git and jj
+* `nvim_vcs_spec.lua` — the backends, against throwaway git, jj and Mercurial
   repositories: renames, paths with spaces and non-ASCII characters, deleted and
   untracked files, an empty repository, detached HEAD. Perforce runs against a
   stub `p4` binary that speaks the real `-ztag` protocol, which is how that
-  backend is covered without a server.
+  backend is covered without a server. The jj and hg halves skip themselves
+  when the binary is missing, so an incomplete machine still runs the rest.
 * `nvim_conflict_spec.lua` — every conflict shape and choice, including
   `merge` style with no base section, multiple and adjacent conflicts,
   conflicts spanning the whole file, unlabelled markers, and near-miss text
@@ -306,6 +307,13 @@ Three specs, no plugins needed, each self-contained:
 * `nvim_vcs_ui_spec.lua` — window layout, which buffer lands in which pane,
   scrubbing, the inline toggle, the diff-tab lifecycle, and the degenerate cases
   (no changes, no repository).
+* `nvim_inline_diff_spec.lua` — the overlay: hunk slicing, token emphasis,
+  move detection, folding, revert.
+* `nvim_chromium_spec.lua` — checkout detection, clangd selection and
+  compile-database staleness.
+* `nvim_plugins_spec.lua` — the `opts` functions in `lua/plugins/`, driven
+  with the shapes LazyVim actually passes them. These are where an upstream
+  change silently turns a customisation into a no-op.
 
 ```bash
 tests/check-nvim-keymaps.sh

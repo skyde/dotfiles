@@ -170,6 +170,10 @@ local keys = {
   " dw",
   " dx",
   " db",
+  -- "stop the build / the session / the last task", the leader twin of the
+  -- footpedal's Shift+F7. Safe to invoke: with nothing running it falls all
+  -- the way through to a message.
+  " ms",
   -- hover cluster
   "<BS><BS>",
   "<BS> ",

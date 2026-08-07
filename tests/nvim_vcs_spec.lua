@@ -192,6 +192,22 @@ do
   git(git_root, "commit", "-qm", "commit the rename")
   local followed = b.log(root, "renamed-to.txt")
   truthy("git: log follows a committed rename back past it", #followed >= 2, vim.inspect(followed))
+  -- Each entry says which name the file had at that revision, so `show` can
+  -- actually fetch it: under the current name every pre-rename revision comes
+  -- back empty, and the history diff renders as if the file were brand new.
+  eq("git: log entry carries the path at that revision", "renamed-to.txt", followed[1] and followed[1].path)
+  local before = followed[#followed]
+  eq("git: log entry carries the pre-rename path", "renamed-from.txt", before and before.path)
+  truthy(
+    "git: show finds the content under the logged path",
+    before and b.show(root, before.rev, before.path) ~= nil,
+    vim.inspect(before)
+  )
+  eq(
+    "git: show under the current name finds nothing that far back",
+    nil,
+    before and b.show(root, before.rev, "renamed-to.txt")
+  )
 
   -- rel_path is how every keymap turns the current buffer into a repo path.
   vim.cmd("edit " .. vim.fn.fnameescape(git_root .. "/src/main.c"))

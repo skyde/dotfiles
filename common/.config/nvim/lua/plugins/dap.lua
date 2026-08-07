@@ -39,27 +39,13 @@ return {
         end,
         desc = "DAP Continue",
       },
-      {
-        "<leader>tn",
-        function()
-          require("dap").step_over()
-        end,
-        desc = "DAP Step Over",
-      },
-      {
-        "<leader>ti",
-        function()
-          require("dap").step_into()
-        end,
-        desc = "DAP Step Into",
-      },
-      {
-        "<leader>to",
-        function()
-          require("dap").step_out()
-        end,
-        desc = "DAP Step Out",
-      },
+      -- The stepping keys (<leader>tn / ti / to, plus the rest of the
+      -- <leader>t cluster) live in config/keymaps.lua's parity module, which
+      -- loads on VeryLazy and so overwrites anything declared here — two
+      -- owners for one key, with the one that looks authoritative dead. They
+      -- are declared there once, guarded with pcall so they degrade instead
+      -- of throwing when nvim-dap is missing; requiring "dap" from those
+      -- callbacks still lazy-loads this plugin.
       {
         "<leader>dr",
         function()

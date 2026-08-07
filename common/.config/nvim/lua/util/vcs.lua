@@ -264,19 +264,32 @@ end
 function git.log(root, path)
   local res = sh({
     "git",
+    "-c",
+    "core.quotepath=false",
     "log",
     "--follow",
     "--date=short",
     "--pretty=format:%H\t%ad\t%an\t%s",
+    -- `--follow` walks through renames, so half the revisions it returns
+    -- describe the file under a name it no longer has. --name-only says which
+    -- one, which is what `git show <rev>:<path>` needs to find the content.
+    "--name-only",
     "--",
     path,
   }, root)
   local out = {}
   if res and res.code == 0 then
+    local current
     for _, line in ipairs(lines(res.stdout)) do
-      local rev, date, author, subject = line:match("^(%S+)\t(%S+)\t(.-)\t(.*)$")
+      -- The commit line is the only one with the format's three tabs; a
+      -- --name-only path never has any.
+      local rev, date, author, subject = line:match("^(%x+)\t(%S+)\t(.-)\t(.*)$")
       if rev then
-        table.insert(out, { rev = rev, date = date, author = author, subject = subject })
+        current = { rev = rev, date = date, author = author, subject = subject, path = path }
+        table.insert(out, current)
+      elseif current and line ~= "" then
+        current.path = line
+        current = nil
       end
     end
   end
