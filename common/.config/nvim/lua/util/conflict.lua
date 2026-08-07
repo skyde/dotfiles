@@ -262,6 +262,19 @@ end
 
 ---Save the resolved file and drop back out of the merge view.
 function M.finish()
+  -- The merge view's outer panes are read-only reconstructions that never
+  -- carry markers, and `<leader>cc` is how you get to them — so asking the
+  -- *focused* buffer whether anything is left would answer "nothing" and
+  -- close the view with the real file still conflicted. That is exactly the
+  -- accident this refusal exists to prevent. Answer for the working copy.
+  if vim.api.nvim_buf_get_name(0):match("^merge://") then
+    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      if vim.bo[vim.api.nvim_win_get_buf(w)].buftype == "" then
+        vim.api.nvim_set_current_win(w)
+        break
+      end
+    end
+  end
   if M.has_conflicts(0) then
     local left = #M.list(0)
     vim.notify(("Still %d unresolved conflict%s"):format(left, left == 1 and "" or "s"), vim.log.levels.WARN)

@@ -367,6 +367,38 @@ do
   vim.fn.delete(path)
 end
 
+do
+  -- From a merge-view side pane. `<leader>cc` is how you get there, and the
+  -- sides are reconstructions that never carry markers — so asking the
+  -- focused buffer would answer "nothing left" and close the view with the
+  -- real file still conflicted, which is the accident finish() exists to
+  -- prevent.
+  local path = vim.fn.tempname()
+  vim.fn.writefile(multi, path)
+  vim.cmd("edit " .. vim.fn.fnameescape(path))
+  conflict.merge_view()
+  local tabs = #vim.api.nvim_list_tabpages()
+  vim.cmd("wincmd h")
+  check("finish: the side pane carries no markers of its own", #conflict.list(0) == 0)
+  conflict.finish()
+  eq("finish: refuses from a side pane too", tabs, #vim.api.nvim_list_tabpages())
+  check("finish: and leaves the file alone", vim.deep_equal(multi, vim.fn.readfile(path)))
+
+  -- Refusing left the cursor on the working copy, which is where the
+  -- resolving happens; do it, then step back out to a side pane.
+  check("finish: refusing moves to the pane that can be resolved", vim.bo.buftype == "")
+  conflict.choose_all("ours")
+  vim.cmd("wincmd h")
+  check("finish: back on a side pane", vim.bo.buftype ~= "")
+  conflict.finish()
+  eq("finish: closes from a side pane once resolved", tabs - 1, #vim.api.nvim_list_tabpages())
+  check(
+    "finish: and writes the working copy",
+    vim.deep_equal({ "alpha", "one-ours", "beta", "two-ours", "gamma", "three-ours" }, vim.fn.readfile(path))
+  )
+  vim.fn.delete(path)
+end
+
 --------------------------------------------------------------------------
 -- highlighting
 --------------------------------------------------------------------------
