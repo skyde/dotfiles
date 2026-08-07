@@ -182,14 +182,37 @@ rectangle per character would be enormous, so:
   direction, contiguous characters.
 - Each box stores its own bounds plus `kCharacterOffsets`: the x-offset of each
   character's edge within the box.
-- Any character's box is then arithmetic; any range is a union of partial boxes.
 
-```text
-staticText location=(8,8) size=(38,36) name='Hello world'
-  inlineTextBox location=(0,0)  size=(36,18) name='Hello '
-      characterOffsets=12,19,23,28,36
-  inlineTextBox location=(0,18) size=(38,18) name='world'
-      characterOffsets=12,20,25,29,37
+```svg A wrapped static text node becomes one inline text box per rendered line; each box stores its own bounds plus the x-offset of every character edge, so any character or range rectangle is arithmetic.
+<svg viewBox="-10 20 940 200" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="34" width="430" height="150" rx="8" class="d-zone"/>
+  <text x="14" y="54" class="d-t-mono">staticText "Hello world"</text>
+  <text x="14" y="72" class="d-t-sm">location=(8,8) size=(38,36)</text>
+  <rect x="24" y="86" width="180" height="34" rx="5" class="d-box-accent"/>
+  <text x="114" y="108" class="d-t-mono" text-anchor="middle">inlineTextBox "Hello "</text>
+  <text x="24" y="136" class="d-t-sm">location=(0,0) size=(36,18)</text>
+  <rect x="24" y="144" width="180" height="34" rx="5" class="d-box-accent"/>
+  <text x="114" y="166" class="d-t-mono" text-anchor="middle">inlineTextBox "world"</text>
+  <text x="220" y="108" class="d-t-sm">one box per</text>
+  <text x="220" y="124" class="d-t-sm">rendered line</text>
+  <text x="490" y="54" class="d-t-sm">characterOffsets = 12, 19, 23, 28, 36</text>
+  <rect x="490" y="66" width="360" height="46" rx="5" class="d-box"/>
+  <text x="502" y="98" class="d-t-mono">H  e  l  l  o</text>
+  <path d="M490,112 L490,132" class="d-line"/>
+  <path d="M562,112 L562,132" class="d-line"/>
+  <path d="M634,112 L634,132" class="d-line"/>
+  <path d="M706,112 L706,132" class="d-line"/>
+  <path d="M778,112 L778,132" class="d-line"/>
+  <path d="M850,112 L850,132" class="d-line"/>
+  <text x="490" y="148" class="d-t-sm" text-anchor="middle">0</text>
+  <text x="562" y="148" class="d-t-sm" text-anchor="middle">12</text>
+  <text x="634" y="148" class="d-t-sm" text-anchor="middle">19</text>
+  <text x="706" y="148" class="d-t-sm" text-anchor="middle">23</text>
+  <text x="778" y="148" class="d-t-sm" text-anchor="middle">28</text>
+  <text x="850" y="148" class="d-t-sm" text-anchor="middle">36</text>
+  <text x="490" y="176" class="d-t-sm">the rectangle for characters 1-3 is the box</text>
+  <text x="490" y="192" class="d-t-sm">origin plus offsets 12 and 23 - no extra storage</text>
+</svg>
 ```
 
 `kWordStarts` and `kWordEnds` ride along, so word-boundary navigation needs no

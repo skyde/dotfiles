@@ -151,7 +151,8 @@ def parse_body(text: str, slide: Slide, path: Path) -> None:
 
         if stripped.startswith("```"):
             flush_para()
-            lang = stripped[3:].strip() or "text"
+            info = stripped[3:].strip() or "text"
+            lang, _, caption = info.partition(" ")
             i += 1
             code: list[str] = []
             while i < n and not lines[i].strip().startswith("```"):
@@ -160,7 +161,16 @@ def parse_body(text: str, slide: Slide, path: Path) -> None:
             if i >= n:
                 raise SystemExit(f"{path.name}: unterminated code fence in {slide.title!r}")
             i += 1
-            slide.blocks.append(("code", (lang, "\n".join(code).rstrip())))
+            payload = "\n".join(code).rstrip()
+            if lang == "svg":
+                if not caption:
+                    raise SystemExit(
+                        f"{path.name}: the svg block in {slide.title!r} needs a caption "
+                        "(```svg Some description) - it becomes the text alternative"
+                    )
+                slide.blocks.append(("svg", (caption.strip(), payload)))
+            else:
+                slide.blocks.append(("code", (lang, payload)))
             continue
 
         callout = re.match(r"^(KEY|TRY|REF|WHY|WATCH): +(.*)$", stripped)
@@ -336,6 +346,21 @@ def render_blocks(slide: Slide) -> str:
             out.append(
                 f"<pre class='code' data-lang='{html.escape(lang)}' tabindex='0'>"
                 f"<code>{highlight(code, lang)}</code></pre>"
+            )
+        elif kind == "svg":
+            caption, markup = payload
+            label = html.escape(caption, quote=True)
+            # The diagram is the content, so it needs a text alternative; the
+            # caption is both the accessible name and the visible figcaption.
+            markup = re.sub(
+                r"<svg\b",
+                f"<svg role='img' aria-label='{label}'",
+                markup,
+                count=1,
+            )
+            out.append(
+                f"<figure class='diagram'>{markup}"
+                f"<figcaption>{inline(caption)}</figcaption></figure>"
             )
         elif kind == "callout":
             variant, body = payload
@@ -532,6 +557,22 @@ pre.code code{background:none;padding:0;font-size:1em}
 .callout.watch{background:var(--watch-soft);border-color:var(--watch)}
 .callout.watch .callout-label{color:var(--watch)}
 .ref{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em}
+.diagram{margin:.9rem 0;max-width:52rem}
+.diagram svg{width:100%;height:auto;display:block;overflow:visible}
+.diagram figcaption{margin-top:.4rem;font-size:.8rem;color:var(--muted)}
+/* diagram vocabulary: boxes take the panel ground, labels the ink, flow the accent */
+.d-box{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.d-box-accent{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.d-box-warn{fill:var(--watch-soft);stroke:var(--watch);stroke-width:1.5}
+.d-box-key{fill:var(--key-soft);stroke:var(--key);stroke-width:1.5}
+.d-zone{fill:none;stroke:var(--line);stroke-width:1;stroke-dasharray:5 4}
+.d-t{fill:var(--ink);font:500 13px ui-sans-serif,system-ui,sans-serif}
+.d-t-sm{fill:var(--muted);font:11px ui-sans-serif,system-ui,sans-serif}
+.d-t-mono{fill:var(--ink);font:12px ui-monospace,Menlo,Consolas,monospace}
+.d-line{stroke:var(--accent);stroke-width:1.8;fill:none}
+.d-line-back{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:6 4}
+.d-fill-accent{fill:var(--accent)}
+.d-fill-muted{fill:var(--muted)}
 .table-wrap{overflow-x:auto;margin:.8rem 0}
 table{border-collapse:collapse;font-size:.9rem;min-width:min(100%,32rem)}
 th,td{border:1px solid var(--line);padding:.4rem .6rem;text-align:left;vertical-align:top}
@@ -908,6 +949,8 @@ def plain_text(slide: Slide) -> str:
             parts.append(payload[1])
         elif kind == "callout":
             parts.append(payload[1])
+        elif kind == "svg":
+            parts.append(payload[0])
         elif kind == "list":
             parts.extend(t for _, t, _ in payload)
         elif kind == "table":

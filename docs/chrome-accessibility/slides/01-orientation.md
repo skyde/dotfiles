@@ -113,14 +113,48 @@ NOTE: A fourth concept, parameterized attributes (mostly for text - "give me the
 
 Memorize this shape. Every later module is a zoom into one arrow.
 
-```text
-DOM + CSS + ARIA
-   -> Blink: AXObject / AXObjectCacheImpl        (renderer, sandboxed)
-   -> BlinkAXTreeSource + AXTreeSerializer       (renderer)
-   -> ax.mojom.RenderAccessibilityHost           (IPC: AXTreeUpdate batches)
-   -> ui::AXTree cache + BrowserAccessibilityManager  (browser process)
-   -> AXPlatformNode subclasses                  (IAccessible2 / UIA / NSAccessibility / ATK)
-   -> the screen reader
+```svg Blink builds an accessibility tree in the sandboxed renderer; the serializer sends incremental updates over Mojo; the browser process caches them and answers platform API calls from that cache; actions travel back the other way.
+<svg viewBox="-12 26 949 164" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="p1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="d-fill-accent"/>
+    </marker>
+    <marker id="p1-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="d-fill-muted"/>
+    </marker>
+  </defs>
+  <rect x="-8" y="50" width="465" height="100" rx="8" class="d-zone"/>
+  <rect x="463" y="50" width="308" height="100" rx="8" class="d-zone"/>
+  <text x="-8" y="43" class="d-t-sm">renderer process (sandboxed)</text>
+  <text x="467" y="43" class="d-t-sm">browser process</text>
+  <text x="785" y="43" class="d-t-sm">assistive technology</text>
+  <rect x="0" y="70" width="135" height="60" rx="7" class="d-box"/>
+  <text x="67" y="96" class="d-t" text-anchor="middle">DOM + CSS</text>
+  <text x="67" y="114" class="d-t" text-anchor="middle">+ ARIA</text>
+  <rect x="157" y="70" width="135" height="60" rx="7" class="d-box-accent"/>
+  <text x="224" y="96" class="d-t-mono" text-anchor="middle">AXObject</text>
+  <text x="224" y="114" class="d-t-mono" text-anchor="middle">AXObjectCache</text>
+  <rect x="314" y="70" width="135" height="60" rx="7" class="d-box"/>
+  <text x="381" y="96" class="d-t-mono" text-anchor="middle">AXTree</text>
+  <text x="381" y="114" class="d-t-mono" text-anchor="middle">Serializer</text>
+  <rect x="471" y="70" width="135" height="60" rx="7" class="d-box-key"/>
+  <text x="538" y="96" class="d-t-mono" text-anchor="middle">ui::AXTree</text>
+  <text x="538" y="114" class="d-t-mono" text-anchor="middle">cache</text>
+  <rect x="628" y="70" width="135" height="60" rx="7" class="d-box"/>
+  <text x="695" y="96" class="d-t-mono" text-anchor="middle">AXPlatform</text>
+  <text x="695" y="114" class="d-t-mono" text-anchor="middle">Node</text>
+  <rect x="785" y="70" width="135" height="60" rx="7" class="d-box-accent"/>
+  <text x="852" y="96" class="d-t" text-anchor="middle">screen reader,</text>
+  <text x="852" y="114" class="d-t" text-anchor="middle">magnifier, ...</text>
+  <path d="M137,100 L153,100" class="d-line" marker-end="url(#p1-a)"/>
+  <path d="M294,100 L310,100" class="d-line" marker-end="url(#p1-a)"/>
+  <path d="M451,100 L467,100" class="d-line" marker-end="url(#p1-a)"/>
+  <path d="M608,100 L624,100" class="d-line" marker-end="url(#p1-a)"/>
+  <path d="M765,100 L781,100" class="d-line" marker-end="url(#p1-a)"/>
+  <text x="459" y="63" class="d-t-sm" text-anchor="middle">Mojo</text>
+  <path d="M852,134 L852,168 L232,168 L232,134" class="d-line-back" marker-end="url(#p1-b)"/>
+  <text x="542" y="182" class="d-t-sm" text-anchor="middle">actions: PerformAction(AXActionData)</text>
+</svg>
 ```
 
 And back the other way, actions travel:

@@ -156,12 +156,36 @@ TRY: In `chrome://accessibility`, dump a page with a cross-origin iframe. The pa
 The browser process is the only place global focus can be computed, because it is
 the only place that knows which window is active.
 
-```text
-active window
-  -> its focused tree
-    -> that tree's focused node (AXTreeData::focus_id)
-      -> if that node hosts a child tree, recurse
-        -> deepest focused node
+```svg Global focus is recomputed by starting at the active window, taking that tree's focused node, and recursing into any child tree it hosts until the deepest focused node is found; a platform focus event fires only if that node changed.
+<svg viewBox="-10 20 940 175" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="fo-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="d-fill-accent"/>
+    </marker>
+  </defs>
+  <rect x="0" y="40" width="170" height="48" rx="7" class="d-box-accent"/>
+  <text x="85" y="62" class="d-t" text-anchor="middle">active window</text>
+  <text x="85" y="79" class="d-t-sm" text-anchor="middle">the browser knows this</text>
+  <rect x="200" y="40" width="180" height="48" rx="7" class="d-box"/>
+  <text x="290" y="62" class="d-t" text-anchor="middle">its focused tree</text>
+  <text x="290" y="79" class="d-t-mono" text-anchor="middle">AXTreeData::focus_id</text>
+  <rect x="410" y="40" width="170" height="48" rx="7" class="d-box"/>
+  <text x="495" y="62" class="d-t" text-anchor="middle">focused node</text>
+  <text x="495" y="79" class="d-t-sm" text-anchor="middle">hosts a child tree?</text>
+  <rect x="610" y="40" width="170" height="48" rx="7" class="d-box-key"/>
+  <text x="695" y="62" class="d-t" text-anchor="middle">deepest</text>
+  <text x="695" y="79" class="d-t" text-anchor="middle">focused node</text>
+  <rect x="770" y="118" width="150" height="46" rx="7" class="d-box"/>
+  <text x="845" y="140" class="d-t" text-anchor="middle">fire the platform</text>
+  <text x="845" y="156" class="d-t" text-anchor="middle">focus event</text>
+  <path d="M172,64 L194,64" class="d-line" marker-end="url(#fo-a)"/>
+  <path d="M382,64 L404,64" class="d-line" marker-end="url(#fo-a)"/>
+  <path d="M582,64 L604,64" class="d-line" marker-end="url(#fo-a)"/>
+  <path d="M495,90 L495,110 L290,110 L290,92" class="d-line" marker-end="url(#fo-a)"/>
+  <text x="392" y="126" class="d-t-sm" text-anchor="middle">yes: recurse into the child tree</text>
+  <path d="M782,88 L820,88 L820,112" class="d-line" marker-end="url(#fo-a)"/>
+  <text x="700" y="152" class="d-t-sm" text-anchor="end">only if it differs from the last one</text>
+</svg>
 ```
 
 Any time focus changes in any tree, or the focused window or iframe changes, the

@@ -214,10 +214,35 @@ Each frame serializes independently. Stitching happens in the browser.
 - Node IDs collide freely across frames; only the (tree ID, node ID) pair is
   meaningful.
 
-```text
-[main frame tree]  iframe node -> childTreeId = 5f2a...
-                                       |
-[child frame tree] rootWebArea (its own ids, starting again at 1)
+```svg An iframe node in the main frame's tree carries the child frame's AXTreeID; the browser process resolves it and makes the child tree's root that node's child. Node IDs restart at 1 in each tree.
+<svg viewBox="-10 20 940 210" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="fr-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="d-fill-accent"/>
+    </marker>
+  </defs>
+  <rect x="0" y="34" width="420" height="180" rx="9" class="d-zone"/>
+  <text x="14" y="56" class="d-t-sm">main frame tree - AXTreeID a1b2...</text>
+  <rect x="24" y="66" width="180" height="34" rx="6" class="d-box"/>
+  <text x="114" y="88" class="d-t-mono" text-anchor="middle">id=1 rootWebArea</text>
+  <rect x="54" y="112" width="180" height="34" rx="6" class="d-box"/>
+  <text x="144" y="134" class="d-t-mono" text-anchor="middle">id=4 main</text>
+  <rect x="84" y="158" width="300" height="40" rx="6" class="d-box-accent"/>
+  <text x="234" y="174" class="d-t-mono" text-anchor="middle">id=7 iframe</text>
+  <text x="234" y="190" class="d-t-mono" text-anchor="middle">kChildTreeId = 5f2a...</text>
+  <path d="M40,100 L40,129 L50,129" class="d-line"/>
+  <path d="M70,146 L70,178 L80,178" class="d-line"/>
+  <rect x="520" y="34" width="400" height="180" rx="9" class="d-zone"/>
+  <text x="534" y="56" class="d-t-sm">child frame tree - AXTreeID 5f2a...</text>
+  <rect x="544" y="90" width="200" height="34" rx="6" class="d-box-key"/>
+  <text x="644" y="112" class="d-t-mono" text-anchor="middle">id=1 rootWebArea</text>
+  <rect x="574" y="136" width="200" height="34" rx="6" class="d-box"/>
+  <text x="674" y="158" class="d-t-mono" text-anchor="middle">id=2 button</text>
+  <path d="M560,124 L560,153 L570,153" class="d-line"/>
+  <path d="M386,178 C450,178 460,107 538,107" class="d-line" marker-end="url(#fr-a)"/>
+  <text x="462" y="200" class="d-t-sm" text-anchor="middle">AXTreeManagerMap</text>
+  <text x="462" y="216" class="d-t-sm" text-anchor="middle">resolves the tree ID</text>
+</svg>
 ```
 
 TRY: Load a page with a cross-origin iframe, dump the tree from `chrome://accessibility`, and find the child tree ID on the iframe node. Then dump the child frame and match it up.

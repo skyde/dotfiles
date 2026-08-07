@@ -111,13 +111,37 @@ WATCH: "The tree is correct on load but wrong after interaction" is almost alway
 `AXObjectCacheLifecycle` mirrors `DocumentLifecycle` and enforces what may happen
 when. The states, in order:
 
-```text
-kUninitialized
-kDeferTreeUpdates      // queue work; layout/style are NOT clean, do not read them
-kProcessDeferredUpdates// layout clean; update structure + cached values
-kFinalizingTree        // structure final, nothing orphaned
-kSerialize             // tree frozen: no object creation, no cached value updates
-kDisposing / kDisposed
+```svg The four active lifecycle states in order: defer tree updates while layout is dirty, process the deferred updates once layout is clean, finalize the tree structure, then freeze it and serialize.
+<svg viewBox="-10 20 940 150" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="lc-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="d-fill-accent"/>
+    </marker>
+  </defs>
+  <text x="0" y="35" class="d-t-sm">kUninitialized</text>
+  <text x="920" y="35" class="d-t-sm" text-anchor="end">kDisposing / kDisposed</text>
+  <rect x="0" y="45" width="205" height="46" rx="7" class="d-box-warn"/>
+  <text x="102" y="73" class="d-t-mono" text-anchor="middle">kDeferTreeUpdates</text>
+  <rect x="238" y="45" width="205" height="46" rx="7" class="d-box"/>
+  <text x="340" y="73" class="d-t-mono" text-anchor="middle">kProcessDeferredUpdates</text>
+  <rect x="476" y="45" width="205" height="46" rx="7" class="d-box"/>
+  <text x="578" y="73" class="d-t-mono" text-anchor="middle">kFinalizingTree</text>
+  <rect x="714" y="45" width="206" height="46" rx="7" class="d-box-key"/>
+  <text x="817" y="73" class="d-t-mono" text-anchor="middle">kSerialize</text>
+  <path d="M207,68 L232,68" class="d-line" marker-end="url(#lc-a)"/>
+  <path d="M445,68 L470,68" class="d-line" marker-end="url(#lc-a)"/>
+  <path d="M683,68 L708,68" class="d-line" marker-end="url(#lc-a)"/>
+  <text x="102" y="112" class="d-t-sm" text-anchor="middle">layout is dirty:</text>
+  <text x="102" y="128" class="d-t-sm" text-anchor="middle">queue work only</text>
+  <text x="340" y="112" class="d-t-sm" text-anchor="middle">layout clean: update structure</text>
+  <text x="340" y="128" class="d-t-sm" text-anchor="middle">and cached values</text>
+  <text x="578" y="112" class="d-t-sm" text-anchor="middle">structure final,</text>
+  <text x="578" y="128" class="d-t-sm" text-anchor="middle">nothing orphaned</text>
+  <text x="817" y="112" class="d-t-sm" text-anchor="middle">tree frozen: no creation,</text>
+  <text x="817" y="128" class="d-t-sm" text-anchor="middle">no cached-value updates</text>
+  <path d="M0,150 L920,150" class="d-zone"/>
+  <text x="460" y="166" class="d-t-sm" text-anchor="middle">one pass per frame, after the document lifecycle is clean</text>
+</svg>
 ```
 
 Helper predicates make the rules explicit: `StateAllowsImmediateTreeUpdates()`,
