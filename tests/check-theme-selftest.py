@@ -48,6 +48,7 @@ RGRC = "common/.ripgreprc"
 BTOP = "common/.config/btop/themes/tokyo-night.theme"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
 FF = "common/.local/bin/ff"
+PSPROFILE = "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
 
 # (name, check to run, file, pattern, replacement, expected words, tool needed)
 #
@@ -93,6 +94,12 @@ MUTATIONS = [
      r'InlineDiffAdd = \{ bg = "#20432b" \}',
      'InlineDiffAdd = { bg = "#2c5a3a" }',
      "two colours", None),
+
+    ("a command-line role that differs between zsh and PowerShell", "parity",
+     PSPROFILE,
+     r'Keyword            = "\$e\[38;2;187;154;247m"',
+     'Keyword            = "$e[38;2;125;207;255m"',
+     "on the PowerShell one", None),
 
     ("a bat call site that forgets COLORTERM", "parity", FF,
      r"COLORTERM=truecolor bat", "bat",

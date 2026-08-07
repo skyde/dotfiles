@@ -4,7 +4,8 @@
     tests/check-theme.py              # all checks
     tests/check-theme.py palette      # only one check
     tests/check-theme.py --verbose    # also print what passed
-    tests/check-theme.py swatch       # render the theme instead of checking it
+    tests/check-theme.py swatch       # every documented colour, then the preview
+    tests/check-theme.py preview      # mock-ups of the surfaces, in the theme
 
 The theme is spread over a dozen config files in four different syntaxes, and
 nothing in any of them refers to any other. Every "keep these in sync" comment
@@ -576,6 +577,66 @@ def _check_bat_truecolor(verbose):
     return problems
 
 
+# The two command lines. fast-syntax-highlighting themes zsh's and PSReadLine
+# themes PowerShell's, and they were written to agree role for role -- the
+# whole point being that the prompt looks the same on either machine. Two
+# files, two syntaxes, one written in hex and the other in SGR escapes.
+FSH_INI = "common/.config/fsh/tokyonight.ini"
+PSPROFILE = "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
+COMMAND_LINE_ROLES = [
+    ("command", "Command", "what will run"),
+    ("reserved-word", "Keyword", "keywords"),
+    ("single-quoted-argument", "String", "strings"),
+    ("single-hyphen-option", "Parameter", "options"),
+    ("variable", "Variable", "variables"),
+    ("mathnum", "Number", "numbers"),
+    ("commandseparator", "Operator", "operators"),
+    ("comment", "Comment", "comments"),
+    ("unknown-token", "Error", "a command that will not run"),
+]
+
+
+def _check_command_lines(verbose):
+    fsh_path = os.path.join(REPO, FSH_INI)
+    ps_path = os.path.join(REPO, PSPROFILE)
+    if not (os.path.isfile(fsh_path) and os.path.isfile(ps_path)):
+        return []
+
+    fsh = {}
+    for key, value in re.findall(r"^([\w-]+)\s*=\s*(.+)$",
+                                 open(fsh_path, encoding="utf-8").read(), re.M):
+        found = HEX.findall(value)
+        if found:
+            fsh[key] = norm(found[0])
+
+    ps = {}
+    for key, value in re.findall(r"^\s*(\w+)\s*=\s*\"\$e\[([0-9;]+)m\"",
+                                 open(ps_path, encoding="utf-8").read(), re.M):
+        m = DECIMAL_TRIPLE.search(value)
+        if m:
+            ps[key] = "#%02x%02x%02x" % tuple(int(x) for x in m.groups())
+
+    problems = []
+    checked = 0
+    for fsh_key, ps_key, role in COMMAND_LINE_ROLES:
+        if fsh_key not in fsh or ps_key not in ps:
+            problems.append(
+                "cannot compare %s: %s is %s in the fsh theme and %s in the "
+                "PowerShell profile"
+                % (role, role,
+                   "set" if fsh_key in fsh else "missing",
+                   "set" if ps_key in ps else "missing"))
+            continue
+        checked += 1
+        if fsh[fsh_key] != ps[ps_key]:
+            problems.append(
+                "%s is %s on the zsh command line but %s on the PowerShell one"
+                % (role, fsh[fsh_key], ps[ps_key]))
+    if verbose and not problems:
+        print("  %d command-line roles identical in zsh and PowerShell" % checked)
+    return problems
+
+
 def _check_ripgrep_config(verbose):
     """Let ripgrep parse its own config, since it is strict about colours.
 
@@ -732,6 +793,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_ripgrep_config(verbose))
     problems.extend(_check_nvim_delta_parity(verbose))
     problems.extend(_check_bat_truecolor(verbose))
+    problems.extend(_check_command_lines(verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")
@@ -941,6 +1003,18 @@ PAIRS = [
     ("text", "#c0caf5", "#1a1b26", BTOP, "btop body"),
     ("muted", "#565f89", "#1a1b26", BTOP, "btop inactive text"),
     ("text", "#c0caf5", "#283457", BTOP, "btop selected process"),
+
+    # The command line. Both shells and both platforms share these roles, and
+    # all of them sit on the page rather than on a fill.
+    ("text", "#9ece6a", "#1a1b26", FSH_INI, "a command that will run"),
+    ("text", "#bb9af7", "#1a1b26", FSH_INI, "a keyword"),
+    ("text", "#e0af68", "#1a1b26", FSH_INI, "a string"),
+    ("text", "#7dcfff", "#1a1b26", FSH_INI, "an option"),
+    ("text", "#9d7cd8", "#1a1b26", FSH_INI, "a variable"),
+    ("ui", "#ff9e64", "#1a1b26", FSH_INI, "a number"),
+    ("ui", "#89ddff", "#1a1b26", FSH_INI, "an operator"),
+    ("text", "#f7768e", "#1a1b26", FSH_INI, "a command that will not run"),
+    ("muted", "#565f89", "#1a1b26", FSH_INI, "a comment on the command line"),
 ]
 
 
@@ -1055,6 +1129,104 @@ CHECKS = {
 }
 
 
+def preview():
+    """Render the theme as the things it is actually for.
+
+    A column of swatches tells you the colours are right. It does not tell you
+    whether a diff is readable, whether a selected row stands out, or whether
+    build noise recedes far enough without vanishing -- and those are the
+    questions the theme exists to answer. So this draws small mock-ups of the
+    surfaces, out of the same colours the configs use, in one screen instead of
+    twelve tools.
+
+    Everything below is a still image made of escape sequences. It runs no
+    tool and reads no config beyond the palette already loaded above.
+    """
+
+    def sgr(fg=None, bg=None, bold=False, dim=False):
+        parts = []
+        if bold:
+            parts.append("1")
+        if dim:
+            parts.append("2")
+        for role, colour in (("38", fg), ("48", bg)):
+            if colour:
+                r, g, b = (int(colour[i:i + 2], 16) for i in (1, 3, 5))
+                parts.append("%s;2;%d;%d;%d" % (role, r, g, b))
+        return "\033[%sm" % ";".join(parts) if parts else ""
+
+    R = "\033[0m"
+
+    def line(text, fg=None, bg=None, bold=False, dim=False, width=64):
+        pad = " " * max(0, width - len(text))
+        return "  %s%s%s%s" % (sgr(fg, bg, bold, dim), text + pad, R, "")
+
+    P = {"bg": "#1a1b26", "bg_dark": "#16161e", "vis": "#283457",
+         "high": "#292e42", "fg": "#c0caf5", "dark5": "#737aa2",
+         "comment": "#565f89", "dark3": "#545c7e", "red": "#f7768e",
+         "green": "#9ece6a", "yellow": "#e0af68", "blue": "#7aa2f7",
+         "magenta": "#bb9af7", "cyan": "#7dcfff", "orange": "#ff9e64",
+         "teal": "#1abc9c", "purple": "#9d7cd8", "blue5": "#89ddff",
+         "plus": "#20432b", "plus_emph": "#2c5a3a", "minus": "#532727",
+         "minus_emph": "#683131", "moved_to": "#12384a"}
+
+    print("\n\033[1mA file listing\033[0m  (lf, yazi, ls, eza and the completion menu)\n")
+    rows = [("  src/", "blue", True, False), ("  build.log", "dark5", False, False),
+            ("  main.cpp", "green", False, False), ("  Cargo.toml", "yellow", False, False),
+            ("  README.md", "fg", False, False), ("  archive.zip", "red", False, False),
+            ("  notes.pdf", "orange", False, False), ("  target.o", "dark5", False, False)]
+    for i, (name, colour, bold, _) in enumerate(rows):
+        # The fourth row is under the cursor, which is the case that matters:
+        # a file colour has to survive the selection fill behind it.
+        on_cursor = i == 1
+        print(line(name + ("      <- cursor" if on_cursor else ""),
+                   fg=P[colour], bg=P["vis"] if on_cursor else P["bg"], bold=bold))
+
+    print("\n\033[1mA diff\033[0m  (delta, and Neovim's inline diff)\n")
+    for text, bg, fg in [
+        ("   context line, unchanged", "bg", "fg"),
+        ("  -    return old_value;", "minus", "fg"),
+        ("  -    return OLD;", "minus_emph", "fg"),
+        ("  +    return new_value;", "plus", "fg"),
+        ("  +    return NEW;", "plus_emph", "fg"),
+        ("  ~    moved here from line 118", "moved_to", "fg"),
+    ]:
+        print(line(text, fg=P[fg], bg=P[bg]))
+
+    print("\n\033[1mA search result\033[0m  (ripgrep, grep, delta --grep, fzf)\n")
+    hit = sgr(P["bg"], P["yellow"], bold=True) + "needle" + R
+    print("  %ssrc/main.cpp%s%s:%s%s42%s: const auto %s = find();"
+          % (sgr(P["blue"]), R, sgr(P["dark3"]), R, sgr(P["dark3"]), R, hit))
+    print("  %ssrc/util.h%s%s:%s%s7%s:  // the %s lives here"
+          % (sgr(P["blue"]), R, sgr(P["dark3"]), R, sgr(P["dark3"]), R, hit))
+
+    print("\n\033[1mA command line\033[0m  (fast-syntax-highlighting, PSReadLine)\n")
+    cl = [("for", "magenta"), (" f ", "fg"), ("in", "magenta"), (" *.txt", "blue5"),
+          ("; ", "blue5"), ("do ", "magenta"), ("grep", "green"),
+          (" --color=auto", "cyan"), (' "needle"', "yellow"), (" $f", "purple"),
+          ("; ", "blue5"), ("done", "magenta"), ("   # and a comment", "comment")]
+    print("  " + "".join(sgr(P[c]) + t + R for t, c in cl))
+    print("  " + sgr(P["green"]) + "git" + R + sgr(P["fg"]) + " status" + R
+          + sgr(P["comment"]) + "  --short   <- the suggestion, not yours yet" + R)
+
+    print("\n\033[1mA prompt and a status bar\033[0m  (starship, tmux)\n")
+    print("  " + sgr(P["teal"], bold=True) + "you" + R + sgr(P["fg"]) + " " + R
+          + sgr(P["blue"], bold=True) + "~/dotfiles" + R + sgr(P["fg"]) + " on " + R
+          + sgr(P["magenta"], bold=True) + " main" + R
+          + sgr(P["yellow"]) + "  1.2s" + R)
+    print("  " + sgr(P["green"], bold=True) + "➜" + R + " ")
+    bar = (sgr(P["orange"], P["bg"]) + " work " + R
+           + sgr(P["blue"], P["high"]) + " 1 " + R
+           + sgr(P["blue"], P["bg"]) + "editor " + R
+           + sgr(P["dark3"], P["bg"]) + "2 " + R
+           + sgr(P["fg"], P["bg"]) + "build" + R
+           + sgr(P["comment"], P["bg"]) + "        " + R
+           + sgr(P["dark5"], P["bg"]) + "hostname " + R)
+    print("  " + bar)
+    print()
+    return 0
+
+
 def swatch(doc):
     """Print the whole theme, in the theme, so it can be looked at.
 
@@ -1096,8 +1268,11 @@ def swatch(doc):
 
 def main(argv):
     verbose = "--verbose" in argv or "-v" in argv
+    if "preview" in argv:
+        return preview()
     if "swatch" in argv:
-        return swatch(read_doc())
+        rc = swatch(read_doc())
+        return rc or preview()
 
     wanted = [a for a in argv if not a.startswith("-")] or list(CHECKS)
     unknown = [w for w in wanted if w not in CHECKS]

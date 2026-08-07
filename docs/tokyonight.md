@@ -324,8 +324,16 @@ by `tests/check-theme.py parity`.
 tests/check-theme.py            # all three checks
 tests/check-theme.py contrast   # just one
 tests/check-theme.py --verbose  # and what passed
-tests/check-theme.py swatch     # render the theme instead of checking it
+tests/check-theme.py swatch     # every colour, then the preview below
+tests/check-theme.py preview    # just the preview
 ```
+
+`preview` draws small mock-ups of the surfaces out of the real colours — a file
+listing with a build artefact under the cursor, a diff with added, removed,
+emphasised and moved lines, a search hit, a command line, a prompt and a status
+bar. A column of swatches tells you the colours are right; it does not tell you
+whether a diff is readable or whether build noise recedes far enough without
+vanishing, and those are the questions the theme exists to answer.
 
 And, if you change the checker itself:
 
