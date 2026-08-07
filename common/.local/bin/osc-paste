@@ -50,7 +50,13 @@ if ! in_ssh_session; then
 fi
 
 # Fall back to an OSC 52 paste query, reading the terminal's reply from the tty.
-if [[ -r /dev/tty && -w /dev/tty ]]; then
+#
+# Opened rather than stat'd: /dev/tty is crw-rw-rw-, so `-r`/`-w` are true even
+# with no controlling terminal, and the `stty -g </dev/tty` below then died with
+# a raw "No such device or address" under `set -e` instead of reaching the clear
+# message at the end of this script.
+if { exec 3<>/dev/tty; } 2>/dev/null; then
+  exec 3>&-
   saved_tty=$(stty -g </dev/tty)
   trap 'stty "$saved_tty" </dev/tty 2>/dev/null || true' EXIT INT TERM
   stty raw -echo </dev/tty

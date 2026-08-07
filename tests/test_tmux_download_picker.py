@@ -174,6 +174,60 @@ class TmuxDownloadPickerTest(unittest.TestCase):
             self.run_helper(scrollback),
         )
 
+    def test_www_host_keeps_every_label(self):
+        """`www.foo.co.uk` used to match only as far as `www.foo.co`.
+
+        The picker then handed a different, real domain to the browser without
+        anything looking wrong.
+        """
+        self.assertEqual(
+            ['http://www.foo.co.uk/bar', 'http://www.a.b.example.com'],
+            self.run_helper('go to www.foo.co.uk/bar and www.a.b.example.com\n'),
+        )
+
+    def test_url_does_not_also_register_as_a_path(self):
+        """The path pattern matches the tail of a URL just as happily.
+
+        Every URL in the scrollback used to put a second, bogus entry in the
+        picker — `https://ex.com/a/b.txt` also offered `/ex.com/a/b.txt`.
+        """
+        self.assertEqual(
+            ['https://ex.com/a/b.txt', 'ftp://files.example.org/pub/f.tar.gz'],
+            self.run_helper('https://ex.com/a/b.txt ftp://files.example.org/pub/f.tar.gz\n'),
+        )
+
+    def test_real_paths_survive_alongside_urls(self):
+        self.assertEqual(
+            ['/tmp/report.html', '/usr/local/lib/thing.so', 'https://ex.com/a/b.txt'],
+            self.run_helper(
+                'see https://ex.com/a/b.txt and /usr/local/lib/thing.so and /tmp/report.html\n'
+            ),
+        )
+
+    def test_sentence_punctuation_is_not_part_of_the_url(self):
+        self.assertEqual(
+            ['https://example.com/page', 'https://example.com/other', 'https://x.io/y'],
+            self.run_helper(
+                'Visit https://example.com/page. Then https://example.com/other, ok? '
+                'And https://x.io/y!\n'
+            ),
+        )
+
+    def test_masking_urls_does_not_disturb_path_recency(self):
+        """--paths-newest-first orders by where each match ends.
+
+        URL spans are blanked in place rather than removed for exactly this
+        reason; deleting them would shift every later offset and reorder the
+        list.
+        """
+        self.assertEqual(
+            ['/tmp/two.txt', '/tmp/one.txt'],
+            self.run_helper(
+                '/tmp/one.txt\nhttps://ex.com/zzz/qqq.txt\n/tmp/two.txt\n',
+                '--paths-newest-first',
+            ),
+        )
+
     def run_picker(self, scrollback_text, client_width=None):
         """Run the picker in a sandbox and report what fzf and the copier saw."""
         with tempfile.TemporaryDirectory() as sandbox_dir:

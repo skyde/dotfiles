@@ -41,7 +41,12 @@ encoded=$(base64 <"$content_file" | tr -d '\n')
 
 trap '' SIGTTOU
 
-if [[ -w /dev/tty ]]; then
+# Test the open, not the permission bits. /dev/tty is crw-rw-rw-, so `-w` is
+# true even in a process with no controlling terminal — a cron job, a hook, a
+# pipeline under a daemon — and the redirect below then failed with a raw
+# "No such device or address" under `set -e`, which replaced the clear message
+# at the end of this script with a shell error from an unrelated-looking line.
+if { : >/dev/tty; } 2>/dev/null; then
   if [[ -n "${TMUX:-}" ]]; then
     printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$encoded" >/dev/tty
   else

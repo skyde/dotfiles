@@ -8,7 +8,15 @@ ABSOLUTE_PATH = re.compile(r'/(?:[a-zA-Z0-9_.-]+/)+[a-zA-Z0-9_.-]+\.[a-zA-Z0-9_-
 PATH_LINE_PREFIX = re.compile(r'[a-zA-Z0-9_./-]+')
 PATH_LINE_SUFFIX = re.compile(r'/[a-zA-Z0-9_.-][a-zA-Z0-9_./-]*$')
 URL = re.compile(r'(?:https?|ftp)://[^\s\'"`()<>]+')
-WWW = re.compile(r'www\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:/[^\s\'"`()<>]+)*')
+# Every label, not just one: `www.foo.co.uk/bar` used to match only as far as
+# `www.foo.co`, and the picker then offered `http://www.foo.co` — a different
+# site, silently.
+WWW = re.compile(r'www\.(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:/[^\s\'"`()<>]+)*')
+
+# Sentence punctuation that follows a URL in prose and log output far more often
+# than it ends one. Stripped from the tail so "see https://example.com/page."
+# opens the page rather than a 404.
+URL_TRAILING_PUNCTUATION = '.,;:!?'
 
 MAX_WRAPPED_PATH_LENGTH = 4096
 MAX_WRAPPED_PATH_LINES = 16
@@ -17,6 +25,28 @@ MAX_WRAPPED_PATH_LINES = 16
 def unique(items):
     seen = set()
     return [x for x in items if not (x in seen or seen.add(x))]
+
+
+def tidy_url(url):
+    return url.rstrip(URL_TRAILING_PUNCTUATION)
+
+
+def without_urls(text):
+    """Blank out URL spans before scanning for filesystem paths.
+
+    The path pattern happily matches the tail of a URL: `https://ex.com/a/b.txt`
+    also yielded `/ex.com/a/b.txt`, so every URL in the scrollback put a second,
+    bogus entry in the picker.
+
+    Overwritten with spaces rather than removed, because `--paths-newest-first`
+    orders its results by the offset each match ends at, and shifting the text
+    would reorder the list.
+    """
+    masked = list(text)
+    for pattern in (URL, WWW):
+        for match in pattern.finditer(text):
+            masked[match.start():match.end()] = ' ' * (match.end() - match.start())
+    return ''.join(masked)
 
 
 def split_lines_with_offsets(text):
@@ -85,6 +115,7 @@ def wrapped_path_occurrences(text):
 
 
 def paths_newest_first(text):
+    text = without_urls(text)
     occurrences = [
         (match.end(), len(match.group()), match.group())
         for match in ABSOLUTE_PATH.finditer(text)
@@ -114,8 +145,11 @@ def main():
             print('\n'.join(paths))
         return
 
-    paths = unique(ABSOLUTE_PATH.findall(text))
-    urls = unique(URL.findall(text) + [f'http://{w}' for w in WWW.findall(text)])
+    paths = unique(ABSOLUTE_PATH.findall(without_urls(text)))
+    urls = unique(
+        [tidy_url(u) for u in URL.findall(text)]
+        + [f'http://{tidy_url(w)}' for w in WWW.findall(text)]
+    )
 
     html = [p for p in paths if p.endswith('.html')]
     other = [p for p in paths if not p.endswith('.html')]
