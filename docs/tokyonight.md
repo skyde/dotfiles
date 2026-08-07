@@ -199,6 +199,12 @@ is written three times because the tools speak three dialects:
 
 Check 3 of `tests/check-theme.py` is what keeps the three honest.
 
+One thing not to chase: a broken symlink's *name* is cyan in `eza` and red in
+`ls`. `or` is set, and setting it again in `EZA_COLORS` changes nothing —
+eza 0.18 colours the name as a link and shows the breakage on the arrow and
+the target instead, which `bO` paints red and underlined. It is unmistakable
+either way, just not identical.
+
 `eza` also draws columns `LS_COLORS` has no vocabulary for, so `EZA_COLORS`
 covers those with eza's own keys (`man eza_colors`). The permission bits
 deliberately take yazi's per-column meanings — read yellow, write red, execute
