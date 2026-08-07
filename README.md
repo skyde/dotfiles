@@ -126,12 +126,28 @@ I use the 'Alt Tab' program for easy window switching.
 
 Activate with footpedal + r. Navigate with arrow keys and space to select.
 
-Settings are stored in `mac/Library/Preferences/com.lwouis.alt-tab-macos.plist` and include:
+Settings are kept in
+`mac/Library/Preferences/com.lwouis.alt-tab-macos-reference.plist` and include:
 
 - Custom appearance size and alignment
 - Arrow keys enabled for navigation
 - UI elements hidden (badges, colored circles, status icons, menubar icon)
 - Control key as hold shortcut
+
+The `-reference` suffix is deliberate and this file is **not** live: macOS
+resolves preferences by bundle identifier, so stow links it into
+`~/Library/Preferences/` under a domain nothing reads. Apply it by hand:
+
+```sh
+defaults import com.lwouis.alt-tab-macos \
+  ~/Library/Preferences/com.lwouis.alt-tab-macos-reference.plist
+```
+
+and capture changes back with `defaults export com.lwouis.alt-tab-macos -`.
+Linking the live name instead would not survive: `cfprefsd` caches preference
+domains and rewrites them in place, so the app would clobber the file through
+the symlink — which is exactly what `com.pyrolyse.Fluor.plist` below, stowed
+under its real name, is exposed to.
 
 ### Hammerspoon
 
