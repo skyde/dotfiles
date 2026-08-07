@@ -536,6 +536,30 @@ do
 end
 
 --------------------------------------------------------------------------
+-- refresh keeps the reviewer's place
+--------------------------------------------------------------------------
+
+do
+  -- A hard refresh re-fetches everything, but the selection and the reading
+  -- position in the diff are the reviewer's, not the cache's: both survive.
+  vim.api.nvim_set_current_win(layout()[1])
+  vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
+  scrub("j") -- off the first file, so restoring the selection is observable
+  local panel_before = vim.api.nvim_win_get_cursor(layout()[1])
+  local line_before = panel_lines()[panel_before[1]]
+  local diff_win = layout()[#layout()]
+  pcall(vim.api.nvim_win_set_cursor, diff_win, { 2, 0 })
+  local diff_before = vim.api.nvim_win_get_cursor(diff_win)
+  scrub("r")
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+  eq("refresh: r keeps the selected file", panel_before, vim.api.nvim_win_get_cursor(layout()[1]))
+  eq("refresh: the selected row is the same file", line_before, panel_lines()[panel_before[1]])
+  eq("refresh: the diff keeps the reading position", diff_before, vim.api.nvim_win_get_cursor(layout()[#layout()]))
+end
+
+--------------------------------------------------------------------------
 -- lifecycle
 --------------------------------------------------------------------------
 
@@ -581,6 +605,30 @@ do
   vim.api.nvim_set_current_win(layout()[2])
   ui.goto_file()
   eq("goto_file: works from the base pane too", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+end
+
+--------------------------------------------------------------------------
+-- current_path
+--------------------------------------------------------------------------
+
+do
+  -- What <leader>fl copies: the real path, from either side of the diff.
+  ui.open({ scope = "working" })
+  vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
+  scrub("")
+  vim.api.nvim_set_current_win(layout()[2])
+  eq("current_path: the base pane resolves to the real file", root .. "/a_modified.txt", ui.current_path())
+  vim.api.nvim_set_current_win(layout()[3])
+  eq("current_path: the working pane too", root .. "/a_modified.txt", ui.current_path())
+  ui.close()
+
+  -- An ad-hoc diff's scratch resolves by parsing its vcs:// name.
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+  ui.file_diff("working")
+  vim.cmd("wincmd h")
+  eq("current_path: an ad-hoc base pane resolves too", root .. "/a_modified.txt", ui.current_path())
+  vim.cmd("tabclose")
+  eq("current_path: an ordinary buffer answers nil", nil, ui.current_path())
 end
 
 --------------------------------------------------------------------------

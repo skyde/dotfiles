@@ -216,9 +216,14 @@ map("v", "J", ":m '>+1<CR>gv=gv", { desc = "Move selection down", silent = true 
 map("v", "K", ":m '<-2<CR>gv=gv", { desc = "Move selection up", silent = true })
 
 map({ "n", "v" }, "<leader>fl", function()
-  local p = vim.fn.expand("%:p")
-  if p == "" then
-    return vim.notify("No file", vim.log.levels.WARN)
+  -- In a diff the focused buffer may be a vcs:// scratch (the base side of a
+  -- side-by-side, a deleted file); the diff UI knows which file it stands for.
+  local p = require("util.vcs_ui").current_path()
+  if not p then
+    p = vim.fn.expand("%:p")
+    if p == "" or p:match("^%a[%w+.-]*://") then
+      return vim.notify("No file", vim.log.levels.WARN)
+    end
   end
   vim.fn.setreg("+", p)
   vim.notify("Copied path: " .. p)

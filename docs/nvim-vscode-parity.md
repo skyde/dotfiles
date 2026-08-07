@@ -61,7 +61,7 @@ revision moves.
 | `y` | copy the selected file's diff to the clipboard |
 | `X` | revert the file to its base version, after a confirm; on an added or untracked file this deletes it |
 | `m` | open the three-way merge view for a conflicted file; `<leader>cq` there drops back into this view |
-| `R` | hard refresh: re-ask the backend for everything |
+| `r` | hard refresh: re-ask the backend for everything |
 | `q` | close — also from a scratch diff pane |
 | `?` | cheat sheet of these keys |
 

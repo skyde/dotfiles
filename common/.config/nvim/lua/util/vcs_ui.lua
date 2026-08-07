@@ -581,6 +581,16 @@ local function reset_cursorline(w)
   wo_local(w, "cursorlineopt", vim.go.cursorlineopt)
 end
 
+---The "╌╌ n unchanged lines ╌╌" fold line must whisper, not shout: the
+---theme's Folded (blue on a grey fill) turns every gap into a bright bar.
+---Repaint it in this window only, with the overlay's near-background group.
+local function mute_folds(w)
+  local cur = vim.api.nvim_get_option_value("winhighlight", { win = w })
+  if not cur:find("Folded:") then
+    wo_local(w, "winhighlight", (cur ~= "" and cur .. "," or "") .. "Folded:InlineDiffFold")
+  end
+end
+
 ---Whether this view collapses unchanged regions right now — the view's own
 ---setting when it is open, the remembered one for ad-hoc diffs (<leader>gd,
 ---history) that render outside it.
@@ -601,6 +611,7 @@ local function diff_pane(w)
   -- The overlay's fold text works for any fold; using it here too means a
   -- collapsed gap reads the same in both renderings.
   wo_local(w, "foldtext", "v:lua.require'util.inline_diff'.foldtext()")
+  mute_folds(w)
   local fc = vim.o.fillchars
   wo_local(w, "fillchars", fc ~= "" and (fc .. ",fold: ") or "fold: ")
   wo_local(w, "number", true)
@@ -781,6 +792,7 @@ local function render_inline(file)
       wo_local(win, "foldmethod", "expr")
       wo_local(win, "foldexpr", "v:lua.require'util.inline_diff'.foldexpr(v:lnum)")
       wo_local(win, "foldtext", "v:lua.require'util.inline_diff'.foldtext()")
+      mute_folds(win)
       wo_local(win, "foldlevel", 0)
       local fc = vim.o.fillchars
       wo_local(win, "fillchars", fc ~= "" and (fc .. ",fold: ") or "fold: ")
@@ -1284,7 +1296,7 @@ local HELP = {
   { "y", "copy this file's diff" },
   { "X", "revert file" },
   { "m", "merge view for a conflicted file" },
-  { "R", "hard refresh" },
+  { "r", "hard refresh" },
   { "q", "close" },
 }
 
@@ -1362,7 +1374,7 @@ local function setup_panel_keys(buf)
   map("[c", function()
     change_diff(-1)
   end, "Previous change in the diff")
-  map("R", function()
+  map("r", function()
     M.refresh()
   end, "Refresh")
   map("q", function()
@@ -1693,6 +1705,19 @@ function M.refresh()
   if not valid() then
     return
   end
+  -- A refresh is not a restart: the reviewer's place — which file is
+  -- selected, and where in its diff they were reading — survives it.
+  local selected = current_file()
+  local diff_pos
+  if
+    selected
+    and state.shown
+    and state.shown.path == selected.path
+    and state.diff_win
+    and vim.api.nvim_win_is_valid(state.diff_win)
+  then
+    diff_pos = vim.api.nvim_win_get_cursor(state.diff_win)
+  end
   -- An explicit refresh distrusts everything remembered about this repository:
   -- a p4 sync or a rebase can change base content without changing the listing.
   refresh_gen = refresh_gen + 1
@@ -1702,6 +1727,23 @@ function M.refresh()
   listing_cache[listing_key(state.root, state.scope)] = nil
   drop_bases(state.root)
   M.open({ scope = state.scope })
+  -- Put the cursor back on the file it was on (open() reset it to the first
+  -- one); if that file left the listing, the first file is the right answer.
+  if selected and valid() then
+    for i, row in ipairs(state.rows) do
+      if row.kind == "file" and row.file.path == selected.path then
+        vim.api.nvim_win_set_cursor(state.panel_win, { state.first_line + i - 1, 0 })
+        update_header()
+        if not (state.shown and state.shown.path == selected.path) then
+          show(false)
+        end
+        if diff_pos and state.diff_win and vim.api.nvim_win_is_valid(state.diff_win) then
+          pcall(vim.api.nvim_win_set_cursor, state.diff_win, diff_pos)
+        end
+        break
+      end
+    end
+  end
 end
 
 function M.close()
@@ -1939,6 +1981,30 @@ function M.change_position()
     end
   end
   return index, #hunks
+end
+
+---Absolute path of the file the current buffer stands for, when that buffer
+---belongs to a diff and its own name is not a real path: anywhere in the
+---view's tab the selection answers (so the base side of a side-by-side and a
+---deleted-file pane resolve, and a rename resolves to the new path), and a
+---vcs:// scratch from an ad-hoc diff (<leader>gd, history) is parsed back to
+---the file it renders. Nil for ordinary buffers — their own name is already
+---the answer.
+function M.current_path()
+  if valid() and vim.api.nvim_get_current_tabpage() == state.tab then
+    local file = state.shown or current_file()
+    if file then
+      return state.root .. "/" .. file.path
+    end
+  end
+  local path = vim.api.nvim_buf_get_name(0):match("^vcs://[^/]*/(.*)$")
+  if path then
+    local _, root = vcs.detect()
+    if root then
+      return root .. "/" .. path
+    end
+  end
+  return nil
 end
 
 ---From a diff, jump to the real file on disk in the tab you came from.

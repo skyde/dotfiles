@@ -46,6 +46,9 @@ local states = {} ---@type table<integer, InlineDiffState>
 --   InlineDiffWsError      whitespace-error      trailing whitespace on a new line
 --   InlineDiffMovedHint    (no delta equivalent) "→ 87" pointers between the
 --                          two ends of a move, in the comment grey
+--   InlineDiffFold         the "╌╌ n unchanged lines ╌╌" fold line, barely
+--                          above the background: it marks a gap, and a gap
+--                          should not compete with the changes for the eye
 -- All are set with default=true, so a user (or theme) definition wins.
 
 local PALETTE = {
@@ -59,6 +62,9 @@ local PALETTE = {
   InlineDiffMovedDelete = { bg = "#2e2547" },
   InlineDiffWsError = { bg = "#db4b4b" },
   InlineDiffMovedHint = { fg = "#565f89", italic = true },
+  -- fg only, a shade over bg_highlight; no bg, so the fold line never reads
+  -- as a filled bar the way the theme's Folded does.
+  InlineDiffFold = { fg = "#2f334d" },
   InlineDiffMovedGhost = { bg = "#2e2547", fg = "#565f89" },
   -- Family-coloured move candidates: the departure stays in the red family,
   -- the arrival in the green family, each held apart from a real delete/add
