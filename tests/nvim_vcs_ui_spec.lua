@@ -756,6 +756,48 @@ do
   local copied = vim.fn.getreg("+")
   check("copy_patch: puts a unified diff on the clipboard", copied:find("diff --git", 1, true), copied:sub(1, 80))
   check("copy_patch: includes the branch commit", copied:find("committed_on_branch", 1, true))
+
+  -- The whole-scope patch (<leader>gp / <leader>gA). Delta renders it into a
+  -- terminal buffer when it is installed and a plain diff buffer when it is
+  -- not; both have to open, carry the patch, and close on q without leaving
+  -- the empty buffer `tabnew` makes behind.
+  local unnamed_before = unnamed_buffers()
+  tabs = #vim.api.nvim_list_tabpages()
+  ui.patch("branch")
+  eq("patch: opens a tab", tabs + 1, #vim.api.nvim_list_tabpages())
+  local patch_buf = vim.api.nvim_get_current_buf()
+  eq("patch: leaves no [No Name] behind", unnamed_before, unnamed_buffers())
+  if vim.fn.executable("delta") == 1 then
+    eq("patch: delta renders into a terminal buffer", "terminal", vim.bo[patch_buf].buftype)
+    vim.wait(500, function()
+      return vim.api.nvim_buf_line_count(patch_buf) > 1
+    end)
+  else
+    eq("patch: without delta it is a diff buffer", "diff", vim.bo[patch_buf].filetype)
+    local text = table.concat(vim.api.nvim_buf_get_lines(patch_buf, 0, -1, false), "\n")
+    check("patch: it holds the unified diff", text:find("diff --git", 1, true) ~= nil, text:sub(1, 120))
+    check("patch: covering the branch commit", text:find("committed_on_branch", 1, true) ~= nil)
+  end
+  feed("q")
+  eq("patch: q closes the tab again", tabs, #vim.api.nvim_list_tabpages())
+
+  -- With nothing to show it says so rather than opening an empty tab.
+  tabs = #vim.api.nvim_list_tabpages()
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+  local said
+  local real_notify = vim.notify
+  vim.notify = function(msg)
+    said = tostring(msg)
+  end
+  ui.patch("head")
+  vim.notify = real_notify
+  if said and said:find("No changes", 1, true) then
+    eq("patch: an empty scope opens no tab", tabs, #vim.api.nvim_list_tabpages())
+  else
+    while #vim.api.nvim_list_tabpages() > tabs do
+      vim.cmd("tabclose")
+    end
+  end
 end
 
 --------------------------------------------------------------------------

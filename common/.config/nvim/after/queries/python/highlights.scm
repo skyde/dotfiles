@@ -1,7 +1,7 @@
 ;; extends
 
 ;; Extra captures so Neovim can draw the distinctions VS Code's Python grammar
-;; (MagicPython) makes. Colours live in lua/plugins/vscode-syntax.lua.
+;; (MagicPython) makes. Colours live in lua/util/vscode_syntax.lua.
 ;;
 ;; Order matters: later patterns win, so the "demote" rules that reproduce
 ;; MagicPython's context rules come after the name lists they override.
