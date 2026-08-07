@@ -86,6 +86,7 @@ local DEPRECATED = {
   { "vim%.tbl_add_reverse_lookup%s*%(", "hand-rolled reverse lookup (0.10)" },
   { "vim%.validate%s*%(%s*{", "the (name, value, type) form of vim.validate (0.11)" },
   { "vim%.highlight%.", "vim.hl. (0.11)" },
+  { "vim%.health%.report_", "the unprefixed vim.health.start/ok/warn/error/info (0.10)" },
   { "vim%.lsp%.buf_get_clients%s*%(", "vim.lsp.get_clients (0.10)" },
   { "vim%.lsp%.get_active_clients%s*%(", "vim.lsp.get_clients (0.10)" },
   { "vim%.lsp%.util%.jump_to_location%s*%(", "vim.lsp.util.show_document (0.11)" },

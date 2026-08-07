@@ -76,6 +76,12 @@ LazyVim, configured to match the VS Code setup key-for-key — see
 [`docs/nvim-vscode-parity.md`](docs/nvim-vscode-parity.md) for the full table
 and the handful of deliberate differences.
 
+`:checkhealth dotfiles` reports what the config found on this machine and which
+fallbacks are in effect — a missing `delta` means patches render plain, a
+missing `osc-copy` means yanking over SSH goes nowhere. Everything it names is
+optional by design; the point is that you find out on purpose rather than
+mid-task.
+
 Source control is backend-agnostic: `<leader>gc` opens a changed-files list with
 a live diff, and the same key works in git, jj, Perforce (`p4` / `g4`) and
 Mercurial repositories. Conflict resolution
