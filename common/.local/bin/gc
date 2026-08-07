@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# gc — open nvim straight into the changed-files view (<leader>gc).
+# Extra arguments are passed through to nvim.
+set -euo pipefail
+
+# config.vcs (and its commands/keymaps) loads on VeryLazy, which fires after
+# +cmd startup commands run — so defer the open until then instead of calling
+# :VcsChanges directly.
+exec nvim "+autocmd User VeryLazy ++once lua require('util.vcs_ui').focus({ scope = 'working' })" "$@"
