@@ -544,6 +544,9 @@ def check_parity(doc, verbose):
         ("active tab fg", "active_tab_foreground", "active_tab.fg_color", None),
         ("inactive tab bg", "inactive_tab_background", "inactive_tab.bg_color", None),
         ("inactive tab fg", "inactive_tab_foreground", "inactive_tab.fg_color", None),
+        # The window's own titlebar, which each terminal draws itself.
+        ("titlebar", "macos_titlebar_color", "active_titlebar_bg", None),
+        ("titlebar, unfocused", "wayland_titlebar_color", "inactive_titlebar_bg", None),
     ]:
         trio = {
             "kitty": kitty.get(k),
@@ -673,6 +676,8 @@ PAIRS = [
     ("ui", "#f7768e", "#1a1b26", TMUX, "tmux window with a bell"),
     ("text", "#e0af68", "#16161e", TMUX, "tmux message"),
     ("text", "#7aa2f7", "#16161e", TMUX, "tmux command prompt"),
+    ("text", "#c0caf5", "#16161e", TMUX, "tmux menu"),
+    ("text", "#c0caf5", "#283457", TMUX, "tmux menu, selected row"),
     ("text", "#c0caf5", "#283457", TMUX, "tmux copy-mode selection"),
     # `ui`, not `text`, and the tier is the honest one rather than the
     # convenient one. No palette foreground clears 4.5:1 on blue0 -- the best
@@ -758,6 +763,9 @@ FILL_FLOOR = 1.35
 FILLS = [
     ("#2e3c64", "#1a1b26", KITTY, "terminal selection"),
     ("#283457", "#1a1b26", TMUX, "tmux copy-mode selection"),
+    # The menu paints its own darker page, so its selected row is measured
+    # against that rather than against the terminal background.
+    ("#283457", "#16161e", TMUX, "tmux menu selection"),
     ("#3d59a1", "#1a1b26", TMUX, "tmux copy-mode search match"),
     ("#283457", "#1a1b26", SHELL, "fzf current line"),
     ("#283457", "#1a1b26", YAZI, "yazi hovered row"),
