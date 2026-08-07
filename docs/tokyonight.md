@@ -335,6 +335,7 @@ it fails the test.
 | yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
 | lf       | `common/.config/lf/colors`                            |
 | btop     | `common/.config/btop/themes/tokyo-night.theme`        |
+| swatches | `doctor-theme.sh` (renders the palette, so it holds a copy) |
 
 ## Keeping it consistent
 
@@ -367,3 +368,23 @@ It checks five things:
 The checks are only as good as their scope: `CHROME_FILES` at the top of the
 script is the list of files that get checked. Theme something new, add it
 there and to the table above.
+
+### The other half: `./doctor-theme.sh`
+
+The test checks that the configs in this repo agree with each other. It cannot
+tell you whether they reached a particular machine, whether the shell there
+exported them, or whether that terminal can render 24-bit colour at all —
+which is the difference between "the theme is right" and "the theme looks
+right in front of me".
+
+`./doctor-theme.sh` is that half. It reports whether `COLORTERM` promises
+truecolor (bat downgrades silently without it), whether each config file is
+where the tool will look, and whether `LS_COLORS`, `EZA_COLORS`, `BAT_THEME`,
+`FZF_DEFAULT_OPTS`, `LESS_TERMCAP_*`, `GROFF_NO_SGR` and
+`RIPGREP_CONFIG_PATH` actually made it into the environment — then prints
+swatches, because only your eye can confirm the last step.
+
+The 16 ANSI blocks it prints come from the terminal rather than from any file
+here, so they are what tells you whether kitty, wezterm or VS Code picked the
+theme up. Look at slot 8: legible grey means the deviation above took, and
+near-invisible means that terminal is still on upstream's `#414868`.

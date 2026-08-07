@@ -92,6 +92,7 @@ CHROME_FILES = [
     "common/.local/bin/st-rg",
     "common/.local/bin/st-zoekt",
     "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
+    "doctor-theme.sh",
 ]
 
 # #000000 is not a palette entry and never will be: it is the text colour
@@ -566,7 +567,10 @@ def check_doc_paths(report: Report) -> None:
     if len(section) != 2:
         report.fail("docs", "docs/tokyonight.md has no 'Where the theme lives' section")
         return
-    paths = re.findall(r"`((?:common|windows|mac)/[^`]+?)`", section[1])
+    # Package directories, plus the root-level doctor scripts.
+    paths = re.findall(
+        r"`((?:common|windows|mac|tests)/[^`]+?|doctor-[a-z-]+\.(?:sh|py))`", section[1]
+    )
     if not paths:
         report.fail("docs", "the 'Where the theme lives' table lists no files")
         return

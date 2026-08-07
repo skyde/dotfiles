@@ -17,7 +17,8 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 - If you touched a colour anywhere, run `./tests/check-theme.py` (needs only
   python3 and a POSIX shell). The theme is spread across a dozen tools that
   each want it in a different dialect; the test is what keeps them agreeing.
-  See `docs/tokyonight.md`.
+  `./doctor-theme.sh` is the runtime companion, for when the theme looks wrong
+  on one machine rather than wrong in the repo. See `docs/tokyonight.md`.
 - Run Stylua on modified Neovim Lua files if available: `stylua common/nvim/.config/nvim`
 - Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`
   (self-contained, no plugins required), and `./tests/check-nvim-keymaps.sh` to
