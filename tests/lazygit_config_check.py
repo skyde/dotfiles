@@ -131,6 +131,16 @@ def _quoted(token: str, num: int) -> tuple[str, int]:
         else:
             if ch == "\\" and i + 1 < len(token):
                 nxt = token[i + 1]
+                # \uXXXX / \UXXXXXXXX: how lazygit's docs write Nerd Font
+                # glyphs, so gui.customIcons is full of them.
+                width = {"u": 4, "U": 8, "x": 2}.get(nxt)
+                if width:
+                    digits = token[i + 2 : i + 2 + width]
+                    if len(digits) != width or any(c not in "0123456789abcdefABCDEF" for c in digits):
+                        raise YamlError(f"line {num}: bad \\{nxt} escape")
+                    out.append(chr(int(digits, 16)))
+                    i += 2 + width
+                    continue
                 out.append({"n": "\n", "t": "\t", '"': '"', "\\": "\\"}.get(nxt, nxt))
                 i += 2
                 continue

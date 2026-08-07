@@ -106,6 +106,31 @@ id are unaffected (`git.commitPrefix`).
   there is no bridge. The default, `xdg-open`, has nothing to open it with on a
   headless box.
 
+- **Chromium-shaped files get their own icons**: `BUILD.gn`, `DEPS`, `OWNERS`,
+  `*.gni`, `*.mojom` and `*.grd` all fall back to lazygit's generic file glyph
+  otherwise, which makes a Chromium tree one repeated icon (`gui.customIcons`).
+
+## Per-repository overrides
+
+Settings in `<repo>/.git/lazygit.yml` win over this file, and a `.lazygit.yml`
+in any parent directory of a repository applies to everything beneath it. That
+is the place for anything a single tree needs — a repository big enough that
+`git status` on a timer is felt, for instance:
+
+```yaml
+# <chromium>/src/.git/lazygit.yml
+refresher:
+  refreshInterval: 30 # git status on a huge tree, less often
+  fetchInterval: 600
+git:
+  # the delta pass over a very large diff is the slow part; raw git is instant
+  diffRenderers:
+    - type: rawGit
+      name: raw git
+    - name: delta
+      command: delta --dark --paging=never --tabs=4
+```
+
 ## Where the config lives
 
 lazygit looks for `jesseduffield/lazygit/config.yml` first and then

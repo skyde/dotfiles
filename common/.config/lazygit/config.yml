@@ -71,6 +71,23 @@ gui:
     markedBaseCommitFgColor: ["#16161e"]
     unstagedChangesColor: ["#f7768e"]
 
+  # Icons for the file types lazygit has no entry for. Checked against the
+  # Files panel: BUILD.gn, DEPS, OWNERS, *.gni, *.mojom and *.grd all fall back
+  # to the generic file glyph (U+F15B), so a Chromium tree renders as one
+  # repeated icon. These are Font Awesome codepoints, which Nerd Fonts v3 keeps
+  # where v2 had them.
+  customIcons:
+    filenames:
+      "OWNERS": { icon: "\uf0c0", color: "#e0af68" } # users
+      "DEPS": { icon: "\uf1b2", color: "#bb9af7" } # cube
+      "BUILD.gn": { icon: "\uf0ad", color: "#ff9e64" } # wrench
+    extensions:
+      ".gn": { icon: "\uf0ad", color: "#ff9e64" }
+      ".gni": { icon: "\uf0ad", color: "#ff9e64" }
+      ".mojom": { icon: "\uf1e6", color: "#7dcfff" } # plug — an interface
+      ".grd": { icon: "\uf1ab", color: "#73daca" } # language — translated strings
+      ".grdp": { icon: "\uf1ab", color: "#73daca" }
+
   # Branch names carry their kind in the prefix, so let the colour say it and
   # save reading the word. Patterns are Go regexps and are *not* anchored
   # implicitly — the ^ and $ here are load-bearing. Anything unmatched keeps

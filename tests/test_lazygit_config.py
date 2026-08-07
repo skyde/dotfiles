@@ -31,6 +31,13 @@ class YamlSubsetParser(unittest.TestCase):
         parsed = checker.mini_yaml_load('a: "#7aa2f7" # trailing\nb: 1\n')
         self.assertEqual(parsed, {"a": "#7aa2f7", "b": 1})
 
+    def test_unicode_escapes(self):
+        """How lazygit's docs write Nerd Font glyphs, so gui.customIcons uses them."""
+        parsed = checker.mini_yaml_load('icons: { a: "\\uf0c0", b: "\\U0001F600" }\n')
+        self.assertEqual(parsed, {"icons": {"a": "\uf0c0", "b": "\U0001F600"}})
+        with self.assertRaises(checker.YamlError):
+            checker.mini_yaml_load('a: "\\uzzzz"\n')
+
     def test_rejects_constructs_it_cannot_read(self):
         for source in ("a: &anchor 1\n", "a: |\n  block\n", "a:\n\tb: 1\n"):
             with self.subTest(source=source), self.assertRaises(checker.YamlError):
