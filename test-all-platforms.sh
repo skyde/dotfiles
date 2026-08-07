@@ -1,10 +1,58 @@
 #!/bin/bash
 set -e
 
+# Handled before anything else, so `--help` never depends on the repository
+# state or on the workflow existing.
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+    echo "Usage: $0 [number_of_cycles]"
+    echo ""
+    echo "This script triggers and monitors GitHub Actions workflows"
+    echo "to test dotfiles installation across all platforms:"
+    echo "  - Linux (Ubuntu)"
+    echo "  - macOS (latest)"
+    echo "  - Windows (latest)"
+    echo ""
+    echo "Options:"
+    echo "  number_of_cycles  Number of test cycles to run (default: 3)"
+    echo "  --help, -h        Show this help message"
+    echo ""
+    echo "Environment:"
+    echo "  DOTFILES_WORKFLOW  Workflow to run (default: comprehensive-test.yml)"
+    echo "  DOTFILES_BRANCH    Branch to trigger on (default: the current branch)"
+    echo "  DOTFILES_REPO      owner/name (default: skyde/dotfiles)"
+    echo ""
+    echo "Requires a clean working tree: CI tests what is pushed, not what is local."
+    echo ""
+    echo "Examples:"
+    echo "  $0              # Run 3 test cycles"
+    echo "  $0 5            # Run 5 test cycles"
+    exit 0
+fi
+
 # GitHub repository and workflow monitoring script
-REPO="skyde/dotfiles"
-BRANCH="main"
-WORKFLOW_FILE="simple-test.yml"
+REPO="${DOTFILES_REPO:-skyde/dotfiles}"
+
+# The branch to trigger on, defaulting to whichever one is checked out. It used
+# to be hard-coded to "main", which is how this script came to push to main from
+# whatever branch you happened to be on (see main() below).
+BRANCH="${DOTFILES_BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)}"
+
+# There is no simple-test.yml in this repository and there never has been, so
+# every `gh workflow run` and `gh run list` this script made was against a
+# workflow that does not exist. Default to one that does, and check before
+# doing anything rather than failing halfway through a cycle.
+WORKFLOW_FILE="${DOTFILES_WORKFLOW:-comprehensive-test.yml}"
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+if [ ! -f "$script_dir/.github/workflows/$WORKFLOW_FILE" ]; then
+    echo "❌ No such workflow: .github/workflows/$WORKFLOW_FILE" >&2
+    echo "   Available:" >&2
+    for wf in "$script_dir"/.github/workflows/*.yml; do
+        [ -e "$wf" ] && echo "     $(basename "$wf")" >&2
+    done
+    echo "   Override with DOTFILES_WORKFLOW=<name>." >&2
+    exit 1
+fi
 
 echo "=== MULTI-PLATFORM TESTING AUTOMATION ==="
 echo "Repository: $REPO"
@@ -120,7 +168,14 @@ monitor_workflow() {
 run_platform_tests() {
     local test_count=${1:-3}
     local success_count=0
-    
+
+    # The success-rate line divides by this, so a non-positive count is an
+    # arithmetic error rather than a no-op run.
+    if ! [[ "$test_count" =~ ^[0-9]+$ ]] || [ "$test_count" -lt 1 ]; then
+        echo "❌ Number of cycles must be a positive integer (got '$test_count')." >&2
+        return 1
+    fi
+
     echo "=== RUNNING $test_count PLATFORM TEST CYCLES ==="
     
     for i in $(seq 1 "$test_count"); do
@@ -170,15 +225,19 @@ run_platform_tests() {
 # Main execution
 main() {
     echo "Checking current repository status..."
-    git status --porcelain
-    
+
+    # Refuse rather than commit. This used to `git add -A`, commit everything in
+    # the working tree under the message "Auto-commit before platform testing"
+    # and push it to a hard-coded "main" — from whatever branch you were on,
+    # with no prompt. Running a test helper must never publish your work.
     if [ -n "$(git status --porcelain)" ]; then
-        echo "⚠️  Working directory not clean - committing changes first"
-        git add -A
-        git commit -m "Auto-commit before platform testing"
-        git push origin "$BRANCH"
+        echo "❌ Working directory is not clean." >&2
+        git status --short >&2
+        echo "" >&2
+        echo "   Commit or stash first; CI tests what is pushed, not what is local." >&2
+        exit 1
     fi
-    
+
     echo ""
     get_workflow_status
     echo ""
@@ -187,26 +246,6 @@ main() {
     local cycles=${1:-3}
     run_platform_tests "$cycles"
 }
-
-# Check command line arguments
-if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-    echo "Usage: $0 [number_of_cycles]"
-    echo ""
-    echo "This script triggers and monitors GitHub Actions workflows"
-    echo "to test dotfiles installation across all platforms:"
-    echo "  - Linux (Ubuntu)"
-    echo "  - macOS (latest)"
-    echo "  - Windows (latest)"
-    echo ""
-    echo "Options:"
-    echo "  number_of_cycles  Number of test cycles to run (default: 3)"
-    echo "  --help, -h        Show this help message"
-    echo ""
-    echo "Examples:"
-    echo "  $0              # Run 3 test cycles"
-    echo "  $0 5            # Run 5 test cycles"
-    exit 0
-fi
 
 # Run main function with arguments
 main "$@"
