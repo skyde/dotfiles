@@ -140,8 +140,14 @@ tests/zsh-startup-bench.sh --to-exit    # the older `zsh -i -c exit` measure
 ```
 
 Where 85ms went, roughly: 24ms of process start and terminal setup that no
-config can touch, 38ms of this file, and 22ms for starship's first render (it
-runs `git status`).
+config can touch, 38ms of this file, and 22ms drawing the first prompt.
+
+That last number is starship's, and `starship timings` says where it goes — on
+this machine 15ms of it is three custom modules (`git_cl`, `git_workspace`,
+`cloud_workspace`) that print nothing outside a Chromium or cloud checkout but
+still probe git to find that out. starship.toml's comments show that has already
+been thought about carefully, so it is left alone; `starship timings` is the tool
+if it ever needs revisiting.
 
 What was done, and what it was worth:
 
