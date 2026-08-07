@@ -445,7 +445,7 @@ function M.render(buf)
         -- A struck-through wash would draw its line across the padding too;
         -- pad with the same background minus the decoration.
         local pad_hl = base_hl == "InlineDiffMovedFromStrike" and "InlineDiffMovedFromDim" or base_hl
-        chunks[#chunks + 1] = { (" "):rep(500), pad_hl }
+        chunks[#chunks + 1] = { (" "):rep(math.max(500, vim.o.columns)), pad_hl }
         virt[#virt + 1] = chunks
       end
       if count_b > 0 then

@@ -177,6 +177,31 @@ local function balance(...)
   vim.api.nvim_win_set_width(state.panel_win, PANEL_WIDTH)
 end
 
+---A `vcs://` buffer name nothing else is using.
+---
+---Two diffs of the same file at the same revision collide, and the loser ends
+---up as a nameless "[No Name]" pane. The counter goes inside the authority
+---segment — `vcs://abc123 (2)/src/main.c` — never at the end of the name:
+---everything that reads these names back (current_path, goto_file, and so
+---`<leader>fl` and `<leader>gw` with them) takes the part after the first
+---slash as a real path, and a " (2)" glued onto *that* is a path no file has.
+---@param name string
+---@return string
+local function unique_name(name)
+  if vim.fn.bufexists(name) == 0 then
+    return name
+  end
+  local head, tail = name:match("^(vcs://[^/]*)(/.*)$")
+  local n = 2
+  while true do
+    local candidate = head and ("%s (%d)%s"):format(head, n, tail) or ("%s (%d)"):format(name, n)
+    if vim.fn.bufexists(candidate) == 0 then
+      return candidate
+    end
+    n = n + 1
+  end
+end
+
 ---A throwaway buffer holding `content`, named so the tabline says something
 ---useful about which side of the diff it is.
 local function scratch(name, content, path)
@@ -187,17 +212,7 @@ local function scratch(name, content, path)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, content or {})
   vim.bo[buf].modifiable = false
   vim.bo[buf].modified = false
-  -- Two diffs of the same file at the same revision would collide on the
-  -- name, and the loser would silently end up as a nameless "[No Name]"
-  -- pane; suffix instead.
-  if vim.fn.bufexists(name) == 1 then
-    local n = 2
-    while vim.fn.bufexists(("%s (%d)"):format(name, n)) == 1 do
-      n = n + 1
-    end
-    name = ("%s (%d)"):format(name, n)
-  end
-  pcall(vim.api.nvim_buf_set_name, buf, name)
+  pcall(vim.api.nvim_buf_set_name, buf, unique_name(name))
   if path then
     local ft = vim.filetype.match({ filename = path, buf = buf })
     if ft then
@@ -1570,8 +1585,9 @@ end
 -- What `?` shows. Discoverability is the point: none of the panel keys
 -- should be learnable only by reading the source.
 local HELP = {
-  { "j / k", "select file, diff follows" },
-  { "<CR> / Space", "focus the diff" },
+  { "j / k / ↑ / ↓", "select file, diff follows" },
+  { "<CR> / <Space>", "focus the diff" },
+  { "o / l / → / <Tab>", "the same, for other fingers" },
   { "J / K", "scroll the diff from the list" },
   { "]c / [c", "next / previous change in the diff" },
   { "]f / [f", "next / previous file, from inside the diff" },
@@ -1583,13 +1599,23 @@ local HELP = {
   { "X", "revert file" },
   { "m", "merge view for a conflicted file" },
   { "r", "hard refresh" },
+  { "?", "this list" },
   { "q", "close" },
 }
 
 local function show_help()
-  local lines = {}
+  -- Pad the key column by display width, not by bytes: the arrows in it are
+  -- multibyte, and a %-12s would leave every description that follows one
+  -- sitting a few columns off from the rest.
+  local key_width = 0
   for _, entry in ipairs(HELP) do
-    table.insert(lines, ("  %-12s %s"):format(entry[1], entry[2]))
+    key_width = math.max(key_width, vim.fn.strdisplaywidth(entry[1]))
+  end
+  local lines, key_end = {}, {}
+  for i, entry in ipairs(HELP) do
+    local keys = "  " .. entry[1]
+    key_end[i] = #keys
+    lines[i] = keys .. (" "):rep(key_width - vim.fn.strdisplaywidth(entry[1])) .. "  " .. entry[2]
   end
   local width = 0
   for _, l in ipairs(lines) do
@@ -1600,7 +1626,7 @@ local function show_help()
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
   for i = 1, #lines do
-    vim.api.nvim_buf_set_extmark(buf, ns, i - 1, 0, { end_col = 14, hl_group = "Special" })
+    vim.api.nvim_buf_set_extmark(buf, ns, i - 1, 0, { end_col = key_end[i], hl_group = "Special" })
   end
   local win = vim.api.nvim_open_win(buf, true, {
     relative = "editor",
@@ -2370,11 +2396,14 @@ function M.change_position()
     return table.concat(lines, "\n") .. "\n"
   end
   -- Match the settings native diff mode is using, or the count disagrees with
-  -- where ]c actually stops.
+  -- where ]c actually stops. linematch especially: it is what splits one
+  -- change-block into the several hunks the user is stepping through, so
+  -- leaving it out here means "Change 2 of 5" over a diff that has seven.
   local hunks = vim.diff(text(other), text(cur), {
     result_type = "indices",
     algorithm = vim.o.diffopt:match("algorithm:(%w+)") or "myers",
     indent_heuristic = vim.o.diffopt:find("indent%-heuristic") ~= nil,
+    linematch = tonumber(vim.o.diffopt:match("linematch:(%d+)")),
   }) or {}
   local row = vim.api.nvim_win_get_cursor(0)[1]
   local line_count = vim.api.nvim_buf_line_count(0)

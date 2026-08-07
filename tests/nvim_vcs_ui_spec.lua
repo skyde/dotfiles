@@ -704,6 +704,23 @@ do
   eq("current_path: an ad-hoc base pane resolves too", root .. "/a_modified.txt", ui.current_path())
   vim.cmd("tabclose")
   eq("current_path: an ordinary buffer answers nil", nil, ui.current_path())
+
+  -- A second diff of the same file at the same revision collides on the
+  -- buffer name and gets a counter. That counter must not land in the part
+  -- these functions read back as a path, or <leader>fl copies a file that
+  -- does not exist and <leader>gw cannot find anything to open.
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+  ui.file_diff("working")
+  ui.file_diff("working")
+  vim.cmd("wincmd h")
+  local dup = vim.api.nvim_buf_get_name(0)
+  check("current_path: the second diff's pane is disambiguated", dup:find("(2)", 1, true), dup)
+  eq("current_path: and still resolves to the real file", root .. "/a_modified.txt", ui.current_path())
+  ui.goto_file()
+  eq("goto_file: works from the disambiguated pane", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  while #vim.api.nvim_list_tabpages() > 1 do
+    vim.cmd("tabclose")
+  end
 end
 
 --------------------------------------------------------------------------
@@ -1153,6 +1170,37 @@ do
   eq("change_position: the base pane counts the same hunks", 3, t2)
   vim.cmd("tabclose")
   check("change_position: nil outside a diff", ui.change_position() == nil)
+
+  -- The count has to be produced with the same 'diffopt' native diff mode is
+  -- using, or it disagrees with where ]c actually stops. linematch is the one
+  -- that bites: it splits an insertion sitting against a changed line into
+  -- two hunks, so without it the echo reads "Change 2 of 1".
+  write(root .. "/linematch.txt", "aa\nbb\ncc\n")
+  git(root, "add", "linematch.txt")
+  git(root, "commit", "-qm", "linematch")
+  write(root .. "/linematch.txt", "aa\nbb1\nbb2\ncc\n")
+
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/linematch.txt"))
+  ui.file_diff("working")
+  -- Where ]c really stops, walked from the top.
+  vim.cmd("normal! gg")
+  local stops = 0
+  if vim.fn.diff_hlID(1, 1) ~= 0 then
+    stops = 1
+  end
+  for _ = 1, 10 do
+    local before = vim.api.nvim_win_get_cursor(0)[1]
+    vim.cmd("normal! ]c")
+    if vim.api.nvim_win_get_cursor(0)[1] <= before then
+      break
+    end
+    stops = stops + 1
+  end
+  eq("change_position: linematch splits this into two stops", 2, stops)
+  vim.cmd("normal! G")
+  local _, counted = ui.change_position()
+  eq("change_position: and the count agrees with them", stops, counted)
+  vim.cmd("tabclose")
 end
 
 --------------------------------------------------------------------------
@@ -1296,8 +1344,47 @@ do
   eq("help: no float before ?", 0, floats())
   feed("?")
   eq("help: ? opens the cheat sheet", 1, floats())
-  local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+  local help_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  local text = table.concat(help_lines, "\n")
   check("help: it mentions the scroll keys", text:find("J / K", 1, true) ~= nil, text)
+
+  -- The cheat sheet is the only place these keys are discoverable, so a key
+  -- added to the panel and not to the list is a key nobody finds. How each
+  -- one is *spelled* in the list is a presentation choice; this maps the
+  -- spellings back so the check stays about coverage.
+  local SPELLINGS = {
+    ["<Down>"] = "↓",
+    ["<Up>"] = "↑",
+    ["<Right>"] = "→",
+    ["<Space>"] = "<Space>",
+    ["<CR>"] = "<CR>",
+    ["<Tab>"] = "<Tab>",
+  }
+  local panel_buf = vim.api.nvim_win_get_buf(layout()[1])
+  local undocumented = {}
+  for _, m in ipairs(vim.api.nvim_buf_get_keymap(panel_buf, "n")) do
+    local want = SPELLINGS[m.lhs] or m.lhs
+    if not text:find(want, 1, true) then
+      table.insert(undocumented, ("%s (looked for %q)"):format(m.lhs, want))
+    end
+  end
+  eq("help: every panel key is on the cheat sheet", {}, undocumented)
+
+  -- And the descriptions all start in the same column, which multibyte
+  -- arrows in the key column quietly break when padding counts bytes.
+  -- `.*` is greedy, so this finds the *last* run of two or more spaces —
+  -- the gap between the key column and the description, since no description
+  -- has a double space in it.
+  local columns = {}
+  for _, line in ipairs(help_lines) do
+    local at = line:match("^.*%s%s()%S")
+    check("help: `" .. line .. "` has a description", at ~= nil)
+    if at then
+      columns[vim.fn.strdisplaywidth(line:sub(1, at - 1))] = true
+    end
+  end
+  eq("help: the descriptions all start in one column", 1, vim.tbl_count(columns))
+
   feed("q")
   eq("help: q closes it again", 0, floats())
   ui.close()
