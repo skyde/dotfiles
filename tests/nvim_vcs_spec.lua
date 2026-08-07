@@ -83,6 +83,10 @@ local function build_git_repo()
   write(root .. "/src/main.c", "int main(void) { return 0; }\n")
   write(root .. "/src/old name.c", "// a path with a space\n")
   write(root .. "/src/ünïcode.c", "// a path with non-ascii\n")
+  -- core.quotepath=false stops git escaping non-ASCII, but a quote or a
+  -- backslash is C-quoted whatever it is set to.
+  write(root .. '/src/quo"ted.c', "// a path with a quote\n")
+  write(root .. "/src/back\\slash.c", "// a path with a backslash\n")
   write(root .. "/doomed.txt", "delete me\n")
   write(root .. "/deep/a/b/c/nested.txt", "nested\n")
   write(root .. "/renamed-from.txt", string.rep("stable content line\n", 20))
@@ -100,6 +104,8 @@ local function build_git_repo()
 
   -- Uncommitted changes of every kind.
   write(root .. "/src/ünïcode.c", "// a path with non-ascii\n// edited\n")
+  write(root .. '/src/quo"ted.c', "// a path with a quote\n// edited\n")
+  write(root .. "/src/back\\slash.c", "// a path with a backslash\n// edited\n")
   write(root .. "/src/old name.c", "// a path with a space\n// edited\n")
   vim.fn.delete(root .. "/doomed.txt")
   write(root .. "/added-staged.txt", "staged add\n")
@@ -133,6 +139,14 @@ do
 
   local working = status_map(b.changed(root, b.rev(root, "working")))
   eq("git: modified unicode path", "M", working["src/ünïcode.c"])
+  -- A C-quoted name used as-is names no file, so its diff came up empty.
+  eq("git: a path with a quote is unquoted", "M", working['src/quo"ted.c'])
+  eq("git: a path with a backslash is unquoted", "M", working["src/back\\slash.c"])
+  eq(
+    "git: and show finds the content under it",
+    { "// a path with a quote" },
+    b.show(root, b.rev(root, "working"), 'src/quo"ted.c')
+  )
   eq("git: modified path with a space", "M", working["src/old name.c"])
   eq("git: deleted file", "D", working["doomed.txt"])
   eq("git: staged add", "A", working["added-staged.txt"])

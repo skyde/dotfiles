@@ -161,6 +161,42 @@ end
 
 local git = { name = "git", bin = "git" }
 
+-- The two-character escapes git's quote_c_style writes. Non-ASCII bytes would
+-- come through as \ooo, but core.quotepath=false stops that.
+local C_ESCAPES = { a = "\a", b = "\b", f = "\f", n = "\n", r = "\r", t = "\t", v = "\v" }
+
+---Undo git's C-quoting. `core.quotepath=false` only stops it escaping
+---non-ASCII bytes; a path holding a quote, a backslash or a control character
+---still arrives wrapped in quotes with those escaped — and used as-is it names
+---no file at all, so the diff came up empty for it.
+---@param path string
+---@return string
+local function unquote(path)
+  if path:sub(1, 1) ~= '"' or path:sub(-1) ~= '"' then
+    return path
+  end
+  local body = path:sub(2, -2)
+  local out, i = {}, 1
+  while i <= #body do
+    local c = body:sub(i, i)
+    if c ~= "\\" then
+      out[#out + 1] = c
+      i = i + 1
+    else
+      local next_c = body:sub(i + 1, i + 1)
+      local octal = body:match("^%d%d%d", i + 1)
+      if octal then
+        out[#out + 1] = string.char(tonumber(octal, 8))
+        i = i + 4
+      else
+        out[#out + 1] = C_ESCAPES[next_c] or next_c
+        i = i + 2
+      end
+    end
+  end
+  return table.concat(out)
+end
+
 function git.root(dir)
   return one(sh({ "git", "rev-parse", "--show-toplevel" }, dir))
 end
@@ -238,7 +274,8 @@ function git.changed(root, rev)
         -- open; the old one is what the base content has to be fetched as,
         -- otherwise a rename diffs as a wholly added file.
         local old, new = path:match("^(.-)\t(.+)$")
-        path = new or path
+        path = unquote(new or path)
+        old = old and unquote(old) or nil
         if not seen[path] then
           seen[path] = true
           table.insert(out, { path = path, status = status, orig = old })
@@ -248,7 +285,8 @@ function git.changed(root, rev)
   end
   local untracked = sh({ "git", "-c", "core.quotepath=false", "ls-files", "--others", "--exclude-standard" }, root)
   if untracked and untracked.code == 0 then
-    for _, path in ipairs(lines(untracked.stdout)) do
+    for _, quoted in ipairs(lines(untracked.stdout)) do
+      local path = unquote(quoted)
       if not seen[path] then
         seen[path] = true
         table.insert(out, { path = path, status = "?" })
@@ -307,7 +345,7 @@ function git.log(root, path)
         current = { rev = rev, date = date, author = author, subject = subject, path = path }
         table.insert(out, current)
       elseif current and line ~= "" then
-        current.path = line
+        current.path = unquote(line)
         current = nil
       end
     end
