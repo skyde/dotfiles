@@ -222,10 +222,6 @@ local function apply(hl)
   -- instance class.defaultLibrary -> @type.builtin). Clearing every combination
   -- that VS Code has no opinion about makes the outcome deterministic: only the
   -- type colour, or the one meaningful override, ever paints.
-  -- stylua: ignore
-  -- Kept packed. This is a flat vocabulary list, not code, and one name per
-  -- line turns it into nineteen lines that are harder to scan for a missing
-  -- entry than the grouped form is.
   local modifiers = {
     "abstract", "async", "declaration", "defaultLibrary", "definition",
     "deprecated", "documentation", "modification", "readonly", "static",
@@ -251,7 +247,6 @@ local function apply(hl)
   -- applied last wins. VS Code has no such concept -- a modifier only matters in
   -- combination with a type. Clearing these leaves the type and typemod groups
   -- above as the only things that paint.
-  -- stylua: ignore
   for _, mod in ipairs({
     "abstract", "async", "declaration", "defaultLibrary", "definition",
     "deprecated", "documentation", "modification", "readonly", "static",

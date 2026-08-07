@@ -13,23 +13,18 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 ## Optional checks
 
-- Run ShellCheck on modified shell scripts if available. The repo is clean at
-  `--severity=warning` and CI enforces that, so keep it there. Note most of the
-  shell here is *not* named `*.sh` — the tools in `common/.local/bin` have no
-  extension, and `.bashrc-custom` has no shebang either; CI selects by shebang
-  or by a leading `# shellcheck shell=` directive. `.zshrc` and `.zshenv` are
-  exempt because ShellCheck cannot parse zsh.
+- Run ShellCheck on modified shell scripts if available. Most of the shell here
+  is not named `*.sh` (`common/.local/bin` has no extensions, `.bashrc-custom`
+  has no shebang), so CI selects by shebang or `# shellcheck shell=` directive
+  and enforces `--severity=warning`.
 - Run Stylua on modified Neovim Lua files if available: `stylua common/.config/nvim`
-  (the tree is clean, so `stylua --check common/.config/nvim` should report nothing)
 - Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`
   (self-contained, no plugins required), and `./tests/check-nvim-keymaps.sh` to
   invoke every binding against the real config.
-- If you changed a keybinding or `docs/nvim-vscode-parity.md`, run
-  `./tests/check-doc-keymaps.py` — it fails when the table documents a key the
-  config does not actually map.
-- If you touched `common/.config/yazi`, run `./tests/check-yazi-config.py`. yazi
-  discards an entire config file over one stale key and quietly falls back to
-  presets, so a broken setting looks like no setting rather than an error.
+- After a keybinding change: `./tests/check-doc-keymaps.py` (the parity table
+  must not document a key the config does not map).
+- After a `common/.config/yazi` change: `./tests/check-yazi-config.py` (yazi
+  discards a whole config file over one stale key and falls back to presets).
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines
@@ -47,8 +42,7 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 Shared helpers:
 
-- `lib/run_ensure.sh` provides `have`, `confirm_change`, `ensure_brew`, `ensure_cask` and `ensure_apt`, and sources `lib/cask_app_map.sh` for the cask→`.app` mapping. `init-linux.sh`, `init-macos.sh` and `install-fast-syntax-highlighting.sh` all source it, and `init.sh` runs the first two — so changing either file affects a real install path. (This note used to say they were unused; they are not.)
-- Note that `lib/run_ensure.sh` sets `-euo pipefail`, which applies to whatever sources it.
+- `lib/run_ensure.sh` (which sources `lib/cask_app_map.sh`) is sourced by `init-linux.sh`, `init-macos.sh` and `install-fast-syntax-highlighting.sh`, and `init.sh` runs the first two — so it is on a real install path. It sets `-euo pipefail` for whatever sources it.
 
 Avoid committing secrets or personal data.
 

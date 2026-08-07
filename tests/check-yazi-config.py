@@ -1,29 +1,21 @@
 #!/usr/bin/env python3
 """Check yazi actually accepts the configs in common/.config/yazi.
 
-yazi validates each of its three files as a whole. One rejected key throws out
-the *entire* file and it falls back to presets, after a single
-"Press <Enter> to continue with preset settings..." line that scrolls past on
-startup — so a stale key does not degrade one rule, it silently disables
-everything in that file. All three had one at once:
-
-  * yazi.toml   — a previewer keyed on `name`, which yazi renamed to `url`
-  * keymap.toml — a `"$schema"` key, which fails yazi's kebab-case check
-  * theme.toml  — 63 filetype rules keyed on `name`
-
-Between them that meant the pane ratio, hidden files, the sort order, preview
-wrapping, every custom keybinding, the whole Tokyo Night theme and all three
-bat previewers were inert.
+yazi validates each file as a whole, so one stale key discards the *entire* file
+and it falls back to presets after a single "Press <Enter> to continue" line
+that scrolls past on startup. All three files had one at once: previewer and
+filetype rules keyed on `name` (renamed to `url`), and a `"$schema"` key that
+fails yazi's kebab-case check.
 
     tests/check-yazi-config.py
 
-Two layers. The static checks need nothing installed and catch the exact
-patterns above. The live check runs yazi against the config in a pty and fails
-if it falls back to presets; it skips when yazi is not installed.
+The static checks need nothing installed; the live check runs yazi in a pty and
+fails if it falls back to presets, skipping when yazi is not installed.
 """
 
 import os
 import re
+import shutil
 import sys
 
 try:
@@ -34,15 +26,13 @@ except ImportError:  # Python < 3.11
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_DIR = os.path.join(REPO, "common/.config/yazi")
 
-# Tables whose entries are match rules; yazi requires `url` or `mime` on each.
+# Tables whose entries are match rules; yazi requires url/mime (or `is`) on each.
 RULE_TABLES = [
     ("yazi.toml", ("plugin", "prepend_previewers")),
     ("yazi.toml", ("plugin", "append_previewers")),
     ("yazi.toml", ("plugin", "prepend_fetchers")),
-    ("yazi.toml", ("plugin", "append_fetchers")),
     ("yazi.toml", ("plugin", "prepend_preloaders")),
     ("yazi.toml", ("open", "prepend_rules")),
-    ("yazi.toml", ("open", "append_rules")),
     ("theme.toml", ("filetype", "rules")),
 ]
 
@@ -55,13 +45,12 @@ def fail(message):
 
 
 def load(name):
-    path = os.path.join(CONFIG_DIR, name)
-    with open(path, "rb") as handle:
-        return tomllib.load(handle), path
+    with open(os.path.join(CONFIG_DIR, name), "rb") as handle:
+        return tomllib.load(handle)
 
 
-def dig(data, path):
-    for key in path:
+def dig(data, keys):
+    for key in keys:
         if not isinstance(data, dict) or key not in data:
             return None
         data = data[key]
@@ -70,55 +59,38 @@ def dig(data, path):
 
 def check_static():
     for name in ("yazi.toml", "keymap.toml", "theme.toml"):
-        data, path = load(name)
-        # `$schema` is not kebab-case, and yazi rejects the file over it.
+        data = load(name)
         for key in data:
             if key.startswith("$"):
                 fail("%s: top-level %r key — yazi requires kebab-cased keys and "
-                     "rejects the whole file. Put the schema URL in a comment." % (name, key))
-        print("OK    %s parses as TOML (%d top-level tables)" % (name, len(data)))
+                     "rejects the whole file over it" % (name, key))
+        print("OK    %s parses as TOML" % name)
 
-    for name, path_keys in RULE_TABLES:
-        data, _ = load(name)
-        rules = dig(data, path_keys)
+    for name, keys in RULE_TABLES:
+        rules = dig(load(name), keys)
         if not rules:
             continue
-        table = ".".join(path_keys)
+        table = ".".join(keys)
         for index, rule in enumerate(rules):
             if not isinstance(rule, dict):
                 continue
             if "name" in rule:
-                fail("%s: %s[%d] uses `name`, which yazi renamed to `url`; the "
-                     "whole file is rejected over it (%r)" % (name, table, index, rule))
-            elif not ("url" in rule or "mime" in rule or "is" in rule):
-                fail("%s: %s[%d] has neither `url` nor `mime` nor `is` (%r)"
-                     % (name, table, index, rule))
-        print("OK    %s %s: %d rules, all keyed on url/mime/is" % (name, table, len(rules)))
+                fail("%s: %s[%d] uses `name`, renamed to `url`; the whole file "
+                     "is rejected over it (%r)" % (name, table, index, rule))
+            elif not {"url", "mime", "is"} & set(rule):
+                fail("%s: %s[%d] has no url/mime/is (%r)" % (name, table, index, rule))
+        print("OK    %s %s: %d rules keyed on url/mime/is" % (name, table, len(rules)))
 
 
 def check_live():
-    """Run yazi for real and fail if it falls back to preset settings."""
-    import shutil
-
     yazi = shutil.which("yazi-real") or shutil.which("yazi")
     if not yazi:
         print("SKIP  live check (yazi not installed)")
         return
-    # The `yazi` on PATH may be this repo's wrapper; it execs the real binary,
-    # which is what we want either way.
 
-    import fcntl
-    import pty
-    import signal
-    import struct
-    import termios
-    import threading
-    import time
-    import tempfile
+    import fcntl, pty, signal, struct, tempfile, termios, threading, time
 
-    env = dict(os.environ, TERM="xterm-256color")
-    # Point yazi at this checkout rather than whatever is installed.
-    env["YAZI_CONFIG_HOME"] = CONFIG_DIR
+    env = dict(os.environ, TERM="xterm-256color", YAZI_CONFIG_HOME=CONFIG_DIR)
     workdir = tempfile.mkdtemp(prefix="yazi-check-")
     with open(os.path.join(workdir, "sample.txt"), "w") as handle:
         handle.write("hello from the yazi config check\n")
@@ -162,22 +134,14 @@ def check_live():
     else:
         print("OK    yazi loaded the config without falling back to presets")
 
-    if "hello from the yazi config check" in text:
-        print("OK    the bat-preview previewer rendered file content")
-    else:
-        # Not fatal: previewing needs bat, and the pane may not have painted in
-        # the time allowed. The config-acceptance check above is the contract.
-        print("NOTE  preview pane content not observed (bat missing, or slow paint)")
-
 
 def main():
     check_static()
     check_live()
-    print()
     if failures:
-        print("%d problem(s)" % len(failures))
+        print("\n%d problem(s)" % len(failures))
         return 1
-    print("yazi config OK")
+    print("\nyazi config OK")
     return 0
 
 

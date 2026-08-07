@@ -100,13 +100,9 @@ unpacked automatically when FUSE is missing. On macOS use `brew install neovim`.
 
 `<leader>gg` opens lazygit inside Neovim, and
 `common/.config/lazygit/config.yml` uses recent options, so lazygit needs to be
-current as well. **v0.64.0 or newer**: that release renamed `git.pagers` to
-`git.diffRenderers` (and the entry's `pager` field to `command`), which is what
-the config now uses. On an older lazygit those keys are silently ignored and
-diffs render as raw git output instead of going through delta.
-
-Debian and Ubuntu do not package it at all, so grab the release binary
-(`init.sh` offers this too):
+current as well — **v0.64.0 or newer**, which is when `git.pagers` became
+`git.diffRenderers`. Debian and Ubuntu do not package it at all, so grab the
+release binary (`init.sh` offers this too):
 
 ```sh
 ./install-lazygit.sh                          # latest release into ~/.local/bin
@@ -134,20 +130,9 @@ Settings are kept in
 - UI elements hidden (badges, colored circles, status icons, menubar icon)
 - Control key as hold shortcut
 
-The `-reference` suffix is deliberate and this file is **not** live: macOS
-resolves preferences by bundle identifier, so stow links it into
-`~/Library/Preferences/` under a domain nothing reads. Apply it by hand:
-
-```sh
-defaults import com.lwouis.alt-tab-macos \
-  ~/Library/Preferences/com.lwouis.alt-tab-macos-reference.plist
-```
-
-and capture changes back with `defaults export com.lwouis.alt-tab-macos -`.
-Linking the live name instead would not survive: `cfprefsd` caches preference
-domains and rewrites them in place, so the app would clobber the file through
-the symlink — which is exactly what `com.pyrolyse.Fluor.plist` below, stowed
-under its real name, is exposed to.
+The `-reference` suffix means it is not live — macOS reads preferences by
+bundle identifier — so apply it with
+`defaults import com.lwouis.alt-tab-macos <that file>`.
 
 ### Hammerspoon
 

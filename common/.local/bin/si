@@ -4,10 +4,8 @@
 #   si            # index the current directory into ./.zoekt
 #   si PATH       # index PATH into PATH/.zoekt
 #
-# st-zoekt tells you to run `si "$root"` when a tree has no index, so the path
-# argument has to mean something: it used to be ignored outright and every run
-# indexed the current directory, which quietly built the index in the wrong
-# place and left st-zoekt still reporting no index.
+# st-zoekt's "run si <root> first" hint needs the path argument to mean
+# something; it used to be ignored and every run indexed the current directory.
 
 set -euo pipefail
 

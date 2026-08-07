@@ -124,13 +124,10 @@ end
 
 ---Split NUL-delimited output (`git ... -z`) into fields.
 ---
----`-z` is the only spelling of git's path-listing commands that is
----unambiguous. Without it git C-quotes any path containing a double quote, a
----backslash or a control character, and `core.quotepath=false` does not help:
----it only stops the escaping of non-ASCII bytes. The quoted form was being
----taken literally, so a file named `quote"inside.txt` reached the UI as
----`"quote\"inside.txt"` — a name that matches nothing on disk, shows no diff
----and cannot be opened.
+---`-z` is the only unambiguous spelling: otherwise git C-quotes any path with a
+---double quote, backslash or control character, and `core.quotepath=false` only
+---covers non-ASCII. The quoted form was taken literally, so `quote"inside.txt`
+---reached the UI as `"quote\"inside.txt"` — matching nothing on disk.
 local function nul_fields(s)
   if not s or s == "" then
     return {}
@@ -608,16 +605,10 @@ function hg.rev(root, scope)
   return one(sh({ "hg", "log", "-r", ref, "--template", "{node}" }, root)) or ref
 end
 
----Mercurial's status letters are not git's, and the UI speaks git's.
----
----`R` is hg for "removed", which is what git calls `D`; leaving it as `R` made
----every deleted file render as a *rename* in the panel, icon, colour and all.
----`!` is a file deleted without telling hg, which is the same thing as far as a
----diff is concerned. `C` (clean) and `I` (ignored) are not changes.
----
----The old pattern matched `^(%a)` — a letter — so `?` and `!` could never match
----it and the `status == "?"` branch it guarded was unreachable. Untracked files
----simply never appeared under hg, though the git backend lists them.
+---Mercurial's status letters are not git's, and the UI speaks git's. `R` is hg
+---for "removed" (git's `D`), so deleted files rendered as *renames*; `!` is a
+---file deleted behind hg's back. The old `^(%a)` pattern also could not match
+---`?` or `!` at all, so untracked files never appeared under hg.
 local hg_status = { M = "M", A = "A", R = "D", ["!"] = "D", ["?"] = "?" }
 
 function hg.changed(root, rev)

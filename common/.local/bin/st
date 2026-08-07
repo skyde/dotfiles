@@ -7,10 +7,8 @@
 # arguments, so everything is forwarded untouched.
 set -euo pipefail
 
-# Work out which tree is being searched, so the index probe looks in the same
-# place st-zoekt and st-rg will. Testing a bare `.zoekt` only ever consulted the
-# current directory, so `st ~/some/indexed/tree` from anywhere else fell through
-# to ripgrep even with an index sitting right there.
+# Probe the tree actually being searched. Testing a bare `.zoekt` only consulted
+# the current directory, so `st ~/some/indexed/tree` fell through to ripgrep.
 args=("$@")
 target="$PWD"
 for arg in "${args[@]}"; do

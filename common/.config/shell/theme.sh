@@ -50,18 +50,14 @@ unset _fzf_tn
 # 24-bit vs the 256-colour cube from it, and it is not reliably set under tmux,
 # the VS Code terminal, or over ssh. Without it the history quietly renders in
 # approximated colours that do not match anything else.
-# Which bat, resolved once here rather than checked inside the function below.
 #
-# Two reasons, and on Debian and Ubuntu both bite at once. The binary is named
-# `batcat` there, so looking only for `bat` finds nothing and the highlighting
-# silently degrades to plain text — on the distros these dotfiles install bat
-# from. And once ~/.zshrc has aliased `bat=batcat` for interactive use, a
-# call-time `command -v bat` starts *succeeding*, because zsh's `command -v`
-# reports aliases: the guard passed while the function body — parsed here, from
-# ~/.zshenv, long before that alias existed — still resolved `bat` as a command
-# and failed with "command not found: bat" on every keystroke in Ctrl-R.
+# Which bat, resolved once here rather than inside the function below.
 #
-# This file is sourced before any alias is defined, so the lookup is honest.
+# Debian and Ubuntu name it `batcat`, so a bare `bat` check found nothing there.
+# And once ~/.zshrc aliases `bat=batcat`, a call-time `command -v bat` starts
+# *succeeding* (zsh reports aliases) while the function body — parsed here from
+# ~/.zshenv, before that alias exists — still fails with "command not found:
+# bat", on every keystroke in Ctrl-R. This file runs before any alias exists.
 _fzf_bat=
 if command -v bat >/dev/null 2>&1; then
 	_fzf_bat=bat

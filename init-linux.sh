@@ -27,16 +27,10 @@ ensure_apt fonts-jetbrains-mono
 
 # Install kitty terminfo so ssh sessions from kitty come up correctly.
 #
-# Downloaded into a temp directory rather than the current one. `curl -LO`
-# writes to the cwd, and init.sh runs this from the repo root, so a failure
-# anywhere between the download and the `rm` left kitty.terminfo sitting in the
-# checkout as an untracked file — and `set -e` guaranteed that whenever tic was
-# missing (ncurses-bin is not installed everywhere) or the download failed. The
-# sudo was doing nothing but making that stray file root-owned; fetching a file
-# into a temp directory and compiling it into ~/.terminfo needs no privileges.
-#
-# Non-fatal too: a machine that cannot reach GitHub, or has no tic, should still
-# finish the rest of its setup.
+# Into a temp directory, not the cwd: `curl -LO` wrote kitty.terminfo into the
+# repo root (init.sh runs this from there) and `set -e` left it behind whenever
+# tic was missing or the download failed. The sudo only made that stray file
+# root-owned. Non-fatal, so a machine with no network still finishes setup.
 install_kitty_terminfo() {
   if ! have tic; then
     echo "[warn] tic not found (install ncurses-bin); skipping kitty terminfo" >&2

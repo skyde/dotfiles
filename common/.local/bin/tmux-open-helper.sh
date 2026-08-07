@@ -7,13 +7,9 @@ socket_is_live() {
 
 # Print the given paths newest-mtime-first, skipping any that do not exist.
 #
-# The callers pass an unexpanded glob; when nothing matches, bash hands the
-# pattern through literally and the existence test drops it. That is the whole
-# point of routing through here: the previous `ls -t <glob>` spelling made `ls`
-# exit non-zero on no match, and under `set -o pipefail` that status propagated
-# out of the command substitution and killed the script before it opened
-# anything. On any machine without VS Code Remote — the exact case the fallback
-# exists for — this helper did nothing at all and exited 2.
+# The callers pass an unexpanded glob. `ls -t <glob>` exited non-zero on no
+# match, and under `set -o pipefail` that killed the script before it opened
+# anything: on a machine without VS Code Remote this helper exited 2 silently.
 newest_first() {
   local -a found=()
   local path

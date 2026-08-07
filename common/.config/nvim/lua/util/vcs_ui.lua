@@ -2207,15 +2207,11 @@ function M.file_diff(scope)
     return
   end
   local rev = backend.rev(root, scope)
-  -- A renamed file's base lives at its old path. Asking for the new one gets
-  -- nothing back, so this reported "no version at <rev> (new file?)" and
-  -- diffed against an empty buffer — a rename with a one-line edit rendered as
-  -- the whole file freshly added. The panel has always resolved this, via
-  -- base_content's `file.orig or file.path`; only this path, which is what
-  -- <leader>gd and <leader>ga go through, did not.
-  --
-  -- changed() is consulted only when the direct lookup misses, which is the
-  -- added-or-renamed case and already the slow one.
+  -- A renamed file's base lives at its old path; asking for the new one got
+  -- nothing, so a rename with a one-line edit reported "no version at <rev>
+  -- (new file?)" and diffed against an empty buffer. The panel resolves this
+  -- via base_content's `file.orig or file.path`; this path did not. changed()
+  -- is only consulted when the direct lookup misses.
   local base_path = path
   local base = backend.show(root, rev, path)
   if not base then
