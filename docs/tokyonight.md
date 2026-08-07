@@ -219,6 +219,7 @@ accent chosen to be instantly findable against the blue-violet palette. Keep it.
 | fzf      | `common/.config/shell/theme.sh`                       |
 | ls, eza, grep, man | `common/.config/shell/theme.sh` (`LS_COLORS`, `EZA_COLORS`, `GREP_COLORS`, `LESS_TERMCAP_*`) |
 | zsh      | `common/.config/shell/theme.sh` (autosuggestions), `common/.zshrc` (completion menu) |
+| zsh syntax | `common/.config/fsh/tokyonight.ini` (fast-syntax-highlighting) |
 | ripgrep  | `common/.ripgreprc`                                   |
 | yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
 | lf       | `common/.config/lf/colors`                            |

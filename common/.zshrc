@@ -237,6 +237,25 @@ fi
 
 unset -f _source_zsh_plugin
 
+# Tokyo Night for the command line itself. See ~/.config/fsh/tokyonight.ini.
+#
+# fast-theme compiles the .ini into a zsh file that FSH sources on load, so the
+# work only has to happen when the .ini changes -- the same "regenerate when the
+# source is newer" shape as the zcompile above, and for the same reason: this
+# runs on every interactive shell and the compile is not cheap.
+#
+# FAST_WORK_DIR is wherever the plugin decided it could write, so read it from
+# the plugin rather than guessing; it falls back to a cache dir when the plugin
+# directory is read-only.
+if (( $+functions[fast-theme] )); then
+  _fsh_ini="${XDG_CONFIG_HOME:-$HOME/.config}/fsh/tokyonight.ini"
+  _fsh_out="${FAST_WORK_DIR}/current_theme.zsh"
+  if [[ -r $_fsh_ini && ( ! -s $_fsh_out || $_fsh_ini -nt $_fsh_out ) ]]; then
+    fast-theme -q XDG:tokyonight >/dev/null 2>&1
+  fi
+  unset _fsh_ini _fsh_out
+fi
+
 # -------- machine-specific overrides
 # shellcheck disable=SC1090
 [[ -r "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
