@@ -152,8 +152,106 @@ if [[ -s $_compdump && ( ! -s $_compdump.zwc || $_compdump -nt $_compdump.zwc ) 
 fi
 unset _compdump _compstamp
 
+# ---- how completion behaves
+#
+# The two options first: complete_in_word lets you fix the middle of a word
+# (put the cursor after "confi" in "confiration" and complete) instead of only
+# ever appending at the end, and always_to_end puts the cursor after the word
+# once a completion is inserted rather than leaving it mid-word.
+setopt complete_in_word always_to_end
+setopt no_list_beep
+
+# An arrow-navigable menu, and Shift-Tab to walk back up it.
 zstyle ':completion:*' menu select
-zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+bindkey '^[[Z' reverse-menu-complete
+
+# What Tab is willing to match. One specification rather than a list of
+# increasingly lenient ones, and every part of it checked against a real
+# terminal — tests/zsh_completion_spec.zsh presses Tab and reads the buffer back.
+#
+#   m:{[:lower:][:upper:]}={[:upper:][:lower:]}
+#       case-insensitive both ways, so `TESTS/<Tab>` finds tests/ and
+#       `readme<Tab>` still finds README.
+#   r:|[._-]=** r:|=**
+#       words separated by . _ or -, so `z_t_s<Tab>` completes
+#       zsh_tools_spec.zsh and `f-p<Tab>` completes fzf-preview.
+#
+# Two things about this were only found by trying it:
+#
+# The `**` is not a typo for `*`. Written `r:|[._-]=* r:|=*` — the form most
+# configs carry — the rule matches nothing at all, silently.
+#
+# And a matcher-list of several entries does not behave as advertised. The
+# documentation describes the entries as tried in turn until one produces
+# matches; in practice only the first is ever applied, and with the conventional
+# leading '' ("try exact first") nothing after it has any effect. Hence one entry
+# that does all of it.
+#
+# Substring-anywhere matching ('l:|=** r:|=**') was in that list and is
+# deliberately gone. As the only entry it does work, and it ruins ordinary
+# completion: `te<Tab>` then has every file *containing* "te" as a candidate, no
+# common prefix to insert, and nothing happens. fzf's `**<Tab>` is the better
+# tool for searching rather than completing.
+zstyle ':completion:*' matcher-list \
+  'm:{[:lower:][:upper:]}={[:upper:][:lower:]} r:|[._-]=** r:|=**'
+
+# _match completes a word that contains glob characters: `ls a*d<Tab>` fills in
+# a.md.
+#
+# _extensions and _approximate (typo tolerance) were both tried here and neither
+# could be shown to do anything — no correction offered for a one-character
+# mistake, no extension list for a bare `*.` — so they are left out rather than
+# carried as decoration that also lengthens every completion.
+zstyle ':completion:*' completer _complete _match
+zstyle ':completion:*:match:*' original only
+
+# Results grouped under headings, with the description of each group shown.
+# Without group-name a completion that can offer files, parameters and options
+# prints them as one undifferentiated list.
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*' verbose yes
+zstyle ':completion:*:descriptions' format '%F{blue}%B%d%b%f'
+zstyle ':completion:*:messages' format '%F{magenta}%d%f'
+zstyle ':completion:*:warnings' format '%F{red}no matches for %d%f'
+zstyle ':completion:*:corrections' format '%F{yellow}%d (errors: %e)%f'
+
+# Colour the file names in the completion list the way ls does. LS_COLORS is
+# only exported on machines that run dircolors, so the fallback spells out the
+# handful that matter: directories, symlinks, executables and the world-writable
+# ones worth noticing.
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS:-di=1;34:ln=1;36:so=1;35:pi=33:ex=1;32:bd=1;33:cd=1;33:su=1;31:sg=1;31:tw=1;34:ow=1;34}
+
+# Completions that shell out to a package manager or a remote host are worth
+# caching — the alternative is a fresh `apt-cache pkgnames` on every Tab.
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "$ZSH_CACHE_DIR/zcompcache"
+
+# Offer a completion for a command installed since this shell started, instead
+# of insisting it does not exist until you run `rehash`.
+zstyle ':completion:*' rehash true
+
+# Directories: offer . and .., squeeze duplicate slashes, and do not offer the
+# directory you are already in as a way of getting to itself.
+zstyle ':completion:*' special-dirs true
+zstyle ':completion:*' squeeze-slashes true
+zstyle ':completion:*:cd:*' ignore-parents parent pwd
+
+# `kill <Tab>` lists this user's processes, with the pid picked out, rather than
+# asking for a number and offering nothing.
+zstyle ':completion:*:*:kill:*' menu yes select
+zstyle ':completion:*:*:kill:*' force-list always
+zstyle ':completion:*:*:kill:*:processes' \
+  command 'ps -u "$USER" -o pid,%cpu,tty,cputime,cmd'
+zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
+
+# Man pages grouped by section, so `man mount<Tab>` separates the command from
+# the syscall.
+zstyle ':completion:*:manuals' separate-sections true
+zstyle ':completion:*:manuals.*' insert-sections true
+
+# The completion system's own internals are not useful answers to `<function
+# name><Tab>`.
+zstyle ':completion:*:functions' ignored-patterns '_*'
 
 # -------- prompt (Starship)
 #

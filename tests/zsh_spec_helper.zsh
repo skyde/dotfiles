@@ -273,6 +273,32 @@ spec_pty_capture() {
 # spec_can_pty — true when a pty-backed shell can be run at all.
 spec_can_pty() { (( $+commands[python3] )); }
 
+# spec_pty_type <keys> [setup code]
+#   Types <keys> at a real prompt and returns the command line that resulted.
+#   This is how a binding gets tested by pressing the key rather than by asking
+#   `bindkey` what it thinks is bound: Tab really completes, an arrow really
+#   searches the history.
+#
+#   The line is read back through a widget of our own on Ctrl-X Ctrl-X, which
+#   writes $BUFFER to a file. Reading it off the terminal instead would mean
+#   separating it from the echo, the prompt, the autosuggestion and the syntax
+#   highlighting's redraws.
+spec_pty_type() {
+  local keys=$1 setup=${2-}
+  local script="$SPEC_TMP/pty-type.zsh" out="$SPEC_TMP/pty-buffer"
+  : >| "$out"
+  {
+    print -r -- "_spec_report_buffer() { print -r -- \"\$BUFFER\" >| ${(q)out} }"
+    print -r -- 'zle -N _spec_report_buffer'
+    print -r -- "bindkey '^X^X' _spec_report_buffer"
+    print -r -- "builtin cd -- ${(q)SPEC_REPO}"
+    [[ -n $setup ]] && print -r -- "$setup"
+  } >| "$script"
+  command python3 "$SPEC_REPO/tests/zsh_pty.py" "$script" \
+    --send "$keys" --send '\x18\x18' >/dev/null 2>&1
+  print -r -- "$(<$out)"
+}
+
 # spec_stub <name> <shell body>
 #   Puts an executable of that name first on PATH and prints its path. Lets a
 #   spec exercise a wrapper function — `gg`, `e`, `code`, the git wrapper —
