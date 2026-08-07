@@ -46,10 +46,6 @@ _tn_teal='26;188;156'      # #1abc9c
 # bg and gutter are left at -1 (terminal default) rather than pinned to #1a1b26
 # so fzf stays transparent inside tmux popups instead of painting a background
 # that is a shade off from whatever is behind it.
-#
-# Built up in pieces rather than one multi-line string: fzf only learned to
-# accept newlines in FZF_DEFAULT_OPTS in 0.48, and these dotfiles land on boxes
-# with older builds.
 _fzf_tn='--color=fg:#c0caf5,fg+:#c0caf5,bg:-1,bg+:#283457'
 # Matched substrings are reverse-video yellow *blocks*, not merely a different
 # foreground colour. fzf's highlight replaces only the foreground of the matched
@@ -64,8 +60,28 @@ _fzf_tn="$_fzf_tn --color=info:#bb9af7,marker:#9ece6a"
 _fzf_tn="$_fzf_tn --color=prompt:#7aa2f7,spinner:#ff9e64,pointer:#ff5000"
 _fzf_tn="$_fzf_tn --color=header:#7aa2f7,border:#292e42,separator:#292e42"
 _fzf_tn="$_fzf_tn --color=scrollbar:#3b4261,gutter:-1,label:#565f89,query:#c0caf5"
+# `disabled` is the query colour when fzf is run with --disabled, which is how
+# st, st-rg and st-zoekt work: the query does not filter the list, it is fed
+# back into ripgrep or zoekt on every keystroke. fzf dims it by default, which
+# reads as "this input is inert" on the one field driving the whole search. It
+# is the same colour as a normal query because that is what it is.
+_fzf_tn="$_fzf_tn --color=disabled:#c0caf5"
 
-FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --reverse --ansi --info=inline --style=minimal --no-cycle $_fzf_tn"
+# --style=minimal needs fzf 0.58 (Jan 2025). That is a real floor for this
+# options string as a whole: fzf exits on an option it does not know, so an
+# older build does not fall back to an unstyled picker, it refuses to start.
+# Kept anyway, because it is the newer of the two intentions expressed here and
+# the one the current setup is built around.
+#
+# --info=inline used to sit in this line and did nothing: --style is applied
+# where it appears in the argument list, and the minimal preset resets the info
+# style, so a preceding --info was always overwritten. Dropped rather than
+# moved after --style, so the rendering does not change.
+#
+# The colours above are built up in pieces rather than as one multi-line
+# string: newlines in FZF_DEFAULT_OPTS only work from fzf 0.48, and one option
+# per line stays readable without depending on that.
+FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --reverse --ansi --style=minimal --no-cycle $_fzf_tn"
 export FZF_DEFAULT_OPTS
 unset _fzf_tn
 
