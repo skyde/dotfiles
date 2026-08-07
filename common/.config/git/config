@@ -177,7 +177,13 @@
     blame-code-style = syntax
     blame-palette = "#1a1b26 #1f2335 #24283b #292e42"
     blame-separator-style = "#3b4261"
-    blame-timestamp-style = "#565f89"
+    # There is no blame-timestamp-style, and there never was — delta has
+    # blame-timestamp-format and blame-timestamp-output-format, but no style
+    # option for that field. One was set here and, like any unknown key in a
+    # git config, was read by nobody. The blame prefix has exactly two knobs
+    # that take a colour: blame-palette for the per-commit background, and
+    # blame-separator-style; the author and timestamp take the foreground
+    # they are given.
 
     # Merge conflicts (merge.conflictstyle = zdiff3 above shows all three sides)
     merge-conflict-begin-symbol = "▼"

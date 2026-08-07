@@ -475,6 +475,36 @@ The checks are only as good as their scope: `CHROME_FILES` at the top of the
 script is the list of files that get checked. Theme something new, add it
 there and to the table above.
 
+### The failure the test cannot see: dead keys
+
+`check-theme.py` compares colours. It cannot tell you that a key stopped being
+read — a colour nobody reads is still a valid colour, and most of these tools
+ignore a key they do not recognise without a word. That failure looks like
+nothing at all: the setting is there, spelled correctly, and simply does not
+happen any more.
+
+It is worth re-running this audit when a tool is upgraded. Each of the three
+below turned up something real:
+
+```bash
+# yazi — diff our sections and keys against upstream's preset
+curl -fsSL https://raw.githubusercontent.com/sxyazi/yazi/main/yazi-config/preset/theme-dark.toml
+
+# delta — every *-style key it actually defines
+curl -fsSL https://raw.githubusercontent.com/dandavison/delta/main/src/cli.rs \
+  | grep -oE 'long = "[a-z-]+"' | sort -u
+
+# btop — the key list is its Default_theme map
+curl -fsSL https://raw.githubusercontent.com/aristocratos/btop/main/src/btop_theme.cpp \
+  | sed -n '/Default_theme/,/};/p' | grep -oE '"\w+"' | sort -u
+```
+
+What they found: yazi had moved two keys out from under us (see the gotcha
+above), delta has no `blame-timestamp-style` and never did, and btop left six
+process-state colours at hardcoded off-palette fallbacks. Compare against the
+CHANGELOG of the release you are running, not just `main` — an upstream preset
+includes renames that have not shipped yet.
+
 ### The other half: `./doctor-theme.sh`
 
 The test checks that the configs in this repo agree with each other. It cannot
