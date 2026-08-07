@@ -292,7 +292,7 @@ unchanged.
 tests/run-nvim-specs.sh
 ```
 
-Four specs, no plugins needed, each self-contained:
+Three specs, no plugins needed, each self-contained:
 
 * `nvim_vcs_spec.lua` — the backends, against throwaway git, jj and Mercurial
   repositories: renames, paths with spaces and non-ASCII characters, deleted and
@@ -305,10 +305,9 @@ Four specs, no plugins needed, each self-contained:
   conflicts spanning the whole file, unlabelled markers, and near-miss text
   (C++ templates full of angle brackets) that must *not* parse as a marker.
 * `nvim_vcs_ui_spec.lua` — window layout, which buffer lands in which pane,
-  scrubbing, the inline toggle, the diff-tab lifecycle, and the degenerate cases
-  (no changes, no repository).
-* `nvim_vcs_keys_spec.lua` — the revert keys from inside a real diff, where
-  one side of the pair is a read-only scratch.
+  scrubbing, the inline toggle, the diff-tab lifecycle, the degenerate cases
+  (no changes, no repository), and the revert keys from inside a real diff,
+  where one side of the pair is a read-only scratch.
 
 ```bash
 tests/check-nvim-keymaps.sh

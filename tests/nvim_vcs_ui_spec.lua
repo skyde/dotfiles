@@ -52,6 +52,11 @@ do
   }
 end
 
+-- LazyVim sets these before any keymap is declared; config/vcs.lua is loaded
+-- further down so its <leader> bindings can be pressed.
+vim.g.mapleader = " "
+vim.g.maplocalleader = "\\"
+
 local vcs = require("util.vcs")
 local ui = require("util.vcs_ui")
 
@@ -1912,6 +1917,91 @@ do
   check("no repo: does not raise", ok_bare)
   eq("no repo: opens no tab", tabs, #vim.api.nvim_list_tabpages())
   check("no repo: says why", notified and notified:find("No version control"), tostring(notified))
+end
+
+--------------------------------------------------------------------------
+-- the revert keys, from inside a real diff
+--------------------------------------------------------------------------
+
+do
+  -- config/vcs.lua is what decides which module a key means from where.
+  -- Loading it here is the only way to press <leader>cv against a diff whose
+  -- base side is a read-only scratch — check-nvim-keymaps.sh presses every
+  -- binding once from an ordinary buffer, the one context where the branch
+  -- under test is false.
+  local cfg = repo .. "/common/.config/nvim"
+  dofile(cfg .. "/lua/config/vcs.lua")
+
+  local said
+  local real_notify = vim.notify
+  vim.notify = function(msg)
+    said = tostring(msg)
+  end
+
+  local function press(lhs)
+    for _, m in ipairs(vim.api.nvim_get_keymap("n")) do
+      if m.lhs == lhs then
+        said = nil
+        return pcall(m.callback)
+      end
+    end
+    error("not mapped: " .. lhs)
+  end
+
+  write(root .. "/revertable.txt", "one\ntwo\nthree\nfour\nfive\n")
+  git(root, "add", "revertable.txt")
+  git(root, "commit", "-qm", "revertable")
+  write(root .. "/revertable.txt", "one\nTWO\nthree\nFOUR\nfive\n")
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/revertable.txt"))
+
+  -- Half of a side-by-side is the base version as a read-only scratch, where
+  -- `do` raises E21 instead of reverting. The change only exists in the
+  -- working copy, so `dp` pushes this hunk there instead.
+  ui.file_diff("working")
+  vim.cmd("wincmd h")
+  check("cv: the base pane is read-only", not vim.bo.modifiable)
+  vim.api.nvim_win_set_cursor(0, { 2, 0 })
+  eq("cv: does not raise on the read-only side", true, press(" cv"))
+  check("cv: focus stays on the side being read", not vim.bo.modifiable)
+  vim.cmd("wincmd l")
+  eq(
+    "cv: the hunk under that cursor is reverted in the working copy",
+    { "one", "two", "three", "FOUR", "five" },
+    vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  )
+
+  -- The range revert cannot hop sides — filler lines mean the numbers do not
+  -- name the same lines over there — so it says which key to press first.
+  vim.cmd("wincmd h")
+  eq("cV: does not raise on the read-only side", true, press(" cV"))
+  check("cV: and says what to do instead", (said or ""):find("read%-only") ~= nil, tostring(said))
+  vim.cmd("wincmd l")
+  vim.api.nvim_win_set_cursor(0, { 4, 0 })
+  eq("cV: works on the editable side", true, press(" cV"))
+  eq(
+    "cV: reverting the remaining line restores the file",
+    { "one", "two", "three", "four", "five" },
+    vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  )
+  vim.cmd("tabclose")
+
+  -- Two read-only sides: nothing to revert into, and it has to say so.
+  vim.cmd("tabnew")
+  for _, text in ipairs({ "x", "y" }) do
+    if text == "y" then
+      vim.cmd("vertical split")
+    end
+    local b = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(b, 0, -1, false, { text })
+    vim.bo[b].modifiable = false
+    vim.api.nvim_win_set_buf(0, b)
+    vim.cmd("diffthis")
+  end
+  eq("cv: two read-only sides does not raise", true, press(" cv"))
+  check("cv: and says why", (said or ""):find("editable", 1, true) ~= nil, tostring(said))
+  vim.cmd("tabclose")
+
+  vim.notify = real_notify
 end
 
 --------------------------------------------------------------------------
