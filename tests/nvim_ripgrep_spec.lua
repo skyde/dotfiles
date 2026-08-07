@@ -40,10 +40,29 @@ end
 --------------------------------------------------------------------------
 
 local real_system = vim.system
+local real_executable = vim.fn.executable
+
+---Pretend ripgrep is installed. util.ripgrep checks that before spawning
+---anything, so a stub on vim.system alone is never reached on a machine without
+---it — which is exactly the machine (a macOS CI runner) where this spec first
+---went green locally and red in CI.
+local function fake_rg_installed()
+  vim.fn.executable = function(bin)
+    if bin == "rg" then
+      return 1
+    end
+    return real_executable(bin)
+  end
+end
+
+local function restore_executable()
+  vim.fn.executable = real_executable
+end
 
 ---Run `fn` with `rg --type-list` answering `names`.
 local function with_types(names, fn)
   rg.clear_cache()
+  fake_rg_installed()
   vim.system = function(cmd, ...)
     if cmd[1] == "rg" and cmd[2] == "--type-list" then
       local lines = {}
@@ -60,6 +79,7 @@ local function with_types(names, fn)
   end
   local ok, err = pcall(fn)
   vim.system = real_system
+  restore_executable()
   rg.clear_cache()
   assert(ok, err)
 end
@@ -85,6 +105,7 @@ do
   -- keypress.
   local calls = 0
   rg.clear_cache()
+  fake_rg_installed()
   vim.system = function(cmd, ...)
     if cmd[1] == "rg" and cmd[2] == "--type-list" then
       calls = calls + 1
@@ -100,6 +121,7 @@ do
   rg.type_arg("cpp")
   rg.type_arg("lua")
   vim.system = real_system
+  restore_executable()
   eq("the type list is fetched once per session", 1, calls)
   rg.clear_cache()
 end
@@ -109,6 +131,7 @@ do
   -- filetype is wrong — dropping the filter there would silently widen every
   -- search instead.
   rg.clear_cache()
+  fake_rg_installed()
   vim.system = function(cmd, ...)
     if cmd[1] == "rg" and cmd[2] == "--type-list" then
       return {
@@ -122,6 +145,7 @@ do
   eq("no type list: the filetype is trusted", "--type=cpp", rg.type_arg("cpp"))
   eq("no type list: aliases still apply", "--type=ts", rg.type_arg("typescriptreact"))
   vim.system = real_system
+  restore_executable()
   rg.clear_cache()
 end
 

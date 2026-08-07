@@ -23,20 +23,12 @@ env:
 
 jobs:
   specs:
-    name: Specs (${{ matrix.os }}, nvim ${{ matrix.nvim }})
+    name: Specs (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        nvim: [stable]
-        include:
-          # An early warning that the next release breaks something, without
-          # letting it block a merge.
-          - os: ubuntu-latest
-            nvim: nightly
-            experimental: true
-    continue-on-error: ${{ matrix.experimental == true }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,13 +37,39 @@ jobs:
         uses: rhysd/action-setup-vim@v1
         with:
           neovim: true
-          version: ${{ matrix.nvim }}
+          version: ${{ env.NVIM_VERSION }}
 
       - name: Report the version under test
         run: nvim --version | head -3
 
-      # Plugin-free and hermetic: no network, no ~/.local/share/nvim, no
-      # system clipboard. Everything they touch is built in a tempdir.
+      # Plugin-free and hermetic: no network, no ~/.local/share/nvim, no system
+      # clipboard, and no assumption about what is installed — the two runners
+      # differ (Ubuntu has mercurial, macOS has no ripgrep), and a spec that
+      # quietly changes what it asserts based on that is worse than one that
+      # skips out loud.
+      - name: Run the Neovim specs
+        run: ./tests/run-nvim-specs.sh
+
+  # Its own job rather than a matrix leg, so continue-on-error can be a plain
+  # true: this is an early warning that the next Neovim release breaks
+  # something, and it must never be the reason a branch cannot merge.
+  specs-nightly:
+    name: Specs (nightly, advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Neovim nightly
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: nightly
+
+      - name: Report the version under test
+        run: nvim --version | head -3
+
       - name: Run the Neovim specs
         run: ./tests/run-nvim-specs.sh
 
