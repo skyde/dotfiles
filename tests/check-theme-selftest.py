@@ -98,6 +98,15 @@ MUTATIONS = [
      r"COLORTERM=truecolor bat", "bat",
      "without forcing COLORTERM", None),
 
+    # theme.sh returns early for non-interactive shells, so everything that
+    # reads it has to ask for it interactively. If that guard ever widened to
+    # skip interactive shells too, every colour it exports would silently
+    # vanish -- and the shell-parity check would not notice, because empty
+    # equals empty. The LS_COLORS comparison against lf's table is what does.
+    ("a guard that skips every shell, not just quiet ones", "parity", THEME_SH,
+     r"\*i\*\) ;;", "*i*) return 0 ;;",
+     "not in theme.sh's LS_COLORS", None),
+
     ("shell colours that break in zsh but not bash", "parity", THEME_SH,
      r"\$\{_tn_yellow\}:so=", "$_tn_yellow:so=",
      "does not source cleanly", "zsh"),

@@ -14,6 +14,24 @@
 # Everything here is a variable assignment. No process is started, no file is
 # read, and nothing depends on a tool being installed: a colour set for a tool
 # that is absent simply never gets read.
+#
+# Interactive shells only, and that guard is worth about a millisecond on every
+# other one. .zshenv is read by every zsh a script or tool ever spawns, and
+# sourcing this file costs ~1.0 ms there — measured, and roughly 40% of what
+# .zshenv costs in total. Almost all of that is zsh parsing the lines rather
+# than running them, so shortening the file would mean deleting the comments,
+# which are the reason any of these settings can be understood later.
+#
+# Nothing here is lost by skipping it. Every variable below configures either
+# something only an interactive session has (fzf's picker, the line editor) or
+# a tool that only colours its output when that output is a terminal (`ls
+# --color=auto`, `grep --color=auto`, bat, man). And they are all exported, so
+# a script started *from* an interactive shell still inherits every one of
+# them; the shells that skip this are the ones with no terminal to paint.
+case $- in
+*i*) ;;
+*) return 0 ;;
+esac
 
 # --- Palette ---------------------------------------------------------------
 # The accents as SGR truecolor fragments, so the settings below read as colour
@@ -137,52 +155,75 @@ export FZF_HISTORY_PREVIEW
 # sources this file and diffs the result against lf's, so the copy cannot
 # quietly drift.
 #
-# Grouped and ordered as lf's file is, so the two can be read side by side.
-_ls="ln=38;2;${_tn_cyan}:mh=38;2;${_tn_cyan}:or=38;2;${_tn_red};1"
-_ls="${_ls}:di=38;2;${_tn_blue};1:ex=38;2;${_tn_green}:fi=38;2;${_tn_fg}"
-_ls="${_ls}:pi=38;2;${_tn_yellow}:so=38;2;${_tn_magenta}"
-_ls="${_ls}:bd=38;2;${_tn_yellow};48;2;${_tn_bg_high}:cd=38;2;${_tn_yellow};48;2;${_tn_bg_high}"
-_ls="${_ls}:su=38;2;${_tn_bg_dark};48;2;${_tn_red}:sg=38;2;${_tn_bg_dark};48;2;${_tn_yellow}"
-_ls="${_ls}:tw=38;2;${_tn_bg_dark};48;2;${_tn_green}:ow=38;2;${_tn_blue};48;2;${_tn_bg_visual}"
-_ls="${_ls}:st=38;2;${_tn_fg};48;2;${_tn_blue}"
-
+# The file kinds, then one group per colour, exactly as lf's file is laid
+# out. Each group is built in its own variable and they are joined once at
+# the end: appending to the whole 2.5 KB string 86 times made every shell
+# copy it 86 times, which is most of a millisecond on the startup path of
+# every non-interactive zsh. Same bytes out, a tenth of the work.
+_ls_kinds="ln=38;2;${_tn_cyan}:mh=38;2;${_tn_cyan}"
+_ls_kinds="${_ls_kinds}:or=38;2;${_tn_red};1:di=38;2;${_tn_blue};1"
+_ls_kinds="${_ls_kinds}:ex=38;2;${_tn_green}:fi=38;2;${_tn_fg}"
+_ls_kinds="${_ls_kinds}:pi=38;2;${_tn_yellow}:so=38;2;${_tn_magenta}"
+_ls_kinds="${_ls_kinds}:bd=38;2;${_tn_yellow};48;2;${_tn_bg_high}"
+_ls_kinds="${_ls_kinds}:cd=38;2;${_tn_yellow};48;2;${_tn_bg_high}"
+_ls_kinds="${_ls_kinds}:su=38;2;${_tn_bg_dark};48;2;${_tn_red}"
+_ls_kinds="${_ls_kinds}:sg=38;2;${_tn_bg_dark};48;2;${_tn_yellow}"
+_ls_kinds="${_ls_kinds}:tw=38;2;${_tn_bg_dark};48;2;${_tn_green}"
+_ls_kinds="${_ls_kinds}:ow=38;2;${_tn_blue};48;2;${_tn_bg_visual}"
+_ls_kinds="${_ls_kinds}:st=38;2;${_tn_fg};48;2;${_tn_blue}"
 # archives → red
-for _e in tar tgz gz bz2 xz zst zip 7z rar deb rpm dmg; do
-	_ls="${_ls}:*.$_e=38;2;${_tn_red}"
-done
+_ls_arch="*.tar=38;2;${_tn_red}:*.tgz=38;2;${_tn_red}"
+_ls_arch="${_ls_arch}:*.gz=38;2;${_tn_red}:*.bz2=38;2;${_tn_red}"
+_ls_arch="${_ls_arch}:*.xz=38;2;${_tn_red}:*.zst=38;2;${_tn_red}"
+_ls_arch="${_ls_arch}:*.zip=38;2;${_tn_red}:*.7z=38;2;${_tn_red}"
+_ls_arch="${_ls_arch}:*.rar=38;2;${_tn_red}:*.deb=38;2;${_tn_red}"
+_ls_arch="${_ls_arch}:*.rpm=38;2;${_tn_red}:*.dmg=38;2;${_tn_red}"
 # images and video → magenta
-for _e in png jpg jpeg gif webp svg ico mp4 mkv mov webm; do
-	_ls="${_ls}:*.$_e=38;2;${_tn_magenta}"
-done
+_ls_media="*.png=38;2;${_tn_magenta}:*.jpg=38;2;${_tn_magenta}"
+_ls_media="${_ls_media}:*.jpeg=38;2;${_tn_magenta}:*.gif=38;2;${_tn_magenta}"
+_ls_media="${_ls_media}:*.webp=38;2;${_tn_magenta}:*.svg=38;2;${_tn_magenta}"
+_ls_media="${_ls_media}:*.ico=38;2;${_tn_magenta}:*.mp4=38;2;${_tn_magenta}"
+_ls_media="${_ls_media}:*.mkv=38;2;${_tn_magenta}:*.mov=38;2;${_tn_magenta}"
+_ls_media="${_ls_media}:*.webm=38;2;${_tn_magenta}"
 # audio → purple
-for _e in mp3 flac wav m4a ogg; do
-	_ls="${_ls}:*.$_e=38;2;${_tn_purple}"
-done
+_ls_audio="*.mp3=38;2;${_tn_purple}:*.flac=38;2;${_tn_purple}"
+_ls_audio="${_ls_audio}:*.wav=38;2;${_tn_purple}:*.m4a=38;2;${_tn_purple}"
+_ls_audio="${_ls_audio}:*.ogg=38;2;${_tn_purple}"
 # documents → orange
-for _e in pdf epub djvu docx xlsx pptx; do
-	_ls="${_ls}:*.$_e=38;2;${_tn_orange}"
-done
+_ls_docs="*.pdf=38;2;${_tn_orange}:*.epub=38;2;${_tn_orange}"
+_ls_docs="${_ls_docs}:*.djvu=38;2;${_tn_orange}:*.docx=38;2;${_tn_orange}"
+_ls_docs="${_ls_docs}:*.xlsx=38;2;${_tn_orange}:*.pptx=38;2;${_tn_orange}"
 # source code → green
-for _e in c h cc cpp hpp cs go rs py rb js ts tsx jsx lua sh zsh bash ps1; do
-	_ls="${_ls}:*.$_e=38;2;${_tn_green}"
-done
+_ls_code="*.c=38;2;${_tn_green}:*.h=38;2;${_tn_green}"
+_ls_code="${_ls_code}:*.cc=38;2;${_tn_green}:*.cpp=38;2;${_tn_green}"
+_ls_code="${_ls_code}:*.hpp=38;2;${_tn_green}:*.cs=38;2;${_tn_green}"
+_ls_code="${_ls_code}:*.go=38;2;${_tn_green}:*.rs=38;2;${_tn_green}"
+_ls_code="${_ls_code}:*.py=38;2;${_tn_green}:*.rb=38;2;${_tn_green}"
+_ls_code="${_ls_code}:*.js=38;2;${_tn_green}:*.ts=38;2;${_tn_green}"
+_ls_code="${_ls_code}:*.tsx=38;2;${_tn_green}:*.jsx=38;2;${_tn_green}"
+_ls_code="${_ls_code}:*.lua=38;2;${_tn_green}:*.sh=38;2;${_tn_green}"
+_ls_code="${_ls_code}:*.zsh=38;2;${_tn_green}:*.bash=38;2;${_tn_green}"
+_ls_code="${_ls_code}:*.ps1=38;2;${_tn_green}"
 # config and data → yellow
-for _e in json toml yaml yml ini conf cfg xml; do
-	_ls="${_ls}:*.$_e=38;2;${_tn_yellow}"
-done
+_ls_conf="*.json=38;2;${_tn_yellow}:*.toml=38;2;${_tn_yellow}"
+_ls_conf="${_ls_conf}:*.yaml=38;2;${_tn_yellow}:*.yml=38;2;${_tn_yellow}"
+_ls_conf="${_ls_conf}:*.ini=38;2;${_tn_yellow}:*.conf=38;2;${_tn_yellow}"
+_ls_conf="${_ls_conf}:*.cfg=38;2;${_tn_yellow}:*.xml=38;2;${_tn_yellow}"
 # docs and notes → foreground
-for _e in md txt rst; do
-	_ls="${_ls}:*.$_e=38;2;${_tn_fg}"
-done
-# noise → dark5, not comment grey: these are the files you put the cursor on
-# to decide whether to delete them, and comment grey on a hovered row is
-# 1.97:1. See the note in common/.config/lf/colors.
-for _e in log bak tmp swp o pyc lock; do
-	_ls="${_ls}:*.$_e=38;2;${_tn_dark5}"
-done
-LS_COLORS="${_ls}"
+_ls_prose="*.md=38;2;${_tn_fg}:*.txt=38;2;${_tn_fg}"
+_ls_prose="${_ls_prose}:*.rst=38;2;${_tn_fg}"
+# noise → dark5, not comment grey: these are the files you put the
+# cursor on to decide whether to delete them, and comment grey on a
+# hovered row is 1.97:1. See the note in common/.config/lf/colors.
+_ls_noise="*.log=38;2;${_tn_dark5}:*.bak=38;2;${_tn_dark5}"
+_ls_noise="${_ls_noise}:*.tmp=38;2;${_tn_dark5}:*.swp=38;2;${_tn_dark5}"
+_ls_noise="${_ls_noise}:*.o=38;2;${_tn_dark5}:*.pyc=38;2;${_tn_dark5}"
+_ls_noise="${_ls_noise}:*.lock=38;2;${_tn_dark5}"
+LS_COLORS="${_ls_kinds}:${_ls_arch}:${_ls_media}:${_ls_audio}:${_ls_docs}"
+LS_COLORS="${LS_COLORS}:${_ls_code}:${_ls_conf}:${_ls_prose}:${_ls_noise}"
 export LS_COLORS
-unset _ls _e
+unset _ls_kinds _ls_arch _ls_media _ls_audio _ls_docs
+unset _ls_code _ls_conf _ls_prose _ls_noise
 
 # eza paints the columns either side of the filename too, and those are its
 # own setting -- LS_COLORS says nothing about them, so out of the box they are

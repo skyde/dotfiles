@@ -213,16 +213,15 @@ def _check_shell_exports(known, verbose):
     script = '. "$1"; for v in %s; do eval "printf \'%%s\\n\' \\"\\$$v\\""; done' \
         % " ".join(SHELL_EXPORTS)
     try:
-        out = subprocess.run(["bash", "-c", script, "_", path],
-                             capture_output=True, text=True, timeout=30)
+        code, stdout, stderr = source_theme("bash", path, script)
     except (OSError, subprocess.SubprocessError) as exc:
         return ["could not source theme.sh: %s" % exc]
-    if out.returncode != 0:
-        return ["theme.sh failed to source: %s" % out.stderr.strip()]
+    if code != 0:
+        return ["theme.sh failed to source: %s" % stderr.strip()]
 
     problems = []
     seen = 0
-    for name, value in zip(SHELL_EXPORTS, out.stdout.split("\n")):
+    for name, value in zip(SHELL_EXPORTS, stdout.split("\n")):
         found = set()
         for r, g, b in DECIMAL_TRIPLE.findall(value):
             found.add("#%02x%02x%02x" % (int(r), int(g), int(b)))
@@ -343,21 +342,39 @@ THEME_EXPORTS = [
 ]
 
 
-def _read_exports(shell, path):
-    """Source theme.sh in one shell and return what it exported."""
+# Forcing a shell interactive without a terminal makes bash complain about job
+# control, twice, on stderr. It is not a problem with the file being sourced.
+SHELL_NOISE = ("cannot set terminal process group", "no job control in this shell")
+
+
+def source_theme(shell, path, script):
+    """Run `script` in `shell` after sourcing theme.sh, interactively.
+
+    Interactively because theme.sh returns early for non-interactive shells --
+    it is on the startup path of every zsh a script ever spawns, and none of
+    those have a terminal to paint. Reading it any other way would see an empty
+    file and quietly check nothing.
+    """
     import subprocess
 
+    # -f / --norc so the user's own rc files cannot set these variables
+    # themselves and mask a difference between the two shells.
+    flags = "-fic" if shell == "zsh" else "-ic"
+    argv = [shell] + (["--norc"] if shell == "bash" else []) + [flags, script, "_", path]
+    out = subprocess.run(argv, capture_output=True, text=True, timeout=30)
+    stderr = "\n".join(line for line in out.stderr.splitlines()
+                       if line.strip() and not any(n in line for n in SHELL_NOISE))
+    return out.returncode, out.stdout, stderr
+
+
+def _read_exports(shell, path):
+    """Source theme.sh in one shell and return what it exported."""
     script = '. "$1"; for v in %s; do eval "printf \'%%s\\034\' \\"\\$$v\\""; done' \
         % " ".join(THEME_EXPORTS)
-    argv = [shell, "-c", script, "_", path]
-    if shell == "zsh":
-        # -f skips the user's own rc files, which would otherwise set some of
-        # these themselves and mask a difference.
-        argv = [shell, "-fc", script, "_", path]
-    out = subprocess.run(argv, capture_output=True, text=True, timeout=30)
-    if out.returncode != 0 or out.stderr.strip():
-        raise RuntimeError("%s: %s" % (shell, out.stderr.strip() or "non-zero exit"))
-    return dict(zip(THEME_EXPORTS, out.stdout.split("\034")))
+    code, stdout, stderr = source_theme(shell, path, script)
+    if code != 0 or stderr:
+        raise RuntimeError("%s: %s" % (shell, stderr or "non-zero exit"))
+    return dict(zip(THEME_EXPORTS, stdout.split("\034")))
 
 
 def _check_shell_parity(verbose):
@@ -599,17 +616,15 @@ def _check_ls_colors(lf_entries):
 
     path = os.path.join(REPO, "common/.config/shell/theme.sh")
     try:
-        out = subprocess.run(
-            ["bash", "-c", '. "$1"; printf %s "$LS_COLORS"', "_", path],
-            capture_output=True, text=True, timeout=30,
-        )
+        code, stdout, stderr = source_theme(
+            "bash", path, '. "$1"; printf %s "$LS_COLORS"')
     except (OSError, subprocess.SubprocessError) as exc:
         return ["could not source theme.sh to read LS_COLORS: %s" % exc]
-    if out.returncode != 0:
-        return ["theme.sh failed to source: %s" % out.stderr.strip()]
+    if code != 0:
+        return ["theme.sh failed to source: %s" % stderr.strip()]
 
     shell = {}
-    for entry in out.stdout.split(":"):
+    for entry in stdout.split(":"):
         if "=" in entry:
             key, val = entry.split("=", 1)
             shell[key] = val

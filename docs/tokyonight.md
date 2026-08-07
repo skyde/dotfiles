@@ -132,6 +132,27 @@ over it and no foreground key of its own to compensate.
 | `#12384a` | moved to here (cyan)                            |
 | `#15423d` | moved to here (teal)                            |
 
+### Why the shell theme is interactive-only
+
+`common/.config/shell/theme.sh` returns immediately unless the shell is
+interactive. `.zshenv` is read by every zsh that any script or tool ever
+spawns, and sourcing the file costs about a millisecond there — roughly 40% of
+what `.zshenv` costs in total. Almost all of that is zsh *parsing* the lines
+rather than running them, so the only way to make it cheaper without the guard
+would be to delete the comments that explain the colours.
+
+Nothing is lost. Every variable in the file configures either something only an
+interactive session has (fzf's picker, the line editor) or a tool that colours
+its output only when that output is a terminal — `ls --color=auto`, `grep
+--color=auto`, bat, man. They are all exported, so a script started *from* an
+interactive shell inherits every one of them; the shells that skip the file are
+the ones with no terminal to paint.
+
+The consequence for tooling: anything reading these values has to source the
+file **interactively**, or it sees an empty file and checks nothing.
+`tests/check-theme.py` uses `zsh -fic` and `bash --norc -ic`, and filters the
+job-control warnings bash emits when forced interactive without a terminal.
+
 ### Gotcha: yazi ignores unknown keys
 
 Yazi validates colour *values* but silently ignores unknown section and key
