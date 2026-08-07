@@ -536,6 +536,30 @@ do
 end
 
 --------------------------------------------------------------------------
+-- refresh keeps the reviewer's place
+--------------------------------------------------------------------------
+
+do
+  -- A hard refresh re-fetches everything, but the selection and the reading
+  -- position in the diff are the reviewer's, not the cache's: both survive.
+  vim.api.nvim_set_current_win(layout()[1])
+  vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
+  scrub("j") -- off the first file, so restoring the selection is observable
+  local panel_before = vim.api.nvim_win_get_cursor(layout()[1])
+  local line_before = panel_lines()[panel_before[1]]
+  local diff_win = layout()[#layout()]
+  pcall(vim.api.nvim_win_set_cursor, diff_win, { 2, 0 })
+  local diff_before = vim.api.nvim_win_get_cursor(diff_win)
+  scrub("r")
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+  eq("refresh: r keeps the selected file", panel_before, vim.api.nvim_win_get_cursor(layout()[1]))
+  eq("refresh: the selected row is the same file", line_before, panel_lines()[panel_before[1]])
+  eq("refresh: the diff keeps the reading position", diff_before, vim.api.nvim_win_get_cursor(layout()[#layout()]))
+end
+
+--------------------------------------------------------------------------
 -- lifecycle
 --------------------------------------------------------------------------
 
