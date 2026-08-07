@@ -915,6 +915,12 @@ PAIRS = [
     ("text", "#c0caf5", "#292e42", YAZI, "yazi hovered row, unfocused pane"),
     ("ui", "#16161e", "#9ece6a", YAZI, "yazi yank counter"),
     ("muted", "#565f89", "#1f2335", YAZI, "yazi which-key remainder"),
+    # A .log or .pyc, on the page and then under the cursor. The second one is
+    # the reason these files are dark5 rather than comment grey: you put the
+    # cursor on one in order to decide whether to delete it, and comment grey
+    # on this fill is 1.97:1.
+    ("muted", "#737aa2", "#1a1b26", YAZI, "build-noise file"),
+    ("muted", "#737aa2", "#283457", YAZI, "build-noise file, under the cursor"),
 
     # btop
     ("text", "#c0caf5", "#1a1b26", BTOP, "btop body"),

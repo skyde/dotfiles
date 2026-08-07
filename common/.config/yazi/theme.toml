@@ -223,14 +223,14 @@ rules = [
   { name = "*.txt", fg = "#c0caf5" },
   { name = "*.rst", fg = "#c0caf5" },
 
-  # --- build noise → comment grey ---
-  { name = "*.log", fg = "#565f89" },
-  { name = "*.bak", fg = "#565f89" },
-  { name = "*.tmp", fg = "#565f89" },
-  { name = "*.swp", fg = "#565f89" },
-  { name = "*.o", fg = "#565f89" },
-  { name = "*.pyc", fg = "#565f89" },
-  { name = "*.lock", fg = "#565f89" },
+  # --- build noise → dark5 (see the note in ../lf/colors) ---
+  { name = "*.log", fg = "#737aa2" },
+  { name = "*.bak", fg = "#737aa2" },
+  { name = "*.tmp", fg = "#737aa2" },
+  { name = "*.swp", fg = "#737aa2" },
+  { name = "*.o", fg = "#737aa2" },
+  { name = "*.pyc", fg = "#737aa2" },
+  { name = "*.lock", fg = "#737aa2" },
 
   # --- special file kinds, checked after the patterns above ---
   { name = "*", is = "orphan", fg = "#f7768e", bold = true },
@@ -241,7 +241,7 @@ rules = [
   { name = "*", is = "sock", fg = "#bb9af7" },
   { name = "*", is = "sticky", fg = "#c0caf5", bg = "#7aa2f7" },
   { name = "*", is = "exec", fg = "#9ece6a" },
-  { name = "*", is = "dummy", fg = "#565f89" },
+  { name = "*", is = "dummy", fg = "#737aa2" },
 
   # --- directories, and finally everything else ---
   { name = "*/", fg = "#7aa2f7", bold = true },

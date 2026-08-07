@@ -103,11 +103,16 @@ st      38;2;192;202;245;48;2;122;162;247 # sticky
 *.txt   38;2;192;202;245
 *.rst   38;2;192;202;245
 
-# --- noise → comment grey ---
-*.log   38;2;86;95;137
-*.bak   38;2;86;95;137
-*.tmp   38;2;86;95;137
-*.swp   38;2;86;95;137
-*.o     38;2;86;95;137
-*.pyc   38;2;86;95;137
-*.lock  38;2;86;95;137
+# --- noise → dark5 ---
+# dark5, not comment grey. These are the files you put the cursor on in order
+# to decide whether to delete them, and comment grey on the hovered row's fill
+# is 1.97:1 — the one file colour here you could not read at the moment you
+# most need to. dark5 is 2.93:1 there and 4.10:1 on the page, still far below
+# prose (10.59), code (9.35) and config (8.55), so the hierarchy is unchanged.
+*.log   38;2;115;122;162
+*.bak   38;2;115;122;162
+*.tmp   38;2;115;122;162
+*.swp   38;2;115;122;162
+*.o     38;2;115;122;162
+*.pyc   38;2;115;122;162
+*.lock  38;2;115;122;162

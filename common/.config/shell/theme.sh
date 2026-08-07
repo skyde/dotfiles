@@ -174,9 +174,11 @@ done
 for _e in md txt rst; do
 	_ls="${_ls}:*.$_e=38;2;${_tn_fg}"
 done
-# noise → comment grey
+# noise → dark5, not comment grey: these are the files you put the cursor on
+# to decide whether to delete them, and comment grey on a hovered row is
+# 1.97:1. See the note in common/.config/lf/colors.
 for _e in log bak tmp swp o pyc lock; do
-	_ls="${_ls}:*.$_e=38;2;${_tn_comment}"
+	_ls="${_ls}:*.$_e=38;2;${_tn_dark5}"
 done
 LS_COLORS="${_ls}"
 export LS_COLORS
@@ -231,7 +233,7 @@ _eza="${_eza}:co=38;2;${_tn_red}:do=38;2;${_tn_orange}:sc=38;2;${_tn_green}"
 _eza="${_eza}:cr=38;2;${_tn_yellow}:bu=38;2;${_tn_yellow}"
 # Build output and editor leftovers are the "noise" group: present, not worth
 # reading, exactly like *.o and *.swp above.
-_eza="${_eza}:cm=38;2;${_tn_comment}:tm=38;2;${_tn_comment}"
+_eza="${_eza}:cm=38;2;${_tn_dark5}:tm=38;2;${_tn_dark5}"
 
 # Structure: link counts recede, mount points and other specials borrow the
 # colours their file kinds already have, and an escaped byte in a filename is
