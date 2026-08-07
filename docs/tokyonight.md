@@ -404,9 +404,22 @@ quietly approximating it.
   `lua/util/inline_diff.lua` maps each of its highlights to a delta style in
   its own header comment, and this is what holds the two files to it.
 
-  Where a tool can be asked about its own options it is — `delta` and
-  `ripgrep`, when installed. A config section will hold a misspelled key
-  forever without complaining; see the note below on why that is not paranoia.
+  And where a tool can be asked to read its own configuration back, it is —
+  `delta`, `ripgrep`, `yazi`, `starship`, `bat` and `kitty`, each skipped when
+  not installed. This is the part that has found the most, because a config
+  file will hold a misspelled or renamed key indefinitely while looking
+  entirely correct:
+
+  | Tool | Asked | What it catches |
+  | ---- | ----- | --------------- |
+  | delta | every key under `[delta]` offered back as a flag | an option it does not have |
+  | ripgrep | a real search against `/dev/null` | a colour spec it rejects |
+  | yazi | `--debug`, which prints each config or the reason it refused it | a rule key that makes it discard the whole file |
+  | starship | `explain`, then its session log under `STARSHIP_CACHE` | an unknown section or key |
+  | bat | `--list-themes` | `BAT_THEME` naming a theme it does not carry |
+  | kitty | its own config loader via `+runpy` | an unknown option key |
+
+  Each of these was added because the one before it found something real.
 - **contrast** — every foreground/background pair clears the floor for the job
   it does, and every focused fill stands off the page behind it. The tiers, and
   why they are not simply WCAG AA, are in the script.
