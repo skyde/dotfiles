@@ -68,7 +68,8 @@ Entries only appear where they apply, so the menu is short wherever you open it.
 | `b` | files | blame the selected file, paged through delta (which paints blame too) |
 | `h` | files | full history of the selected file, following renames |
 | `d` | anywhere | diff the working tree against the *nearest* branch point — another local branch or `origin/main`, whichever is closer (`git-diff-from-last-branch`) |
-| `c` | anywhere | copy that same diff to the clipboard (`git-copy`) |
+| `c` | anywhere | copy that same diff to the clipboard |
+| `s` | anywhere | which commit added or removed this string (`git log -S`) — the search lazygit's own filtering (`<ctrl+s>`, path and author) cannot do |
 | `w` | branches | add a worktree for the selected branch |
 | `p` | anywhere | prune stale worktrees and remote-tracking branches |
 | `D` | branches | delete local branches already merged into a chosen base |
