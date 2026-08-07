@@ -58,6 +58,20 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 ~/.bashrc-custom  # Add to existing .bashrc to source the custom one
 ```
 
+## Shell
+
+zsh, no framework and no plugin manager, around 30–40ms to a prompt. Prefix-aware
+history on the arrows, completion that matches a name from its initials, fzf on
+Ctrl-R/Ctrl-T/Alt-C, and a fallback prompt for machines where starship is not
+installed yet. Every key and every wrapper is covered by specs that press the key
+in a real terminal — see [`docs/zsh.md`](docs/zsh.md) for the full reference, the
+startup budget, and the measurements behind both.
+
+```sh
+tests/run-zsh-specs.sh          # the specs
+tests/zsh-startup-bench.sh      # median/p90 time to a prompt
+```
+
 ## CLI Tools
 
 - `ripgrep` for searching directories quickly

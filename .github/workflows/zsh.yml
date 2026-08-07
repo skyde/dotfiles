@@ -1,0 +1,121 @@
+name: Shell
+
+on:
+  push:
+    paths:
+      - common/.zshrc
+      - common/.zshenv
+      - common/.bashrc-custom
+      - common/.config/shell/**
+      - common/.local/bin/fzf-preview
+      - tests/zsh_*
+      - tests/run-zsh-specs.sh
+      - tests/zsh-startup-bench.sh
+      - .github/workflows/zsh.yml
+  pull_request:
+    paths:
+      - common/.zshrc
+      - common/.zshenv
+      - common/.bashrc-custom
+      - common/.config/shell/**
+      - common/.local/bin/fzf-preview
+      - tests/zsh_*
+      - tests/run-zsh-specs.sh
+      - tests/zsh-startup-bench.sh
+      - .github/workflows/zsh.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  specs:
+    name: Specs (${{ matrix.os }}, ${{ matrix.tools }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The config is built to work with any subset of its optional tools
+          # installed, so it is tested both ways: on a machine that has them, and
+          # on one that has none of them — which is the state of a fresh clone
+          # before ./init.sh has run.
+          - os: ubuntu-24.04
+            tools: all
+          - os: ubuntu-24.04
+            tools: none
+          - os: macos-14
+            tools: all
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install zsh (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh
+
+      - name: Install the optional tools (Linux)
+        if: runner.os == 'Linux' && matrix.tools == 'all'
+        run: |
+          # One at a time: a package that has been renamed or dropped from the
+          # runner image should cost its own assertions (which then skip), not
+          # the whole job.
+          for pkg in fzf bat fd-find eza zoxide git-delta \
+            zsh-autosuggestions zsh-syntax-highlighting; do
+            sudo apt-get install -y "$pkg" || echo "could not install $pkg"
+          done
+          curl -fsSL https://starship.rs/install.sh | sh -s -- --yes || echo "could not install starship"
+
+      - name: Install the optional tools (macOS)
+        if: runner.os == 'macOS' && matrix.tools == 'all'
+        run: |
+          for pkg in fzf bat fd eza zoxide git-delta starship \
+            zsh-autosuggestions zsh-fast-syntax-highlighting; do
+            brew install "$pkg" || echo "could not install $pkg"
+          done
+
+      - name: Run the specs
+        run: tests/run-zsh-specs.sh
+
+  startup-budget:
+    name: Startup budget
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install zsh and the optional tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh fzf bat fd-find eza zoxide git-delta \
+            zsh-autosuggestions zsh-syntax-highlighting
+          curl -fsSL https://starship.rs/install.sh | sh -s -- --yes
+
+      - name: Measure time to a prompt
+        run: |
+          # A shared runner is slower and noisier than a laptop, so the budget is
+          # far above the ~40ms this takes in practice. It is here to catch a
+          # change that makes startup cost hundreds of milliseconds — a tool
+          # invoked per prompt, a cache that never gets used — not to police a
+          # few milliseconds of drift.
+          tests/zsh-startup-bench.sh -n 20 --budget 400 | tee "$RUNNER_TEMP/startup.txt"
+          {
+            echo '### zsh startup'
+            echo '~~~text'
+            cat "$RUNNER_TEMP/startup.txt"
+            echo '~~~'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Where the time goes
+        if: always()
+        run: |
+          {
+            echo '### zprof'
+            echo '~~~text'
+            tests/zsh-startup-bench.sh --profile 2>&1 | head -30
+            echo '~~~'
+          } >>"$GITHUB_STEP_SUMMARY"

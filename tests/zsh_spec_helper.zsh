@@ -367,7 +367,13 @@ spec_bare_path() {
     local tool src
     # zsh itself has to be reachable: a spec that asserts on a nested shell's
     # output still needs to be able to start one.
-    for tool in zsh sh cat cp rm ls mkdir mktemp stty tput uname sed awk grep git tr; do
+    #
+    # `mv` is not optional either, and its absence is not obvious: zsh's own
+    # compdump shells out to it when writing the completion dump, so a cold cache
+    # under a PATH without it prints "compdump:138: command not found: mv" and
+    # every "startup is silent" assertion fails for a reason that has nothing to
+    # do with the config. A machine with no fzf still has coreutils.
+    for tool in zsh sh cat cp mv rm ls mkdir mktemp stty tput uname sed awk grep git tr; do
       src=$(command -v -- "$tool" 2>/dev/null) || continue
       ln -sf -- "$src" "$dir/$tool"
     done
