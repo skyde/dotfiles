@@ -945,6 +945,17 @@ local function do_render_file(file, focus)
   end
 
   setup_diff_keys()
+  -- Splitting copied the panel window's jumplist into every pane, and the
+  -- render's own :edit and first-change motions appended entries pointing at
+  -- the panel buffer and half-built panes. <C-o> would "go back" to one of
+  -- those — the changes list swapped into a diff pane, still dressed in diff
+  -- mode. A fresh render starts with no history; jumps actually made from
+  -- here build real entries, which adopt_nav then follows.
+  for _, w in ipairs(diff_wins()) do
+    vim.api.nvim_win_call(w, function()
+      vim.cmd("clearjumps")
+    end)
+  end
   if keep then
     pcall(vim.api.nvim_win_set_cursor, target, keep)
   end
@@ -1419,7 +1430,11 @@ local function do_adopt_nav(win, buf)
     return
   end
   local name = vim.api.nvim_buf_get_name(buf)
-  if name == "" or name == state.shown_name then
+  -- "Already rendered" is a property of the window rendering it, not of the
+  -- buffer alone: the shown file landing in any *other* pane (an :e or a
+  -- jump from the side-by-side base) still needs adopting, or that pane is
+  -- left holding the working copy dressed as the base.
+  if name == "" or (name == state.shown_name and win == state.diff_win) then
     return
   end
 
@@ -1748,6 +1763,14 @@ local function ensure_tab()
   -- without this the selected file would get no highlight at all.
   wo_local(win, "cursorlineopt", "line")
   wo_local(win, "winfixwidth", true)
+  -- tabnew copied the origin window's jumplist into this window, so <C-o>
+  -- here would swap some pre-view buffer into the 42-column strip — the
+  -- maps, autocmds and selection highlight all live on the panel buffer,
+  -- leaving the view broken over a window it no longer controls. The list
+  -- is a menu, not a navigation surface; it starts with no history.
+  vim.api.nvim_win_call(win, function()
+    vim.cmd("clearjumps")
+  end)
 
   state = state or {}
   state.tab = vim.api.nvim_get_current_tabpage()
@@ -1805,7 +1828,9 @@ local function ensure_tab()
         return
       end
       local name = vim.api.nvim_buf_get_name(ev.buf)
-      if name == "" or name == state.shown_name then
+      -- Entering the shown file counts as "already rendered" only in the
+      -- window rendering it; in any other pane it is a navigation to adopt.
+      if name == "" or (name == state.shown_name and nav_win == state.diff_win) then
         return
       end
       -- Coalesce to one adoption per tick — a single jump fires several of

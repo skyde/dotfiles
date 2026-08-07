@@ -1743,6 +1743,70 @@ do
 end
 
 --------------------------------------------------------------------------
+-- <C-o>: "back" inside the view must not wreck the layout
+--------------------------------------------------------------------------
+
+do
+  -- Jump history in the origin window. tabnew used to copy it into the panel
+  -- window, and every pane split off the panel copied it again — plus the
+  -- render's own :edit and first-change motions appended entries pointing at
+  -- the panel buffer and half-built panes. <C-o> then swapped one of those
+  -- into whichever window it was pressed in: a pre-view file into the panel
+  -- strip, the changes list into a diff pane still dressed in diff mode.
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/committed_on_branch.txt"))
+  vim.cmd("normal! G")
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+
+  open_settled({ scope = "working" })
+  if #layout() == 2 then
+    ui.toggle_inline() -- this block drives the side-by-side layout
+  end
+  local panel = layout()[1]
+
+  -- The panel is a menu, not a navigation surface.
+  vim.api.nvim_set_current_win(panel)
+  feed("<C-o>")
+  settle_nav()
+  eq("back: the panel keeps showing the file list", "vcs://changes", win_name(layout()[1]))
+
+  vim.api.nvim_win_set_cursor(panel, { row_of("a_modified"), 0 })
+  scrub("")
+
+  -- A fresh base pane has no history to go back to.
+  vim.api.nvim_set_current_win(layout()[2])
+  local base_name = vim.api.nvim_buf_get_name(0)
+  check("back precondition: the base pane is a vcs:// scratch", base_name:find("vcs://", 1, true) ~= nil, base_name)
+  feed("<C-o><C-o>")
+  settle_nav()
+  eq("back: a fresh base pane has nowhere to go", base_name, vim.api.nvim_buf_get_name(0))
+  eq("back: the layout survives", 3, #layout())
+
+  -- Neither has a fresh working pane: without this, the first entries were
+  -- the render's own footprints (the panel buffer, the base scratch).
+  vim.api.nvim_set_current_win(layout()[3])
+  local shown = vim.api.nvim_buf_get_name(0)
+  feed("<C-o><C-o><C-o>")
+  settle_nav()
+  eq("back: a fresh working pane has nowhere to go", shown, vim.api.nvim_buf_get_name(0))
+
+  -- Landing the *shown* file in the base pane is a navigation to adopt, not
+  -- "already rendered": bailing left the working copy sitting in the base
+  -- pane, undiffed, while the right pane showed it too.
+  vim.api.nvim_set_current_win(layout()[2])
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+  settle_nav()
+  eq("adopt shown: still three panes", 3, #layout())
+  check(
+    "adopt shown: the base side is a scratch again",
+    win_name(layout()[2]):find("vcs://", 1, true) ~= nil,
+    win_name(layout()[2])
+  )
+  check("adopt shown: both sides are diffs", vim.wo[layout()[2]].diff and vim.wo[layout()[3]].diff)
+  eq("adopt shown: the working copy is on show", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  ui.close()
+end
+
+--------------------------------------------------------------------------
 -- degenerate cases
 --------------------------------------------------------------------------
 
