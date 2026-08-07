@@ -285,6 +285,16 @@ accent chosen to be instantly findable against the blue-violet palette. Keep it.
 `tests/check-theme.py` reads this table to decide what to scan, so a tool is
 covered from the moment its row lands here.
 
+**VS Code is the one exception**, and deliberately so. Its chrome lives in
+`workbench.colorCustomizations` in `common/.config/Code/User/settings.json` and
+follows this palette, but the same file also carries the Dark+ token colours,
+the debug inline-value colours and a handful of long-standing personal choices
+that are not Tokyo Night — the orange-brown active tab border, the inlay hint
+greys. Scanning it whole would report all of those forever, so it is not in the
+table. What *must* agree is checked directly instead: the 16 ANSI slots of its
+integrated terminal, and its title bar, are compared against kitty and wezterm
+by `tests/check-theme.py parity`.
+
 ## Checking it
 
 ```bash

@@ -544,9 +544,13 @@ def check_parity(doc, verbose):
         ("active tab fg", "active_tab_foreground", "active_tab.fg_color", None),
         ("inactive tab bg", "inactive_tab_background", "inactive_tab.bg_color", None),
         ("inactive tab fg", "inactive_tab_foreground", "inactive_tab.fg_color", None),
-        # The window's own titlebar, which each terminal draws itself.
-        ("titlebar", "macos_titlebar_color", "active_titlebar_bg", None),
-        ("titlebar, unfocused", "wayland_titlebar_color", "inactive_titlebar_bg", None),
+        # The window's own titlebar. All three draw one, and on a desktop they
+        # sit side by side, so a difference here is visible without switching
+        # to anything.
+        ("titlebar", "macos_titlebar_color", "active_titlebar_bg",
+         "titleBar.activeBackground"),
+        ("titlebar, unfocused", "wayland_titlebar_color", "inactive_titlebar_bg",
+         "titleBar.inactiveBackground"),
     ]:
         trio = {
             "kitty": kitty.get(k),
@@ -701,6 +705,8 @@ PAIRS = [
     ("muted", "#565f89", "#1a1b26", STARSHIP, "starship clock"),
     ("text", "#7aa2f7", "#1a1b26", STARSHIP, "starship directory"),
     ("text", "#bb9af7", "#1a1b26", STARSHIP, "starship branch"),
+    ("ui", "#ff9e64", "#1a1b26", STARSHIP, "starship hostname, over SSH"),
+    ("ui", "#1abc9c", "#1a1b26", STARSHIP, "starship username"),
 
     # fzf
     ("text", "#c0caf5", "#283457", SHELL, "fzf current line"),

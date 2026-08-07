@@ -54,6 +54,15 @@ style = 'bold blue'
 style_user = 'bold teal'
 style_root = 'bold red'
 
+# $hostname is in the format string but had no section, so it was rendering in
+# starship's default dimmed green — and green in this palette means additions
+# and success, which is not what a hostname says. The module only appears over
+# SSH (ssh_only defaults on), which is precisely when "which machine is this"
+# is worth noticing, so it takes orange: the palette's own "where am I"
+# colour, already carrying the tmux session name and the cursor everywhere.
+[hostname]
+style = 'bold orange'
+
 [line_break]
 disabled = true
 

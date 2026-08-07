@@ -180,7 +180,80 @@
     "terminal.ansiBrightBlue": "#8db0ff",
     "terminal.ansiBrightMagenta": "#c7a9ff",
     "terminal.ansiBrightCyan": "#a4daff",
-    "terminal.ansiBrightWhite": "#c0caf5"
+    "terminal.ansiBrightWhite": "#c0caf5",
+
+    // The chrome either side of what was already themed. sideBar was Tokyo
+    // Night while the activity bar beside it was still the base theme's grey,
+    // and the title bar was too — the same window kitty and wezterm both draw
+    // in bg_dark. Palette reference: docs/tokyonight.md.
+    "activityBar.background": "#1a1b26",
+    "activityBar.foreground": "#c0caf5",
+    "activityBar.inactiveForeground": "#737aa2",
+    "activityBar.border": "#292e42",
+    "activityBarBadge.background": "#7aa2f7",
+    "activityBarBadge.foreground": "#16161e",
+
+    "titleBar.activeBackground": "#16161e",
+    "titleBar.activeForeground": "#c0caf5",
+    "titleBar.inactiveBackground": "#16161e",
+    "titleBar.inactiveForeground": "#737aa2",
+    "titleBar.border": "#292e42",
+
+    "statusBar.foreground": "#c0caf5",
+    "statusBar.border": "#292e42",
+    "editorGroup.border": "#292e42",
+    "focusBorder": "#7aa2f7",
+
+    // Lists: the explorer, quick open, every picker. bg_visual is the fill
+    // that marks the current row in fzf, yazi, lazygit, btop and tmux's copy
+    // mode; bg_dark1 is the quieter version for a list that has lost focus,
+    // exactly as in lazygit.
+    "list.activeSelectionBackground": "#283457",
+    "list.activeSelectionForeground": "#c0caf5",
+    "list.inactiveSelectionBackground": "#1f2335",
+    "list.inactiveSelectionForeground": "#c0caf5",
+    "list.hoverBackground": "#292e42",
+    // Matched characters, in the yellow this setup gives a match everywhere
+    // else — fzf, ripgrep, grep, delta --grep and tmux's copy mode.
+    "list.highlightForeground": "#e0af68",
+    "list.focusHighlightForeground": "#e0af68",
+
+    // The editor's own selection, matching Neovim's Visual. These two editors
+    // are kept at parity elsewhere in this repo; a selection that is one blue
+    // here and another there is the kind of difference you feel when switching
+    // without being able to name it.
+    "editor.selectionBackground": "#283457",
+    "editor.inactiveSelectionBackground": "#1f2335",
+
+    // Popups. editorHoverWidget was already themed above; these are the ones
+    // beside it that were not.
+    "editorWidget.background": "#1a1b26",
+    "editorWidget.foreground": "#c0caf5",
+    "editorWidget.border": "#292e42",
+    "editorSuggestWidget.background": "#1a1b26",
+    "editorSuggestWidget.border": "#292e42",
+    "editorSuggestWidget.selectedBackground": "#283457",
+    "editorSuggestWidget.highlightForeground": "#e0af68",
+    "editorHoverWidget.border": "#292e42",
+
+    "peekView.border": "#7aa2f7",
+    "peekViewEditor.background": "#16161e",
+    "peekViewResult.background": "#16161e",
+    "peekViewResult.selectionBackground": "#283457",
+    "peekViewTitle.background": "#16161e",
+
+    "notifications.background": "#16161e",
+    "notifications.border": "#292e42",
+    "notificationCenterHeader.background": "#292e42",
+    "badge.background": "#7aa2f7",
+    "badge.foreground": "#16161e",
+    "button.background": "#7aa2f7",
+    "button.foreground": "#16161e",
+    "button.hoverBackground": "#8db0ff",
+
+    "breadcrumb.background": "#1a1b26",
+    "breadcrumb.foreground": "#737aa2",
+    "breadcrumb.focusForeground": "#c0caf5"
 
     // "editor.inlineValuesForeground": "#666666", // text color of inline values
     // "editor.inlineValuesBackground": "#66666620" // background color (supports transparency)
