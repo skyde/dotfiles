@@ -1,0 +1,285 @@
+# shellcheck shell=bash
+# Assertions for the zsh specs. Sourced by tests/run-zsh-specs.sh *after* the
+# real ~/.zshenv and ~/.zshrc have been read, so a spec inspects the shell the
+# config actually built rather than a re-implementation of it.
+#
+# Everything here reports through _spec_pass/_spec_fail so one spec file can
+# fail several assertions and still list them all, instead of dying on the
+# first. spec_finish() prints the tally and sets the exit status.
+
+typeset -g _spec_passed=0 _spec_failed=0 _spec_skipped=0
+typeset -ga _spec_failures=()
+
+# Where the spec may create scratch files. Removed by the driver.
+: "${SPEC_TMP:=${TMPDIR:-/tmp}}"
+
+_spec_pass() { (( ++_spec_passed )); }
+
+_spec_fail() {
+  (( ++_spec_failed ))
+  _spec_failures+=("$1")
+  print -r -- "  FAIL $1"
+  [[ -n ${2-} ]] && print -r -- "       ${2//$'\n'/$'\n'       }"
+  return 0
+}
+
+# A heading in the output. Purely cosmetic; groups related assertions.
+spec_section() { print -r -- "  · $1"; }
+
+# spec_skip <name> <reason>
+#   For assertions that need an optional tool this machine does not have. Skips
+#   are printed and counted but never fail: the config is built to work with any
+#   subset of its tools installed, and so are its specs.
+spec_skip() {
+  (( ++_spec_skipped ))
+  print -r -- "  SKIP $1 — $2"
+  return 0
+}
+
+# spec_have <command> — true when the command exists.
+spec_have() { (( $+commands[$1] )); }
+
+# assert <name> <zsh code>
+#   Passes when the code returns 0. The code is eval'd in the calling shell on
+#   purpose: an assertion about `setopt` or a widget has to see this shell's
+#   state, not a subshell's copy of it.
+assert() {
+  local name=$1 code=$2
+  if eval "$code"; then
+    _spec_pass
+  else
+    _spec_fail "$name" "expected success from: $code"
+  fi
+}
+
+# refute <name> <zsh code> — passes when the code returns non-zero.
+refute() {
+  local name=$1 code=$2
+  if eval "$code"; then
+    _spec_fail "$name" "expected failure from: $code"
+  else
+    _spec_pass
+  fi
+}
+
+assert_eq() {
+  local name=$1 expected=$2 actual=$3
+  if [[ $expected == "$actual" ]]; then
+    _spec_pass
+  else
+    _spec_fail "$name" "expected: ${(qqq)expected}"$'\n'"  actual: ${(qqq)actual}"
+  fi
+}
+
+assert_ne() {
+  local name=$1 unexpected=$2 actual=$3
+  if [[ $unexpected != "$actual" ]]; then
+    _spec_pass
+  else
+    _spec_fail "$name" "expected anything but: ${(qqq)unexpected}"
+  fi
+}
+
+# assert_contains <name> <needle> <haystack> — plain substring, no globbing.
+#   Preferred over assert_match for literal text: prompt strings and zstyle
+#   values are full of characters (%, ~, (, |, #) that a zsh glob would read as
+#   operators, and quoting them one at a time is how a spec ends up asserting
+#   something other than what it says.
+assert_contains() {
+  local name=$1 needle=$2 haystack=$3
+  if [[ $haystack == *"$needle"* ]]; then
+    _spec_pass
+  else
+    _spec_fail "$name" "expected to contain: ${(qqq)needle}"$'\n'"  in: ${(qqq)haystack}"
+  fi
+}
+
+refute_contains() {
+  local name=$1 needle=$2 haystack=$3
+  if [[ $haystack == *"$needle"* ]]; then
+    _spec_fail "$name" "expected not to contain ${(qqq)needle}, but: ${(qqq)haystack}"
+  else
+    _spec_pass
+  fi
+}
+
+# assert_match <name> <pattern> <value> — pattern is a zsh glob (extended).
+assert_match() {
+  local name=$1 pattern=$2 value=$3
+  if [[ $value == ${~pattern} ]]; then
+    _spec_pass
+  else
+    _spec_fail "$name" "pattern: ${(qqq)pattern}"$'\n'"  value: ${(qqq)value}"
+  fi
+}
+
+assert_no_match() {
+  local name=$1 pattern=$2 value=$3
+  if [[ $value != ${~pattern} ]]; then
+    _spec_pass
+  else
+    _spec_fail "$name" "value unexpectedly matched ${(qqq)pattern}: ${(qqq)value}"
+  fi
+}
+
+assert_empty() {
+  local name=$1 value=$2
+  if [[ -z $value ]]; then
+    _spec_pass
+  else
+    _spec_fail "$name" "expected nothing, got: ${(qqq)value}"
+  fi
+}
+
+assert_nonempty() {
+  local name=$1 value=$2
+  if [[ -n $value ]]; then
+    _spec_pass
+  else
+    _spec_fail "$name" "expected a value, got nothing"
+  fi
+}
+
+# assert_option <name> <option> <on|off>
+assert_option() {
+  local name=$1 opt=$2 want=$3
+  local have=${options[$opt]:-<unknown option>}
+  if [[ $have == "$want" ]]; then
+    _spec_pass
+  else
+    _spec_fail "$name" "setopt $opt is '$have', expected '$want'"
+  fi
+}
+
+# assert_bindkey <name> <keyseq> <widget>
+#   `bindkey -- <seq>` prints e.g.  "^R" _fzf_history_widget
+#   and  "^R" undefined-key  when nothing is bound.
+assert_bindkey() {
+  local name=$1 seq=$2 want=$3
+  local line have
+  line=$(bindkey -- "$seq" 2>/dev/null)
+  have=${line##* }
+  if [[ $have == "$want" ]]; then
+    _spec_pass
+  else
+    _spec_fail "$name" "bindkey $seq -> ${have:-<nothing>}, expected $want"
+  fi
+}
+
+# assert_widget <name> <widget> — the widget exists (so a binding can reach it).
+assert_widget() {
+  local name=$1 widget=$2
+  if (( $+widgets[$widget] )); then
+    _spec_pass
+  else
+    _spec_fail "$name" "no zle widget named $widget"
+  fi
+}
+
+assert_function() {
+  local name=$1 fn=$2
+  if (( $+functions[$fn] )); then
+    _spec_pass
+  else
+    _spec_fail "$name" "no function named $fn"
+  fi
+}
+
+refute_function() {
+  local name=$1 fn=$2
+  if (( $+functions[$fn] )); then
+    _spec_fail "$name" "function $fn should not survive startup"
+  else
+    _spec_pass
+  fi
+}
+
+# assert_alias <name> <alias> <expected expansion>
+assert_alias() {
+  local name=$1 key=$2 want=$3
+  local have=${aliases[$key]-}
+  if [[ $have == "$want" ]]; then
+    _spec_pass
+  else
+    _spec_fail "$name" "alias $key -> ${have:-<unset>}, expected $want"
+  fi
+}
+
+refute_alias() {
+  local name=$1 key=$2
+  if (( $+aliases[$key] )); then
+    _spec_fail "$name" "alias $key should not exist here (-> ${aliases[$key]})"
+  else
+    _spec_pass
+  fi
+}
+
+# assert_zstyle <name> <context> <style> <pattern>
+#   Checks a completion zstyle resolves to something matching <pattern>.
+assert_zstyle() {
+  local name=$1 context=$2 style=$3 pattern=$4
+  local -a reply
+  zstyle -a "$context" "$style" reply
+  local joined="${(j: :)reply}"
+  if [[ $joined == ${~pattern} ]]; then
+    _spec_pass
+  else
+    _spec_fail "$name" "zstyle $context $style -> ${(qqq)joined}, wanted ${(qqq)pattern}"
+  fi
+}
+
+# spec_zsh [args...]
+#   A fresh zsh in the same sandbox HOME, so a spec can assert on what a real
+#   new shell prints. --no-globalrcs keeps /etc/zsh* out: the specs test this
+#   repo's config, not whatever the CI image ships.
+spec_zsh() { command zsh --no-globalrcs "$@"; }
+
+# spec_zsh_stderr <args...> — stderr only, stdout discarded.
+spec_zsh_stderr() { spec_zsh "$@" 2>&1 >/dev/null; }
+
+# spec_env_value <var>
+#   What a fresh *non-interactive* shell computes for <var>, with the variable
+#   scrubbed from the environment first. Without the scrub the child would
+#   inherit the value this spec's own interactive shell already exported and the
+#   assertion would pass no matter which file set it — which is exactly the
+#   thing being tested for variables that belong in .zshenv rather than .zshrc.
+spec_env_value() {
+  local var=$1
+  command env -u "$var" zsh --no-globalrcs -c "print -r -- \${$var-}" 2>/dev/null
+}
+
+# spec_bare_path
+#   A PATH holding only the handful of binaries any machine has, so a spec can
+#   check the config degrades cleanly on a box where none of the optional tools
+#   (starship, fzf, bat, eza, zoxide, delta...) are installed. Built once and
+#   cached in $SPEC_TMP.
+spec_bare_path() {
+  local dir="$SPEC_TMP/bare-bin"
+  if [[ ! -d $dir ]]; then
+    mkdir -p -- "$dir"
+    local tool src
+    # zsh itself has to be reachable: a spec that asserts on a nested shell's
+    # output still needs to be able to start one.
+    for tool in zsh sh cat cp rm ls mkdir mktemp stty tput uname sed awk grep git tr; do
+      src=$(command -v -- "$tool" 2>/dev/null) || continue
+      ln -sf -- "$src" "$dir/$tool"
+    done
+  fi
+  print -r -- "$dir"
+}
+
+spec_finish() {
+  local skipped=""
+  (( _spec_skipped )) && skipped=", ${_spec_skipped} skipped"
+  print -r -- ""
+  if (( _spec_failed )); then
+    print -r -- "  ${_spec_passed} passed, ${_spec_failed} failed${skipped}:"
+    local failure
+    for failure in "${_spec_failures[@]}"; do
+      print -r -- "    - $failure"
+    done
+    return 1
+  fi
+  print -r -- "  ${_spec_passed} passed${skipped}"
+  return 0
+}

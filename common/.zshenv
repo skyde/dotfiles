@@ -23,6 +23,27 @@ path=(
 
 export SKIP_GCE_AUTH_FOR_GIT=1
 
+# -------- editor
+#
+# In .zshenv rather than .zshrc because .zshrc is only read by *interactive*
+# shells. `git commit` invoked from a script, `sudoedit`, `crontab -e`, and
+# anything else that shells out to `zsh -c` all read EDITOR too, and every one
+# of them used to fall back to whatever the system default was (usually vi)
+# while an interactive shell got nvim.
+export EDITOR="nvim"
+export VISUAL="$EDITOR"
+
+# -------- pager
+#
+# -R  keep colour escapes (delta, bat, git) instead of printing them literally
+# -F  don't page output that already fits on one screen
+# -i  case-insensitive search until you type an uppercase letter
+# -M  a status line with position, so long output tells you where you are
+# LESSHISTFILE=- stops less from dropping a ~/.lesshst in HOME.
+export PAGER="less"
+export LESS="-RFiM"
+export LESSHISTFILE="-"
+
 # Point DISPLAY at the first live X socket, for X11 forwarding.
 #
 # Guarded on the socket directory existing, and matched with a zsh glob rather
@@ -49,3 +70,18 @@ fi
 # ripgrep: hidden files, smart case, ignore common junk
 export RIPGREP_CONFIG_PATH=~/.ripgreprc
 export BAT_THEME="Visual Studio Dark+"
+
+# Man pages through bat, so they get the same theme as everything else.
+#
+# Debian/Ubuntu ship the binary as `batcat` (the name `bat` belongs to another
+# package), which is why both are checked. `col -bx` strips the overstrike
+# backspaces groff emits for bold and underline — without it bat renders
+# "^Hf^Ho^Ho". MANROFFOPT=-c stops groff from re-adding them via its own
+# colour handling, which otherwise leaves stray escapes on newer groff.
+if (( $+commands[bat] )); then
+  export MANPAGER="sh -c 'col -bx | bat --language=man --style=plain --color=always'"
+  export MANROFFOPT="-c"
+elif (( $+commands[batcat] )); then
+  export MANPAGER="sh -c 'col -bx | batcat --language=man --style=plain --color=always'"
+  export MANROFFOPT="-c"
+fi
