@@ -59,9 +59,13 @@ local function load_options(env)
 end
 
 -- A realistic terminal: 'scroll' is derived from the window height, so the
--- size has to be settled before anything looks at it.
+-- size has to be settled before anything looks at it. The tabline goes with
+-- it — see the note in nvim_vcs_ui_spec.lua: headless Neovim keeps its 80x24
+-- default grid while `draw_tabline` draws at the current 'columns', and the
+-- overflow is an invalid write whether or not it happens to abort.
 vim.o.columns = 200
 vim.o.lines = 50
+vim.o.showtabline = 0
 
 load_options()
 

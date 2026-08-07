@@ -15,6 +15,15 @@ vim.opt.runtimepath:prepend(repo .. "/common/.config/nvim")
 vim.o.columns = 200
 vim.o.lines = 50
 
+-- Headless Neovim allocates its default grid at 80x24 before any script runs
+-- and never resizes it without a UI attached, but `draw_tabline` still draws
+-- at the *current* 'columns' — so with the view's second tab open, anything
+-- that repaints the tabline (entering command-line mode, say) writes past the
+-- end of that grid. Valgrind calls it an invalid write every time; whether it
+-- corrupts enough to abort is luck, which is the worst way for a test suite to
+-- fail. Nothing here needs a tabline, so turn it off.
+vim.o.showtabline = 0
+
 -- The "+" register is a real system clipboard, and a headless container has no
 -- provider for it — `setreg("+", …)` then does nothing at all and every
 -- assertion about copied text fails for reasons that have nothing to do with
@@ -1324,6 +1333,89 @@ do
   local tabs = #vim.api.nvim_list_tabpages()
   feed("q")
   eq("q: closes the view from a scratch diff pane", tabs - 1, #vim.api.nvim_list_tabpages())
+end
+
+--------------------------------------------------------------------------
+-- command-line mode from inside the view
+--------------------------------------------------------------------------
+
+do
+  -- Selecting by searching is a documented way to move in the panel ("a mouse
+  -- click, a search, `G`" — the CursorMoved autocmd exists for exactly this),
+  -- and typing `:` while reviewing is unavoidable. Neither had a test.
+  open_settled({ scope = "working" })
+  vim.api.nvim_set_current_win(layout()[1])
+  vim.api.nvim_win_set_cursor(layout()[1], { 1, 0 })
+
+  feed("/d_untracked<CR>")
+  local line = panel_lines()[vim.api.nvim_win_get_cursor(layout()[1])[1]]
+  check("search: lands on the searched-for row", line and line:find("d_untracked.txt", 1, true), tostring(line))
+
+  -- Headless Neovim never fires CursorMoved — there is no normal-mode loop to
+  -- notice — so the autocmd that makes an unmapped motion re-render has to be
+  -- driven by hand here. Everything after it is the real code path.
+  vim.cmd("doautocmd CursorMoved")
+  vim.wait(2000, function()
+    return not ui.busy()
+  end)
+  vim.wait(300, function()
+    return false
+  end)
+  local showing = false
+  for _, w in ipairs(layout()) do
+    if win_name(w) == root .. "/d_untracked.txt" then
+      showing = true
+    end
+  end
+  check("search: and the diff follows the selection", showing, vim.inspect(vim.tbl_map(win_name, layout())))
+
+  -- An ordinary Ex command must leave the view exactly as it was.
+  local wins_before = #layout()
+  feed(":let g:vcs_spec_probe = 1<CR>")
+  eq("cmdline: the command ran", 1, vim.g.vcs_spec_probe)
+  eq("cmdline: the layout is untouched", wins_before, #layout())
+  eq("cmdline: focus stays in the panel", layout()[1], vim.api.nvim_get_current_win())
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- nothing may load a file over the panel
+--------------------------------------------------------------------------
+
+do
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  vim.api.nvim_set_current_win(panel)
+
+  -- Put the cursor on the filename, where `gf` has something to open. Left
+  -- to itself that replaces the panel with the file, and the view keeps
+  -- driving a window that is no longer its own.
+  local row
+  for i, l in ipairs(panel_lines()) do
+    if l:find("a_modified.txt", 1, true) then
+      row = i
+    end
+  end
+  check("pin: found a file row", row ~= nil, vim.inspect(panel_lines()))
+  vim.api.nvim_win_set_cursor(panel, { row, 5 })
+  eq("pin: the cursor is on a real filename", "a_modified.txt", vim.fn.expand("<cfile>"))
+  feed("gf")
+  eq("pin: gf does not replace the panel", "vcs://changes", win_name(panel))
+  check("pin: :e into the panel is refused", not pcall(vim.cmd, "edit " .. vim.fn.fnameescape(root .. "/a_modified.txt")))
+  eq("pin: and the panel is still the panel", "vcs://changes", win_name(panel))
+
+  -- ]f / [f are Vim's deprecated gf synonyms unless the panel claims them.
+  vim.api.nvim_win_set_cursor(panel, { row, 0 })
+  feed("]f")
+  eq("pin: ]f moves the selection instead", "vcs://changes", win_name(panel))
+  check("pin: and it really moved", vim.api.nvim_win_get_cursor(panel)[1] ~= row, vim.api.nvim_win_get_cursor(panel)[1])
+  feed("[f")
+  eq("pin: [f comes back", row, vim.api.nvim_win_get_cursor(panel)[1])
+
+  -- The pin must not stop the view from tearing itself down.
+  local tabs = #vim.api.nvim_list_tabpages()
+  ui.close()
+  eq("pin: close still works", tabs - 1, #vim.api.nvim_list_tabpages())
 end
 
 --------------------------------------------------------------------------

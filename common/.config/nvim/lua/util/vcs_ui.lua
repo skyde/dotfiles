@@ -1590,7 +1590,7 @@ local HELP = {
   { "o / l / → / <Tab>", "the same, for other fingers" },
   { "J / K", "scroll the diff from the list" },
   { "]c / [c", "next / previous change in the diff" },
-  { "]f / [f", "next / previous file, from inside the diff" },
+  { "]f / [f", "next / previous file, from the diff or the list" },
   { "s", "cycle scope: uncommitted / branch / last commit" },
   { "i", "toggle inline and side-by-side" },
   { "z", "toggle collapsing unchanged regions" },
@@ -1686,6 +1686,17 @@ local function setup_panel_keys(buf)
   map("[c", function()
     change_diff(-1)
   end, "Previous change in the diff")
+  -- ]f / [f step files from inside the diff, so they are the keys a hand
+  -- reaches for in the list too. Unmapped they are Vim's deprecated synonyms
+  -- for `gf`, which on a panel row means "open the file named by the word
+  -- under the cursor" — an error at best, the panel replaced by that file at
+  -- worst.
+  map("]f", function()
+    move(1)
+  end, "Next changed file")
+  map("[f", function()
+    move(-1)
+  end, "Previous changed file")
   map("r", function()
     M.refresh()
   end, "Refresh")
@@ -1747,6 +1758,14 @@ local function ensure_tab()
   -- without this the selected file would get no highlight at all.
   wo_local(win, "cursorlineopt", "line")
   wo_local(win, "winfixwidth", true)
+  -- Nothing may load a file over the panel. `gf`, `<C-]>`, a stray `:e`, a
+  -- file dropped onto the window — every one of them leaves the view still
+  -- believing its panel is there while the window shows something else, and
+  -- from then on every key in it does something surprising. Pinning the
+  -- buffer turns the whole class into an error message.
+  if vim.fn.exists("&winfixbuf") == 1 then
+    pcall(wo_local, win, "winfixbuf", true)
+  end
 
   state = state or {}
   state.tab = vim.api.nvim_get_current_tabpage()
@@ -2142,6 +2161,12 @@ function M.close()
   end
   if valid() then
     vim.api.nvim_set_current_tabpage(state.tab)
+    -- The panel's buffer is pinned while the view is up; the last-tab path
+    -- below dissolves the layout into an empty buffer, which that pin would
+    -- refuse.
+    if vim.fn.exists("&winfixbuf") == 1 then
+      pcall(wo_local, state.panel_win, "winfixbuf", false)
+    end
     if vim.fn.tabpagenr("$") == 1 then
       -- The origin tab is gone and a lone tab cannot be closed (E784).
       -- Dissolve the layout into an empty buffer instead — erroring here

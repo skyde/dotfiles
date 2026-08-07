@@ -53,7 +53,7 @@ revision moves.
 | `<CR>` / `<Space>` / `o` / `l` / `<Right>` / `<Tab>` | move focus into the diff — `<Space>` deliberately shadows leader while the panel is focused, since selecting is what the panel is for |
 | `J` / `K` | scroll the diff half a page from the list, for skimming a file without leaving it |
 | `]c` / `[c` | step the diff to the next / previous change, cursor staying in the list |
-| `]f` / `[f` | from *inside* the diff: render the next / previous file, focus staying in the diff |
+| `]f` / `[f` | next / previous file — from *inside* the diff it renders it and keeps focus there; from the list it just moves the selection, like `j` / `k` |
 | `s` | cycle scope: uncommitted → since fork point → last commit |
 | `i` | toggle inline / side-by-side |
 | `z` | toggle collapsing unchanged regions (both renderings; `zR` / `zM` still work per window) |
