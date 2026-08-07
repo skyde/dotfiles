@@ -231,6 +231,47 @@ do
   check("git empty: changed does not raise", ok_changed, tostring(files))
   eq("git empty: untracked file still listed", "?", ok_changed and status_map(files)["only.txt"])
   eq("git empty: show of a missing revision is nil", nil, b.show(root, "HEAD", "only.txt"))
+
+  -- A staged file has no HEAD to be diffed against, and the literal string
+  -- "HEAD" is not something any git command accepts — so it used to be
+  -- invisible. The empty tree is the honest base and shows it as added.
+  git(root, "add", "only.txt")
+  for _, scope in ipairs({ "working", "branch", "head" }) do
+    local scoped = b.rev(root, scope)
+    truthy(("git empty: rev(%s) resolves to something git accepts"):format(scope), scoped and #scoped >= 7, scoped)
+    eq(
+      ("git empty: rev(%s) is not a literal ref name"):format(scope),
+      nil,
+      scoped and scoped:match("HEAD") or nil
+    )
+    eq(
+      ("git empty: a staged file is listed under %s"):format(scope),
+      "A",
+      status_map(b.changed(root, scoped))["only.txt"]
+    )
+  end
+end
+
+do
+  -- "Last commit" on a repository whose only commit *is* the first one:
+  -- HEAD~1 does not resolve, and the whole commit was invisible because of it.
+  local root = temp .. "/git-first-commit"
+  vim.fn.mkdir(root, "p")
+  git(root, "init", "-q", "-b", "main")
+  write(root .. "/a.txt", "one\n")
+  write(root .. "/b.txt", "two\n")
+  git(root, "add", "-A")
+  git(root, "commit", "-qm", "the only commit")
+  local b = select(1, vcs.detect(root))
+  local rev = b.rev(root, "head")
+  eq("git first commit: rev(head) is not the literal HEAD~1", nil, rev and rev:match("HEAD"))
+  local map = status_map(b.changed(root, rev))
+  eq("git first commit: its files show as added", "A", map["a.txt"])
+  eq("git first commit: all of them", "A", map["b.txt"])
+  truthy("git first commit: the patch is not empty", #b.raw_diff(root, rev, nil) > 0)
+  -- Nothing existed before it, so there is no base content to fetch — which
+  -- is exactly what the "A" status tells the UI.
+  eq("git first commit: show finds nothing at that base", nil, b.show(root, rev, "a.txt"))
 end
 
 do

@@ -70,13 +70,14 @@ end
 ---callback-shaped implementation of itself.
 ---@param cmd string[]
 ---@param cwd string|nil
-local function sh(cmd, cwd)
+---@param stdin string|nil  written and closed; nil leaves stdin alone
+local function sh(cmd, cwd, stdin)
   if vim.fn.executable(cmd[1]) ~= 1 then
     return nil
   end
   local co = coroutine.running()
   if co and async_threads[co] then
-    local ok = pcall(vim.system, cmd, { cwd = cwd, text = true }, function(res)
+    local ok = pcall(vim.system, cmd, { cwd = cwd, text = true, stdin = stdin }, function(res)
       -- on_exit arrives off the main loop; API calls are only legal back on it.
       vim.schedule(function()
         resume(co, res)
@@ -88,7 +89,7 @@ local function sh(cmd, cwd)
     return coroutine.yield()
   end
   local ok, res = pcall(function()
-    return vim.system(cmd, { cwd = cwd, text = true }):wait()
+    return vim.system(cmd, { cwd = cwd, text = true, stdin = stdin }):wait()
   end)
   if not ok then
     return nil
@@ -193,18 +194,36 @@ local function git_fork_point(root)
   return nil
 end
 
+---Git's own name for "nothing was there": the empty tree. It is what the very
+---first commit has to be diffed against, and the only base a repository with
+---no commits at all can offer. Asked for rather than hard-coded, because a
+---SHA-256 repository's empty tree has a different id.
+local function git_empty_tree(root)
+  return one(sh({ "git", "hash-object", "-t", "tree", "--stdin" }, root, ""))
+end
+
 function git.rev(root, scope)
   if scope == "branch" then
     -- No trunk to fork from (a fresh repo, or trunk *is* the branch) still has
     -- a sensible answer: everything since the first commit is not useful, so
     -- fall back to HEAD and let it read as "uncommitted".
-    return git_fork_point(root) or one(sh({ "git", "rev-parse", "--verify", "--quiet", "HEAD" }, root)) or "HEAD"
+    return git_fork_point(root)
+      or one(sh({ "git", "rev-parse", "--verify", "--quiet", "HEAD" }, root))
+      or git_empty_tree(root)
+      or "HEAD"
   end
   local ref = scope == "head" and "HEAD~1" or "HEAD"
   -- Resolved to the hash, not left symbolic: cached base content is keyed by
   -- this string, and "HEAD" would keep meaning the old content after a
   -- commit, amend or rebase moved it.
-  return one(sh({ "git", "rev-parse", "--verify", "--quiet", ref }, root)) or ref
+  --
+  -- When the ref does not resolve — "last commit" on a repository whose only
+  -- commit is the first one, any scope before there is a commit at all — the
+  -- literal string is worse than useless: no git command accepts "HEAD~1", so
+  -- the listing came back empty and the view said "no changes" about a commit
+  -- that is right there. The empty tree is the honest base, and it renders
+  -- the whole thing as added, which is what it is.
+  return one(sh({ "git", "rev-parse", "--verify", "--quiet", ref }, root)) or git_empty_tree(root) or ref
 end
 
 function git.changed(root, rev)
