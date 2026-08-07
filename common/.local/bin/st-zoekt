@@ -35,10 +35,13 @@ command -v rg >/dev/null 2>&1 || {
   echo "error: ripgrep (rg) not found in PATH" >&2
   exit 1
 }
-command -v bat >/dev/null 2>&1 || {
-  echo "error: bat not found in PATH" >&2
-  exit 1
-}
+# bat *or* batcat: Debian and Ubuntu ship it under the second name, and this
+# check refused to run there at all. The preview goes through fzf-preview, which
+# picks whichever exists — so this is only asking whether previews will be
+# syntax-highlighted, which is not worth stopping for either.
+if ! command -v bat >/dev/null 2>&1 && ! command -v batcat >/dev/null 2>&1; then
+  echo "warning: neither bat nor batcat found; previews will be unhighlighted" >&2
+fi
 
 if [[ ! -d "$index_dir" ]]; then
   echo "error: no Zoekt index found at: $index_dir" >&2
@@ -84,6 +87,17 @@ for i in "${!ADDITIONAL_ARGS[@]}"; do
   ADDITIONAL_ARGS[i]="${ADDITIONAL_ARGS[i]//\{root\}/$root}"
 done
 
+# The shared previewer, by path rather than by name: it lives in this directory,
+# and this way the preview does not depend on ~/.local/bin being on PATH.
+#
+# It replaces `bat --style=numbers ... {2} {1}`, which had two problems. `bat` is
+# `batcat` on Debian and Ubuntu, so the pane showed "command not found" there;
+# and {2} is the line number, which was being passed to bat as a *file name*, so
+# every preview began with an error about a file called "42". fzf-preview takes
+# "path:line" and centres the window on that line, which is also why the
+# +{2}/2 scroll offset is gone — the previewer does that part now.
+PREVIEW_CMD="$(cd "$(dirname "$0")" && pwd)/fzf-preview"
+
 exec fzf \
   --ansi \
   --tiebreak=index \
@@ -92,6 +106,6 @@ exec fzf \
   --with-nth=3.. \
   --bind "start:reload:${reload_cmd} || true" \
   --bind "change:reload:${reload_cmd} || true" \
-  --preview "cd '${root}' && bat --style=numbers --color=always --paging=never {2} {1}" \
-  --preview-window 'bottom,30%,+{2}/2' \
+  --preview "cd '${root}' && '${PREVIEW_CMD}' {1}:{2}" \
+  --preview-window 'bottom,30%' \
   "${ADDITIONAL_ARGS[@]}"

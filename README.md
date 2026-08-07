@@ -110,6 +110,20 @@ NVIM_VERSION=v0.11.5 ./install-nvim.sh   # pin a specific tag
 The tarball is preferred (no FUSE needed); the AppImage is the fallback and gets
 unpacked automatically when FUSE is missing. On macOS use `brew install neovim`.
 
+### fzf Version
+
+fzf refuses to start when given an option it does not recognise, so an old build
+does not degrade — it fails. Ubuntu 24.04 ships 0.44, which is missing `--style`
+(0.54), `--wrap` (0.53), `--tmux` (0.53) and `--tiebreak=pathname` (0.53). The
+shell config and the `ff` / `st-*` / tmux pickers all check the version and leave
+those flags out when they are unsupported, so everything works either way; a
+current fzf is how you get the nicer look and the tmux popups.
+
+```sh
+./install-fzf.sh                      # latest release into ~/.local/bin
+FZF_VERSION=v0.65.0 ./install-fzf.sh  # pin a specific tag
+```
+
 ### Lazygit Version
 
 `<leader>gg` opens lazygit inside Neovim, and

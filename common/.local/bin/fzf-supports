@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# fzf-supports VERSION — succeed when the fzf on PATH is at least that version.
+#
+#   fzf-supports 0.53 && args+=(--tmux center,80%,40%)
+#
+# fzf treats an option it does not recognise as fatal: it prints "unknown option"
+# or "invalid sort criterion" and exits without drawing anything. So a script that
+# uses a recent flag does not degrade on an older build, it stops working — and
+# Ubuntu 24.04 still ships 0.44. Guarding each such flag with this keeps the
+# picker working and merely plainer.
+#
+# ./install-fzf.sh puts a current release in ~/.local/bin, after which the guards
+# all pass. ~/.zshrc does the same check with zsh's is-at-least and caches the
+# answer, so that shell spends no process on it per prompt.
+set -uo pipefail
+
+want="${1:-}"
+if [[ -z "$want" ]]; then
+  echo "usage: fzf-supports VERSION" >&2
+  exit 2
+fi
+
+have="$(fzf --version 2>/dev/null | cut -d' ' -f1)"
+[[ -n "$have" ]] || exit 1
+
+# Compared field by field in the shell rather than with `sort -V`, which is a GNU
+# extension: this has to give the same answer on macOS.
+ver_ge() {
+  local IFS=.
+  # shellcheck disable=SC2206 # deliberate word splitting on dots
+  local -a left=($1) right=($2)
+  local index part_left part_right
+  for index in 0 1 2; do
+    part_left="${left[index]:-0}"
+    part_right="${right[index]:-0}"
+    # Trailing non-digits (a "0.44.1-debian" style suffix) are not part of the
+    # number.
+    part_left="${part_left%%[^0-9]*}"
+    part_right="${part_right%%[^0-9]*}"
+    ((10#${part_left:-0} > 10#${part_right:-0})) && return 0
+    ((10#${part_left:-0} < 10#${part_right:-0})) && return 1
+  done
+  return 0
+}
+
+ver_ge "$have" "$want"

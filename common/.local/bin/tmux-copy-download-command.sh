@@ -39,7 +39,16 @@ rows=$(
   done <<<"$candidates"
 )
 
-chosen=$(printf '%s\n' "$rows" | fzf --tmux center,80%,40% --exit-0 --no-preview --no-sort --layout=reverse --delimiter=$'\t' --with-nth=1 --nth=2 --prompt="Download> " || true)
+# --tmux draws the picker in a tmux popup, and is fzf 0.53 and later. An
+# unknown option makes fzf exit rather than ignore it, so on an older build
+# (Ubuntu 24.04 ships 0.44) this ran inline in the pane instead — which is
+# exactly the fallback wanted here.
+FZF_POPUP=()
+if "$(cd "$(dirname "$0")" && pwd)/fzf-supports" 0.53; then
+  FZF_POPUP=(--tmux center,80%,40%)
+fi
+
+chosen=$(printf '%s\n' "$rows" | fzf "${FZF_POPUP[@]}" --exit-0 --no-preview --no-sort --layout=reverse --delimiter=$'\t' --with-nth=1 --nth=2 --prompt="Download> " || true)
 
 if [[ -z "$chosen" ]]; then
   exit 0

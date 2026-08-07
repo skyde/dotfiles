@@ -249,11 +249,30 @@ none of them installed — that being the state of a fresh clone before
 | `fzf`       | no Ctrl-T/Alt-C/Ctrl-R picker; Tab completion unaffected          |
 | `fd`        | Ctrl-T falls back to fzf's own walker                            |
 | `bat`       | `cat` stays `cat`, previews use `head`, man pages use `less`      |
-| an old `fzf` | `--style`/`--wrap` are dropped (they are 0.54+, and fzf treats an unknown option as fatal) |
+| an old `fzf` | `--style`/`--wrap` are dropped — see below |
 | `eza`       | `ls` stays `ls`                                                  |
 | `delta`     | git pages through `less`                                         |
 | `code`      | git's merge tool becomes `nvimdiff3`, or `vimdiff`                |
 | `nc`        | nothing — VS Code sockets are probed with zsh's own `zsocket`     |
+
+## fzf versions
+
+fzf treats an option it does not recognise as fatal: it prints "unknown option"
+and exits without drawing anything. So an old build does not degrade, it fails —
+and Ubuntu 24.04 still ships 0.44, which does not have `--style` (0.54),
+`--wrap` (0.53), `--tmux` (0.53) or `--tiebreak=pathname` (0.53). Every one of
+those was being passed unconditionally, which meant Ctrl-R, Ctrl-T, Alt-C, `ff`
+and the tmux pickers were all broken on any Debian or Ubuntu box.
+
+Each is now behind a version check, so the pickers work either way and merely
+look plainer on an old fzf. `~/.zshrc` does the check with zsh's `is-at-least`
+and caches the answer next to the other init caches, so no shell spends a process
+on it; the standalone scripts use `~/.local/bin/fzf-supports`, which compares
+versions field by field rather than with `sort -V` so the answer is the same on
+macOS.
+
+`./install-fzf.sh` puts a current release in `~/.local/bin`, after which all the
+guards pass.
 
 ## Tests
 

@@ -117,6 +117,20 @@ if [ -f "install-nvim.sh" ] && [[ "$(uname)" == "Linux" ]]; then
   fi
 fi
 
+# Optional: Install the latest fzf. The distro package is far behind — Ubuntu
+# 24.04 ships 0.44 — and fzf refuses to start when handed an option it does not
+# know, so the pickers leave out anything newer than the installed version. See
+# install-fzf.sh for the list.
+if [ -f "install-fzf.sh" ]; then
+  install_fzf=$(get_user_confirmation "Install the latest fzf to ~/.local/bin? (y/N): ")
+  if [[ "$install_fzf" =~ ^[Yy] ]]; then
+    echo "Running fzf installation script..."
+    ./install-fzf.sh
+  else
+    echo "Skipping fzf installation"
+  fi
+fi
+
 # Optional: Install the latest lazygit (Neovim's git UI, via snacks)
 if [ -f "install-lazygit.sh" ]; then
   install_lazygit=$(get_user_confirmation "Install the latest lazygit to ~/.local/bin? (y/N): ")

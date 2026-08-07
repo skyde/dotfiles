@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Previews through the shared fzf-preview beside this script rather than calling
+# bat directly: bat is `batcat` on Debian and Ubuntu, where a plain `bat` in a
+# preview is a command-not-found, and this way a directory or a binary in the
+# list previews sensibly too.
 set -euo pipefail
 
 # Build args as an array so quoting stays correct.
@@ -11,9 +15,18 @@ if [[ "${1:-}" == "--code" ]]; then
   )
 fi
 
+# --tiebreak=pathname is fzf 0.53 and later, and an unknown sort criterion makes
+# fzf exit instead of falling back — on Ubuntu's 0.44 this script died with
+# "invalid sort criterion: pathname". fzf-supports lives beside this file.
+BIN_DIR="$(cd "$(dirname "$0")" && pwd)"
+RANKING=()
+if "$BIN_DIR/fzf-supports" 0.53; then
+  RANKING=(--tiebreak=pathname)
+fi
+
 exec fzf \
-  --tiebreak=pathname \
+  "${RANKING[@]}" \
   --delimiter : \
-  --preview 'bat --style=numbers --color=always --line-range :500 {}' \
+  --preview "$BIN_DIR/fzf-preview {}" \
   --preview-window 'right,55%' \
   "${ADDITIONAL_ARGS[@]}"

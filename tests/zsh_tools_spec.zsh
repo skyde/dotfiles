@@ -273,6 +273,22 @@ if spec_have fzf; then
     "$(spec_env_value FZF_HISTORY_PREVIEW)"
 fi
 
+spec_section 'fzf-supports'
+
+if (( $+commands[fzf-supports] )) && spec_have fzf; then
+  # The guard the pickers use before passing a flag from a newer fzf. It has to
+  # answer both ways on the installed build, or every guarded flag is either
+  # always on (and fatal on an old fzf) or always off.
+  assert 'a version this fzf certainly has is supported' 'fzf-supports 0.1'
+  refute 'a version no fzf has yet is not' 'fzf-supports 99.0'
+  refute 'a missing argument is an error, not a yes' 'fzf-supports 2>/dev/null'
+
+  typeset -g _fzf_installed
+  _fzf_installed=${${(f)"$(fzf --version)"}[1]%% *}
+  assert "the installed version ($_fzf_installed) supports itself" \
+    "fzf-supports ${_fzf_installed}"
+fi
+
 spec_section 'the Ctrl-R list is highlighted'
 
 if (( $+commands[bat] || $+commands[batcat] )); then
