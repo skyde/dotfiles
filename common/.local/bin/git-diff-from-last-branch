@@ -53,4 +53,10 @@ base="$(git rev-list HEAD | grep -m1 -F -x -f "$tmp" || true)"
 [[ -n "${base:-}" ]] || { echo "Could not determine a base commit." >&2; exit 1; }
 
 # --- Diff working tree vs that base --------------------------------
-exec git diff "$base" -- "$@"
+#
+# No `--` inserted here: it would push every argument into the pathspec half of
+# `git diff`, so the documented `--stat` / `--name-only` pass-throughs became
+# pathspecs that matched nothing and the command printed an empty diff and
+# exited 0. Callers that mean a path say so themselves, exactly as the usage
+# note above spells it: `diff-branch -- path/`.
+exec git diff "$base" "$@"

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# diff-branch — the working tree against the point this branch forked from.
+#
+# The short name for git-diff-from-last-branch, and the one everything else in
+# these dotfiles actually calls: `git-copy`, the "Diff Branch" terminal task in
+# common/.config/Code/User/settings.json, and the `<leader>gA` row in
+# docs/nvim-vscode-parity.md all spell it this way. Only the long name existed,
+# so each of those failed with "diff-branch: command not found".
+#
+# Extra arguments go straight to `git diff`:
+#   diff-branch --stat
+#   diff-branch --name-only
+#   diff-branch -- path/
+set -euo pipefail
+
+# Prefer the copy next to this script, so running it out of a checkout that is
+# not the stowed one still resolves to that checkout's implementation.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+impl="$here/git-diff-from-last-branch"
+
+if [[ -x "$impl" ]]; then
+  exec "$impl" "$@"
+fi
+
+if command -v git-diff-from-last-branch >/dev/null 2>&1; then
+  exec git-diff-from-last-branch "$@"
+fi
+
+echo "diff-branch: git-diff-from-last-branch not found in $here or on PATH" >&2
+exit 1

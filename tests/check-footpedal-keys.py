@@ -68,6 +68,19 @@ def run(cmd, **kw):
     return subprocess.run(cmd, capture_output=True, text=True, **kw)
 
 
+def wait_until(predicate, timeout, interval=1.0):
+    """Poll until predicate() is true. Returns whether it ever was."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            if predicate():
+                return True
+        except (ValueError, OSError):
+            pass
+        time.sleep(interval)
+    return False
+
+
 class Transport:
     """Starts Neovim behind some terminal and delivers key presses to it."""
 
@@ -330,6 +343,24 @@ def check_transport(transport, keep=False):
             "if vim.api.nvim_win_get_config(w).relative ~= \"\" then n = n + 1 end end return n"
         ) or 0)
 
+    def ready():
+        """Has the config finished coming up?
+
+        Two conditions, because either alone is satisfied too early: lazy.nvim
+        has to have every plugin on disk (a cold checkout clones them all on
+        first launch), and the footpedal maps have to be registered, which is
+        what VeryLazy triggers.
+        """
+        return lua(
+            "local ok, cfg = pcall(require, 'lazy.core.config') "
+            "if not ok or type(cfg.plugins) ~= 'table' then return 0 end "
+            "for _, p in pairs(cfg.plugins) do "
+            "  local s = p._ or {} if not s.installed then return 0 end "
+            "end "
+            "if vim.fn.maparg('<F14>', 'n') == '' then return 0 end "
+            "return 1"
+        ) == "1"
+
     def arrived(n):
         """Did the key show up in the log, under either spelling?
 
@@ -386,10 +417,16 @@ def check_transport(transport, keep=False):
         return ["%s: never started" % transport.name]
 
     try:
-        # LazyVim loads most plugins on VeryLazy; let it settle so the
-        # lazy-registered keys exist.
-        time.sleep(3)
-
+        # LazyVim loads most plugins on VeryLazy, so the lazy-registered keys do
+        # not exist the instant Neovim answers. Waiting a fixed three seconds
+        # raced that on a cold checkout, where lazy.nvim clones every plugin
+        # before any of it runs: the first transport of the run reported all 22
+        # bindings unmapped and every key "never arrived", and the second — by
+        # then warm — passed the identical checks. Poll for the config to
+        # actually be up instead, so a slow first install is waited out and a
+        # binding that genuinely never appears still fails, just later.
+        if not wait_until(ready, timeout=420):
+            print("  (config still not ready; reporting what is there)")
         install_logger()
 
         # --- both spellings are mapped in normal mode, since which one the

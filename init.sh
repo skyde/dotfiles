@@ -195,9 +195,26 @@ else
   echo "Skipping platform-specific setup"
 fi
 
-echo "Building bat cache for custom theme..."
-# Build bat cache for custom theme
-bat cache --build
+# Build bat cache for custom theme.
+#
+# Guarded, and aware of Debian/Ubuntu's `batcat` name. This is the last step of
+# the script and it runs under `set -e`, so an unguarded `bat cache --build`
+# exited 127 on every machine where bat is absent or installed as batcat —
+# which is the default on the very Linux distros this script installs `bat`
+# from. "Init complete!" never printed and the caller saw the whole init fail.
+bat_bin=""
+if command -v bat >/dev/null 2>&1; then
+  bat_bin="bat"
+elif command -v batcat >/dev/null 2>&1; then
+  bat_bin="batcat"
+fi
+
+if [ -n "$bat_bin" ]; then
+  echo "Building bat cache for custom theme..."
+  "$bat_bin" cache --build || echo "[warn] '$bat_bin cache --build' failed; custom bat theme may not be available"
+else
+  echo "bat not found, skipping the bat theme cache"
+fi
 
 # Run local dotfiles initialization if it exists
 LOCAL_INIT_SCRIPT="$HOME/dotfiles-local/init.sh"

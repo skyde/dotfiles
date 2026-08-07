@@ -15,6 +15,25 @@ vim.opt.runtimepath:prepend(repo .. "/common/.config/nvim")
 vim.o.columns = 200
 vim.o.lines = 50
 
+-- Headless Neovim finds no clipboard tool, so `+` silently discards whatever is
+-- written to it and reads back empty — which made the copy assertions below fail
+-- on any machine without pbcopy/xclip/wl-copy, CI included. An in-memory
+-- provider makes the register round-trip without depending on the host.
+do
+  local board = { { "" }, "v" }
+  local function copy(lines, regtype)
+    board = { lines, regtype }
+  end
+  local function paste()
+    return board[1], board[2]
+  end
+  vim.g.clipboard = {
+    name = "spec-memory",
+    copy = { ["+"] = copy, ["*"] = copy },
+    paste = { ["+"] = paste, ["*"] = paste },
+  }
+end
+
 local vcs = require("util.vcs")
 local ui = require("util.vcs_ui")
 

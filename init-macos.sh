@@ -26,9 +26,22 @@ for cask in fluor hammerspoon alt-tab betterdisplay kitty font-jetbrains-mono-ne
     fi
 done
 
-# Verify JetBrainsMono Nerd Font is installed in user Fonts directory
+# Verify JetBrainsMono Nerd Font is installed in user Fonts directory.
+#
+# Matched with a glob rather than `ls | grep`. The regex this replaced was a
+# basic one handed to plain `grep`, where `(ttf\|otf)` is not a group with an
+# alternation inside it — `\|` splits the *whole* pattern in two, so it looked
+# for a name containing the literal text ".(ttf" or one ending in "otf)".
+# Neither can ever match a real font file, so the warning fired on every run,
+# including on machines where the cask had just installed the font.
 if [ -d "$HOME/Library/Fonts" ]; then
-    if ! ls -1 "$HOME/Library/Fonts" 2>/dev/null | grep -qi "^JetBrainsMono.*Nerd\s*Font.*\.(ttf\|otf)$"; then
+    shopt -s nullglob nocaseglob
+    jetbrains_fonts=(
+        "$HOME"/Library/Fonts/JetBrainsMono*Nerd*Font*.ttf
+        "$HOME"/Library/Fonts/JetBrainsMono*Nerd*Font*.otf
+    )
+    shopt -u nullglob nocaseglob
+    if [ "${#jetbrains_fonts[@]}" -eq 0 ]; then
         echo "[warn] JetBrainsMono Nerd Font not detected in ~/Library/Fonts. If VS Code doesn't show the font, try re-running this script or manually running: brew install --cask font-jetbrains-mono-nerd-font" >&2
     fi
 fi
