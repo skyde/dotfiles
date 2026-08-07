@@ -386,8 +386,8 @@ def parse_lf_colors() -> dict[str, str]:
 def parse_yazi_filetypes() -> dict[str, dict[str, str]]:
     """Map each yazi [filetype] rule to its attributes.
 
-    Keyed by "*.ext", a mime string, or "is:<kind>" so the caller can look a
-    rule up the way it thinks about it.
+    Keyed by the rule's url glob ("*.ext"), its mime string, or "is:<kind>",
+    so the caller can look a rule up the way it thinks about it.
     """
     text = read("common/.config/yazi/theme.toml")
     block = re.search(r"^\[filetype\]\s*\nrules\s*=\s*\[(.*?)^\]", text, re.S | re.M)
@@ -405,8 +405,9 @@ def parse_yazi_filetypes() -> dict[str, dict[str, str]]:
             key = fields["mime"]
         elif "is" in fields:
             key = "is:" + fields["is"]
-        elif "name" in fields:
-            key = fields["name"]
+        elif "url" in fields:
+            # `name` before yazi v25.12.29 renamed it.
+            key = fields["url"]
         else:
             continue
         rules.setdefault(key, fields)

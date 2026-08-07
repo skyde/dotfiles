@@ -16,7 +16,7 @@
 # The yazi wrapper in ~/.local/bin/yazi concatenates that local file onto this
 # one at launch when it exists.
 
-"$schema" = "https://yazi-rs.github.io/schemas/keymap.json"
+#:schema https://yazi-rs.github.io/schemas/keymap.json
 
 [[mgr.prepend_keymap]]
 on = "<Esc>"
