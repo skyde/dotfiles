@@ -196,6 +196,10 @@ VS Code extension does — bundled clangd, auto-regenerated
 `compile_commands.json`, shared `out/current_link` build-dir convention. See
 [`docs/chromium-clangd.md`](docs/chromium-clangd.md).
 
+There is also a 300-slide course on Chrome and Chromium accessibility in
+[`docs/chrome-accessibility/`](docs/chrome-accessibility/) — open its
+`index.html` in a browser, or read the sources under `slides/`.
+
 Extensions listed in `vscode_extensions.txt` will be installed automatically
 when these dotfiles are applied. Custom keybindings are documented in
 [`docs/vscode-keybindings.md`](docs/vscode-keybindings.md); the Neovim
