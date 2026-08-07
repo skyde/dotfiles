@@ -11,7 +11,8 @@ written down:
   3. the file-type table is the same in LS_COLORS, lf and yazi
   4. Neovim's inline diff uses delta's tints, exactly
   5. every file naming the syntax theme names the same one
-  6. docs/tokyonight.md's file table points at files that exist
+  6. the shared #ff5000 cursor is the same in every tool that sets it
+  7. docs/tokyonight.md's file table points at files that exist
 
 Run it after touching any colour:
 
@@ -589,7 +590,56 @@ def check_syntax_theme(report: Report) -> None:
         report.ok(f"every file names the same syntax theme ({names.pop()!r})")
 
 
-# --- 6. the docs point at real files ---------------------------------------
+# --- 6. one cursor, everywhere ---------------------------------------------
+
+CURSOR = "#ff5000"
+
+# Every setting that colours "where you are". This is the one colour in the
+# setup that is not Tokyo Night at all — it is chosen to be findable against a
+# blue-violet palette — so it is worth nothing unless it is the same in all of
+# them. docs/tokyonight.md: "Keep it."
+CURSOR_SETTINGS = [
+    ("common/.config/kitty/themes/tokyonight_night.conf", r"^cursor\s+(#[0-9a-fA-F]{6})"),
+    ("common/.config/wezterm/wezterm.lua", r"cursor_bg\s*=\s*'(#[0-9a-fA-F]{6})'"),
+    ("common/.config/wezterm/wezterm.lua", r"cursor_border\s*=\s*'(#[0-9a-fA-F]{6})'"),
+    (
+        "common/.config/wezterm/wezterm.lua",
+        r"quick_select_label_bg\s*=\s*\{\s*Color\s*=\s*'(#[0-9a-fA-F]{6})'",
+    ),
+    (
+        "common/.config/Code/User/settings.json",
+        r'"editorCursor\.foreground"\s*:\s*"(#[0-9a-fA-F]{6})"',
+    ),
+    (
+        "common/.config/Code/User/settings.json",
+        r'"terminalCursor\.foreground"\s*:\s*"(#[0-9a-fA-F]{6})"',
+    ),
+    (
+        "common/.config/nvim/lua/plugins/tokyonight.lua",
+        r"hl\.Cursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+    ),
+    ("common/.config/shell/theme.sh", r"pointer:(#[0-9a-fA-F]{6})"),
+]
+
+
+def check_cursor(report: Report) -> None:
+    for relative, pattern in CURSOR_SETTINGS:
+        match = re.search(pattern, read(relative), re.M)
+        if not match:
+            report.fail(
+                "cursor",
+                f"{relative} no longer sets the cursor colour the test looks for "
+                f"({pattern})",
+            )
+        elif norm(match.group(1)) != CURSOR:
+            report.fail(
+                "cursor",
+                f"{relative} sets the cursor to {norm(match.group(1))}, not {CURSOR}",
+            )
+    report.ok(f"the cursor is {CURSOR} in all {len(CURSOR_SETTINGS)} places that set it")
+
+
+# --- 7. the docs point at real files ---------------------------------------
 
 
 def check_doc_paths(report: Report) -> None:
@@ -640,6 +690,7 @@ def main() -> int:
         check_filetypes,
         check_diff_tints,
         check_syntax_theme,
+        check_cursor,
         check_doc_paths,
     ):
         try:

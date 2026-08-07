@@ -396,7 +396,7 @@ tests/check-theme.py            # report drift, exit non-zero
 tests/check-theme.py --verbose  # and list what passed
 ```
 
-It checks five things:
+It checks seven things:
 
 1. **Every colour is documented here.** Any hex or `38;2;R;G;B` triple in a
    themed config has to appear somewhere in this file. That is what makes this
@@ -413,7 +413,10 @@ It checks five things:
 5. **One name for the syntax theme.** `~/.zshenv`, `~/.bashrc-custom`,
    delta's `syntax-theme` and `~/.config/bat/config` must all name the same
    one, or two panes render the same file differently.
-6. **This file's table above points at files that exist**, and lists every
+6. **One cursor.** `#ff5000` is the only colour here that is not Tokyo Night
+   at all, and it is worth nothing unless it is the same everywhere, so all
+   eight settings that colour "where you are" are compared against it.
+7. **This file's table above points at files that exist**, and lists every
    file the test checks.
 
 The checks are only as good as their scope: `CHROME_FILES` at the top of the
