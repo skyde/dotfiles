@@ -33,6 +33,14 @@
     tool = nvim
     guitool = vscode
 
+    # A moved submodule pointer defaults to a bare "85084aec..0fd3c2ee", which
+    # says a submodule changed and nothing about what changed. `log` prints the
+    # commit subjects that moved in or out instead. Delta stops recognising the
+    # block as a file section and so drops its own "M sub" header, but git's
+    # own "Submodule sub 85084ae..0fd3c2e:" line names it anyway, and the
+    # subjects are worth more than the header.
+    submodule = log
+
 # Stop git appending "function context" (the nearest enclosing-function line)
 # after every @@ hunk header. Delta prints that context in its hunk header no
 # matter what hunk-header-style says, so a clean "file:line" header needs git
@@ -278,10 +286,34 @@
     # `delta --grep` / rg integration. Matches are inverted yellow blocks for
     # the same reason as fzf's hl/hl+ (see theme.sh): a recoloured foreground
     # drowns in already-syntax-coloured lines; reverse video cannot.
+    #
+    # Delta only sometimes takes this path. Its grep detection on 0.18.2 is
+    # racy: the identical `git grep -n foo | delta` styled 23 of 40 runs and
+    # passed the other 17 straight through, and reading the same output from a
+    # file rather than a pipe styled 0 of 40. Nothing in the config steadies it
+    # — output-type, color-only and turning git's own colour off were all just
+    # as erratic — so [color "grep"] below paints the fallback instead.
     grep-file-style = "#7aa2f7"
     grep-line-number-style = "#545c7e"
     grep-match-line-style = syntax
     grep-match-word-style = "#e0af68 bold reverse"
+
+# What `git grep` looks like on the runs where delta's grep handler does not
+# engage (see above). Without this the fallback is git's stock magenta, green
+# and cyan — the one place in the terminal that is loudly not Tokyo Night, and
+# you cannot predict which of the two you will get.
+#
+# `match` has to stay a *named* colour: delta finds the matched word by the
+# SGR code git wrapped it in and only knows the default red (31). Naming it
+# keeps detection working — measurably better than the git default, 24 runs in
+# 40 against 17 — while `bold #f7768e` broke it in all 40. Named red also
+# resolves through the terminal's own palette, which is Tokyo Night here, so
+# the fallback block lands on #f7768e regardless.
+[color "grep"]
+    filename = "#7aa2f7"
+    linenumber = "#545c7e"
+    separator = "#3b4261"
+    match = bold reverse red
 
 [index]
     threads = 10
@@ -318,3 +350,14 @@
 	# left line-number column comes back for the occasion: the left panel is the
 	# old file, and the global "" format would leave it unnumbered.
 	sbs = -c delta.side-by-side=true -c "delta.line-numbers-left-format={nm:>4} " diff
+	# `git show <merge>` is the one diff delta cannot really render. Git emits a
+	# combined --cc diff there, whose two-column "- ", " -" and "++" markers
+	# delta does not interpret: they arrive as literal text and the lines get no
+	# add/remove colour at all. --remerge-diff asks git for an ordinary two-way
+	# diff between the merge result and a fresh re-merge of the parents, which
+	# is both the more useful thing to review (it shows exactly what the merge
+	# resolved by hand) and something delta paints normally. Safe on ordinary
+	# commits — it degrades to a plain diff — and silent on octopus merges,
+	# which git cannot re-merge. Not made the default: log.diffMerges does not
+	# reach `git show`, so this has to be asked for.
+	showm = show --remerge-diff

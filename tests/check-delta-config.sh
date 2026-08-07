@@ -4,6 +4,7 @@
 #
 #   tests/check-delta-config.sh            # against this checkout
 #   tests/check-delta-config.sh /path/dir  # against another checkout
+#   tests/check-delta-config.sh --preview  # …and render the fixture in colour
 #
 # Three classes of failure, each of which has already happened once:
 #
@@ -25,9 +26,13 @@ set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
 root="$PWD"
-if [[ $# -ge 1 ]]; then
-  root="$1"
-fi
+preview=""
+for arg in "$@"; do
+  case "$arg" in
+  --preview) preview=1 ;;
+  *) root="$arg" ;;
+  esac
+done
 cfg="$root/common/.config/git/config"
 lua="$root/common/.config/nvim/lua/util/inline_diff.lua"
 
@@ -175,35 +180,52 @@ then
 fi
 
 # ------------------------------------------------ 3. every change leaves a mark
+# The fixture runs against the whole config, not just its [delta] half: the
+# rendering depends on diff.context, diff.algorithm, the nofunc diff driver and
+# [color "grep"] as much as on the styles. GIT_CONFIG_SYSTEM is emptied so a
+# machine-wide /etc/gitconfig cannot change the answer; the sandbox repo sets
+# its own identity locally, which outranks anything the config carries.
+export GIT_CONFIG_GLOBAL="$cfg"
+export GIT_CONFIG_SYSTEM=/dev/null
+
 sandbox="$(mktemp -d)"
 trap 'rm -f "$opts" "$keys"; rm -rf "$sandbox"' EXIT
 repo="$sandbox/repo"
 git init -q -b main "$repo"
 (
   cd "$repo" || exit 1
+  git config user.email delta@example.com
+  git config user.name "Delta Check"
   printf 'one\ntwo\nthree\n' >keep.txt
   printf '#!/bin/sh\necho hi\n' >mode.sh
   printf '\x00\x01\x02old\x00\xff' >blob.bin
   printf 'moves later\n' >rename_me.txt
   printf 'goes away\n' >delete_me.txt
+  printf 'alpha\n\ttab indented\nomega\n' >tabbed.txt
   git add -A
-  git -c user.email=t@example.com -c user.name="Delta Check" commit -qm initial
+  git commit -qm initial
   printf 'one\nTWO\nthree\n' >keep.txt
   chmod +x mode.sh
   printf '\x00\x01\x02new\x00\xfe' >blob.bin
   git mv rename_me.txt renamed.txt
   git rm -q delete_me.txt
   printf 'brand new\n' >created.txt
+  printf 'alpha\n\t\ttab indented deeper   \nomega\n' >tabbed.txt
   git add -A
 ) >/dev/null
 
-render() {
-  git -C "$repo" --no-pager -c color.ui=always -c core.attributesFile="$root/common/.config/git/attributes" \
-    diff --cached -M |
-    delta --config "$cfg" --paging=never --width=100 |
-    sed 's/\x1b\[[0-9;]*m//g; s/\x1b\[0K//g'
+# core.attributesFile is passed explicitly: git finds it at
+# $XDG_CONFIG_HOME/git/attributes on a machine where these dotfiles are
+# installed, but this check has to work against a bare checkout too, and
+# without it git appends function context to every hunk header.
+raw_diff() {
+  git -C "$repo" --no-pager -c color.ui=always \
+    -c core.attributesFile="$root/common/.config/git/attributes" \
+    diff --cached -M
 }
-out="$(render)"
+paint() { delta --config "$cfg" --paging=never --width="${COLUMNS:-100}"; }
+plain() { sed 's/\x1b\[[0-9;]*m//g; s/\x1b\[0K//g'; }
+out="$(raw_diff | paint | plain)"
 
 expect() {
   if printf '%s\n' "$out" | grep -qE "$2"; then
@@ -219,6 +241,7 @@ expect "a rename shows both names"       '^R rename_me\.txt .* renamed\.txt'
 expect "a binary change is visible"      '^M blob\.bin \(binary file\)'
 expect "a mode change is visible"        '^M mode\.sh \(mode \+x\)'
 expect "hunk headers carry file:line"    '^• keep\.txt:[0-9]+:'
+expect "tabs are not delta's default 8"  '^[0-9]+ {2,4}( {2}| {4})tab indented deeper'
 
 # git add -p pipes the diff through `delta --color-only` and pairs the result
 # with the unfiltered diff line by line. Drop or add a line and the hunks it
@@ -233,9 +256,47 @@ else
     "git add -p pairs filtered output with the raw diff; it will show the wrong hunks"
 fi
 
+# --------------------------------------------------------------- 4. preview
+# Assertions catch the things that can be named. Everything else about a diff
+# — whether the hierarchy reads, whether a colour is too loud — has to be
+# looked at, so the same fixture can be dumped in full colour.
+if [[ -n "$preview" ]]; then
+  echo
+  echo "───── git diff ─────"
+  raw_diff | paint
+  echo "───── a merge conflict ─────"
+  conflict="$sandbox/conflict"
+  git init -q -b main "$conflict"
+  (
+    cd "$conflict" || exit 1
+    git config user.email delta@example.com
+    git config user.name "Delta Check"
+    printf 'shared top\nthe contested line\nshared bottom\n' >c.txt
+    git add -A && git commit -qm base
+    git branch -q other
+    printf 'shared top\nours won\nshared bottom\n' >c.txt && git commit -qam ours
+    git checkout -q other
+    printf 'shared top\ntheirs won\nshared bottom\n' >c.txt && git commit -qam theirs
+    git checkout -q main
+    git merge other
+  ) >/dev/null 2>&1
+  git -C "$conflict" --no-pager -c color.ui=always diff | paint
+  echo "───── git blame ─────"
+  git -C "$repo" --no-pager blame keep.txt | paint
+  # Delta styles grep output only on the runs where its detection wins (see
+  # docs/tokyonight.md), so this pane legitimately looks different run to run.
+  # [color "grep"] is what keeps the two outcomes close.
+  echo "───── git grep (delta's handler is racy; see docs) ─────"
+  git -C "$repo" --no-pager -c color.ui=always grep -n -e one -e omega | paint
+  echo
+fi
+
 echo
 if [[ $status -eq 0 ]]; then
   echo "delta config OK"
+  if [[ -z "$preview" ]]; then
+    echo "(run with --preview to see the fixture rendered in colour)"
+  fi
 else
   echo "delta config has problems (see FAIL lines above)"
 fi

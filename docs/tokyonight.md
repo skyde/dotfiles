@@ -191,6 +191,37 @@ in `common/.config/nvim/lua/util/inline_diff.lua`, so the Neovim inline diff
 and a terminal patch are the same picture. Change one, change the other —
 `tests/check-delta-config.sh` asserts the pairing.
 
+### Gotcha: delta's grep styling is a coin flip
+
+Delta's `grep-*` settings only apply on the runs where it recognises its input
+as grep output, and on 0.18.2 that recognition is racy. The identical
+`git grep -n foo | delta` styled 23 of 40 runs and passed the other 17 through
+untouched; the same bytes read from a file rather than a pipe styled 0 of 40.
+`--grep-output-type`, `--color-only` and turning git's own colour off were all
+equally erratic, so there is no setting that pins it.
+
+The fix is not to make delta win, it is to make losing look the same:
+`[color "grep"]` in `common/.config/git/config` paints git's own grep output in
+the same palette, so the two outcomes are near-indistinguishable instead of
+Tokyo Night versus stock magenta-and-green.
+
+One constraint there — `color.grep.match` must stay a **named** colour.
+Delta locates the matched word by the SGR code git wrapped it in and only
+recognises the default red (31); `bold #f7768e` broke detection in 40 runs out
+of 40, while `bold reverse red` kept it (24/40, better than git's own default
+of 17/40). Named `red` resolves through the terminal palette, which is Tokyo
+Night here, so it lands on `#f7768e` anyway.
+
+### Gotcha: delta cannot render a merge commit
+
+`git show <merge>` gives git's combined `--cc` diff, whose two-column `- `,
+` -` and `++` markers delta does not interpret — they arrive as literal text
+and the lines get no add/remove colour at all. `git showm` (aliased to
+`show --remerge-diff`) asks for an ordinary two-way diff against a fresh
+re-merge of the parents instead: it shows exactly what the merge resolved by
+hand, and delta paints it normally. `log.diffMerges` does not reach
+`git show`, which is why this is an alias rather than a default.
+
 ### Local deviation: the cursor
 
 The cursor is **`#ff5000`** (a hot orange) everywhere — kitty, wezterm, Neovim,
