@@ -435,6 +435,40 @@ def _check_delta_options(verbose):
     return problems
 
 
+def _check_ripgrep_config(verbose):
+    """Let ripgrep parse its own config, since it is strict about colours.
+
+    ripgrep validates a --colors flag and names what it did not like, which
+    makes it the same kind of oracle delta is above. It only does so on a real
+    search, not on --version, so this runs one against /dev/null.
+
+    tmux and fzf are deliberately not checked the same way: tmux accepts a
+    config containing an unknown option without a word, and CI's fzf predates
+    --style=minimal, so a strict check there would fail on the runner rather
+    than on the config.
+    """
+    import shutil
+    import subprocess
+
+    if shutil.which("rg") is None:
+        if verbose:
+            print("  ripgrep not installed, its config not parsed")
+        return []
+
+    env = dict(os.environ)
+    env["RIPGREP_CONFIG_PATH"] = os.path.join(REPO, "common/.ripgreprc")
+    try:
+        out = subprocess.run(["rg", "--color=always", "x", os.devnull],
+                             capture_output=True, text=True, timeout=15, env=env)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return ["could not run ripgrep: %s" % exc]
+    if out.stderr.strip():
+        return ["ripgrep rejects its own config: %s" % out.stderr.strip()]
+    if verbose:
+        print("  ripgrep parses common/.ripgreprc")
+    return []
+
+
 def _check_ls_colors(lf_entries):
     """Compare the LS_COLORS theme.sh exports against lf's own table."""
     import subprocess
@@ -549,6 +583,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_ls_colors(lf_entries))
     problems.extend(_check_shell_parity(verbose))
     problems.extend(_check_delta_options(verbose))
+    problems.extend(_check_ripgrep_config(verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")
