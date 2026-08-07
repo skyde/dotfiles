@@ -69,8 +69,10 @@ map("n", "<leader>E", function()
   if path == "" then
     path = vim.fn.getcwd()
   end
+  -- explorer.exe wants "/select,<path>" as a single argument; handed the flag
+  -- and the path separately it ignores both and opens the default folder.
   local opener = vim.fn.has("mac") == 1 and { "open", "-R", path }
-    or vim.fn.has("win32") == 1 and { "explorer", "/select,", path }
+    or vim.fn.has("win32") == 1 and { "explorer", "/select," .. path }
     or { "xdg-open", vim.fn.fnamemodify(path, ":h") }
   vim.system(opener)
 end, { desc = "Reveal in file manager" })
