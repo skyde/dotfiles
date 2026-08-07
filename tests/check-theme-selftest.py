@@ -46,6 +46,7 @@ GIT = "common/.config/git/config"
 TMUX = "common/.tmux.conf"
 RGRC = "common/.ripgreprc"
 BTOP = "common/.config/btop/themes/tokyo-night.theme"
+STARSHIP = "common/.config/starship.toml"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
 FF = "common/.local/bin/ff"
 PSPROFILE = "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
@@ -126,6 +127,16 @@ MUTATIONS = [
     ("shell colours that break in zsh but not bash", "parity", THEME_SH,
      r"\$\{_tn_yellow\}:so=", "$_tn_yellow:so=",
      "does not source cleanly", "zsh"),
+
+    # starship reports this to a log file rather than to stderr, so the check
+    # has to go and read it. An earlier version watched stderr, and with that
+    # one this mutation passed -- the config was broken and the checker said
+    # nothing. Worth keeping the mutation on a key inside a module: it is the
+    # shape a real typo takes, and it is the one that fooled the first
+    # attempt.
+    ("a starship key starship does not know", "parity", STARSHIP,
+     r"\[hostname\]\n", "[hostname]\nnot_a_key = 1\n",
+     "Unknown key", "starship"),
 
     ("a delta option that does not exist", "parity", GIT,
      r'blame-separator-style = "#3b4261"',

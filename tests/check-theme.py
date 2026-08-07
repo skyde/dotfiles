@@ -689,6 +689,61 @@ def _check_yazi_configs(verbose):
     return problems
 
 
+def _check_starship_config(verbose):
+    """Let starship read its own config and report what it did not understand.
+
+    starship warns rather than fails on a key it does not recognise, so a
+    typo'd module or option sits there doing nothing and the prompt quietly
+    lacks a piece.
+
+    The warnings do not go to stderr, which is the trap: starship appends them
+    to a session log under $STARSHIP_CACHE and carries on. Watching stderr
+    finds them only occasionally -- an earlier version of this check did, and
+    it passed a config with a misspelled section in it. Note the cache
+    variable is starship's own, not XDG_CACHE_HOME; pointing the latter
+    somewhere empty produces no log at all and a check that always passes. So
+    this points STARSHIP_CACHE at an empty directory, runs starship once, and
+    reads the log it leaves behind. That is deterministic, and it catches all three shapes:
+    an unknown top-level section, a misspelled section header, and a bad key
+    inside a module starship knows.
+    """
+    import shutil
+    import subprocess
+    import tempfile
+
+    if shutil.which("starship") is None:
+        if verbose:
+            print("  starship not installed, its config not read")
+        return []
+
+    with tempfile.TemporaryDirectory() as cache:
+        env = dict(os.environ,
+                   STARSHIP_CONFIG=os.path.join(REPO, STARSHIP),
+                   STARSHIP_CACHE=cache,
+                   STARSHIP_SESSION_KEY="themecheck",
+                   # Render the modules that only appear on a remote host, so
+                   # a mistake in those is seen rather than skipped.
+                   SSH_CONNECTION="1.2.3.4 22 5.6.7.8 22")
+        try:
+            subprocess.run(["starship", "explain"], capture_output=True,
+                           text=True, timeout=30, env=env,
+                           stdin=subprocess.DEVNULL)
+        except (OSError, subprocess.SubprocessError) as exc:
+            return ["could not run starship: %s" % exc]
+
+        problems = []
+        for name in sorted(os.listdir(cache)):
+            for line in open(os.path.join(cache, name),
+                             encoding="utf-8", errors="replace"):
+                clean = re.sub(r"\x1b\[[0-9;]*m", "", line).strip()
+                if clean:
+                    problems.append("starship: %s" % clean)
+
+    if verbose and not problems:
+        print("  starship reads common/.config/starship.toml without complaint")
+    return problems
+
+
 def _check_ripgrep_config(verbose):
     """Let ripgrep parse its own config, since it is strict about colours.
 
@@ -844,6 +899,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_delta_options(verbose))
     problems.extend(_check_ripgrep_config(verbose))
     problems.extend(_check_yazi_configs(verbose))
+    problems.extend(_check_starship_config(verbose))
     problems.extend(_check_nvim_delta_parity(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))

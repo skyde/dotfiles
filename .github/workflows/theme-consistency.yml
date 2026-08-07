@@ -83,6 +83,11 @@ jobs:
             echo "yazi unavailable; its config check will skip"
           fi
 
+      - name: Install starship
+        run: |
+          curl -fsSL https://starship.rs/install.sh | sh -s -- -y -b /usr/local/bin \
+            || echo "starship unavailable; its config check will skip"
+
       - name: Check the theme
         run: tests/check-theme.py --verbose
 
