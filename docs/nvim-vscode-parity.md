@@ -248,10 +248,13 @@ runner. This is why the neotest keys are re-declared in
 | `<leader>dc` `<leader>dp` `<leader>dS` `<leader>dR` | continue / pause / stop / restart |
 | `<leader>dg` `<leader>dL` | set next statement / log point |
 | `<leader>dw` `<leader>dx` | watch expression / REPL |
+| `<leader>dr` `<leader>dl` `<leader>du` | REPL / run last / toggle the debugger UI |
 | `<leader>Tr` `<leader>Tf` `<leader>Ta` `<leader>TR` | run nearest / file / all / last |
 | `<leader>Td` `<leader>To` `<leader>Te` `<leader>TS` | debug nearest / output / explorer / stop |
+| `<leader>TO` `<leader>Tw` | output panel / watch the current file |
 | `<leader>mb` `<leader>mB` `<leader>mT` `<leader>mt` `<leader>mc` | build / pick build / run task / re-run / terminate |
 | `<leader>mr` `<leader>mR` `<leader>ms` | start debugging / pick config / stop |
+| `<leader>mp` | break at cursor — run to it, starting a session first if none is running |
 
 Tasks come from `.vscode/tasks.json` via Overseer and launch configs from
 `.vscode/launch.json` via nvim-dap, so a repo set up for VS Code works
@@ -263,13 +266,17 @@ unchanged.
 | --- | --- |
 | `<leader>uw` `<leader>uz` `<leader>uc` `<leader>uh` | wrap / zen / whitespace / inlay hints |
 | `<leader>up` `<leader>um` `<leader>ur` | font bigger / smaller / reset (Neovide, or kitty with remote control on) |
-| `<leader>uk` | key-press debugging |
+| `<leader>uk` | key-press debugging — prints each key by name (`<S-F3>`), which is how the footpedal keys get diagnosed |
 | `<leader>p` | command palette |
 | `<leader>e` | Yazi |
 | `<leader>E` | reveal in Finder/Explorer |
 | `<leader>fe` | file tree, revealing the current file |
 | `<leader>fl` | copy the path of the current file |
 | `<BS>n`, `<leader>ft` | terminal |
+| `<leader>v` | block visual mode, since `<C-v>` is paste on Windows terminals |
+| `<leader>rr` | reload the config and `:Lazy sync` |
+| `<leader>bn` `<leader>bh` `<leader>bl` | new tab / move it left / move it right |
+| `<leader>0` | last tab (`<leader>1`–`<leader>9` pick one by number) |
 
 ## Deliberate differences
 
@@ -290,13 +297,18 @@ unchanged.
 
 ## Tests
 
+Everything below runs in CI on every push that touches the config
+(`.github/workflows/neovim.yml`), on Linux and macOS against the current Neovim
+release, plus an advisory run against nightly.
+
 ```bash
 tests/run-nvim-specs.sh
 ```
 
-Three specs, no plugins needed, each self-contained:
+The specs. Plugin-free and hermetic — no network, no `~/.local/share/nvim`, no
+system clipboard; each builds what it needs in a tempdir:
 
-* `nvim_vcs_spec.lua` — the backends, against throwaway git and jj
+* `nvim_vcs_spec.lua` — the backends, against throwaway git, jj and Mercurial
   repositories: renames, paths with spaces and non-ASCII characters, deleted and
   untracked files, an empty repository, detached HEAD. Perforce runs against a
   stub `p4` binary that speaks the real `-ztag` protocol, which is how that
@@ -306,18 +318,40 @@ Three specs, no plugins needed, each self-contained:
   conflicts spanning the whole file, unlabelled markers, and near-miss text
   (C++ templates full of angle brackets) that must *not* parse as a marker.
 * `nvim_vcs_ui_spec.lua` — window layout, which buffer lands in which pane,
-  scrubbing, the inline toggle, the diff-tab lifecycle, and the degenerate cases
-  (no changes, no repository).
+  scrubbing, the inline toggle, the diff-tab lifecycle, an edited preview
+  earning its place in the buffer list, and the degenerate cases (no changes,
+  no repository).
+* `nvim_inline_diff_spec.lua` — the editable overlay: extmark placement at the
+  awkward spots, hunk navigation, revert for every hunk shape.
+* `nvim_chromium_spec.lua` — compdb freshness, build-dir selection and the
+  bundled-clangd flow, against a stubbed checkout.
+* `nvim_health_spec.lua` — `:checkhealth dotfiles` against a PATH built per
+  case: nothing installed, git with and without a TUI, SSH with and without the
+  OSC clipboard helpers.
+* `nvim_text_spec.lua` — the `vim.diff` → `vim.text.diff` shim, and a sweep of
+  the whole Lua tree for APIs Neovim has already deprecated.
+* `nvim_ripgrep_spec.lua` — the Neovim-filetype → ripgrep-type translation
+  behind `<leader>st`, including its alias table against a real `rg`.
+* `nvim_clipboard_spec.lua` — yank and paste round-trips through a fake tmux
+  and the OSC 52 helpers.
 
 ```bash
-tests/check-nvim-keymaps.sh
+tests/check-nvim-keymaps.sh      # needs the plugins installed
+tests/check-nvim-syntax-roles.sh # also needs the tree-sitter parsers
+tests/check-nvim-types.sh        # needs lua-language-server
+python3 tests/check-footpedal-keys.py
 ```
 
-Invokes every binding against the real config inside a throwaway repository.
-Callback maps must not raise even with no language server and no debug session
-attached — degrading with a message is fine, throwing is not.
-
-Neither is wired into CI; they are run by hand, like `nvim_clipboard_spec.lua`.
+The checks that need the config as actually assembled. `check-nvim-keymaps.sh`
+invokes every binding inside a throwaway repository — callback maps must not
+raise even with no language server and no debug session attached, since
+degrading with a message is fine and throwing is not — and asserts that every
+`<leader>` key in the tables above is really mapped, so this document cannot
+promise a binding that does not exist. `check-nvim-syntax-roles.sh` checks C++
+and Python colour the same construct the same way. `check-nvim-types.sh` runs
+lua-language-server over the config and must report zero problems.
+`check-footpedal-keys.py` drives Shift+Fn through a real terminal into a real
+Neovim.
 
 ## Backend notes
 

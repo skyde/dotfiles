@@ -213,9 +213,13 @@ local function check_documented_keys()
     return
   end
 
-  -- Keys the document spells differently from Neovim, or that live somewhere
-  -- nvim_get_keymap cannot see them.
-  local ALIASES = { ["<leader>Backspace"] = "<leader><BS>" }
+  -- One key, three spellings: the document says Backspace, the dap spec writes
+  -- <backspace>, and nvim_get_keymap reports <BS>. Normalize all of them onto
+  -- the last, so neither direction of this check reads them as different keys.
+  local ALIASES = {
+    ["<leader>Backspace"] = "<leader><BS>",
+    ["<leader><backspace>"] = "<leader><BS>",
+  }
   -- LazyVim registers these on LspAttach with a `has` capability guard, so they
   -- exist only in a buffer with a language server attached — which this harness
   -- deliberately does not have.
@@ -254,6 +258,42 @@ local function check_documented_keys()
   table.insert(results, ("parity doc: %d documented keys"):format(total))
   for _, key in ipairs(missing) do
     table.insert(errors, ("%s is in docs/nvim-vscode-parity.md but mapped nowhere"):format(key))
+  end
+
+  -- The other direction: a binding this config adds and never documents is the
+  -- same drift seen from the other side, and the likelier one — the document is
+  -- edited deliberately, a keymap gets added in passing.
+  --
+  -- Read from the source rather than from nvim_get_keymap, because that reports
+  -- LazyVim's ~100 defaults too and this is only about the keys this config
+  -- introduces. Only config/ and plugins/ — util/ and dotfiles/ mention keys in
+  -- user-facing messages, not as bindings.
+  local repo = vim.fn.fnamemodify(vim.env.NVIM_KEYMAP_REPO or ".", ":p")
+  local undocumented = {}
+  for _, dir in ipairs({ "config", "plugins" }) do
+    local path = repo .. "common/.config/nvim/lua/" .. dir
+    for name, kind in vim.fs.dir(path) do
+      if kind == "file" and name:match("%.lua$") then
+        local lnum = 0
+        for line in io.lines(path .. "/" .. name) do
+          lnum = lnum + 1
+          -- A which-key group label declares a prefix, not a binding.
+          if not line:find("group%s*=") then
+            for key in line:gmatch('"(<leader>[^"%s]*)"') do
+              -- A bare "<leader>" is a prefix being concatenated (the tab-number
+              -- loop), not a key in its own right.
+              if key ~= "<leader>" and not documented[ALIASES[key] or key] then
+                table.insert(undocumented, ("%s (%s/%s:%d)"):format(key, dir, name, lnum))
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  table.sort(undocumented)
+  for _, entry in ipairs(undocumented) do
+    table.insert(errors, ("%s is mapped but absent from docs/nvim-vscode-parity.md"):format(entry))
   end
 end
 
