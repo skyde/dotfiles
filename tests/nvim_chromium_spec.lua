@@ -201,6 +201,114 @@ eq(
 eq("picker: regenerates against the choice", 4, #generate_log())
 
 --------------------------------------------------------------------------
+-- bundled clangd: .gclient editing
+--------------------------------------------------------------------------
+
+-- A second checkout, without a bundled clangd, managed by a .gclient.
+local root2 = temp .. "/chrome2/src"
+write(root2 .. "/tools/clang/scripts/generate_compdb.py", "pass\n")
+eq("gclient: nil without a .gclient", nil, chromium.gclient_path(root2))
+
+local gclient_file = temp .. "/chrome2/.gclient"
+local function gclient_text()
+  return table.concat(vim.fn.readfile(gclient_file), "\n")
+end
+local STOCK_GCLIENT = table.concat({
+  "solutions = [",
+  "  {",
+  '    "name": "src",',
+  '    "url": "https://chromium.googlesource.com/chromium/src.git",',
+  '    "custom_deps": {},',
+  '    "custom_vars": {},',
+  "  },",
+  "]",
+}, "\n") .. "\n"
+
+write(gclient_file, STOCK_GCLIENT)
+eq("gclient: found next to src", gclient_file, chromium.gclient_path(root2))
+
+eq("gclient: empty custom_vars gains the var", "edited", (chromium.enable_checkout_clangd_var(root2)))
+check("gclient: the var is written", gclient_text():find('"checkout_clangd": True', 1, true) ~= nil)
+eq("gclient: enabling twice is a no-op", "already", (chromium.enable_checkout_clangd_var(root2)))
+
+write(gclient_file, STOCK_GCLIENT:gsub('"custom_vars": {}', '"custom_vars": { "checkout_clangd": False }'))
+eq("gclient: an explicit False is flipped", "edited", (chromium.enable_checkout_clangd_var(root2)))
+check("gclient: flipped to True", gclient_text():find('"checkout_clangd": True', 1, true) ~= nil)
+
+write(gclient_file, STOCK_GCLIENT:gsub('%s*"custom_vars": {},', ""))
+eq("gclient: a solution without custom_vars gains one", "edited", (chromium.enable_checkout_clangd_var(root2)))
+check("gclient: custom_vars added with the var", gclient_text():find('"checkout_clangd": True', 1, true) ~= nil)
+
+write(gclient_file, "# nothing gclient-shaped here\n")
+local state, err = chromium.enable_checkout_clangd_var(root2)
+eq("gclient: an unrecognizable file is refused", nil, state)
+check("gclient: the refusal says what to do", type(err) == "string" and err:find("by hand") ~= nil)
+
+--------------------------------------------------------------------------
+-- bundled clangd: the offer and the sync
+--------------------------------------------------------------------------
+
+-- A stub gclient on PATH: logs its argv and cwd, then drops the bundled
+-- clangd where a real sync would.
+local stub_bin = temp .. "/bin"
+write(
+  stub_bin .. "/gclient",
+  table.concat({
+    "#!/bin/sh",
+    "pwd >> gclient.log",
+    'echo "$@" >> gclient.log',
+    "mkdir -p src/third_party/llvm-build/Release+Asserts/bin",
+    "printf '#!/bin/sh\\n' > src/third_party/llvm-build/Release+Asserts/bin/clangd",
+    "chmod +x src/third_party/llvm-build/Release+Asserts/bin/clangd",
+  }, "\n") .. "\n"
+)
+assert(vim.uv.fs_chmod(stub_bin .. "/gclient", 493))
+vim.env.PATH = stub_bin .. ":" .. vim.env.PATH
+
+write(gclient_file, STOCK_GCLIENT)
+local prompts = 0
+vim.ui.select = function(items, _, cb) ---@diagnostic disable-line: duplicate-set-field
+  prompts = prompts + 1
+  cb(items[1], 1) -- take the offer
+end
+
+chromium.offer_bundled_clangd(root2)
+vim.wait(1000, function()
+  return prompts > 0
+end)
+eq("offer: missing bundled clangd prompts", 1, prompts)
+settle()
+eq(
+  "offer: accepting runs gclient sync at the gclient root",
+  { temp .. "/chrome2", "sync" },
+  vim.fn.readfile(temp .. "/chrome2/gclient.log")
+)
+check("offer: the var was written first", gclient_text():find('"checkout_clangd": True', 1, true) ~= nil)
+eq(
+  "offer: the bundled clangd is used afterwards",
+  root2 .. "/third_party/llvm-build/Release+Asserts/bin/clangd",
+  chromium.clangd_path(root2)
+)
+
+chromium.offer_bundled_clangd(root2)
+vim.wait(100)
+eq("offer: asked once per root per session", 1, prompts)
+
+--------------------------------------------------------------------------
+-- config module: catches up buffers opened before it loads
+--------------------------------------------------------------------------
+
+-- config/chromium.lua is pulled in on VeryLazy, after the FileType event
+-- for buffers named on the command line (`nvim foo.cc`) has fired — its
+-- autocmd alone would miss them. Loading the module must check them.
+vim.fn.delete(root .. "/compile_commands.json")
+vim.bo.filetype = "cpp" -- FileType fires here, before the autocmd exists
+require("config.chromium")
+settle()
+eq("config: loading catches up already-open C++ buffers", 5, #generate_log())
+check("config: the compdb exists afterwards", vim.uv.fs_stat(root .. "/compile_commands.json") ~= nil)
+
+--------------------------------------------------------------------------
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 if failed > 0 then

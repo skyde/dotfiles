@@ -28,6 +28,7 @@ local M = {}
 
 local MARKER = "tools/clang/scripts/generate_compdb.py"
 local CURRENT_LINK = "out/current_link"
+local BUNDLED = "third_party/llvm-build/Release+Asserts/bin/clangd"
 
 --------------------------------------------------------------------------
 -- checkout discovery
@@ -76,7 +77,7 @@ end
 ---@return string
 function M.clangd_path(root)
   if root then
-    local bundled = root .. "/third_party/llvm-build/Release+Asserts/bin/clangd"
+    local bundled = root .. "/" .. BUNDLED
     if vim.fn.executable(bundled) == 1 then
       return bundled
     end
@@ -211,6 +212,13 @@ end
 local inflight = {} ---@type table<string, true>
 local on_idle = {} ---@type fun()[]  test hook: callbacks when a run finishes
 
+local function flush_idle()
+  for _, fn in ipairs(on_idle) do
+    fn()
+  end
+  on_idle = {}
+end
+
 ---Regenerate compile_commands.json for the checkout containing the current
 ---buffer (or opts.root), asynchronously, then restart clangd so it re-reads
 ---the database. One run per root at a time; opts.force regenerates even
@@ -260,10 +268,7 @@ function M.generate(opts)
         local err = vim.trim(res.stderr or "")
         vim.notify("generate_compdb.py failed: " .. err:sub(-400), vim.log.levels.ERROR)
       end
-      for _, fn in ipairs(on_idle) do
-        fn()
-      end
-      on_idle = {}
+      flush_idle()
     end)
   end)
 end
@@ -302,6 +307,143 @@ function M.restart_clangd()
       end
     end, 500)
   end
+end
+
+--------------------------------------------------------------------------
+-- the bundled clangd
+--------------------------------------------------------------------------
+-- clangd itself is a gclient-managed GCS dep, gated on the checkout_clangd
+-- custom var (DEPS conditions it; gclient runhooks does NOT fetch GCS deps,
+-- only gclient sync does). When the binary is missing, offer to flip the
+-- var in .gclient and sync — the manual step //docs/clangd.md describes,
+-- automated.
+
+---The .gclient governing `root` — gclient's own convention: the file lives
+---in the directory that contains src/. Nil when there is none (tarball or
+---otherwise unmanaged checkouts).
+---@param root string
+---@return string|nil
+function M.gclient_path(root)
+  local path = vim.fn.fnamemodify(root, ":h") .. "/.gclient"
+  return vim.uv.fs_stat(path) and path or nil
+end
+
+---Make sure .gclient's custom_vars carry `"checkout_clangd": True`. The
+---file is Python that people hand-edit, so the changes are minimal textual
+---insertions; anything unrecognizable is refused rather than mangled.
+---@param root string
+---@return "already"|"edited"|nil state, string? err
+function M.enable_checkout_clangd_var(root)
+  local path = M.gclient_path(root)
+  if not path then
+    return nil, ("no .gclient next to %s"):format(root)
+  end
+  local fd = io.open(path, "rb")
+  if not fd then
+    return nil, "could not read " .. path
+  end
+  local text = fd:read("*a")
+  fd:close()
+  if text:find("['\"]checkout_clangd['\"]%s*:%s*True") then
+    return "already"
+  end
+  -- An explicit False is flipped; otherwise the var is inserted into
+  -- custom_vars; a solution with no custom_vars at all gains one.
+  local edited, n = text:gsub("(['\"]checkout_clangd['\"]%s*:%s*)False", "%1True", 1)
+  if n == 0 then
+    edited, n = text:gsub("(['\"]custom_vars['\"]%s*:%s*{)", '%1\n      "checkout_clangd": True,', 1)
+  end
+  if n == 0 then
+    edited, n = text:gsub("(solutions%s*=%s*%[%s*{)", '%1\n    "custom_vars": { "checkout_clangd": True },', 1)
+  end
+  if n == 0 then
+    return nil, ("did not recognize %s; add \"checkout_clangd\": True to custom_vars by hand"):format(path)
+  end
+  local out = io.open(path, "wb")
+  if not out then
+    return nil, "could not write " .. path
+  end
+  out:write(edited)
+  out:close()
+  return "edited"
+end
+
+---Set checkout_clangd in .gclient and `gclient sync` (asynchronously) so
+---the bundled clangd lands, then reconfigure and restart clangd to use it.
+---:ChromiumClangd runs this on demand.
+---@param root string|nil  defaults to the checkout of the current buffer
+function M.install_bundled_clangd(root)
+  root = root or M.src_root(vim.api.nvim_buf_get_name(0))
+  if not root then
+    vim.notify("Not inside a Chromium checkout", vim.log.levels.WARN)
+    return
+  end
+  local state, err = M.enable_checkout_clangd_var(root)
+  if not state then
+    vim.notify(err .. "\nThen run: gclient sync", vim.log.levels.ERROR)
+    return
+  end
+  if state == "edited" then
+    vim.notify(('"checkout_clangd": True added to %s'):format(M.gclient_path(root)), vim.log.levels.INFO)
+  end
+  if vim.fn.executable("gclient") == 0 then
+    vim.notify("gclient is not on PATH; run `gclient sync` yourself to fetch the bundled clangd", vim.log.levels.WARN)
+    return
+  end
+  local key = root .. "#sync"
+  if inflight[key] then
+    return
+  end
+  inflight[key] = true
+  vim.notify("Fetching the bundled clangd (gclient sync)… this can take a while", vim.log.levels.INFO)
+  vim.system({ "gclient", "sync" }, { cwd = vim.fn.fnamemodify(root, ":h") }, function(res)
+    vim.schedule(function()
+      inflight[key] = nil
+      if res.code ~= 0 then
+        local tail = vim.trim(res.stderr or "")
+        vim.notify("gclient sync failed: " .. tail:sub(-400), vim.log.levels.ERROR)
+      elseif vim.fn.executable(root .. "/" .. BUNDLED) == 1 then
+        vim.notify("Bundled clangd installed; restarting clangd to use it", vim.log.levels.INFO)
+        M.refit_clangd(root)
+      else
+        vim.notify("gclient sync finished but the bundled clangd did not appear; check .gclient", vim.log.levels.WARN)
+      end
+      flush_idle()
+    end)
+  end)
+end
+
+local offered = {} ---@type table<string, true>
+
+---Bundled clangd missing inside a checkout: say so once per root per
+---session and offer the fix. PATH clangd mostly works, but it can misparse
+---the tip-of-tree flags in the compile commands — silently, which is worse.
+---@param root string
+function M.offer_bundled_clangd(root)
+  if offered[root] or M.clangd_path(root) ~= "clangd" then
+    return
+  end
+  offered[root] = true
+  -- Scheduled: this fires from FileType autocmds (possibly during startup
+  -- catch-up), and a modal prompt does not belong in the middle of that.
+  vim.schedule(function()
+    if not M.gclient_path(root) then
+      vim.notify(
+        "Chromium's bundled clangd is missing and there is no .gclient to enable it in; using PATH clangd (it may misparse tip-of-tree flags)",
+        vim.log.levels.WARN
+      )
+      return
+    end
+    vim.ui.select({ "Install it (set checkout_clangd in .gclient, gclient sync)", "Not now" }, {
+      prompt = "Chromium's bundled clangd is missing — PATH clangd may misparse tip-of-tree flags. Install it?",
+    }, function(_, idx)
+      if idx == 1 then
+        M.install_bundled_clangd(root)
+      elseif idx == 2 then
+        vim.notify("Using PATH clangd for now; :ChromiumClangd installs the bundled one later", vim.log.levels.INFO)
+      end
+    end)
+  end)
 end
 
 --------------------------------------------------------------------------
@@ -354,6 +496,14 @@ function M.ensure_clangd(root)
   end
   vim.lsp.config("clangd", { cmd = want })
   M.restart_clangd()
+end
+
+---Forget the per-root tuning and re-run ensure_clangd — used when the
+---bundled clangd appears mid-session, so the new binary actually attaches.
+---@param root string
+function M.refit_clangd(root)
+  tuned[root] = nil
+  M.ensure_clangd(root)
 end
 
 return M
