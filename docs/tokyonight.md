@@ -306,6 +306,18 @@ tests/check-theme.py --verbose  # and what passed
 tests/check-theme.py swatch     # render the theme instead of checking it
 ```
 
+And, if you change the checker itself:
+
+```bash
+tests/check-theme-selftest.py   # break one thing at a time, 13 times over
+```
+
+It copies the working tree, makes one specific thing wrong in it, and requires
+the checker to fail *and* to say why in recognisable words — plus direct
+assertions on the parts no config mutation can reach, like the contrast maths
+and the fill floor. A checker that never fails is indistinguishable from one
+that is broken.
+
 `swatch` prints every colour in this document and every pair the contrast table
 knows about, using real escape sequences. Passing checks prove the numbers are
 right, which is not the same as the theme being right — and it is also the

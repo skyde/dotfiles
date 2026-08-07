@@ -69,3 +69,9 @@ jobs:
 
       - name: Check the theme
         run: tests/check-theme.py --verbose
+
+      # A checker that never fails is indistinguishable from a checker that is
+      # broken. This breaks one specific thing in a copy of the tree, thirteen
+      # times over, and requires the checker to notice each one and say why.
+      - name: Check the checker
+        run: tests/check-theme-selftest.py --verbose
