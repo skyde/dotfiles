@@ -83,6 +83,13 @@ local function build_git_repo()
   write(root .. "/src/main.c", "int main(void) { return 0; }\n")
   write(root .. "/src/old name.c", "// a path with a space\n")
   write(root .. "/src/ünïcode.c", "// a path with non-ascii\n")
+  -- git C-quotes a path containing a double quote or a backslash no matter what
+  -- core.quotepath says — that option only governs non-ASCII bytes — so this is
+  -- the case that forces the listing to be read from `-z` output. Parsed from
+  -- tab-separated lines it arrived as the literal text `"src/quote\"d.c"`,
+  -- which matches nothing on disk: no base content, no diff, nothing to open.
+  write(root .. '/src/quote"d.c', "// a path with a quote\n")
+  write(root .. "/src/back\\slash.c", "// a path with a backslash\n")
   write(root .. "/doomed.txt", "delete me\n")
   write(root .. "/deep/a/b/c/nested.txt", "nested\n")
   write(root .. "/renamed-from.txt", string.rep("stable content line\n", 20))
@@ -101,6 +108,8 @@ local function build_git_repo()
   -- Uncommitted changes of every kind.
   write(root .. "/src/ünïcode.c", "// a path with non-ascii\n// edited\n")
   write(root .. "/src/old name.c", "// a path with a space\n// edited\n")
+  write(root .. '/src/quote"d.c', "// a path with a quote\n// edited\n")
+  write(root .. "/src/back\\slash.c", "// a path with a backslash\n// edited\n")
   vim.fn.delete(root .. "/doomed.txt")
   write(root .. "/added-staged.txt", "staged add\n")
   git(root, "add", "added-staged.txt")
@@ -134,6 +143,8 @@ do
   local working = status_map(b.changed(root, b.rev(root, "working")))
   eq("git: modified unicode path", "M", working["src/ünïcode.c"])
   eq("git: modified path with a space", "M", working["src/old name.c"])
+  eq("git: path with a double quote is not left C-quoted", "M", working['src/quote"d.c'])
+  eq("git: path with a backslash is not left C-quoted", "M", working["src/back\\slash.c"])
   eq("git: deleted file", "D", working["doomed.txt"])
   eq("git: staged add", "A", working["added-staged.txt"])
   eq("git: untracked file", "?", working["untracked.txt"])
@@ -172,6 +183,15 @@ do
     "git: show handles a non-ascii path",
     { "// a path with non-ascii" },
     b.show(root, b.rev(root, "branch"), "src/ünïcode.c")
+  )
+  eq(
+    "git: show handles a path with a double quote",
+    { "// a path with a quote" },
+    b.show(root, b.rev(root, "branch"), 'src/quote"d.c')
+  )
+  truthy(
+    "git: raw_diff finds a path with a double quote",
+    #b.raw_diff(root, b.rev(root, "branch"), 'src/quote"d.c', nil) > 0
   )
   eq("git: show of an unknown path is nil", nil, b.show(root, "HEAD", "does/not/exist.c"))
   eq("git: show of a not-yet-committed file is nil", nil, b.show(root, b.rev(root, "branch"), "untracked.txt"))
@@ -467,6 +487,25 @@ if vim.fn.executable("hg") == 1 then
   eq("hg: show returns base content", { "one" }, b.show(detected, ".", "a.txt"))
   truthy("hg: raw_diff produces a patch", #b.raw_diff(detected, ".", nil) > 0)
   truthy("hg: log returns revisions", #b.log(detected, "a.txt") >= 1)
+
+  -- Mercurial's letters are not git's, and the UI speaks git's. `R` is hg for
+  -- "removed" and used to reach the panel as-is, where `R` means *renamed* —
+  -- so every deleted file rendered as a rename. `!` is a file deleted without
+  -- telling hg; it never matched the parser at all, nor did `?`.
+  write(root .. "/removed.txt", "bye\n")
+  write(root .. "/vanished.txt", "poof\n")
+  run({ "hg", "add", "removed.txt", "vanished.txt" }, root)
+  run({ "hg", "--config", "ui.username=Test <t@example.com>", "commit", "-m", "second" }, root)
+  run({ "hg", "remove", "removed.txt" }, root)
+  vim.fn.delete(root .. "/vanished.txt")
+  write(root .. "/staged.txt", "fresh\n")
+  run({ "hg", "add", "staged.txt" }, root)
+
+  local states = status_map(b.changed(detected, b.rev(detected, "working")))
+  eq("hg: `hg remove` reads as deleted, not renamed", "D", states["removed.txt"])
+  eq("hg: a file deleted behind hg's back reads as deleted", "D", states["vanished.txt"])
+  eq("hg: added", "A", states["staged.txt"])
+  eq("hg: untracked still listed alongside them", "?", states["b.txt"])
 else
   print("SKIP hg backend (hg not installed)")
 end

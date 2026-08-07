@@ -122,6 +122,26 @@ local function lines(s)
   return out
 end
 
+---Split NUL-delimited output (`git ... -z`) into fields.
+---
+---`-z` is the only spelling of git's path-listing commands that is
+---unambiguous. Without it git C-quotes any path containing a double quote, a
+---backslash or a control character, and `core.quotepath=false` does not help:
+---it only stops the escaping of non-ASCII bytes. The quoted form was being
+---taken literally, so a file named `quote"inside.txt` reached the UI as
+---`"quote\"inside.txt"` — a name that matches nothing on disk, shows no diff
+---and cannot be opened.
+local function nul_fields(s)
+  if not s or s == "" then
+    return {}
+  end
+  local out = vim.split(s, "\0", { plain = true })
+  while #out > 0 and out[#out] == "" do
+    table.remove(out)
+  end
+  return out
+end
+
 ---First line of output, trimmed. nil when the command failed or said nothing.
 ---@param res table|nil
 local function one(res)
@@ -210,26 +230,35 @@ end
 function git.changed(root, rev)
   local out = {}
   local seen = {}
-  local res = sh({ "git", "-c", "core.quotepath=false", "diff", "--name-status", "--find-renames", rev }, root)
+  local res = sh({ "git", "diff", "--name-status", "--find-renames", "-z", rev }, root)
   if res and res.code == 0 then
-    for _, line in ipairs(lines(res.stdout)) do
-      local status, path = line:match("^(%a)%d*\t(.+)$")
-      if status then
-        -- Renames arrive as "R100\told\tnew". The new path is what we can
-        -- open; the old one is what the base content has to be fetched as,
-        -- otherwise a rename diffs as a wholly added file.
-        local old, new = path:match("^(.-)\t(.+)$")
-        path = new or path
-        if not seen[path] then
-          seen[path] = true
-          table.insert(out, { path = path, status = status, orig = old })
-        end
+    -- -z lays the output out as status, NUL, path, NUL — and for renames and
+    -- copies as status, NUL, old, NUL, new, NUL. See nul_fields for why it is
+    -- worth reading in that shape rather than splitting tab-separated lines.
+    local fields = nul_fields(res.stdout)
+    local i = 1
+    while i <= #fields do
+      local status = fields[i]:sub(1, 1)
+      local old, path
+      if status == "R" or status == "C" then
+        -- The new path is what we can open; the old one is what the base
+        -- content has to be fetched as, otherwise a rename diffs as a wholly
+        -- added file.
+        old, path = fields[i + 1], fields[i + 2]
+        i = i + 3
+      else
+        path = fields[i + 1]
+        i = i + 2
+      end
+      if path and path ~= "" and status:match("%a") and not seen[path] then
+        seen[path] = true
+        table.insert(out, { path = path, status = status, orig = old })
       end
     end
   end
-  local untracked = sh({ "git", "-c", "core.quotepath=false", "ls-files", "--others", "--exclude-standard" }, root)
+  local untracked = sh({ "git", "ls-files", "--others", "--exclude-standard", "-z" }, root)
   if untracked and untracked.code == 0 then
-    for _, path in ipairs(lines(untracked.stdout)) do
+    for _, path in ipairs(nul_fields(untracked.stdout)) do
       if not seen[path] then
         seen[path] = true
         table.insert(out, { path = path, status = "?" })
@@ -579,14 +608,27 @@ function hg.rev(root, scope)
   return one(sh({ "hg", "log", "-r", ref, "--template", "{node}" }, root)) or ref
 end
 
+---Mercurial's status letters are not git's, and the UI speaks git's.
+---
+---`R` is hg for "removed", which is what git calls `D`; leaving it as `R` made
+---every deleted file render as a *rename* in the panel, icon, colour and all.
+---`!` is a file deleted without telling hg, which is the same thing as far as a
+---diff is concerned. `C` (clean) and `I` (ignored) are not changes.
+---
+---The old pattern matched `^(%a)` — a letter — so `?` and `!` could never match
+---it and the `status == "?"` branch it guarded was unreachable. Untracked files
+---simply never appeared under hg, though the git backend lists them.
+local hg_status = { M = "M", A = "A", R = "D", ["!"] = "D", ["?"] = "?" }
+
 function hg.changed(root, rev)
   local res = sh({ "hg", "status", "--rev", rev }, root)
   local out = {}
   if res and res.code == 0 then
     for _, line in ipairs(lines(res.stdout)) do
-      local status, path = line:match("^(%a)%s+(.+)$")
-      if status then
-        table.insert(out, { path = path, status = status == "?" and "?" or status:upper() })
+      local status, path = line:match("^(%S)%s+(.+)$")
+      local mapped = status and hg_status[status]
+      if mapped and path then
+        table.insert(out, { path = path, status = mapped })
       end
     end
   end
