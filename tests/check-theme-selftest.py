@@ -77,9 +77,18 @@ MUTATIONS = [
      "titlebar disagrees", None),
 
     ("a file colour that differs between lf and yazi", "parity", YAZI,
-     r'\{ name = "\*\.zip", fg = "#f7768e" \}',
-     '{ name = "*.zip", fg = "#9ece6a" }',
+     r'\{ url = "\*\.zip", fg = "#f7768e" \}',
+     '{ url = "*.zip", fg = "#9ece6a" }',
      "in lf but", None),
+
+    # The one that cost the most to find by hand. Yazi tolerates an unknown
+    # *style* key silently, but an unknown *rule* key is fatal: it refuses the
+    # whole file and falls back to its presets, so a single stale `name = `
+    # cost the entire theme while every colour in the file still looked right.
+    ("a yazi rule key yazi no longer accepts", "parity", YAZI,
+     r'\{ url = "\*\.tar", fg = "#f7768e" \}',
+     '{ name = "*.tar", fg = "#f7768e" }',
+     "rejects one of its configs", "yazi"),
 
     ("a file colour that differs between lf and the shell", "parity", LF_COLORS,
      r"\*\.lock\s+38;2;115;122;162", "*.lock  38;2;115;122;150",

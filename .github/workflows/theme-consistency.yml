@@ -67,6 +67,22 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends git-delta
           || echo "git-delta unavailable; delta option check will skip"
 
+      # yazi is the only tool here that can be asked whether it *accepted* its
+      # config rather than merely parsed as TOML, and it is the one where the
+      # answer has been "no" for three files at once. Not fatal if the download
+      # fails -- the check skips itself when yazi is missing.
+      - name: Install yazi
+        run: |
+          set -o pipefail
+          url=https://github.com/sxyazi/yazi/releases/latest/download/yazi-x86_64-unknown-linux-gnu.zip
+          if curl -fsSL -o /tmp/yazi.zip "$url"; then
+            unzip -qo /tmp/yazi.zip -d /tmp/yazi
+            sudo install -m755 /tmp/yazi/*/yazi /usr/local/bin/yazi
+            yazi --version
+          else
+            echo "yazi unavailable; its config check will skip"
+          fi
+
       - name: Check the theme
         run: tests/check-theme.py --verbose
 

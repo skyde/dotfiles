@@ -153,6 +153,42 @@ file **interactively**, or it sees an empty file and checks nothing.
 `tests/check-theme.py` uses `zsh -fic` and `bash --norc -ic`, and filters the
 job-control warnings bash emits when forced interactive without a terminal.
 
+### Gotcha: an unknown yazi *rule* key is fatal
+
+This one is worth reading before the next one, because the two are opposites
+and the difference is expensive.
+
+An unknown **style** key (`hovered`, `content`, `on`) is ignored in silence —
+that is the next section. An unknown **rule** key is not: yazi refuses the
+entire file and falls back to its presets. So one stale key in one filetype
+rule does not cost you that rule, it costs you the whole theme, while every
+colour in the file still reads as perfectly correct.
+
+That is exactly what had happened here. Yazi v25.12.29 renamed `name` to `url`
+"for open, fetchers, spotters, preloaders, previewers, filetype, and `globs`
+icon rules" (#3034), which meant:
+
+- every `{ name = "*.zip", … }` in `theme.toml` → **the whole theme rejected**
+- the previewer rules in `yazi.toml` → **the whole config rejected**, so
+  `bat-preview` never ran and the ratios, sort and preview settings were the
+  stock ones
+- and separately, `"$schema"` at the top of `keymap.toml` is now refused as not
+  kebab-cased → **the whole keymap rejected**
+
+Three files, all silently on presets. Mime patterns moved too: yazi matches
+them against a scheme-prefixed string now, so `image/*` matches nothing and
+needs to be `**/image/*` — its own presets carry that prefix, and one of them
+matches `vfs/{absent,stale}`.
+
+The lesson is that yazi's configs must be *loaded*, not merely read. When yazi
+is installed, `tests/check-theme.py parity` does exactly that:
+
+```bash
+YAZI_CONFIG_HOME=common/.config/yazi yazi --debug
+```
+
+which prints each config with a character count, or the reason it was refused.
+
 ### Gotcha: yazi ignores unknown keys
 
 Yazi validates colour *values* but silently ignores unknown section and key

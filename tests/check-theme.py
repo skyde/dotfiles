@@ -637,6 +637,58 @@ def _check_command_lines(verbose):
     return problems
 
 
+def _check_yazi_configs(verbose):
+    """Have yazi load our yazi configs and say whether it accepted them.
+
+    This is the check that would have saved the most time. Yazi tolerates an
+    unknown *style* key silently -- that is the gotcha the palette doc has
+    always warned about -- but an unknown *rule* key is fatal: it refuses the
+    entire file and falls back to its presets. So a single stale `name = ` in
+    the filetype rules did not cost the filetype colours, it cost the whole
+    theme, quietly, while every colour in the file still looked perfectly
+    correct to a reader and to every check here.
+
+    `yazi --debug` reports what it managed to load, which makes it the oracle:
+    each config either appears with a character count or with the reason it was
+    rejected.
+    """
+    import shutil
+    import subprocess
+
+    yazi = shutil.which("yazi")
+    if yazi is None:
+        if verbose:
+            print("  yazi not installed, its configs not loaded")
+        return []
+
+    config_dir = os.path.join(REPO, "common/.config/yazi")
+    env = dict(os.environ, YAZI_CONFIG_HOME=config_dir)
+    try:
+        out = subprocess.run([yazi, "--debug"], capture_output=True, text=True,
+                             timeout=60, env=env, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return ["could not run yazi --debug: %s" % exc]
+    text = out.stdout + out.stderr
+
+    problems = []
+    if "parse error" in text:
+        detail = " ".join(line.strip() for line in text.splitlines()
+                          if line.strip())[:300]
+        problems.append("yazi rejects one of its configs: %s" % detail)
+    for bad in re.findall(r"invalid color[^\n]*", text):
+        problems.append("yazi: %s" % bad.strip())
+
+    # Each config has to actually be loaded, not merely not-complained-about.
+    for label in ("Yazi", "Keymap", "Theme"):
+        m = re.search(r"^\s+%s\s+: (.+)$" % label, text, re.M)
+        if m and "chars" not in m.group(1):
+            problems.append("yazi did not load its %s config: %s"
+                            % (label.lower(), m.group(1).strip()))
+    if verbose and not problems:
+        print("  yazi loads its yazi, keymap and theme configs")
+    return problems
+
+
 def _check_ripgrep_config(verbose):
     """Let ripgrep parse its own config, since it is strict about colours.
 
@@ -791,6 +843,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_shell_parity(verbose))
     problems.extend(_check_delta_options(verbose))
     problems.extend(_check_ripgrep_config(verbose))
+    problems.extend(_check_yazi_configs(verbose))
     problems.extend(_check_nvim_delta_parity(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))
@@ -799,8 +852,11 @@ def check_parity(doc, verbose):
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")
     with open(yazi_path, encoding="utf-8") as fh:
         for line in fh:
-            m = re.search(r'name\s*=\s*"(\*\.\w+)"\s*,\s*fg\s*=\s*"(#[0-9a-fA-F]{6})"',
-                          line)
+            # `url` since yazi v25.12.29; `name` before it. Both accepted here
+            # so the check keeps working either side of that rename rather
+            # than reporting all 53 extensions as missing.
+            m = re.search(r'(?:url|name)\s*=\s*"(\*\.\w+)"\s*,'
+                          r'\s*fg\s*=\s*"(#[0-9a-fA-F]{6})"', line)
             if m:
                 yazi_map[m.group(1)] = norm(m.group(2))
 
