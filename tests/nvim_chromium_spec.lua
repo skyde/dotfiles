@@ -201,6 +201,20 @@ eq(
 eq("picker: regenerates against the choice", 4, #generate_log())
 
 --------------------------------------------------------------------------
+-- config module: catches up buffers opened before it loads
+--------------------------------------------------------------------------
+
+-- config/chromium.lua is pulled in on VeryLazy, after the FileType event
+-- for buffers named on the command line (`nvim foo.cc`) has fired — its
+-- autocmd alone would miss them. Loading the module must check them.
+vim.fn.delete(root .. "/compile_commands.json")
+vim.bo.filetype = "cpp" -- FileType fires here, before the autocmd exists
+require("config.chromium")
+settle()
+eq("config: loading catches up already-open C++ buffers", 5, #generate_log())
+check("config: the compdb exists afterwards", vim.uv.fs_stat(root .. "/compile_commands.json") ~= nil)
+
+--------------------------------------------------------------------------
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 if failed > 0 then
