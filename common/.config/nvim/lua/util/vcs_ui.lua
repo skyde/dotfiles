@@ -88,8 +88,10 @@ local base_cache = {} ---@type table<string, string[]>
 local base_count = 0
 
 -- The base cache is a speed tool, not a database: past the point where it
--- could matter in memory, starting over beats managing it.
-local BASE_CACHE_MAX = 512
+-- could matter in memory, starting over beats managing it. Big enough that a
+-- whole prefetch sweep (half this, see PREFETCH_MAX_FILES) fits with room to
+-- spare for the files the render path fetches on demand.
+local BASE_CACHE_MAX = 1024
 
 -- Generation counters orphan background work that outlived its usefulness: a
 -- revalidation from a previous open, a prefetch for a replaced listing, a
@@ -1027,13 +1029,83 @@ local function show(focus, opts)
   render_file(file, focus)
 end
 
----Warm the base cache for the listed files in the background, starting from
----the cursor and wrapping, so scrubbing lands on content that is already
----there. One coroutine, one subprocess at a time: gentle on a loaded server,
----and the UI never waits on any of it. A file the cursor reaches first is
----fetched by the render path instead; whoever gets there first fills the
----cache for both.
-local PREFETCH_MAX = 256
+---Warm the base cache for the listed files in the background, so a diff is
+---already in hand by the time the selection reaches it. One coroutine, one
+---subprocess at a time: gentle on a loaded server, and the UI never waits on
+---any of it.
+---
+---The sweep is steered rather than scheduled. Every iteration re-reads where
+---the cursor is and takes the nearest file that still has no base, so moving
+---the selection re-aims the prefetch at the neighbourhood being read instead
+---of working through an order fixed when the view opened — and it stands
+---aside while an interactive render holds a subprocess, since the file being
+---looked at is always worth more than the one being guessed at. Between those
+---two it keeps going until the listing is covered or the budget runs out.
+---
+---A file the cursor reaches first is fetched by the render path instead;
+---whoever gets there first fills the cache for both.
+
+-- What one sweep may pull in. The file count stays well inside the cache's
+-- capacity: filling it to eviction would wipe the base of the file being
+-- looked at (the policy above is deliberately crude) and the sweep would
+-- start over. The byte budget is the real backstop — a changelist of
+-- generated, vendored or minified files must not quietly eat hundreds of
+-- megabytes just because it is short enough to fit the count.
+local PREFETCH_MAX_FILES = math.floor(BASE_CACHE_MAX / 2)
+local PREFETCH_MAX_BYTES = 32 * 1024 * 1024
+-- How long to stand aside for a render in flight before looking again, and
+-- how many times running before pressing on regardless.
+local PREFETCH_YIELD_MS = 60
+local PREFETCH_YIELD_MAX = 50
+
+---Roughly how much memory a cached base occupies.
+local function content_bytes(lines)
+  local n = 0
+  for _, l in ipairs(lines or {}) do
+    n = n + #l + 1
+  end
+  return n
+end
+
+---Suspend the running prefetch coroutine for `ms`. Lets it wait out an
+---interactive render without blocking the loop it runs on — the same trick
+---vcs.async plays for subprocesses, on a timer instead.
+local function nap(ms)
+  local co = coroutine.running()
+  if not co then
+    return
+  end
+  vim.defer_fn(function()
+    local ok, err = coroutine.resume(co)
+    if not ok then
+      vim.notify("vcs prefetch: " .. tostring(err), vim.log.levels.ERROR)
+    end
+  end, ms)
+  coroutine.yield()
+end
+
+---The next file worth fetching: the nearest one to the cursor — forward,
+---then wrapping — that this sweep has not handled yet. Re-derived per fetch,
+---which is what makes the sweep follow the selection around.
+local function next_prefetch(done)
+  local files, at = {}, 1
+  local here = row_at_cursor()
+  for _, row in ipairs(state.rows) do
+    if row.kind == "file" then
+      files[#files + 1] = row.file
+      if row == here then
+        at = #files
+      end
+    end
+  end
+  for i = 0, #files - 1 do
+    local file = files[((at - 1 + i) % #files) + 1]
+    if not done[file] then
+      return file
+    end
+  end
+  return nil
+end
 
 local function prefetch_bases()
   prefetch_gen = prefetch_gen + 1
@@ -1043,28 +1115,6 @@ local function prefetch_bases()
   end
   local gen = prefetch_gen
   local backend, root, rev = state.backend, state.root, state.rev
-
-  local in_view = {}
-  local from = 1
-  local at = row_at_cursor()
-  for _, row in ipairs(state.rows) do
-    if row.kind == "file" then
-      table.insert(in_view, row.file)
-      if row == at then
-        from = #in_view
-      end
-    end
-  end
-  local ordered = {}
-  for i = from, math.min(#in_view, from + PREFETCH_MAX - 1) do
-    table.insert(ordered, in_view[i])
-  end
-  for i = 1, from - 1 do
-    if #ordered >= PREFETCH_MAX then
-      break
-    end
-    table.insert(ordered, in_view[i])
-  end
 
   prefetch_busy = true
   vcs.async(function()
@@ -1076,21 +1126,53 @@ local function prefetch_bases()
           stats_dirty = 0
         end
       end
-      for _, file in ipairs(ordered) do
-        if gen ~= prefetch_gen then
+      -- Files this sweep has already looked at, so one the render path filled
+      -- in is passed over rather than reconsidered on every pick.
+      local done = {}
+      local fetched, bytes = 0, 0
+      while fetched < PREFETCH_MAX_FILES and bytes < PREFETCH_MAX_BYTES do
+        if gen ~= prefetch_gen or not valid() then
           return
         end
+        -- Stand aside for a render: it is fetching what the user is actually
+        -- waiting on. Show what the sweep has learned so far while waiting.
+        -- Bounded, so a render that never reports back stalls the sweep for a
+        -- moment rather than retiring it.
+        for _ = 1, PREFETCH_YIELD_MAX do
+          if render_busy == 0 then
+            break
+          end
+          paint()
+          nap(PREFETCH_YIELD_MS)
+          if gen ~= prefetch_gen or not valid() then
+            return
+          end
+        end
+        local file = next_prefetch(done)
+        if not file then
+          break
+        end
+        done[file] = true
         local base = {}
         if has_base(file) then
           local base_path = file.orig or file.path
           local file_rev = file.rev or rev
           local key = base_key(root, file_rev, base_path)
           if not base_cache[key] then
+            local epoch = base_epoch
             local content = backend.show(root, file_rev, base_path)
             if gen ~= prefetch_gen then
               return
             end
+            -- A drop_bases while the subprocess ran means this content
+            -- describes a revision the view no longer believes in; the sweep
+            -- that replaces this one will re-ask.
+            if epoch ~= base_epoch then
+              return
+            end
             store_base(key, content or {})
+            fetched = fetched + 1
+            bytes = bytes + content_bytes(content)
           end
           base = base_cache[key] or {}
         end

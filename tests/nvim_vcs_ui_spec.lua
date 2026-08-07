@@ -1538,6 +1538,98 @@ do
 end
 
 --------------------------------------------------------------------------
+-- prefetch: the whole listing is warmed, nearest the cursor first
+--------------------------------------------------------------------------
+
+-- Opening the view preloads every file's base in the background, so a diff is
+-- already in hand by the time the selection reaches it. The sweep is steered:
+-- it re-reads the cursor between fetches and takes the nearest file that still
+-- has no base, so moving the selection re-aims it instead of finishing an
+-- order fixed at open time.
+
+do
+  local many = vim.fn.resolve(temp .. "/many")
+  vim.fn.mkdir(many, "p")
+  git(many, "init", "-q", "-b", "main")
+  local N = 40
+  for i = 1, N do
+    write(many .. ("/f%03d.txt"):format(i), ("orig %d\n"):format(i) .. string.rep("pad\n", 10))
+  end
+  git(many, "add", "-A")
+  git(many, "commit", "-qm", "init")
+  for i = 1, N do
+    write(many .. ("/f%03d.txt"):format(i), ("CHANGED %d\n"):format(i) .. string.rep("pad\n", 10))
+  end
+  vim.cmd("cd " .. vim.fn.fnameescape(many))
+  vcs.clear_cache()
+
+  -- Record what the backend is asked for, and in which order.
+  local backend = select(1, vcs.detect())
+  local real_show = backend.show
+  local order = {}
+  backend.show = function(r, rev, path)
+    order[#order + 1] = path
+    return real_show(r, rev, path)
+  end
+
+  ui.open({ scope = "working" })
+  -- Re-aim at file 30 straight away: open() returns with at most the first
+  -- fetch away, so an unsteered sweep would not reach f030 for 30 more.
+  local panel = layout()[1]
+  vim.api.nvim_set_current_win(panel)
+  vim.api.nvim_win_set_cursor(panel, { 4 + 29, 0 })
+  vim.wait(30000, function()
+    return not ui.busy()
+  end)
+  backend.show = real_show
+
+  local seen, dupes = {}, 0
+  for _, p in ipairs(order) do
+    if seen[p] then
+      dupes = dupes + 1
+    end
+    seen[p] = true
+  end
+  eq("prefetch: every listed file is warmed", N, vim.tbl_count(seen))
+  eq("prefetch: and none of them twice", 0, dupes)
+
+  local at30
+  for i, p in ipairs(order) do
+    if p == "f030.txt" and not at30 then
+      at30 = i
+    end
+  end
+  check(
+    "prefetch: re-aims at the cursor rather than finishing its original order",
+    at30 ~= nil and at30 <= 8,
+    "f030 fetched at position " .. tostring(at30) .. " of " .. #order
+  )
+
+  -- Every row ends up carrying its churn, which is the visible proof that the
+  -- whole listing was preloaded rather than just the part scrubbed past.
+  local panel_buf = vim.api.nvim_win_get_buf(panel)
+  local ns_ui = vim.api.nvim_create_namespace("vcs_ui")
+  local with_stats = 0
+  for _, m in ipairs(vim.api.nvim_buf_get_extmarks(panel_buf, ns_ui, 0, -1, { details = true })) do
+    local d = m[4]
+    if d.virt_text and d.virt_text_pos == "right_align" then
+      for _, chunk in ipairs(d.virt_text) do
+        if chunk[1]:find("^%+%d") then
+          with_stats = with_stats + 1
+          break
+        end
+      end
+    end
+  end
+  eq("prefetch: every row shows its churn", N, with_stats)
+  check("prefetch: the header totals the listing", panel_lines()[2]:find("+%d+ %-%d+") ~= nil, panel_lines()[2])
+
+  ui.close()
+  vim.cmd("cd " .. vim.fn.fnameescape(root))
+  vcs.clear_cache()
+end
+
+--------------------------------------------------------------------------
 -- degenerate cases
 --------------------------------------------------------------------------
 
