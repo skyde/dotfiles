@@ -142,6 +142,7 @@ local keys = {
   "gh",
   -- palette, files, search
   " p",
+  " e", -- the file-manager chain: yazi, else mini.files, else nvim-tree
   " E",
   " sb",
   " sr",

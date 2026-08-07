@@ -199,7 +199,12 @@ map("v", "<Tab>", ">gv", { desc = "Indent selection" })
 map("v", "<S-Tab>", "<gv", { desc = "Unindent selection" })
 
 vim.keymap.set({ "n", "v" }, "<leader>e", function()
-  if vim.fn.exists(":Yazi") == 2 then
+  -- The binary, not just the command: lazy.nvim registers a stub `:Yazi` for
+  -- the plugin's `cmd` entry at startup, so `exists(":Yazi")` answers yes on a
+  -- machine that has never had yazi installed — and the fallback below, which
+  -- is the whole point of this mapping, could never be reached. Instead
+  -- <leader>e opened nothing and printed "Please install yazi".
+  if vim.fn.executable("yazi") == 1 and vim.fn.exists(":Yazi") == 2 then
     vim.cmd("Yazi")
   else
     local ok, mini = pcall(require, "mini.files")
