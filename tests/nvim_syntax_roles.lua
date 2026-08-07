@@ -65,9 +65,7 @@ local function colour_of(buf, row, col)
   for _, e in ipairs(items.treesitter or {}) do
     -- inspect_pos reports the group at the top level; older versions nest it
     -- under `opts`.
-    local g = (e.opts and (e.opts.hl_group_link or e.opts.hl_group))
-      or e.hl_group_link
-      or e.hl_group
+    local g = (e.opts and (e.opts.hl_group_link or e.opts.hl_group)) or e.hl_group_link or e.hl_group
     local md = e.metadata or {}
     local pri = tonumber(md.priority) or 100
     if g then

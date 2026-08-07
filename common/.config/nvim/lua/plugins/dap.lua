@@ -131,7 +131,7 @@ return {
         if ok_pkg and codelldb:is_installed() then
           local ext = codelldb:get_install_path()
           local codelldb_path = ext .. "/extension/adapter/codelldb"
-          local sysname = vim.loop.os_uname().sysname
+          local sysname = vim.uv.os_uname().sysname
           local liblldb_ext = "so"
           if sysname:find("Windows") then
             codelldb_path = codelldb_path .. ".exe"
@@ -141,18 +141,40 @@ return {
           end
           local liblldb_path = ext .. "/extension/lldb/lib/liblldb." .. liblldb_ext
           dap.adapters.codelldb = function(cb, _)
-            local stdout = vim.loop.new_pipe(false)
-            local stderr = vim.loop.new_pipe(false)
-            local handle
-            local port = 0
-            handle, _ = vim.loop.spawn(codelldb_path, {
+            local stdout = assert(vim.uv.new_pipe(false))
+            local stderr = assert(vim.uv.new_pipe(false))
+            local handle, spawn_err
+            -- Port 0 asks the OS for a free one; codelldb prints which it got,
+            -- and that line is what completes the adapter below.
+            handle, spawn_err = vim.uv.spawn(codelldb_path, {
               stdio = { nil, stdout, stderr },
-              args = { "--liblldb", liblldb_path, "--port", tostring(port) },
+              args = { "--liblldb", liblldb_path, "--port", "0" },
             }, function()
+              -- Every handle this adapter opened, closed exactly once — the
+              -- exit callback is the only place that can know the process is
+              -- done with them.
+              if not stdout:is_closing() then
+                stdout:close()
+              end
+              if not stderr:is_closing() then
+                stderr:close()
+              end
+              if handle and not handle:is_closing() then
+                handle:close()
+              end
+            end)
+            if not handle then
+              -- Without this the pipes would sit open and `cb` would never be
+              -- called, so the session hangs on "Starting debug adapter" with
+              -- nothing said about why.
               stdout:close()
               stderr:close()
-              handle:close()
-            end)
+              vim.notify(
+                ("codelldb failed to start (%s): %s"):format(codelldb_path, spawn_err or "unknown error"),
+                vim.log.levels.ERROR
+              )
+              return
+            end
             stdout:read_start(function(err, chunk)
               assert(not err, err)
               if chunk then

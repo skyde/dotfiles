@@ -33,6 +33,7 @@
 
 local vcs = require("util.vcs")
 local inline_diff = require("util.inline_diff")
+local text = require("util.text")
 
 local M = {}
 
@@ -255,7 +256,7 @@ local STATS_MAX_LINES = 20000
 
 ---Line counts for a file — the "+12 -3" of a diff --stat — from its cached
 ---base against the loaded buffer (which may be ahead of disk) or the disk
----content. Pure arithmetic over vim.diff; never shells out. Nil for files
+---content. Pure arithmetic over the diff; never shells out. Nil for files
 ---too large to be worth it.
 ---@param root string
 ---@param file VcsFile
@@ -285,7 +286,7 @@ local function file_stats(root, file, base)
   local a = #base > 0 and (table.concat(base, "\n") .. "\n") or ""
   local b = #lines > 0 and (table.concat(lines, "\n") .. "\n") or ""
   local add, del = 0, 0
-  for _, h in ipairs(vim.diff(a, b, { result_type = "indices" }) or {}) do
+  for _, h in ipairs(text.hunks(a, b)) do
     del = del + h[2]
     add = add + h[4]
   end
@@ -2326,17 +2327,16 @@ function M.change_position()
   if not other then
     return nil
   end
-  local function text(win)
+  local function win_text(win)
     local lines = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, -1, false)
     return table.concat(lines, "\n") .. "\n"
   end
   -- Match the settings native diff mode is using, or the count disagrees with
   -- where ]c actually stops.
-  local hunks = vim.diff(text(other), text(cur), {
-    result_type = "indices",
+  local hunks = text.hunks(win_text(other), win_text(cur), {
     algorithm = vim.o.diffopt:match("algorithm:(%w+)") or "myers",
     indent_heuristic = vim.o.diffopt:find("indent%-heuristic") ~= nil,
-  }) or {}
+  })
   local row = vim.api.nvim_win_get_cursor(0)[1]
   local line_count = vim.api.nvim_buf_line_count(0)
   local index = 0

@@ -129,8 +129,11 @@ local keys = {
   " ci",
   " cz",
   " cv",
-  " ce",
   " cI",
+  -- Code actions are on <leader>ca, which LazyVim registers buffer-locally on
+  -- LspAttach with `has = "codeAction"`. Nothing here attaches a language
+  -- server, so there is no such buffer to invoke it in and this harness cannot
+  -- cover it; the key itself is LazyVim's own default, not config of ours.
   "]c",
   "[c",
   "]x",
@@ -189,7 +192,7 @@ local ok, err = xpcall(function()
   for _, k in ipairs(keys) do
     invoke(k)
   end
-  for _, k in ipairs({ " cV", " ce" }) do
+  for _, k in ipairs({ " cV" }) do
     invoke(k, "x")
   end
   invoke("ig", "o")

@@ -146,8 +146,16 @@ do
   for _, f in ipairs(b.changed(root, b.rev(root, "working"))) do
     records[f.path] = f
   end
-  eq("git: rename carries the old path", "renamed-from.txt", records["renamed-to.txt"] and records["renamed-to.txt"].orig)
-  eq("git: a plain modification carries no old path", nil, records["src/ünïcode.c"] and records["src/ünïcode.c"].orig)
+  eq(
+    "git: rename carries the old path",
+    "renamed-from.txt",
+    records["renamed-to.txt"] and records["renamed-to.txt"].orig
+  )
+  eq(
+    "git: a plain modification carries no old path",
+    nil,
+    records["src/ünïcode.c"] and records["src/ünïcode.c"].orig
+  )
   local rename_patch = b.raw_diff(root, b.rev(root, "working"), "renamed-to.txt", "renamed-from.txt")
   truthy(
     "git: raw_diff given both paths reports a rename, not delete-plus-add",
@@ -484,9 +492,12 @@ do
     async_base = backend.show(git_root, rev, "src/main.c")
     done = true
   end)
-  check("async: the coroutine completes", vim.wait(4000, function()
-    return done == true
-  end))
+  check(
+    "async: the coroutine completes",
+    vim.wait(4000, function()
+      return done == true
+    end)
+  )
   local backend = vcs.backends.git
   local rev = backend.rev(git_root, "working")
   eq(

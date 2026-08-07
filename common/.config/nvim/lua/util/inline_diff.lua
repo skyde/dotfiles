@@ -16,6 +16,8 @@
 -- tracks typing; the base side is fixed at attach time. Backend-agnostic by
 -- construction: all it needs is the base content as a list of lines.
 
+local text = require("util.text")
+
 local M = {}
 
 local ns = vim.api.nvim_create_namespace("vcs_inline_diff")
@@ -23,7 +25,7 @@ local ns = vim.api.nvim_create_namespace("vcs_inline_diff")
 ---@class InlineDiffState
 ---@field base string[]
 ---@field base_text string
----@field hunks integer[][]  { start_a, count_a, start_b, count_b } as vim.diff returns
+---@field hunks integer[][]  { start_a, count_a, start_b, count_b } as the diff returns
 ---@field keep table<integer, true>|nil  buffer rows that stay visible when unchanged regions collapse
 local states = {} ---@type table<integer, InlineDiffState>
 
@@ -151,7 +153,7 @@ local function token_diff(old, new)
   local function joined(toks)
     return #toks > 0 and (table.concat(toks, "\n") .. "\n") or ""
   end
-  local hunks = vim.diff(joined(old_toks), joined(new_toks), { result_type = "indices" }) or {}
+  local hunks = text.hunks(joined(old_toks), joined(new_toks))
 
   local function span(offs, s, start, count)
     local from = offs[start] or #s
@@ -351,12 +353,11 @@ function M.render(buf)
   -- overlay slices hunks the same way native diff mode would — and linematch
   -- pairs each old line with the new line it actually resembles, which is
   -- what makes the char-level emphasis land on the right partner.
-  st.hunks = vim.diff(st.base_text, buf_text, {
-    result_type = "indices",
+  st.hunks = text.hunks(st.base_text, buf_text, {
     algorithm = "histogram",
     indent_heuristic = true,
     linematch = 60,
-  }) or {}
+  })
 
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
   local old_moved, new_moved = detect_moves(st, lines)

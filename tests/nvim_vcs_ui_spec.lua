@@ -15,6 +15,34 @@ vim.opt.runtimepath:prepend(repo .. "/common/.config/nvim")
 vim.o.columns = 200
 vim.o.lines = 50
 
+-- The copy assertions read back the "+" register, which without a provider is
+-- a black hole: Neovim warns "clipboard: No provider" and hands back an empty
+-- string. A CI container and a headless machine both look like that, so give
+-- the spec a provider of its own rather than letting the result depend on
+-- whether xclip happens to be installed. In-memory, and deliberately not
+-- cached, so what comes back is what the provider was actually handed.
+local clipboard = { lines = { "" }, regtype = "v" }
+vim.g.clipboard = {
+  name = "spec-memory",
+  copy = {
+    ["+"] = function(lines, regtype)
+      clipboard = { lines = lines, regtype = regtype }
+    end,
+    ["*"] = function(lines, regtype)
+      clipboard = { lines = lines, regtype = regtype }
+    end,
+  },
+  paste = {
+    ["+"] = function()
+      return clipboard.lines, clipboard.regtype
+    end,
+    ["*"] = function()
+      return clipboard.lines, clipboard.regtype
+    end,
+  },
+  cache_enabled = 0,
+}
+
 local vcs = require("util.vcs")
 local ui = require("util.vcs_ui")
 
@@ -865,7 +893,10 @@ do
   local wins = layout()
   check(
     "file_diff: relative line numbers in both panes",
-    vim.wo[wins[1]].number and vim.wo[wins[2]].number and vim.wo[wins[1]].relativenumber and vim.wo[wins[2]].relativenumber
+    vim.wo[wins[1]].number
+      and vim.wo[wins[2]].number
+      and vim.wo[wins[1]].relativenumber
+      and vim.wo[wins[2]].relativenumber
   )
   ui.goto_file()
   eq("goto_file from file_diff: closes the ad-hoc tab", tabs, #vim.api.nvim_list_tabpages())
@@ -1047,7 +1078,11 @@ do
     not vim.tbl_contains(panel_lines(), " ?  e_new.txt"),
     vim.inspect(panel_lines())
   )
-  check("cache: the header says it is refreshing", panel_lines()[2]:find("refreshing", 1, true) ~= nil, panel_lines()[2])
+  check(
+    "cache: the header says it is refreshing",
+    panel_lines()[2]:find("refreshing", 1, true) ~= nil,
+    panel_lines()[2]
+  )
   vim.wait(3000, function()
     return not ui.busy()
   end)

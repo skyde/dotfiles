@@ -57,14 +57,11 @@ local root = temp .. "/chromium/src"
 local script = root .. "/tools/clang/scripts/generate_compdb.py"
 -- The stub is invoked the way the real one is (python3, cwd = src root);
 -- it records its arguments and writes an empty database where told to.
-write(
-  script,
-  table.concat({
-    "import sys",
-    'open("generate.log", "a").write(" ".join(sys.argv[1:]) + "\\n")',
-    'open(sys.argv[4], "w").write("[]")',
-  }, "\n") .. "\n"
-)
+write(script, table.concat({
+  "import sys",
+  'open("generate.log", "a").write(" ".join(sys.argv[1:]) + "\\n")',
+  'open(sys.argv[4], "w").write("[]")',
+}, "\n") .. "\n")
 write(root .. "/out/Default/build.ninja", "ninja\n")
 write(root .. "/base/logging.cc", "// c++\n")
 
@@ -251,17 +248,14 @@ check("gclient: the refusal says what to do", type(err) == "string" and err:find
 -- A stub gclient on PATH: logs its argv and cwd, then drops the bundled
 -- clangd where a real sync would.
 local stub_bin = temp .. "/bin"
-write(
-  stub_bin .. "/gclient",
-  table.concat({
-    "#!/bin/sh",
-    "pwd >> gclient.log",
-    'echo "$@" >> gclient.log',
-    "mkdir -p src/third_party/llvm-build/Release+Asserts/bin",
-    "printf '#!/bin/sh\\n' > src/third_party/llvm-build/Release+Asserts/bin/clangd",
-    "chmod +x src/third_party/llvm-build/Release+Asserts/bin/clangd",
-  }, "\n") .. "\n"
-)
+write(stub_bin .. "/gclient", table.concat({
+  "#!/bin/sh",
+  "pwd >> gclient.log",
+  'echo "$@" >> gclient.log',
+  "mkdir -p src/third_party/llvm-build/Release+Asserts/bin",
+  "printf '#!/bin/sh\\n' > src/third_party/llvm-build/Release+Asserts/bin/clangd",
+  "chmod +x src/third_party/llvm-build/Release+Asserts/bin/clangd",
+}, "\n") .. "\n")
 assert(vim.uv.fs_chmod(stub_bin .. "/gclient", 493))
 vim.env.PATH = stub_bin .. ":" .. vim.env.PATH
 

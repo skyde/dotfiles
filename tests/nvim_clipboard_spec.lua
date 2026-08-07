@@ -61,15 +61,15 @@ local function create_fake_tmux(path)
   vim.fn.writefile({
     "#!/usr/bin/env bash",
     "set -euo pipefail",
-    "case \"${1:-}\" in",
-    "  load-buffer) cat >\"${FAKE_CLIPBOARD:?}\" ;;",
+    'case "${1:-}" in',
+    '  load-buffer) cat >"${FAKE_CLIPBOARD:?}" ;;',
     "  save-buffer)",
-    "    [[ \"${FAKE_TMUX_FAIL_SAVE:-0}\" != 1 ]] || exit 1",
-    "    [[ ! -f \"${FAKE_CLIPBOARD:?}\" ]] || cat \"$FAKE_CLIPBOARD\"",
+    '    [[ "${FAKE_TMUX_FAIL_SAVE:-0}" != 1 ]] || exit 1',
+    '    [[ ! -f "${FAKE_CLIPBOARD:?}" ]] || cat "$FAKE_CLIPBOARD"',
     "    ;;",
     "  refresh-client)",
-    "    if [[ -n \"${FAKE_EXTERNAL_CLIPBOARD:-}\" ]]; then",
-    "      cp \"$FAKE_EXTERNAL_CLIPBOARD\" \"$FAKE_CLIPBOARD\"",
+    '    if [[ -n "${FAKE_EXTERNAL_CLIPBOARD:-}" ]]; then',
+    '      cp "$FAKE_EXTERNAL_CLIPBOARD" "$FAKE_CLIPBOARD"',
     "    fi",
     "    ;;",
     "  -V) printf '%s\\n' 'tmux 3.4' ;;",
@@ -133,11 +133,7 @@ local ok, err = xpcall(function()
     local actual = snapshot()
 
     assert_equal(expected, actual, case[1])
-    assert_equal(
-      clipboard_bytes(expected.register, expected.regtype),
-      read_bytes(fake_clipboard),
-      case[1] .. " bytes"
-    )
+    assert_equal(clipboard_bytes(expected.register, expected.regtype), read_bytes(fake_clipboard), case[1] .. " bytes")
     print("PASS " .. case[1])
   end
 
