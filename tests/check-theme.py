@@ -513,6 +513,49 @@ def _check_nvim_delta_parity(verbose):
     return problems
 
 
+# Everywhere the tree shells out to bat. bat chooses 24-bit colour versus the
+# 256-colour cube from COLORTERM, which is not reliably set under tmux, the VS
+# Code terminal, or ssh — so a call site that forgets it does not fail, it
+# quietly renders the same file in approximated colours next to panes showing
+# the real ones. Three of these were doing exactly that.
+BAT_CALL_SITES = [
+    "common/.config/lf/preview.sh",
+    "common/.config/lf/lfrc",
+    "common/.config/shell/theme.sh",
+    "common/.local/bin/ff",
+    "common/.local/bin/st-rg",
+    "common/.local/bin/st-zoekt",
+]
+BAT_INVOCATION = re.compile(r"(?<![\w-])bat\s+--")
+
+
+def _check_bat_truecolor(verbose):
+    problems = []
+    sites = 0
+    for rel in BAT_CALL_SITES:
+        path = os.path.join(REPO, rel)
+        if not os.path.isfile(path):
+            continue
+        lines = open(path, encoding="utf-8").read().splitlines()
+        for i, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if stripped.startswith("#") or not BAT_INVOCATION.search(line):
+                continue
+            sites += 1
+            # On the line itself, or exported earlier in the same file.
+            if "COLORTERM" in line or any("COLORTERM" in earlier
+                                          for earlier in lines[:i - 1]):
+                continue
+            problems.append(
+                "%s:%d runs bat without forcing COLORTERM, so this pane drops "
+                "to 256 colours under tmux, the VS Code terminal or ssh"
+                % (rel, i)
+            )
+    if verbose and not problems:
+        print("  %d bat call sites all force truecolor" % sites)
+    return problems
+
+
 def _check_ripgrep_config(verbose):
     """Let ripgrep parse its own config, since it is strict about colours.
 
@@ -670,6 +713,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_delta_options(verbose))
     problems.extend(_check_ripgrep_config(verbose))
     problems.extend(_check_nvim_delta_parity(verbose))
+    problems.extend(_check_bat_truecolor(verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")

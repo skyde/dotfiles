@@ -14,6 +14,6 @@ fi
 exec fzf \
   --tiebreak=pathname \
   --delimiter : \
-  --preview 'bat --style=numbers --color=always --line-range :500 {}' \
+  --preview 'COLORTERM=truecolor bat --style=numbers --color=always --line-range :500 {}' \
   --preview-window 'right,55%' \
   "${ADDITIONAL_ARGS[@]}"

@@ -79,8 +79,11 @@ map v toggle
 map V toggle
 map a unselect
 map f search
-# Pager for viewing files with syntax highlighting
-map s $bat --paging=always --style=numbers,changes --color=always --decorations=always "$f"
+# Pager for viewing files with syntax highlighting. COLORTERM for the same
+# reason as in preview.sh: without it bat drops to the 256-colour cube under
+# tmux, the VS Code terminal or ssh, and the file reads in different colours
+# depending on where lf happens to be running.
+map s $COLORTERM=truecolor bat --paging=always --style=numbers,changes --color=always --decorations=always "$f"
 # map e nvim -- $fx
 map go cd ~/Documents
 map gd cd ~/Downloads
