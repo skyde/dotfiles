@@ -355,6 +355,14 @@ case "${1:-}" in
     echo "... depotFile //depot/removed.c"
     echo "... rev 3"
     echo "... action delete"
+    echo ""
+    echo "... depotFile //depot/moved-to.c"
+    echo "... rev 1"
+    echo "... action move/add"
+    echo ""
+    echo "... depotFile //depot/moved-from.c"
+    echo "... rev 4"
+    echo "... action move/delete"
     ;;
   where)
     shift
@@ -416,7 +424,11 @@ esac
   eq("p4: edit maps to modified", "M", map["sub/edited.c"])
   eq("p4: add maps to added", "A", map["added.c"])
   eq("p4: delete maps to deleted", "D", map["removed.c"])
-  eq("p4: paths are repo-relative", 3, #files)
+  -- `p4 opened` spells these with a slash. The renamed half is listed under
+  -- its new path; the `move/delete` half would double-count the same rename.
+  eq("p4: move/add maps to renamed", "R", map["moved-to.c"])
+  eq("p4: move/delete is not listed separately", nil, map["moved-from.c"])
+  eq("p4: paths are repo-relative", 4, #files)
   eq("p4: depot path carried through", "//depot/sub/edited.c", files[1] and files[1].depot)
 
   eq(
@@ -456,14 +468,25 @@ if vim.fn.executable("hg") == 1 then
   write(root .. "/a.txt", "one\n")
   run({ "hg", "add", "a.txt" }, root)
   run({ "hg", "--config", "ui.username=Test <t@example.com>", "commit", "-m", "initial" }, root)
+  write(root .. "/gone.txt", "gone\n")
+  write(root .. "/vanished.txt", "vanished\n")
+  run({ "hg", "add", "gone.txt", "vanished.txt" }, root)
+  run({ "hg", "--config", "ui.username=Test <t@example.com>", "commit", "-m", "second" }, root)
   write(root .. "/a.txt", "one\ntwo\n")
   write(root .. "/b.txt", "new\n")
+  run({ "hg", "remove", "gone.txt" }, root)
+  vim.fn.delete(root .. "/vanished.txt")
 
   local b, detected = vcs.detect(root)
   eq("hg: detected", "hg", b and b.name)
   local map = status_map(b.changed(detected, b.rev(detected, "working")))
   eq("hg: modified", "M", map["a.txt"])
   eq("hg: untracked", "?", map["b.txt"])
+  -- Mercurial's R is "removed", not "renamed" — leaving it as R would label a
+  -- deletion as a rename in the panel — and ! is a tracked file missing from
+  -- the working copy, which reads the same way in a diff.
+  eq("hg: removed maps to deleted", "D", map["gone.txt"])
+  eq("hg: missing maps to deleted", "D", map["vanished.txt"])
   eq("hg: show returns base content", { "one" }, b.show(detected, ".", "a.txt"))
   truthy("hg: raw_diff produces a patch", #b.raw_diff(detected, ".", nil) > 0)
   truthy("hg: log returns revisions", #b.log(detected, "a.txt") >= 1)

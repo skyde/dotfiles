@@ -15,6 +15,34 @@ vim.opt.runtimepath:prepend(repo .. "/common/.config/nvim")
 vim.o.columns = 200
 vim.o.lines = 50
 
+-- The "+" register is a real system clipboard, and a headless container has no
+-- provider for it — `setreg("+", …)` then does nothing at all and every
+-- assertion about copied text fails for reasons that have nothing to do with
+-- this config. An in-process provider makes "+" behave like any other register.
+do
+  local board = { lines = { "" }, regtype = "v" }
+  vim.g.clipboard = {
+    name = "spec-fake",
+    copy = {
+      ["+"] = function(lines, regtype)
+        board = { lines = lines, regtype = regtype }
+      end,
+      ["*"] = function(lines, regtype)
+        board = { lines = lines, regtype = regtype }
+      end,
+    },
+    paste = {
+      ["+"] = function()
+        return board.lines, board.regtype
+      end,
+      ["*"] = function()
+        return board.lines, board.regtype
+      end,
+    },
+    cache_enabled = 0,
+  }
+end
+
 local vcs = require("util.vcs")
 local ui = require("util.vcs_ui")
 

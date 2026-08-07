@@ -502,21 +502,32 @@ local function perforce(bin)
       end
     end
 
+    -- `p4 opened` spells the move actions with a slash, not an underscore.
+    -- `move/delete` is the other half of a rename; the pair is already listed
+    -- under its new path, so showing the old one too would double-count it.
+    local ACTIONS = {
+      edit = "M",
+      add = "A",
+      delete = "D",
+      integrate = "M",
+      branch = "A",
+      ["move/add"] = "R",
+    }
+
     local prefix = root:gsub("/*$", "") .. "/"
     local out = {}
     for _, rec in ipairs(opened) do
       local local_path = locals[rec.depotFile]
-      if local_path then
+      local action = rec.action or "edit"
+      if local_path and action ~= "move/delete" then
         local rel = local_path
         if local_path:sub(1, #prefix) == prefix then
           rel = local_path:sub(#prefix + 1)
         end
-        local action = rec.action or "edit"
-        local status = ({ edit = "M", add = "A", delete = "D", integrate = "M", branch = "A", move_add = "R" })[action]
         -- The synced revision per file: "#have" as a base-cache key would keep
         -- meaning the old content after a sync, "#12" cannot.
         local rev = rec.haveRev and rec.haveRev ~= "none" and ("#" .. rec.haveRev) or nil
-        table.insert(out, { path = rel, status = status or "M", depot = rec.depotFile, rev = rev })
+        table.insert(out, { path = rel, status = ACTIONS[action] or "M", depot = rec.depotFile, rev = rev })
       end
     end
     return out
@@ -579,14 +590,24 @@ function hg.rev(root, scope)
   return one(sh({ "hg", "log", "-r", ref, "--template", "{node}" }, root)) or ref
 end
 
+-- `hg status` letters, translated into the shared VcsFile vocabulary. Two of
+-- them would be actively misleading left as-is: Mercurial's R means *removed*
+-- (git's D), and the UI reads R as "renamed"; ! is a tracked file missing from
+-- the working copy, which is a deletion as far as a diff is concerned. C
+-- (clean) and I (ignored) never make it into a changed-file list.
+local HG_STATUS = { M = "M", A = "A", R = "D", ["!"] = "D", ["?"] = "?" }
+
 function hg.changed(root, rev)
   local res = sh({ "hg", "status", "--rev", rev }, root)
   local out = {}
   if res and res.code == 0 then
     for _, line in ipairs(lines(res.stdout)) do
-      local status, path = line:match("^(%a)%s+(.+)$")
+      -- The status column is a single character, and it is not always a
+      -- letter: untracked is "?" and missing is "!".
+      local status, path = line:match("^(%S)%s+(.+)$")
+      status = status and HG_STATUS[status:upper()]
       if status then
-        table.insert(out, { path = path, status = status == "?" and "?" or status:upper() })
+        table.insert(out, { path = path, status = status })
       end
     end
   end

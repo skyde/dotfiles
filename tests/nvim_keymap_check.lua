@@ -129,7 +129,6 @@ local keys = {
   " ci",
   " cz",
   " cv",
-  " ce",
   " cI",
   "]c",
   "[c",
@@ -189,7 +188,9 @@ local ok, err = xpcall(function()
   for _, k in ipairs(keys) do
     invoke(k)
   end
-  for _, k in ipairs({ " cV", " ce" }) do
+  -- Code actions are LazyVim's <leader>ca, which is attached per LSP client
+  -- (`has = "codeAction"`), so there is nothing global to invoke here.
+  for _, k in ipairs({ " cV", " dw", " dx" }) do
     invoke(k, "x")
   end
   invoke("ig", "o")

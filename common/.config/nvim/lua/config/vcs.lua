@@ -222,13 +222,32 @@ map("n", "<leader>cv", function()
     end
   end
 end, { desc = "Revert this change" })
+---The lines a mapping was invoked on, low to high: the visual selection when
+---there is one, the cursor line otherwise. Read from `.` and `v` rather than
+---the `'<` / `'>` marks, which still describe the *previous* selection while
+---the current one is live — so a mapping called from visual mode would revert
+---whatever was selected last time instead of what is highlighted now.
+local function invoked_range()
+  local from, to = vim.fn.line("."), vim.fn.line("v")
+  if from > to then
+    from, to = to, from
+  end
+  return from, to
+end
+
 map({ "n", "x" }, "<leader>cV", function()
+  local from, to = invoked_range()
+  -- Leave visual mode before touching the buffer, so the edit does not land
+  -- under a live selection (and the marks are set for anything downstream).
+  if vim.fn.mode():match("^[vV\22]") then
+    vim.cmd("normal! \27")
+  end
   if vim.wo.diff then
-    vim.cmd([['<,'>diffget]])
+    vim.cmd(("%d,%ddiffget"):format(from, to))
   else
     local ok, gs = pcall(require, "gitsigns")
     if ok then
-      gs.reset_hunk({ vim.fn.line("."), vim.fn.line("v") })
+      gs.reset_hunk({ from, to })
     end
   end
 end, { desc = "Revert selected range" })
