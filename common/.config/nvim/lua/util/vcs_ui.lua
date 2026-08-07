@@ -1983,6 +1983,30 @@ function M.change_position()
   return index, #hunks
 end
 
+---Absolute path of the file the current buffer stands for, when that buffer
+---belongs to a diff and its own name is not a real path: anywhere in the
+---view's tab the selection answers (so the base side of a side-by-side and a
+---deleted-file pane resolve, and a rename resolves to the new path), and a
+---vcs:// scratch from an ad-hoc diff (<leader>gd, history) is parsed back to
+---the file it renders. Nil for ordinary buffers — their own name is already
+---the answer.
+function M.current_path()
+  if valid() and vim.api.nvim_get_current_tabpage() == state.tab then
+    local file = state.shown or current_file()
+    if file then
+      return state.root .. "/" .. file.path
+    end
+  end
+  local path = vim.api.nvim_buf_get_name(0):match("^vcs://[^/]*/(.*)$")
+  if path then
+    local _, root = vcs.detect()
+    if root then
+      return root .. "/" .. path
+    end
+  end
+  return nil
+end
+
 ---From a diff, jump to the real file on disk in the tab you came from.
 function M.goto_file()
   local name = vim.api.nvim_buf_get_name(0)

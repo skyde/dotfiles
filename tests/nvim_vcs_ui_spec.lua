@@ -608,6 +608,30 @@ do
 end
 
 --------------------------------------------------------------------------
+-- current_path
+--------------------------------------------------------------------------
+
+do
+  -- What <leader>fl copies: the real path, from either side of the diff.
+  ui.open({ scope = "working" })
+  vim.api.nvim_win_set_cursor(layout()[1], { 4, 0 })
+  scrub("")
+  vim.api.nvim_set_current_win(layout()[2])
+  eq("current_path: the base pane resolves to the real file", root .. "/a_modified.txt", ui.current_path())
+  vim.api.nvim_set_current_win(layout()[3])
+  eq("current_path: the working pane too", root .. "/a_modified.txt", ui.current_path())
+  ui.close()
+
+  -- An ad-hoc diff's scratch resolves by parsing its vcs:// name.
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+  ui.file_diff("working")
+  vim.cmd("wincmd h")
+  eq("current_path: an ad-hoc base pane resolves too", root .. "/a_modified.txt", ui.current_path())
+  vim.cmd("tabclose")
+  eq("current_path: an ordinary buffer answers nil", nil, ui.current_path())
+end
+
+--------------------------------------------------------------------------
 -- file_diff, patch, copy_patch
 --------------------------------------------------------------------------
 
