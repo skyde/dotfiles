@@ -321,9 +321,13 @@ quietly approximating it.
   and compared byte for byte — `$var:s` is a history modifier in zsh, so text
   that is unremarkable to bash can be a parse error there.
 
-  When `delta` is installed it is also asked whether every key under `[delta]`
-  is an option it actually has. See the note below on why that is not
-  paranoia.
+  It also checks that Neovim's inline diff and delta paint the same diff:
+  `lua/util/inline_diff.lua` maps each of its highlights to a delta style in
+  its own header comment, and this is what holds the two files to it.
+
+  Where a tool can be asked about its own options it is — `delta` and
+  `ripgrep`, when installed. A config section will hold a misspelled key
+  forever without complaining; see the note below on why that is not paranoia.
 - **contrast** — every foreground/background pair clears the floor for the job
   it does, and every focused fill stands off the page behind it. The tiers, and
   why they are not simply WCAG AA, are in the script.

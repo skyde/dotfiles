@@ -17,10 +17,17 @@ comments into something that fails loudly instead.
             either drift or an undocumented deliberate choice; both want
             fixing, one in the config and one in the doc.
 
-  parity    The mirrors actually mirror. kitty, wezterm and the VS Code
-            integrated terminal each carry their own copy of the 16 ANSI
-            slots; lf and yazi each carry their own copy of the per-extension
-            file colours. Nothing but this check couples them.
+  parity    The mirrors actually mirror, and the tools agree they exist.
+            kitty, wezterm and the VS Code integrated terminal each carry
+            their own copy of the 16 ANSI slots and of the window titlebar;
+            lf, yazi and the LS_COLORS the shell exports each carry their own
+            copy of the per-extension file colours; Neovim's inline diff and
+            delta paint the same diff from two different files. theme.sh is
+            sourced in both bash and zsh and the results compared, because
+            `$var:s` means something in one of them and not the other. And
+            where a tool can be asked about its own options -- delta, ripgrep
+            -- it is, since a config section will hold a misspelled key
+            forever without complaining.
 
   contrast  Every foreground/background pair the theme puts on screen clears
             the floor for what that pair is *for* (see TIERS). This is what
@@ -435,6 +442,77 @@ def _check_delta_options(verbose):
     return problems
 
 
+# Neovim's inline diff renders the same thing delta does, and its own header
+# comment says so pair by pair -- "InlineDiffAdd / plus-style", "InlineDiffMovedAdd
+# / map-styles cyan". That table is the promise; this is the part that keeps it.
+# Two files, two languages, no reference between them.
+NVIM_INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
+NVIM_DELTA_PAIRS = [
+    ("InlineDiffAdd", "plus-style"),
+    ("InlineDiffAddDim", "plus-non-emph-style"),
+    ("InlineDiffAddEmph", "plus-emph-style"),
+    ("InlineDiffDelete", "minus-style"),
+    ("InlineDiffDeleteDim", "minus-non-emph-style"),
+    ("InlineDiffDeleteEmph", "minus-emph-style"),
+    ("InlineDiffWsError", "whitespace-error-style"),
+]
+# The two move colours come out of delta's map-styles instead, which is one
+# string holding four remappings.
+NVIM_MAP_STYLE_PAIRS = [
+    ("InlineDiffMovedDelete", "bold purple"),
+    ("InlineDiffMovedAdd", "bold cyan"),
+]
+
+
+def _check_nvim_delta_parity(verbose):
+    nvim_path = os.path.join(REPO, NVIM_INLINE_DIFF)
+    if not os.path.isfile(nvim_path):
+        return []
+    nvim_src = open(nvim_path, encoding="utf-8").read()
+    nvim = {}
+    for name, spec in re.findall(r"(InlineDiff\w+)\s*=\s*\{([^}]*)\}", nvim_src):
+        m = re.search(r'bg\s*=\s*"(#[0-9a-fA-F]{6})"', spec)
+        if m:
+            nvim[name] = norm(m.group(1))
+
+    cfg = open(os.path.join(REPO, GIT), encoding="utf-8").read()
+    section = re.search(r"^\[delta\]\n(.*?)(?=^\[)", cfg, re.M | re.S)
+    delta = {}
+    if section:
+        for key, value in re.findall(r"^\s*([a-z0-9-]+)\s*=\s*(.*)$",
+                                     section.group(1), re.M):
+            found = HEX.findall(value)
+            if found:
+                delta[key] = norm(found[0])
+        maps = re.search(r"^\s*map-styles\s*=\s*(.*)$", section.group(1), re.M)
+        if maps:
+            for src, dst in re.findall(r"([a-z ]+?)\s*=>\s*\w+\s+(#[0-9a-fA-F]{6})",
+                                       maps.group(1)):
+                delta["map:" + src.strip()] = norm(dst)
+
+    problems = []
+    checked = 0
+    for hl, style in NVIM_DELTA_PAIRS + [(h, "map:" + s)
+                                         for h, s in NVIM_MAP_STYLE_PAIRS]:
+        if hl not in nvim or style not in delta:
+            problems.append(
+                "cannot compare %s with delta's %s: one of them is missing"
+                % (hl, style.replace("map:", "map-styles "))
+            )
+            continue
+        checked += 1
+        if nvim[hl] != delta[style]:
+            problems.append(
+                "%s is %s in Neovim but delta's %s is %s -- the same diff, "
+                "two colours" % (hl, nvim[hl],
+                                 style.replace("map:", "map-styles "),
+                                 delta[style])
+            )
+    if verbose and not problems:
+        print("  %d diff colours identical in Neovim and delta" % checked)
+    return problems
+
+
 def _check_ripgrep_config(verbose):
     """Let ripgrep parse its own config, since it is strict about colours.
 
@@ -591,6 +669,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_shell_parity(verbose))
     problems.extend(_check_delta_options(verbose))
     problems.extend(_check_ripgrep_config(verbose))
+    problems.extend(_check_nvim_delta_parity(verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")
