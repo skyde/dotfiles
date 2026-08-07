@@ -401,6 +401,20 @@ do
   check("inline: the buffer is editable", vim.bo[buf].modifiable)
   check("inline: the overlay is attached", inline.has(buf))
   eq("inline: cursor sits on the first change", 2, vim.api.nvim_win_get_cursor(wins[2])[1])
+  -- The default rendering must carry the dimming exemption too, and it has to
+  -- outlive the `:edit` that puts the file there: window-local options are
+  -- kept per buffer shown in a window, so setting it before the edit lands
+  -- would silently be undone.
+  check(
+    "inline: the pane rewires NormalNC to Normal",
+    vim.wo[wins[2]].winhighlight:find("NormalNC:Normal", 1, true) ~= nil,
+    vim.wo[wins[2]].winhighlight
+  )
+  check(
+    "inline: and keeps its muted folds alongside",
+    vim.wo[wins[2]].winhighlight:find("Folded:", 1, true) ~= nil,
+    vim.wo[wins[2]].winhighlight
+  )
 
   local virt, added = overlay(buf)
   eq("inline: the old line is drawn as virtual text", { "two" }, virt)
@@ -1359,6 +1373,301 @@ do
   vim.cmd("tabclose")
   ui.close()
   vim.fn.delete(root .. "/conflicted.txt")
+end
+
+--------------------------------------------------------------------------
+-- adopting navigation: jumps from a diff pane keep the diff rendering
+--------------------------------------------------------------------------
+
+-- A goto-definition, <C-o> or :e from inside a diff pane lands its target in
+-- that pane; the view adopts it. Listed files get their full diff rendering
+-- with the panel selection following; anything else shows plain with the
+-- previous rendering's diff mode scrubbed off. The window is reused, never
+-- rebuilt, so the jumplist keeps working.
+
+---Let a scheduled navigation adoption land.
+local function settle_nav()
+  vim.wait(300, function()
+    return false
+  end)
+end
+
+---Panel line number of the row naming `name`.
+local function row_of(name)
+  for i, l in ipairs(panel_lines()) do
+    if l:find(name, 1, true) then
+      return i
+    end
+  end
+end
+
+do
+  open_settled({ scope = "working" })
+  if #layout() == 2 then
+    ui.toggle_inline() -- these blocks start side-by-side
+  end
+
+  local panel = layout()[1]
+  vim.api.nvim_set_current_win(panel)
+  vim.api.nvim_win_set_cursor(panel, { row_of("a_modified"), 0 })
+  feed("\r")
+  local pane = vim.api.nvim_get_current_win()
+  eq("adopt: starting on the working copy", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+
+  -- The dimming exemption: code panes keep their normal background when
+  -- unfocused (dim_inactive would otherwise darken them through NormalNC),
+  -- while the panel keeps the theme default. It has to survive the `:edit`
+  -- that puts the file in the pane — Neovim keeps window-local options per
+  -- buffer shown in a window, so anything set beforehand is restored away —
+  -- and it has to leave the muted fold colours mapped alongside it.
+  for i = 2, 3 do
+    check(
+      ("no-dim: side-by-side pane %d rewires NormalNC to Normal"):format(i - 1),
+      vim.wo[layout()[i]].winhighlight:find("NormalNC:Normal", 1, true) ~= nil,
+      vim.wo[layout()[i]].winhighlight
+    )
+    check(
+      ("no-dim: side-by-side pane %d keeps its muted folds"):format(i - 1),
+      vim.wo[layout()[i]].winhighlight:find("Folded:", 1, true) ~= nil,
+      vim.wo[layout()[i]].winhighlight
+    )
+  end
+  eq("no-dim: the panel keeps the default dimming", "", vim.wo[panel].winhighlight)
+
+  -- A jump to another listed file: full side-by-side rendering, in place.
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/d_untracked.txt"))
+  settle_nav()
+  eq("adopt: still side-by-side", 3, #layout())
+  eq("adopt: the window is reused, not rebuilt", pane, vim.api.nvim_get_current_win())
+  eq("adopt: the pane holds the jump target", root .. "/d_untracked.txt", vim.api.nvim_buf_get_name(0))
+  check("adopt: both panes are diffs", vim.wo[layout()[2]].diff and vim.wo[layout()[3]].diff)
+  eq("adopt: an untracked base is empty", { "" }, win_lines(layout()[2]))
+  check(
+    "adopt: the panel selection follows",
+    panel_lines()[vim.api.nvim_win_get_cursor(panel)[1]]:find("d_untracked", 1, true) ~= nil,
+    vim.inspect(panel_lines()) .. " cursor " .. vim.api.nvim_win_get_cursor(panel)[1]
+  )
+  eq("adopt: the jump target stays a preview", 0, vim.fn.buflisted(vim.api.nvim_get_current_buf()))
+
+  -- <C-o> walks back: the previous preview is kept for the jumplist (wiping
+  -- it would take its entries along), and the return trip is adopted too.
+  feed("<C-o>")
+  settle_nav()
+  eq("adopt: <C-o> returns to the previous file", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  eq("adopt: the return trip reuses the window too", pane, vim.api.nvim_get_current_win())
+  check("adopt: the return trip is a diff again", vim.wo[layout()[2]].diff)
+  check(
+    "adopt: the panel follows back",
+    panel_lines()[vim.api.nvim_win_get_cursor(panel)[1]]:find("a_modified", 1, true) ~= nil
+  )
+
+  -- Two jumps can share a tick — `<C-o><C-o>` arrives as one chunk of
+  -- typeahead, which Neovim drains ahead of scheduled callbacks. Adoption
+  -- must land on where the pane actually ended up, not on the buffer the
+  -- first event named (which would find the pane holding the second and
+  -- bail, leaving the navigation unadopted entirely).
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/d_untracked.txt"))
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/c_renamed.txt"))
+  settle_nav()
+  eq("adopt burst: the pane holds the last jump", root .. "/c_renamed.txt", vim.api.nvim_buf_get_name(0))
+  eq("adopt burst: it is rendered, not left bare", 3, #layout())
+  check("adopt burst: both panes are diffs", vim.wo[layout()[2]].diff and vim.wo[layout()[3]].diff)
+  check(
+    "adopt burst: the panel selection follows the last jump",
+    panel_lines()[vim.api.nvim_win_get_cursor(panel)[1]]:find("c_renamed", 1, true) ~= nil,
+    vim.inspect(panel_lines()) .. " cursor " .. vim.api.nvim_win_get_cursor(panel)[1]
+  )
+
+  -- An unchanged file has an empty diff: it shows plain, with the stale base
+  -- pane and diff mode cleaned away. (Earlier sections left this file open
+  -- and listed; drop that so the jump is what opens it.)
+  local pre = vim.fn.bufnr(root .. "/committed_on_branch.txt")
+  if pre ~= -1 then
+    vim.cmd("bwipeout! " .. pre)
+  end
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/committed_on_branch.txt"))
+  settle_nav()
+  eq("adopt: an unchanged file collapses to one pane", 2, #layout())
+  eq("adopt: the unchanged file is on show", root .. "/committed_on_branch.txt", vim.api.nvim_buf_get_name(0))
+  check("adopt: no diff mode on an unchanged file", not vim.wo[vim.api.nvim_get_current_win()].diff)
+  eq("adopt: no leftover folding", 99, vim.wo[vim.api.nvim_get_current_win()].foldlevel)
+  eq("adopt: it stays out of the buffer list too", 0, vim.fn.buflisted(vim.api.nvim_get_current_buf()))
+
+  -- Moving the panel selection re-renders it and drops the adopted preview,
+  -- the same close-on-switch rule as scrubbing.
+  vim.api.nvim_set_current_win(panel)
+  vim.api.nvim_win_set_cursor(panel, { row_of("a_modified"), 0 })
+  scrub("j")
+  eq("adopt: moving on drops the adopted preview", -1, vim.fn.bufnr(root .. "/committed_on_branch.txt"))
+
+  -- Inline rendering adopts through the overlay.
+  vim.api.nvim_win_set_cursor(panel, { row_of("a_modified"), 0 })
+  scrub("i")
+  eq("adopt inline: one pane", 2, #layout())
+  feed("\r")
+  local ipane = vim.api.nvim_get_current_win()
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/d_untracked.txt"))
+  settle_nav()
+  local inline = require("util.inline_diff")
+  eq("adopt inline: still one pane", 2, #layout())
+  eq("adopt inline: window reused", ipane, vim.api.nvim_get_current_win())
+  check("adopt inline: the overlay is attached to the target", inline.has(vim.api.nvim_get_current_buf()))
+  check(
+    "adopt inline: the panel follows",
+    panel_lines()[vim.api.nvim_win_get_cursor(panel)[1]]:find("d_untracked", 1, true) ~= nil
+  )
+  check(
+    "adopt inline: no-dim on the pane",
+    vim.wo[ipane].winhighlight:find("NormalNC:Normal", 1, true) ~= nil,
+    vim.wo[ipane].winhighlight
+  )
+
+  -- A file outside the repository shows plain, and the overlay is detached
+  -- from the buffer left behind.
+  local abuf = vim.fn.bufnr(root .. "/a_modified.txt")
+  write(temp .. "/outside.txt", "elsewhere\n")
+  vim.cmd("edit " .. vim.fn.fnameescape(temp .. "/outside.txt"))
+  settle_nav()
+  eq("adopt outside: one plain pane", 2, #layout())
+  eq("adopt outside: the file is on show", vim.fn.resolve(temp .. "/outside.txt"), vim.api.nvim_buf_get_name(0))
+  check("adopt outside: not a diff", not vim.wo[vim.api.nvim_get_current_win()].diff)
+  check("adopt outside: the old overlay is detached", abuf == -1 or not inline.has(abuf))
+  ui.close()
+end
+
+--------------------------------------------------------------------------
+-- adopting navigation: a deliberately opened buffer is left alone
+--------------------------------------------------------------------------
+
+do
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt")) -- listed on purpose
+  open_settled({ scope = "working" })
+  local panel = layout()[1]
+  vim.api.nvim_win_set_cursor(panel, { row_of("a_modified"), 0 })
+  scrub("")
+  feed("\r")
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/d_untracked.txt"))
+  settle_nav()
+  feed("<C-o>")
+  settle_nav()
+  eq("adopt listed: <C-o> came back", root .. "/a_modified.txt", vim.api.nvim_buf_get_name(0))
+  eq("adopt listed: the user's buffer stays listed", 1, vim.fn.buflisted(vim.api.nvim_get_current_buf()))
+  vim.api.nvim_set_current_win(panel)
+  scrub("j")
+  check("adopt listed: moving on keeps the user's buffer", vim.fn.bufnr(root .. "/a_modified.txt") ~= -1)
+  eq("adopt listed: and it is still listed", 1, vim.fn.buflisted(vim.fn.bufnr(root .. "/a_modified.txt")))
+  ui.close()
+  vim.cmd("bwipeout! " .. vim.fn.bufnr(root .. "/a_modified.txt"))
+end
+
+--------------------------------------------------------------------------
+-- prefetch: the whole listing is warmed, nearest the cursor first
+--------------------------------------------------------------------------
+
+-- Opening the view preloads every file's base in the background, so a diff is
+-- already in hand by the time the selection reaches it. The sweep is steered:
+-- it re-reads the cursor between fetches and takes the nearest file that still
+-- has no base, so moving the selection re-aims it instead of finishing an
+-- order fixed at open time.
+
+do
+  local many = vim.fn.resolve(temp .. "/many")
+  vim.fn.mkdir(many, "p")
+  git(many, "init", "-q", "-b", "main")
+  local N = 40
+  for i = 1, N do
+    write(many .. ("/f%03d.txt"):format(i), ("orig %d\n"):format(i) .. string.rep("pad\n", 10))
+  end
+  git(many, "add", "-A")
+  git(many, "commit", "-qm", "init")
+  for i = 1, N do
+    write(many .. ("/f%03d.txt"):format(i), ("CHANGED %d\n"):format(i) .. string.rep("pad\n", 10))
+  end
+  vim.cmd("cd " .. vim.fn.fnameescape(many))
+  vcs.clear_cache()
+
+  -- Record what the backend is asked for, and in which order.
+  local backend = select(1, vcs.detect())
+  local real_show = backend.show
+  local order = {}
+  backend.show = function(r, rev, path)
+    order[#order + 1] = path
+    return real_show(r, rev, path)
+  end
+
+  ui.open({ scope = "working" })
+  if #layout() == 3 then
+    ui.toggle_inline() -- assert the dimming exemption on the default rendering
+  end
+  -- These files have never been displayed, so the pane's options come from the
+  -- render alone. Elsewhere in this spec a buffer has usually been shown in a
+  -- no-dim pane already, and Neovim restores window-local options from the
+  -- last window that held it — which would mask the render forgetting to set
+  -- them. This is the assertion that actually bites.
+  check(
+    "no-dim: a freshly rendered inline pane rewires NormalNC to Normal",
+    vim.wo[layout()[2]].winhighlight:find("NormalNC:Normal", 1, true) ~= nil,
+    vim.wo[layout()[2]].winhighlight
+  )
+  check(
+    "no-dim: and keeps the muted folds mapped alongside it",
+    vim.wo[layout()[2]].winhighlight:find("Folded:", 1, true) ~= nil,
+    vim.wo[layout()[2]].winhighlight
+  )
+  -- Re-aim at file 30 straight away: open() returns with at most the first
+  -- fetch away, so an unsteered sweep would not reach f030 for 30 more.
+  local panel = layout()[1]
+  vim.api.nvim_set_current_win(panel)
+  vim.api.nvim_win_set_cursor(panel, { 4 + 29, 0 })
+  vim.wait(30000, function()
+    return not ui.busy()
+  end)
+  backend.show = real_show
+
+  local seen, dupes = {}, 0
+  for _, p in ipairs(order) do
+    if seen[p] then
+      dupes = dupes + 1
+    end
+    seen[p] = true
+  end
+  eq("prefetch: every listed file is warmed", N, vim.tbl_count(seen))
+  eq("prefetch: and none of them twice", 0, dupes)
+
+  local at30
+  for i, p in ipairs(order) do
+    if p == "f030.txt" and not at30 then
+      at30 = i
+    end
+  end
+  check(
+    "prefetch: re-aims at the cursor rather than finishing its original order",
+    at30 ~= nil and at30 <= 8,
+    "f030 fetched at position " .. tostring(at30) .. " of " .. #order
+  )
+
+  -- Every row ends up carrying its churn, which is the visible proof that the
+  -- whole listing was preloaded rather than just the part scrubbed past.
+  local panel_buf = vim.api.nvim_win_get_buf(panel)
+  local ns_ui = vim.api.nvim_create_namespace("vcs_ui")
+  local with_stats = 0
+  for _, m in ipairs(vim.api.nvim_buf_get_extmarks(panel_buf, ns_ui, 0, -1, { details = true })) do
+    local d = m[4]
+    if d.virt_text and d.virt_text_pos == "right_align" then
+      for _, chunk in ipairs(d.virt_text) do
+        if chunk[1]:find("^%+%d") then
+          with_stats = with_stats + 1
+          break
+        end
+      end
+    end
+  end
+  eq("prefetch: every row shows its churn", N, with_stats)
+  check("prefetch: the header totals the listing", panel_lines()[2]:find("+%d+ %-%d+") ~= nil, panel_lines()[2])
+
+  ui.close()
+  vim.cmd("cd " .. vim.fn.fnameescape(root))
+  vcs.clear_cache()
 end
 
 --------------------------------------------------------------------------

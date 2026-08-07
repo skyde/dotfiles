@@ -125,6 +125,19 @@ of the buffer list, and are dropped again when the view closes — however it
 closes, `q` or an external `:tabclose` alike. The moment one is edited it
 becomes a real buffer and survives.
 
+Navigating from inside a diff pane stays in the view. A jump that lands a file
+in the pane — `gd`, a references picker, `<C-o>`, a plain `:e` — is adopted:
+a file from the changed listing gets its full diff rendering against the same
+base, inline or side-by-side per the current mode, with the panel selection
+following; an unchanged file (its diff is empty) shows plain, with the
+previous rendering's diff mode and folds scrubbed off. The window is reused
+rather than rebuilt, so the jumplist survives and `<C-o>` walks back — each
+return trip adopted the same way. Files a jump opens are previews like any
+other; a buffer that was already open on purpose stays in the buffer list.
+The code panes also pin their normal background (`NormalNC` rewired to
+`Normal`), so tokyonight's `dim_inactive` never darkens the code side while
+the cursor lives in the file list — the eyes are on the code either way.
+
 Rendering a diff costs a subprocess, so `j` / `k` move the cursor immediately
 and the diff follows once the keys stop (80 ms). Holding `j` through a
 400-file changelist costs one render rather than four hundred. `<CR>`
@@ -134,11 +147,21 @@ Everything the backend says is remembered across opens of the view: the
 listing per scope and the base content per file. Reopening `<leader>gc` in a
 large or server-backed repository (Perforce especially) paints instantly from
 the last known state, the header shows "refreshing…" while a background pass
-revalidates, and the panel only redraws if something actually changed. Base
-content for listed files is prefetched in the background — one subprocess at
-a time, starting from the cursor — so scrubbing lands on warm content; a file
-whose base is still cold renders asynchronously instead of freezing the list.
-`R` distrusts all of it and re-asks the backend from scratch.
+revalidates, and the panel only redraws if something actually changed.
+
+Opening the view preloads the whole listing in the background — one subprocess
+at a time, so it stays gentle on a loaded server and the UI never waits on any
+of it — until every file has a base or the budget runs out (half the base
+cache, or 32 MB of content, whichever comes first). The sweep is steered
+rather than scheduled: between fetches it re-reads where the cursor is and
+takes the nearest file that still has no base, so moving the selection re-aims
+it at what you are reading now instead of finishing an order fixed when the
+view opened. It also stands aside while a render holds a subprocess, since the
+file being looked at is worth more than the one being guessed at. The churn
+column fills in as the sweep goes, which is the visible sign of how far it has
+got; a file whose base is still cold renders asynchronously instead of
+freezing the list. `r` distrusts all of it and re-asks the backend from
+scratch.
 
 Neovim's `diffopt` is set in `lua/config/options.lua` to the same algorithm and
 context as `common/.config/git/config`, so a diff reads the same in the editor

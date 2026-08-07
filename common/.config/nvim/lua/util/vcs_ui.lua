@@ -19,6 +19,11 @@
 -- itself away before a session is written (VimLeavePre / PersistenceSavePre),
 -- since a session that captured the diff tab would restore it as junk.
 --
+-- Navigation from inside a diff pane stays in the view: a jump that lands a
+-- file in the pane — gd, gr, <C-o>, :e — is adopted and re-dressed the way
+-- selecting that file in the panel would have rendered it, instead of being
+-- left as a plain buffer in a half-torn-down diff window. See adopt_nav.
+--
 -- Everything a backend says is remembered across opens of the view (the
 -- listing per scope, base content per file), so `<leader>gc` in a large or
 -- server-backed repository paints instantly from the last known state and
@@ -57,6 +62,7 @@ local ns = vim.api.nvim_create_namespace("vcs_ui")
 ---@field inline_buf integer|nil  buffer currently carrying the inline overlay
 ---@field diff_win integer|nil  the pane J/K scroll and <CR> focuses
 ---@field shown VcsFile|nil  the selection the diff windows currently render
+---@field shown_name string|nil  full path of the file on show, so the navigation autocmds can tell "already rendered" from a jump
 ---@field refreshing boolean|nil  a background revalidation is in flight
 ---@field previews table<integer, true>  buffers this view opened and unlisted
 ---@field navmapped table<integer, true>  real file buffers carrying view-local maps
@@ -82,8 +88,10 @@ local base_cache = {} ---@type table<string, string[]>
 local base_count = 0
 
 -- The base cache is a speed tool, not a database: past the point where it
--- could matter in memory, starting over beats managing it.
-local BASE_CACHE_MAX = 512
+-- could matter in memory, starting over beats managing it. Big enough that a
+-- whole prefetch sweep (half this, see PREFETCH_MAX_FILES) fits with room to
+-- spare for the files the render path fetches on demand.
+local BASE_CACHE_MAX = 1024
 
 -- Generation counters orphan background work that outlived its usefulness: a
 -- revalidation from a previous open, a prefetch for a replaced listing, a
@@ -96,6 +104,19 @@ local render_busy = 0
 -- The newest revalidation in flight per listing key. A newer one supersedes
 -- an older one's result; merely closing the view does not.
 local refresh_inflight = {} ---@type table<string, integer>
+
+-- True while the view itself is placing buffers into windows, so the
+-- navigation autocmds can tell the view's own renders from an actual jump.
+local rendering = false
+-- One adoption is scheduled per tick; nav_win_pending carries the window it
+-- should look at, overwritten by any later navigation in the same tick.
+local nav_pending = false
+local nav_win_pending = nil ---@type integer|nil
+-- Buffers the buffer list picked up from a navigation inside the view —
+-- `:edit` and the LSP jumps both list their target as a side effect (BufAdd
+-- fires for either). Adoption turns exactly these into previews, and never a
+-- buffer the user already had open on purpose.
+local nav_listed = {} ---@type table<integer, true>
 
 local STATUS = {
   M = { icon = "M", hl = "DiffChange", label = "modified" },
@@ -581,14 +602,30 @@ local function reset_cursorline(w)
   wo_local(w, "cursorlineopt", vim.go.cursorlineopt)
 end
 
+---Add one `group:group` mapping to a window's winhighlight, leaving whatever
+---else is already mapped there alone — several of these stack on the same
+---pane, and assigning the option outright would drop the others.
+local function map_hl(w, from, to)
+  local cur = vim.api.nvim_get_option_value("winhighlight", { win = w })
+  if not cur:find(from .. ":") then
+    wo_local(w, "winhighlight", (cur ~= "" and cur .. "," or "") .. from .. ":" .. to)
+  end
+end
+
 ---The "╌╌ n unchanged lines ╌╌" fold line must whisper, not shout: the
 ---theme's Folded (blue on a grey fill) turns every gap into a bright bar.
 ---Repaint it in this window only, with the overlay's near-background group.
 local function mute_folds(w)
-  local cur = vim.api.nvim_get_option_value("winhighlight", { win = w })
-  if not cur:find("Folded:") then
-    wo_local(w, "winhighlight", (cur ~= "" and cur .. "," or "") .. "Folded:InlineDiffFold")
-  end
+  map_hl(w, "Folded", "InlineDiffFold")
+end
+
+---Keep a code pane's background at the normal colour even when unfocused.
+---The theme dims inactive windows (tokyonight's dim_inactive) as a "where am
+---I" cue, but in this view the eyes stay on the code while the cursor lives
+---in the file list — there the dimming just reads as the page changing
+---colour under you.
+local function no_dim(w)
+  map_hl(w, "NormalNC", "Normal")
 end
 
 ---Whether this view collapses unchanged regions right now — the view's own
@@ -607,6 +644,7 @@ end
 ---the collapse setting just decides whether those folds start closed.
 local function diff_pane(w)
   reset_cursorline(w)
+  no_dim(w)
   wo_local(w, "foldlevel", collapsing() and 0 or 99)
   -- The overlay's fold text works for any fold; using it here too means a
   -- collapsed gap reads the same in both renderings.
@@ -636,6 +674,58 @@ local function goto_first_change(win)
   end)
 end
 
+---Window options for a pane carrying the inline overlay: hybrid line
+---numbers, smoothscroll so scrolling up can reveal virtual lines hanging
+---above line 1, and folding per the collapse setting. Applied *after* the
+---buffer is in the window, never before: Neovim keeps window-local options
+---per buffer shown in that window, so anything set ahead of the `:edit` is
+---restored away the moment it lands.
+local function inline_pane(win)
+  no_dim(win)
+  wo_local(win, "number", true)
+  wo_local(win, "relativenumber", true)
+  wo_local(win, "smoothscroll", true)
+  if collapsing() then
+    -- Collapse unchanged regions, exactly what foldmethod=diff does for the
+    -- side-by-side panes; the overlay knows where the hunks are, so its
+    -- foldexpr folds everything further than the diff context from one.
+    -- zR (or the z toggle in the panel) brings the whole file back.
+    wo_local(win, "foldmethod", "expr")
+    wo_local(win, "foldexpr", "v:lua.require'util.inline_diff'.foldexpr(v:lnum)")
+    wo_local(win, "foldtext", "v:lua.require'util.inline_diff'.foldtext()")
+    mute_folds(win)
+    wo_local(win, "foldlevel", 0)
+    local fc = vim.o.fillchars
+    wo_local(win, "fillchars", fc ~= "" and (fc .. ",fold: ") or "fold: ")
+  else
+    -- Editing a buffer restores the window-local options it last had, so
+    -- the expr folding from a collapsed render would silently come back.
+    wo_local(win, "foldmethod", "manual")
+    wo_local(win, "foldlevel", 99)
+  end
+end
+
+---Track `buf` as a view-opened preview: unlisted — `:edit` lists it as a
+---side effect, undone on every call, not just on first tracking, or
+---re-focusing an already-tracked preview would quietly pin it into the
+---buffer list (exactly the "files randomly staying open" leak) — until it
+---is actually edited, at which point it earns its place.
+local function track_preview(buf)
+  vim.bo[buf].buflisted = false
+  if not state.previews[buf] then
+    state.previews[buf] = true
+    vim.api.nvim_create_autocmd("BufModifiedSet", {
+      buffer = buf,
+      callback = function()
+        if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].modified then
+          vim.bo[buf].buflisted = true
+          return true
+        end
+      end,
+    })
+  end
+end
+
 ---`edit` a file the way VS Code's preview editors do: scrubbing past a file
 ---in the changed list must not make it a permanent resident of the buffer
 ---list. A buffer that was not already open stays unlisted until it is
@@ -644,25 +734,8 @@ local function edit_preview(full)
   local existing = vim.fn.bufnr(full)
   local fresh = existing == -1 or vim.fn.buflisted(existing) == 0
   vim.cmd("edit " .. vim.fn.fnameescape(full))
-  local buf = vim.api.nvim_get_current_buf()
   if fresh then
-    -- `:edit` lists the buffer as a side effect — undone every time, not
-    -- just on first tracking, or re-focusing an already-tracked preview
-    -- would quietly pin it into the buffer list. That was exactly the
-    -- "files randomly staying open" leak.
-    vim.bo[buf].buflisted = false
-    if not state.previews[buf] then
-      state.previews[buf] = true
-      vim.api.nvim_create_autocmd("BufModifiedSet", {
-        buffer = buf,
-        callback = function()
-          if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].modified then
-            vim.bo[buf].buflisted = true
-            return true
-          end
-        end,
-      })
-    end
+    track_preview(vim.api.nvim_get_current_buf())
   end
 end
 
@@ -768,6 +841,7 @@ local function render_inline(file)
 
   if not file then
     vim.api.nvim_win_set_buf(win, scratch("vcs://empty", { "(no changes)" }))
+    no_dim(win)
     balance(win)
     return win
   end
@@ -780,28 +854,7 @@ local function render_inline(file)
     local buf = vim.api.nvim_get_current_buf()
     state.inline_buf = buf
     inline_diff.attach(buf, base)
-    wo_local(win, "number", true)
-    wo_local(win, "relativenumber", true)
-    -- So scrolling up can reveal virtual lines hanging above line 1.
-    wo_local(win, "smoothscroll", true)
-    if collapsing() then
-      -- Collapse unchanged regions, exactly what foldmethod=diff does for the
-      -- side-by-side panes; the overlay knows where the hunks are, so its
-      -- foldexpr folds everything further than the diff context from one.
-      -- zR (or the z toggle in the panel) brings the whole file back.
-      wo_local(win, "foldmethod", "expr")
-      wo_local(win, "foldexpr", "v:lua.require'util.inline_diff'.foldexpr(v:lnum)")
-      wo_local(win, "foldtext", "v:lua.require'util.inline_diff'.foldtext()")
-      mute_folds(win)
-      wo_local(win, "foldlevel", 0)
-      local fc = vim.o.fillchars
-      wo_local(win, "fillchars", fc ~= "" and (fc .. ",fold: ") or "fold: ")
-    else
-      -- Editing a buffer restores the window-local options it last had, so
-      -- the expr folding from a collapsed render would silently come back.
-      wo_local(win, "foldmethod", "manual")
-      wo_local(win, "foldlevel", 99)
-    end
+    inline_pane(win)
     vim.api.nvim_win_call(win, function()
       inline_diff.goto_first(buf)
     end)
@@ -813,6 +866,7 @@ local function render_inline(file)
     for row = 0, #base - 1 do
       vim.api.nvim_buf_set_extmark(buf, ns, row, 0, { line_hl_group = "InlineDiffDelete", priority = 50 })
     end
+    no_dim(win)
     wo_local(win, "number", true)
     wo_local(win, "relativenumber", true)
   end
@@ -821,9 +875,33 @@ local function render_inline(file)
   return win
 end
 
+---Rendering a file is looking at it: mark it viewed, and refresh its stats
+---from what is actually on screen — an edit in the overlay moves the
+---numbers in the panel on the next render.
+local function mark_rendered(file)
+  local panel_dirty = false
+  local viewed = viewed_paths()
+  if not viewed[file.path] then
+    viewed[file.path] = true
+    panel_dirty = true
+  end
+  if not base_missing(file) then
+    local ok, stats = pcall(file_stats, state.root, file, base_content(file))
+    if ok and stats and not (file.stats and file.stats.add == stats.add and file.stats.del == stats.del) then
+      file.stats = stats
+      panel_dirty = true
+    end
+  end
+  if panel_dirty then
+    render_panel()
+  end
+end
+
 ---Draw `file` in the right-hand side. Assumes any base content it needs is
----already cached; everything here is buffer and window work.
-local function render_file(file, focus)
+---already cached; everything here is buffer and window work. Always called
+---through the render_file wrapper below, which flags the render so the
+---navigation autocmds do not mistake it for a jump to adopt.
+local function do_render_file(file, focus)
   -- Re-rendering the file already on screen (the inline toggle, a refresh)
   -- keeps the reading position.
   local keep
@@ -854,32 +932,16 @@ local function render_file(file, focus)
     target = vim.api.nvim_get_current_win()
     reset_cursorline(target)
     vim.api.nvim_win_set_buf(target, scratch("vcs://empty", { "" }))
+    no_dim(target)
     balance(target)
   end
 
   state.diff_win = target
   state.shown = file
+  state.shown_name = file and (state.root .. "/" .. file.path) or nil
 
-  -- Rendering a file is looking at it: mark it viewed, and refresh its stats
-  -- from what is actually on screen — an edit in the overlay moves the
-  -- numbers in the panel on the next render.
   if file then
-    local panel_dirty = false
-    local viewed = viewed_paths()
-    if not viewed[file.path] then
-      viewed[file.path] = true
-      panel_dirty = true
-    end
-    if not base_missing(file) then
-      local ok, stats = pcall(file_stats, state.root, file, base_content(file))
-      if ok and stats and not (file.stats and file.stats.add == stats.add and file.stats.del == stats.del) then
-        file.stats = stats
-        panel_dirty = true
-      end
-    end
-    if panel_dirty then
-      render_panel()
-    end
+    mark_rendered(file)
   end
 
   setup_diff_keys()
@@ -891,6 +953,17 @@ local function render_file(file, focus)
     drop_preview(buf)
   end
   vim.api.nvim_set_current_win(focus and target or state.panel_win)
+end
+
+---All renders funnel through here so the navigation autocmds can tell the
+---view placing its own buffers apart from an actual jump landing in a pane.
+local function render_file(file, focus)
+  rendering = true
+  local ok, err = pcall(do_render_file, file, focus)
+  rendering = false
+  if not ok then
+    error(err, 0)
+  end
 end
 
 ---Render whatever the panel cursor is on. `focus` moves the cursor into the
@@ -961,13 +1034,83 @@ local function show(focus, opts)
   render_file(file, focus)
 end
 
----Warm the base cache for the listed files in the background, starting from
----the cursor and wrapping, so scrubbing lands on content that is already
----there. One coroutine, one subprocess at a time: gentle on a loaded server,
----and the UI never waits on any of it. A file the cursor reaches first is
----fetched by the render path instead; whoever gets there first fills the
----cache for both.
-local PREFETCH_MAX = 256
+---Warm the base cache for the listed files in the background, so a diff is
+---already in hand by the time the selection reaches it. One coroutine, one
+---subprocess at a time: gentle on a loaded server, and the UI never waits on
+---any of it.
+---
+---The sweep is steered rather than scheduled. Every iteration re-reads where
+---the cursor is and takes the nearest file that still has no base, so moving
+---the selection re-aims the prefetch at the neighbourhood being read instead
+---of working through an order fixed when the view opened — and it stands
+---aside while an interactive render holds a subprocess, since the file being
+---looked at is always worth more than the one being guessed at. Between those
+---two it keeps going until the listing is covered or the budget runs out.
+---
+---A file the cursor reaches first is fetched by the render path instead;
+---whoever gets there first fills the cache for both.
+
+-- What one sweep may pull in. The file count stays well inside the cache's
+-- capacity: filling it to eviction would wipe the base of the file being
+-- looked at (the policy above is deliberately crude) and the sweep would
+-- start over. The byte budget is the real backstop — a changelist of
+-- generated, vendored or minified files must not quietly eat hundreds of
+-- megabytes just because it is short enough to fit the count.
+local PREFETCH_MAX_FILES = math.floor(BASE_CACHE_MAX / 2)
+local PREFETCH_MAX_BYTES = 32 * 1024 * 1024
+-- How long to stand aside for a render in flight before looking again, and
+-- how many times running before pressing on regardless.
+local PREFETCH_YIELD_MS = 60
+local PREFETCH_YIELD_MAX = 50
+
+---Roughly how much memory a cached base occupies.
+local function content_bytes(lines)
+  local n = 0
+  for _, l in ipairs(lines or {}) do
+    n = n + #l + 1
+  end
+  return n
+end
+
+---Suspend the running prefetch coroutine for `ms`. Lets it wait out an
+---interactive render without blocking the loop it runs on — the same trick
+---vcs.async plays for subprocesses, on a timer instead.
+local function nap(ms)
+  local co = coroutine.running()
+  if not co then
+    return
+  end
+  vim.defer_fn(function()
+    local ok, err = coroutine.resume(co)
+    if not ok then
+      vim.notify("vcs prefetch: " .. tostring(err), vim.log.levels.ERROR)
+    end
+  end, ms)
+  coroutine.yield()
+end
+
+---The next file worth fetching: the nearest one to the cursor — forward,
+---then wrapping — that this sweep has not handled yet. Re-derived per fetch,
+---which is what makes the sweep follow the selection around.
+local function next_prefetch(done)
+  local files, at = {}, 1
+  local here = row_at_cursor()
+  for _, row in ipairs(state.rows) do
+    if row.kind == "file" then
+      files[#files + 1] = row.file
+      if row == here then
+        at = #files
+      end
+    end
+  end
+  for i = 0, #files - 1 do
+    local file = files[((at - 1 + i) % #files) + 1]
+    if not done[file] then
+      return file
+    end
+  end
+  return nil
+end
 
 local function prefetch_bases()
   prefetch_gen = prefetch_gen + 1
@@ -977,28 +1120,6 @@ local function prefetch_bases()
   end
   local gen = prefetch_gen
   local backend, root, rev = state.backend, state.root, state.rev
-
-  local in_view = {}
-  local from = 1
-  local at = row_at_cursor()
-  for _, row in ipairs(state.rows) do
-    if row.kind == "file" then
-      table.insert(in_view, row.file)
-      if row == at then
-        from = #in_view
-      end
-    end
-  end
-  local ordered = {}
-  for i = from, math.min(#in_view, from + PREFETCH_MAX - 1) do
-    table.insert(ordered, in_view[i])
-  end
-  for i = 1, from - 1 do
-    if #ordered >= PREFETCH_MAX then
-      break
-    end
-    table.insert(ordered, in_view[i])
-  end
 
   prefetch_busy = true
   vcs.async(function()
@@ -1010,21 +1131,53 @@ local function prefetch_bases()
           stats_dirty = 0
         end
       end
-      for _, file in ipairs(ordered) do
-        if gen ~= prefetch_gen then
+      -- Files this sweep has already looked at, so one the render path filled
+      -- in is passed over rather than reconsidered on every pick.
+      local done = {}
+      local fetched, bytes = 0, 0
+      while fetched < PREFETCH_MAX_FILES and bytes < PREFETCH_MAX_BYTES do
+        if gen ~= prefetch_gen or not valid() then
           return
         end
+        -- Stand aside for a render: it is fetching what the user is actually
+        -- waiting on. Show what the sweep has learned so far while waiting.
+        -- Bounded, so a render that never reports back stalls the sweep for a
+        -- moment rather than retiring it.
+        for _ = 1, PREFETCH_YIELD_MAX do
+          if render_busy == 0 then
+            break
+          end
+          paint()
+          nap(PREFETCH_YIELD_MS)
+          if gen ~= prefetch_gen or not valid() then
+            return
+          end
+        end
+        local file = next_prefetch(done)
+        if not file then
+          break
+        end
+        done[file] = true
         local base = {}
         if has_base(file) then
           local base_path = file.orig or file.path
           local file_rev = file.rev or rev
           local key = base_key(root, file_rev, base_path)
           if not base_cache[key] then
+            local epoch = base_epoch
             local content = backend.show(root, file_rev, base_path)
             if gen ~= prefetch_gen then
               return
             end
+            -- A drop_bases while the subprocess ran means this content
+            -- describes a revision the view no longer believes in; the sweep
+            -- that replaces this one will re-ask.
+            if epoch ~= base_epoch then
+              return
+            end
             store_base(key, content or {})
+            fetched = fetched + 1
+            bytes = bytes + content_bytes(content)
           end
           base = base_cache[key] or {}
         end
@@ -1212,6 +1365,138 @@ function setup_diff_keys()
         M.close()
       end, "Close diff view")
     end
+  end
+end
+
+--------------------------------------------------------------------------
+-- adopting navigation: gd and friends keep the diff rendering
+--------------------------------------------------------------------------
+
+-- A jump from inside a diff pane — goto-definition, a reference picker,
+-- <C-o>, a plain :e — lands its target in that pane as an ordinary buffer:
+-- the window would keep stale diff mode or expr folds, the overlay would
+-- still hang on the buffer left behind, and the panel selection would point
+-- somewhere else entirely. Instead the view adopts the navigation. The pane
+-- is re-dressed in place — the window is reused, never rebuilt, so the
+-- jumplist keeps working and <C-o> walks back — and the old preview is kept
+-- loaded (hidden, unlisted) rather than dropped, because wiping it would
+-- take its jumplist entries with it. close() still cleans those up.
+
+---Re-dress the window a navigation just landed `buf` in. A file from the
+---changed listing gets its full diff rendering (inline overlay or
+---side-by-side against the same base) and the panel selection follows;
+---anything else — an unchanged file, one outside the repository — shows
+---plain, with the previous rendering's diff mode and folds scrubbed off.
+local function do_adopt_nav(win, buf)
+  if not valid() then
+    return
+  end
+  if not (vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == buf) then
+    return
+  end
+  if vim.api.nvim_win_get_tabpage(win) ~= state.tab or win == state.panel_win then
+    return
+  end
+  local name = vim.api.nvim_buf_get_name(buf)
+  if name == "" or name == state.shown_name then
+    return
+  end
+
+  cancel_scrub()
+  -- Orphan any in-flight render of the panel selection; the navigation is
+  -- newer than whatever a debounce or an async base fetch was about to paint.
+  render_gen = render_gen + 1
+
+  -- Which listed file did the jump land in, if any? The panel selection
+  -- follows it, so j/k and ]f/[f continue from here.
+  local file
+  local prefix = state.root .. "/"
+  local rel = name:sub(1, #prefix) == prefix and name:sub(#prefix + 1) or nil
+  if rel then
+    for i, row in ipairs(state.rows) do
+      if row.kind == "file" and row.file.path == rel then
+        file = row.file
+        pcall(vim.api.nvim_win_set_cursor, state.panel_win, { state.first_line + i - 1, 0 })
+        break
+      end
+    end
+  end
+
+  -- The jump listed the buffer as a side effect; a file that was not already
+  -- open on purpose stays a preview here, exactly as if the panel had
+  -- rendered it — following definitions around leaves no trace either.
+  if nav_listed[buf] then
+    track_preview(buf)
+  end
+  nav_listed = {}
+
+  -- Whatever else the old rendering had on screen — a side-by-side base, an
+  -- empty placeholder — belongs to the file the view just moved off.
+  if state.inline_buf then
+    inline_diff.detach(state.inline_buf)
+    state.inline_buf = nil
+  end
+  for _, w in ipairs(diff_wins()) do
+    if w ~= win then
+      pcall(vim.api.nvim_win_close, w, true)
+    end
+  end
+
+  reset_cursorline(win)
+  no_dim(win)
+  if file and state.inline then
+    state.inline_buf = buf
+    inline_diff.attach(buf, base_content(file))
+    inline_pane(win)
+    balance(win)
+  elseif file then
+    local base = base_content(file)
+    local base_path = file.orig or file.path
+    vim.api.nvim_set_current_win(win)
+    vim.cmd("vertical leftabove split")
+    local left = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_buf(left, scratch(("vcs://%s/%s"):format(state.rev:sub(1, 12), base_path), base, base_path))
+    diff_pane(left)
+    diff_pane(win)
+    balance(left, win)
+  else
+    -- Not a changed file (or outside the repository): its diff is empty, so
+    -- show it plain — but sanitized, since diff mode or expr folds left over
+    -- from the previous rendering must not bleed onto an unrelated file.
+    if vim.wo[win].diff then
+      vim.api.nvim_win_call(win, function()
+        vim.cmd("diffoff")
+      end)
+    end
+    wo_local(win, "foldmethod", "manual")
+    wo_local(win, "foldlevel", 99)
+    wo_local(win, "number", true)
+    wo_local(win, "relativenumber", true)
+    balance(win)
+  end
+
+  state.diff_win = win
+  state.shown = file
+  state.shown_name = name
+  if file then
+    mark_rendered(file)
+  end
+  update_header()
+  setup_diff_keys()
+  vim.api.nvim_set_current_win(win)
+  -- The jump target may sit inside a collapsed region; open just enough
+  -- folds that it is actually visible.
+  vim.api.nvim_win_call(win, function()
+    pcall(vim.cmd, "normal! zv")
+  end)
+end
+
+local function adopt_nav(win, buf)
+  rendering = true
+  local ok, err = pcall(do_adopt_nav, win, buf)
+  rendering = false
+  if not ok then
+    vim.notify("vcs adopt: " .. tostring(err), vim.log.levels.ERROR)
   end
 end
 
@@ -1468,6 +1753,73 @@ local function ensure_tab()
   -- the tab (or to Neovim itself) revalidates in the background, exactly the
   -- way reopening the view does.
   local group = vim.api.nvim_create_augroup("vcs_ui_revalidate", { clear = true })
+  -- A navigation inside the view replaces the buffer in a diff pane without
+  -- telling the view; adopt it (see do_adopt_nav). Scheduled, so the jump
+  -- has finished placing the cursor before the pane is re-dressed — and both
+  -- events are watched because :edit and nvim_win_set_buf fire them in
+  -- different orders.
+  vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
+    group = group,
+    callback = function(ev)
+      if rendering or not valid() then
+        return
+      end
+      if vim.api.nvim_get_current_tabpage() ~= state.tab then
+        return
+      end
+      local nav_win = vim.api.nvim_get_current_win()
+      -- Floats too: a picker's preview shows real file buffers without them
+      -- being navigated to.
+      if nav_win == state.panel_win or vim.api.nvim_win_get_config(nav_win).relative ~= "" then
+        return
+      end
+      if vim.api.nvim_win_get_buf(nav_win) ~= ev.buf or vim.bo[ev.buf].buftype ~= "" then
+        return
+      end
+      local name = vim.api.nvim_buf_get_name(ev.buf)
+      if name == "" or name == state.shown_name then
+        return
+      end
+      -- Coalesce to one adoption per tick — a single jump fires several of
+      -- these — but resolve the buffer only when it runs, never here. Two
+      -- jumps can share a tick (`<C-o><C-o>` arrives as one chunk of
+      -- typeahead, which Neovim drains ahead of scheduled callbacks), and
+      -- adopting the buffer the *first* event named would find the pane
+      -- holding the second one and bail, leaving the navigation unadopted.
+      nav_win_pending = nav_win
+      if nav_pending then
+        return
+      end
+      nav_pending = true
+      vim.schedule(function()
+        nav_pending = false
+        local win = nav_win_pending
+        nav_win_pending = nil
+        if win and vim.api.nvim_win_is_valid(win) then
+          adopt_nav(win, vim.api.nvim_win_get_buf(win))
+        end
+      end)
+    end,
+  })
+  -- `:edit` and the LSP jumps list their target as a side effect; remember
+  -- which buffers joined the list from inside a diff pane, so adoption can
+  -- tell a file the jump itself opened (a preview) from one the user already
+  -- had open (left alone).
+  vim.api.nvim_create_autocmd("BufAdd", {
+    group = group,
+    callback = function(ev)
+      if rendering or not valid() then
+        return
+      end
+      if vim.api.nvim_get_current_tabpage() ~= state.tab then
+        return
+      end
+      local add_win = vim.api.nvim_get_current_win()
+      if add_win ~= state.panel_win and vim.api.nvim_win_get_config(add_win).relative == "" then
+        nav_listed[ev.buf] = true
+      end
+    end,
+  })
   vim.api.nvim_create_autocmd({ "TabEnter", "FocusGained" }, {
     group = group,
     callback = function()
@@ -1753,6 +2105,8 @@ function M.close()
   -- instant.
   refresh_gen = refresh_gen + 1
   render_gen = render_gen + 1
+  nav_listed = {}
+  nav_win_pending = nil
   local previews = state and state.previews or {}
   local navmapped = state and state.navmapped or {}
   if state and state.inline_buf then
