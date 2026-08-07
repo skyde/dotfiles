@@ -191,8 +191,8 @@ it works in every backend and on files handed over by any other tool.
 | `<leader>cd` | switch diff side | switch side in a diff, line diagnostics elsewhere |
 | `<leader>ci` | toggle inline diff | toggle inline / side-by-side |
 | `<leader>cz` | `diffEditor.hideUnchangedRegions.enabled` | toggle collapsing unchanged regions |
-| `<leader>cv` | `diffEditor.revert` | revert this change (`do` in diff mode, gitsigns reset otherwise) |
-| `<leader>cV` | `git.revertSelectedRanges` | revert the selected range |
+| `<leader>cv` | `diffEditor.revert` | revert this change (`do` in diff mode, gitsigns reset otherwise) — from the read-only base side it pushes the hunk into the working copy instead, so it works from either pane |
+| `<leader>cV` | `git.revertSelectedRanges` | revert the selected range (working copy only: the base side's line numbers do not name the same lines) |
 
 `git mergetool` opens Neovim on the conflicted file — see
 [`neovim-mergetool.md`](neovim-mergetool.md).
@@ -311,6 +311,12 @@ Every spec is self-contained and needs no plugins:
   move detection, folding, revert.
 * `nvim_chromium_spec.lua` — checkout detection, clangd selection and
   compile-database staleness.
+* `nvim_vcs_keys_spec.lua` — `config/vcs.lua`, the layer that decides *which*
+  of the modules above a key means from where: `]c` as a diff hunk here, a
+  conflict marker there, a gitsigns hunk elsewhere; `<leader>cv` from either
+  side of a diff; the conflict keys on the conflict under the cursor.
+  `check-nvim-keymaps.sh` invokes each binding once from an ordinary buffer,
+  which is the single context where all of those branches are false.
 * `nvim_plugins_spec.lua` — the `opts` functions in `lua/plugins/`, driven
   with the shapes LazyVim actually passes them. These are where an upstream
   change silently turns a customisation into a no-op.

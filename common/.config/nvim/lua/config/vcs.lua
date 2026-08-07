@@ -204,13 +204,36 @@ end, { desc = "Diff: other side / Line diagnostics" })
 map("n", "<leader>ci", ui.toggle_inline, { desc = "Diff: toggle inline / side-by-side" })
 map("n", "<leader>cz", ui.toggle_collapse, { desc = "Diff: toggle collapsing unchanged regions" })
 
+---Is there another half of this diff that can actually be written to?
+---@return boolean
+local function writable_diff_side()
+  local cur = vim.api.nvim_get_current_win()
+  for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if w ~= cur and vim.wo[w].diff and vim.bo[vim.api.nvim_win_get_buf(w)].modifiable then
+      return true
+    end
+  end
+  return false
+end
+
 -- Revert. In diff mode `do` already pulls the other side's hunk in, which is
 -- exactly `diffEditor.revert`; these just give it the VS Code names. The
 -- inline overlay has its own revert, since there is no second window there.
 map("n", "<leader>cv", function()
   local inline = require("util.inline_diff")
   if vim.wo.diff then
-    vim.cmd("normal! do")
+    -- Half of a side-by-side is the base version, a read-only scratch, and
+    -- `do` there raises E21 rather than reverting anything. Push instead of
+    -- pull: `dp` sends this hunk to the other side, which is the same revert
+    -- and — unlike hopping windows first — acts on the hunk under *this*
+    -- cursor rather than wherever the other pane happens to be parked.
+    if vim.bo.modifiable then
+      vim.cmd("normal! do")
+    elseif writable_diff_side() then
+      vim.cmd("normal! dp")
+    else
+      vim.notify("This diff has no editable side to revert into", vim.log.levels.WARN)
+    end
   elseif inline.has(0) then
     if not inline.revert_hunk(0) then
       vim.notify("Cursor is not on a change", vim.log.levels.INFO)
@@ -243,6 +266,12 @@ map({ "n", "x" }, "<leader>cV", function()
     vim.cmd("normal! \27")
   end
   if vim.wo.diff then
+    -- Unlike <leader>cv this cannot just hop to the other side: the range was
+    -- read off *these* line numbers, and filler lines mean they do not name
+    -- the same lines over there.
+    if not vim.bo.modifiable then
+      return vim.notify("This side of the diff is read-only — <leader>cc first", vim.log.levels.WARN)
+    end
     vim.cmd(("%d,%ddiffget"):format(from, to))
   else
     local ok, gs = pcall(require, "gitsigns")
