@@ -138,7 +138,8 @@ NOTE: Captions serve far more than deaf users - noisy rooms, second-language vie
 
 An underappreciated consumer: Chrome's own features read the accessibility tree.
 
-- `AXMode::kFormControls` (`kAXModeFormControls`) exists precisely so that tools
+- The `kAXModeFormControls` bundle - native APIs plus web contents, with the
+  `kFormsAndLabelsOnly` filter - exists precisely so that tools
   needing only form structure - autofill and password managers - can turn on a
   cheap subset instead of the full tree.
 - `State::kAutofillAvailable` and

@@ -74,12 +74,12 @@ Responsibilities:
 5. Drive serialization and hand updates to the content layer.
 
 ```cpp
-void HandleAttributeChanged(const QualifiedName&, Element*);
-void HandleAriaExpandedChanged(Node*);
+void HandleAttributeChanged(const QualifiedName& attr_name, Element*);
 void HandleValueChanged(Node*);
+void HandleFocusedUIElementChanged(Element* old_focus, Element* new_focus);
 void ChildrenChanged(Node*);
 void MarkAXObjectDirty(AXObject*);
-void CommitAXUpdates(Document&, bool force);
+bool CommitAXUpdates(Document&, bool force);
 ```
 
 REF: `ax_object_cache_impl.h` is long but skimmable. Read the list of `Handle*` methods once - it is effectively the list of everything in Blink that accessibility reacts to.

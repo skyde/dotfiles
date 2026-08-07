@@ -27,9 +27,10 @@ The class that made cross-platform accessibility code possible in Chromium.
 
 ```cpp
 // ui/accessibility/platform/ax_platform_node.h
-static AXPlatformNode* Create(AXPlatformNodeDelegate& delegate);
+using Pointer = std::unique_ptr<AXPlatformNode, Deleter>;
+static Pointer Create(AXPlatformNodeDelegate& delegate);
 virtual gfx::NativeViewAccessible GetNativeViewAccessible() = 0;
-virtual void NotifyAccessibilityEvent(ax::mojom::Event) = 0;
+virtual void NotifyAccessibilityEvent(ax::mojom::Event event_type) = 0;
 ```
 
 - `Create()` returns the right subclass for the current platform:
@@ -62,7 +63,7 @@ implements it for Views.
 
 ```cpp
 MyButtonDelegate delegate;
-AXPlatformNode* accessible = AXPlatformNode::Create(delegate);
+AXPlatformNode::Pointer accessible = AXPlatformNode::Create(delegate);
 ```
 
 KEY: Write one delegate, get Windows, macOS, and Linux accessibility. This is the payoff for all the abstraction in the previous modules.

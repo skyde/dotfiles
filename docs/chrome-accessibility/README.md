@@ -37,7 +37,9 @@ The deck remembers where you were, and `#slide-142` in the URL links to a slide.
 
 The deck is itself keyboard-operable, screen-reader-labelled, contrast-checked in
 both themes, and honors `prefers-reduced-motion` - reading it with a screen
-reader on is a legitimate way to study it.
+reader on is a legitimate way to study it. A handful of dense reference slides
+are taller than the viewport and scroll; that is deliberate, since shrinking
+text to fit is the one thing a course on accessibility should not do.
 
 ## Editing
 

@@ -41,7 +41,6 @@ Supporting cast in `ui/views/accessibility/`:
 - `AXAuraObjCache` and the `AXTreeSourceViews` family - the tree source that lets
   the standard serializer walk the Views hierarchy.
 - `AXUpdateNotifier` / `AXUpdateObserver` - the change notification plumbing.
-- `AtomicViewAXTreeManager` - a manager for a single-view tree.
 
 REF: The `IsAccessibilityTreeForViewsEnabled()` and `IsViewsAccessibilitySerializeOnDataChangeEnabled()` feature flags in `accessibility_features.h` track the ongoing move to serialize Views like everything else.
 

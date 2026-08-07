@@ -113,12 +113,11 @@ REF: Chromium computes table geometry - row/column indices, spans, header cell r
 <input type="text" placeholder="Age">
 ```
 
-- `placeholder` disappears when the user types, and is often too low-contrast.
-  Chromium will fall back to it for the name, which is exactly why the bug
-  survives review.
+- `placeholder` disappears when the user types, and is often too low-contrast -
+  yet Chromium falls back to it for the name, which is why the bug survives
+  review.
 - Group related controls with `<fieldset>` + `<legend>` - radio groups especially.
-- Errors: `aria-invalid="true"` plus `aria-describedby` pointing at the message,
-  or `aria-errormessage`.
+- Errors: `aria-invalid="true"` plus `aria-describedby`, or `aria-errormessage`.
 
 WATCH: A name that comes from `placeholder` shows up in the tree as `nameFrom=placeholder`. Grep for that in a tree dump and you will find real bugs in minutes.
 
@@ -181,12 +180,10 @@ KEY: `lang` on `<html>` is a one-line fix with an outsized effect. Chromium expo
   attributes in the DOM:
 
 ```js
-class MyToggle extends HTMLElement {
-  #internals = this.attachInternals();
-  connectedCallback() {
-    this.#internals.role = 'switch';
-    this.#internals.ariaChecked = 'false';
-  }
+#internals = this.attachInternals();
+connectedCallback() {
+  this.#internals.role = 'switch';
+  this.#internals.ariaChecked = 'false';
 }
 ```
 

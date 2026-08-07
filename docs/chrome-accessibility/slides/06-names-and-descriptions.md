@@ -155,9 +155,10 @@ The cell "Healthy" has name `Healthy` from contents, and inherits *context* from
 its headers, which the AT announces as "Status, web-1, Healthy" when the user
 navigates into it.
 
-That context is not part of the name - it comes from the header relations
-Chromium computes and exposes (`kTableCellColumnHeaderIds` and friends), which is
-why `scope` matters even though the cell text is unchanged.
+That context is not part of the name - it comes from the table geometry and
+header relations Chromium computes and exposes (`kTableCellColumnIndex`,
+`kTableCellRowIndex`, `kTableColumnHeaderId` and friends), which is why `scope`
+matters even though the cell text is unchanged.
 
 KEY: Names are per-node; context is computed by the AT from relations. Do not try to stuff context into the name.
 

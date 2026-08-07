@@ -171,14 +171,10 @@ KEY: The renderer is sandboxed and cannot call an OS API; the browser process mu
 Eight lines of HTML, and the tree Chromium builds from it.
 
 ```html
-<html>
 <head><title>How old are you?</title></head>
-<body>
-  <label for="age">Age</label>
-  <input id="age" type="number" name="age" value="42">
-  <div><button>Back</button><button>Next</button></div>
-</body>
-</html>
+<label for="age">Age</label>
+<input id="age" type="number" name="age" value="42">
+<div><button>Back</button><button>Next</button></div>
 ```
 
 ```text

@@ -105,11 +105,9 @@ Composite widgets have *one* tab stop, not one per item. Two ways to do it.
 `tabindex="0"`, the rest `-1`:
 
 ```js
-function move(items, from, to) {
-  items[from].tabIndex = -1;
-  items[to].tabIndex = 0;
-  items[to].focus();
-}
+items[from].tabIndex = -1;
+items[to].tabIndex = 0;
+items[to].focus();
 ```
 
 **aria-activedescendant** - DOM focus stays on the container; the container's

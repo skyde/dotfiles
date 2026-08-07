@@ -13,7 +13,7 @@ node.
 struct AXNodeData {
   AXNodeID id;
   ax::mojom::Role role;
-  uint32_t state;                       // bitfield of ax::mojom::State
+  AXStates state;                       // bitset of ax::mojom::State
   uint64_t actions;                     // bitfield of ax::mojom::Action
   std::vector<std::pair<ax::mojom::StringAttribute, std::string>> string_attributes;
   std::vector<std::pair<ax::mojom::IntAttribute, int32_t>> int_attributes;
@@ -111,16 +111,22 @@ WHY: This design means a buggy source can lose updates but can never corrupt the
 ## AXTreeSource: the interface Blink implements
 
 ```cpp
-// ui/accessibility/ax_tree_source.h - conceptually
-AXSourceNode GetRoot() const;
-AXSourceNode GetFromId(AXNodeID) const;
-AXNodeID GetId(AXSourceNode) const;
-void CacheChildrenIfNeeded(AXSourceNode);
-void GetChildren(AXSourceNode, AXSourceNodeVectorType* out) const;
-AXSourceNode GetParent(AXSourceNode) const;
-bool IsValid(AXSourceNode) const;
-void SerializeNode(AXSourceNode, AXNodeDataType* out) const;
+// ui/accessibility/ax_tree_source.h
+virtual AXNodeSource GetRoot() const = 0;
+virtual AXNodeSource GetFromId(AXNodeID id) const = 0;
+virtual AXNodeID GetId(AXNodeSource node) const = 0;
+virtual void CacheChildrenIfNeeded(AXNodeSource) = 0;
+virtual size_t GetChildCount(AXNodeSource) const = 0;
+virtual AXNodeSource ChildAt(AXNodeSource, size_t) const = 0;
+virtual void ClearChildCache(AXNodeSource) = 0;
+virtual AXNodeSource GetParent(AXNodeSource node) const = 0;
+virtual bool IsIgnored(AXNodeSource node) const = 0;
+virtual void SerializeNode(AXNodeSource node, AXNodeDataType out) const = 0;
 ```
+
+The child cache calls matter: the serializer asks the source to materialize a
+node's children, walks them, and then lets the source drop them again - so a
+huge tree is never fully expanded in memory at once.
 
 `BlinkAXTreeSource` implements this over `AXObject`, mapping each call onto
 Blink's tree walk and onto `AXObject::Serialize()`.

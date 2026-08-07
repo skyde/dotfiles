@@ -13,11 +13,9 @@ class AXNode {
   const AXNodeData& data() const;
   AXNode* GetParent() const;
   const std::vector<AXNode*>& GetAllChildren() const;
-  AXNodeID id() const;
 };
 
 class AXTree {
-  explicit AXTree(const AXTreeUpdate& initial_state);
   bool Unserialize(const AXTreeUpdate& update);   // false if malformed
   AXNode* root() const;
   AXNode* GetFromId(AXNodeID id) const;
@@ -142,7 +140,8 @@ Walking from a parent frame into a child:
 
 1. The AT asks a node in the main frame for its children.
 2. One of them is the iframe's node, which carries a child `AXTreeID` in
-   `IntAttribute::kChildTreeId`.
+   `StringAttribute::kChildTreeId` - a tree ID is an `UnguessableToken`, so it
+   is serialized as a string, not an int.
 3. `AXTreeManagerMap` resolves that ID to the child frame's manager.
 4. The child tree's root becomes the iframe node's platform child.
 
