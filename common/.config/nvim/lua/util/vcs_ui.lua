@@ -620,10 +620,10 @@ local function mute_folds(w)
 end
 
 ---Keep a code pane's background at the normal colour even when unfocused.
----The theme dims inactive windows (tokyonight's dim_inactive) as a "where am
----I" cue, but in this view the eyes stay on the code while the cursor lives
----in the file list — there the dimming just reads as the page changing
----colour under you.
+---dim_inactive is off in the theme config, but this pins the code side to
+---Normal regardless: in this view the eyes stay on the code while the cursor
+---lives in the file list, and any dim-on-blur scheme would read as the page
+---changing colour under you.
 local function no_dim(w)
   map_hl(w, "NormalNC", "Normal")
 end
