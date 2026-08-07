@@ -7,6 +7,8 @@ on:
     paths:
       - apply.sh
       - common/.stowrc
+      - common/.zshenv
+      - common/.config/shell/theme.sh
       - .github/workflows/performance-monitoring.yml
   schedule:
     - cron: "0 6 * * *"
@@ -80,4 +82,86 @@ jobs:
             cat "$metrics"
             echo '~~~'
           } >> "$GITHUB_STEP_SUMMARY"
+        shell: bash
+
+  shell-startup:
+    name: Shell startup budget
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh
+
+      - name: Measure what .zshenv costs a non-interactive shell
+        run: |
+          # .zshenv is read by every zsh that any script or tool spawns, and
+          # this repo works hard to keep it cheap -- the PATH assignment was
+          # rewritten and three forks were removed for exactly this reason.
+          # Nothing was measuring whether it stayed cheap.
+          #
+          # The budget is a ratio rather than a number of milliseconds, because
+          # a shared runner's absolute speed varies far more than the thing
+          # being measured. What is asserted is that our startup work costs
+          # less than zsh's own startup, which currently has roughly a 2x
+          # margin -- enough that ordinary edits pass and a reintroduced fork,
+          # or a file read, does not.
+          python3 - <<'PY'
+          import os, shutil, subprocess, tempfile, time
+
+          repo = os.getcwd()
+          home = tempfile.mkdtemp()
+          os.makedirs(os.path.join(home, ".config/shell"), exist_ok=True)
+          shutil.copy(os.path.join(repo, "common/.zshenv"), home)
+          shutil.copy(os.path.join(repo, "common/.config/shell/theme.sh"),
+                      os.path.join(home, ".config/shell"))
+
+          def measure(with_zshenv, n=150, batches=3):
+              env = dict(os.environ, HOME=home, ZDOTDIR=home)
+              path = os.path.join(home, ".zshenv")
+              off = path + ".off"
+              if not with_zshenv:
+                  os.rename(path, off)
+              try:
+                  best = []
+                  for _ in range(batches):
+                      t = time.perf_counter()
+                      for _ in range(n):
+                          subprocess.run(["zsh", "-c", "true"],
+                                         capture_output=True, env=env)
+                      best.append((time.perf_counter() - t) / n * 1000)
+                  return min(best)
+              finally:
+                  if not with_zshenv:
+                      os.rename(off, path)
+
+          bare = measure(False)
+          full = measure(True)
+          overhead = full - bare
+          ratio = overhead / bare
+          print("bare zsh -c true       %6.2f ms" % bare)
+          print("with this .zshenv      %6.2f ms" % full)
+          print("our startup work       %6.2f ms  (%.2fx zsh's own)" % (overhead, ratio))
+
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a") as fh:
+                  fh.write("~~~text\n")
+                  fh.write("bare zsh -c true   %6.2f ms\n" % bare)
+                  fh.write("with .zshenv       %6.2f ms\n" % full)
+                  fh.write("startup work       %6.2f ms (%.2fx bare)\n" % (overhead, ratio))
+                  fh.write("~~~\n")
+
+          BUDGET = 2.0
+          if ratio > BUDGET:
+              raise SystemExit(
+                  "startup work is %.2fx zsh's own startup, over the %.1fx budget. "
+                  "Something on the .zshenv path got expensive -- a fork, a file "
+                  "read, or a lot more lines to parse. See the note at the top of "
+                  "common/.config/shell/theme.sh." % (ratio, BUDGET))
+          PY
         shell: bash
