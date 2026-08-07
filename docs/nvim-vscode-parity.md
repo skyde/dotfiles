@@ -125,6 +125,19 @@ of the buffer list, and are dropped again when the view closes — however it
 closes, `q` or an external `:tabclose` alike. The moment one is edited it
 becomes a real buffer and survives.
 
+Navigating from inside a diff pane stays in the view. A jump that lands a file
+in the pane — `gd`, a references picker, `<C-o>`, a plain `:e` — is adopted:
+a file from the changed listing gets its full diff rendering against the same
+base, inline or side-by-side per the current mode, with the panel selection
+following; an unchanged file (its diff is empty) shows plain, with the
+previous rendering's diff mode and folds scrubbed off. The window is reused
+rather than rebuilt, so the jumplist survives and `<C-o>` walks back — each
+return trip adopted the same way. Files a jump opens are previews like any
+other; a buffer that was already open on purpose stays in the buffer list.
+The code panes also pin their normal background (`NormalNC` rewired to
+`Normal`), so tokyonight's `dim_inactive` never darkens the code side while
+the cursor lives in the file list — the eyes are on the code either way.
+
 Rendering a diff costs a subprocess, so `j` / `k` move the cursor immediately
 and the diff follows once the keys stop (80 ms). Holding `j` through a
 400-file changelist costs one render rather than four hundred. `<CR>`
