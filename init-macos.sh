@@ -74,15 +74,17 @@ defaults write com.apple.dock autohide-delay -float 0
 defaults write com.apple.dock autohide-time-modifier -float 0.15
 killall Dock || true
 
-# lazygit on macOS reads ~/Library/Application Support/lazygit/config.yml —
-# not the stowed ~/.config/lazygit/config.yml — unless XDG_CONFIG_HOME is
-# exported, which these dotfiles do not do. Link the Apple location to the
-# stowed file so both resolve to the same config; otherwise a stale copy
-# there keeps rendering with settings the repo no longer has, and nothing
-# committed to the repo appears to change anything.
-LAZYGIT_APP_SUPPORT="$HOME/Library/Application Support/lazygit"
-mkdir -p "$LAZYGIT_APP_SUPPORT"
-ln -sf "$HOME/.config/lazygit/config.yml" "$LAZYGIT_APP_SUPPORT/config.yml"
-echo "Linked lazygit's Application Support config to ~/.config/lazygit/config.yml"
+# lazygit on macOS looks in ~/Library/Application Support first and only
+# reaches ~/.config last, so a stale copy in Application Support wins over the
+# stowed file and nothing committed to the repo appears to change anything.
+# The `mac` package now carries symlinks for both of lazygit's Application
+# Support paths (the current one and the legacy jesseduffield/ one), so
+# ./apply.sh keeps them pointing at common/.config/lazygit/config.yml. This
+# only cleans up after an older init that wrote a real file there.
+LAZYGIT_APP_SUPPORT="$HOME/Library/Application Support/lazygit/config.yml"
+if [ -e "$LAZYGIT_APP_SUPPORT" ] && [ ! -L "$LAZYGIT_APP_SUPPORT" ]; then
+  echo "Replacing the copied lazygit config in Application Support with a link to the stowed one"
+  ln -sf "$HOME/.config/lazygit/config.yml" "$LAZYGIT_APP_SUPPORT"
+fi
 
 echo "✅ macOS-specific setup complete!"

@@ -67,7 +67,9 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 - `lf` as a modern terminal file manager
 - `delta` for modern git diffs (also used in Lazygit)
   - diffs are side-by-side by default, while LazyGit shows inline changes
-- `lazygit` for a simple git TUI
+- `lazygit` for a simple git TUI — see [`docs/lazygit.md`](docs/lazygit.md) for
+  the added keys, the extras menu (`X`) and the diff renderers `|` cycles
+- `difftastic` for structural diffs (`git dft`, and `|` inside lazygit)
 - `starship` for a customizable cross-shell prompt
 
 ## Neovim
@@ -99,13 +101,29 @@ unpacked automatically when FUSE is missing. On macOS use `brew install neovim`.
 ### Lazygit Version
 
 `<leader>gg` opens lazygit inside Neovim, and
-`common/.config/lazygit/config.yml` uses recent options, so lazygit needs to be
-current as well. Debian and Ubuntu do not package it at all, so grab the release
-binary (`init.sh` offers this too):
+`common/.config/lazygit/config.yml` needs **0.64 or newer** (that release
+renamed the custom-pager settings), so lazygit needs to be current as well.
+Debian and Ubuntu do not package it at all, so grab the release binary
+(`init.sh` offers this too):
 
 ```sh
 ./install-lazygit.sh                          # latest release into ~/.local/bin
-LAZYGIT_VERSION=v0.54.2 ./install-lazygit.sh  # pin a specific tag
+LAZYGIT_VERSION=v0.64.0 ./install-lazygit.sh  # pin a specific tag
+```
+
+lazygit silently ignores config keys it does not recognise, so after changing
+its config run:
+
+```sh
+./tests/check-lazygit-config.sh
+```
+
+The `difftastic` renderer that `|` cycles to is a separate binary; apt only has
+it on recent releases, so it installs the same way:
+
+```sh
+./install-difftastic.sh                            # latest release with binaries
+DIFFTASTIC_VERSION=0.69.0 ./install-difftastic.sh  # pin a specific tag
 ```
 
 ### Plugin Versions

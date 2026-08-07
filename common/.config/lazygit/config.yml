@@ -1,31 +1,59 @@
-git:
-  # The key is `pagers` — a LIST — on lazygit 0.63 (`lazygit --config` prints
-  # the default config, which shows `pagers: []`; older docs say `paging:`, an
-  # object). lazygit silently ignores unknown keys, so the wrong shape doesn't
-  # error — it just disconnects delta and diffs quietly render as raw git
-  # output. Verify against `lazygit --config` output after touching this
-  # section, not by eyeballing the YAML.
-  pagers:
-    - colorArg: always # Delta wants colored input; LazyGit handles paging itself
-      pager: delta --dark --paging=never --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
-  parseEmoji: false
-promptToReturnFromSubprocess: false
-promptToOpenMergeTool: false
-scrollOffBehavior: margin
-os:
-  editPreset: nvim
-  open: "code --reuse-window {{filename}}"
-  openDirInEditor: "code --reuse-window {{dir}}"
-  copyToClipboardCmd: "printf '%s' {{text}} | osc-copy"
+# yaml-language-server: $schema=https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json
+#
+# lazygit — Tokyo Night chrome, delta diffs, tuned for large repositories.
+#
+# Targets lazygit 0.64+ (install-lazygit.sh always fetches the latest release).
+# lazygit silently ignores keys it does not recognise: a renamed, misplaced or
+# misspelled option does not error, it just quietly stops doing anything. That
+# is not hypothetical — `git.pagers`, top-level `scrollOffBehavior` and
+# `promptToOpenMergeTool` all used to sit in this file doing nothing. Run
+# `./tests/check-lazygit-config.sh` after touching it: that script checks every
+# key path here against the installed binary's own defaults (`lazygit --config`)
+# and fails on anything lazygit would ignore.
+#
+# Palette reference: docs/tokyonight.md. Keys and commands: docs/lazygit.md.
+
 gui:
+  # A screenful-ish jump per J/K press: the main panel is read by scrolling it
+  # from the side panel, so small steps mean holding the key down.
   scrollHeight: 32
   scrollPastBottom: false
+  # Keep 8 rows of context around the selection instead of letting it ride the
+  # edge of the panel. Both keys live under `gui:` — `scrollOffBehavior` sat at
+  # the top level for a while, where lazygit ignored it.
   scrollOffMargin: 8
+  scrollOffBehavior: margin
+
+  # Nerd Font icons (the terminals here all use a v3 patched font).
   nerdFontsVersion: "3"
   showFileIcons: true
+
+  # `+N -M` next to every file in the Files panel. The panel already costs a
+  # row per file; the counts say which of those rows is worth opening.
+  showNumstatInFilesView: true
+
+  # Branches panel shows how far each branch has drifted from the base branch
+  # (`↑3↓12`), not just from its upstream — the number that decides whether a
+  # rebase is due.
+  showDivergenceFromBaseBranch: arrowAndNumber
+
+  # `/` filtering matches subsequences, not substrings, so `cfgyml` finds
+  # `common/.config/lazygit/config.yml`. Worth it in a repo whose paths are
+  # long and deeply nested.
+  filterMode: fuzzy
+
+  # Pressing a panel jump key (1-5) for the panel you are already in cycles its
+  # tabs, so 2 2 reaches Worktrees and 3 3 reaches Remotes without <tab>.
+  switchTabsWithPanelJumpKeys: true
+
+  # ISO-ish and 24-hour, matching every other timestamp in this dotfiles repo.
+  # Go reference-time syntax, not strftime.
+  timeFormat: "2006-01-02"
+  shortTimeFormat: "15:04"
+
+  # Tokyo Night (night) — palette reference: docs/tokyonight.md. (There is no
+  # `lightTheme` key any more; it lived here for a while doing nothing.)
   theme:
-    lightTheme: false
-    # Tokyo Night (night) — palette reference: docs/tokyonight.md
     activeBorderColor: ["#7aa2f7", "bold"]
     inactiveBorderColor: ["#292e42"]
     searchingActiveBorderColor: ["#ff9e64", "bold"]
@@ -38,18 +66,255 @@ gui:
     markedBaseCommitBgColor: ["#ff9e64"]
     markedBaseCommitFgColor: ["#16161e"]
     unstagedChangesColor: ["#f7768e"]
+
+  # Branch names carry their kind in the prefix, so let the colour say it and
+  # save reading the word. Patterns are Go regexps and are *not* anchored
+  # implicitly — the ^ and $ here are load-bearing. Anything unmatched keeps
+  # lazygit's default colouring.
+  branchColorPatterns:
+    '^(main|master|develop)$': "#7aa2f7" # blue — the trunk
+    '^(feat|feature)/': "#9ece6a" # green — new work
+    '^(fix|hotfix|bugfix)/': "#f7768e" # red — something is broken
+    '^(release|rel)/': "#e0af68" # yellow — shipping
+    '^(chore|docs|test|refactor|perf|ci|build)/': "#565f89" # comment grey — housekeeping
+    '^(wip|tmp|scratch|spike)/': "#565f89"
+
+git:
+  # Diff renderers, cycled with `|` (and `\` backwards). lazygit 0.64 renamed
+  # this section: it was `git.pagers` (a list) before, and an older `git.paging`
+  # (an object) before that. Both are ignored on 0.64+, which is exactly the
+  # silent failure the header warns about — diffs quietly render as raw git.
+  #
+  # First entry is the default. delta reads its styling from the [delta]
+  # section of common/.config/git/config, so only the lazygit-specific
+  # arguments belong here:
+  #   --paging=never  lazygit does its own paging
+  #   --tabs=4        delta's own default is 8, which would disagree with the
+  #                   staging view (gui.tabWidth, 4)
+  #   --hyperlinks    makes delta's line numbers clickable; the link format
+  #                   below is lazygit's own protocol, so a click opens the
+  #                   file at that line in os.edit* (nvim)
+  diffRenderers:
+    - name: delta
+      colorArg: always # delta wants coloured input
+      command: 'delta --dark --paging=never --tabs=4 --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"'
+    # Same delta, split into two columns, for the diffs where a moved block or
+    # a reindent needs to be read side by side. `git sbs` is the command-line
+    # equivalent (see the alias in common/.config/git/config).
+    - name: delta side-by-side
+      colorArg: always
+      command: 'delta --dark --paging=never --tabs=4 --side-by-side --line-numbers-left-format="{nm:>4} "'
+    # Syntax-aware structural diff: the one that can tell a rename from a
+    # rewrite. Slow on huge files, hence not the default. --context is fed
+    # lazygit's live context size, so { and } still work while it is active.
+    - name: difftastic
+      type: extDiff
+      command: "difft --color=always --display=inline --context={{diffContext}}"
+    # Word-level diff, for prose and for one-line changes in long lines.
+    - name: word-diff
+      type: rawGit
+      args: ["--color-words"]
+    # Raw git, no renderer at all — the escape hatch when a renderer is
+    # mangling something and the question is what git actually said.
+    - name: raw git
+      type: rawGit
+
+  # Match `diff.context = 10` from common/.config/git/config. lazygit passes
+  # its own --unified, so without this the TUI would show 3 lines of context
+  # while every command-line diff shows 10.
+  diffContextSize: 10
+
+  # Fetch origin only, not every remote. In a repo with a fork remote (or
+  # Chromium's several) `git fetch --all` on a timer is minutes of work for
+  # refs nobody is looking at.
+  fetchAll: false
+
+  # Branches in the order you last used them, rather than by commit date: the
+  # branch you touched an hour ago sorts above one you rebased onto a fresh
+  # upstream commit yesterday.
+  localBranchSortOrder: recency
+
+  # `a` in the status panel cycles these. The second one is the survival option
+  # in a repo the size of Chromium: only commits carrying a ref, so the graph
+  # is branch topology instead of a million commits.
+  allBranchesLogCmds:
+    - git log --graph --all --color=always --abbrev-commit --decorate --date=relative --pretty=medium
+    - git log --graph --all --color=always --abbrev-commit --decorate --date=short --simplify-by-decoration --pretty=oneline
+
+  # Branch names that start with a ticket id (`ABC-123-thing`, or under a
+  # `feature/` prefix) pre-fill the commit message with `ABC-123: `. Anything
+  # else matches neither pattern and gets an empty message as before.
+  commitPrefix:
+    - pattern: '^\w+/([A-Z]+-\d+).*'
+      replace: "$1: "
+    - pattern: '^([A-Z]+-\d+).*'
+      replace: "$1: "
+
+os:
+  editPreset: nvim
+  open: "code --reuse-window {{filename}}"
+  openDirInEditor: "code --reuse-window {{dir}}"
+  # OSC 52 both ways, so yanking a hash or pasting a branch name works over ssh
+  # and inside tmux without a local clipboard tool. Both scripts live in
+  # common/.local/bin.
+  copyToClipboardCmd: "printf '%s' {{text}} | osc-copy"
+  readFromClipboardCmd: "osc-paste"
+
+# Auto-fetching is a background `git fetch` on a timer; at 60s that is a lot of
+# network for a repo the size of Chromium, and the answer rarely changes that
+# fast. Three minutes still means the branch panel is never meaningfully stale.
+refresher:
+  fetchInterval: 180
+
+promptToReturnFromSubprocess: false
+
+# The "thanks for using lazygit" splash comes back after every release, and
+# install-lazygit.sh pulls releases often.
+disableStartupPopups: true
+
 keybinding:
   universal:
+    # Vim's undo. Redo moves to `U` rather than vim's <c-r>, which lazygit has
+    # already spent on "recent repos" — and away from `Z`, where the stash
+    # snapshot below shadowed it into unreachability.
     undo: u
+    redo: U
+
 customCommands:
   - key: "Z"
+    context: "global"
+    description: "Stash snapshot (keep worktree)"
+    # `git stash create` + `store` snapshots without touching the worktree, so
+    # this is a save point rather than an interruption.
+    #
     # The date format must be one quoted argument: unquoted, BSD date treats
     # %H:%M:%S as a set-the-clock operand, errors, and the snapshot message
     # gets an empty timestamp.
     command: "sh -c 'id=$(git stash create); if [ -n \"$id\" ]; then git stash store -m \"snapshot $(date \"+%Y-%m-%d %H:%M:%S\")\" \"$id\"; fi'"
-    context: "global"
-    description: "Stash snapshot (keep worktree)"
-  - key: 'Y' # You can change this to any key (e.g., 'C' or '<c-c>')
-    context: 'commits, subCommits'
-    description: 'Copy diff of selected commit(s) to clipboard'
-    command: 'git diff --no-color {{if .SelectedCommitRange}}{{.SelectedCommitRange.From}}^..{{.SelectedCommitRange.To}}{{else}}{{.SelectedLocalCommit.Hash}}^!{{end}} | osc-copy'
+
+  - key: "Y"
+    context: "commits, subCommits"
+    description: "Copy diff of selected commit(s) to clipboard"
+    command: 'git diff --no-color {{if .SelectedCommitRange}}{{.SelectedCommitRange.From}}^..{{.SelectedCommitRange.To}}{{else}}{{.SelectedCommit.Hash}}^!{{end}} | osc-copy'
+
+  - key: "<c-n>"
+    context: "files"
+    description: "Conventional commit"
+    command: 'git commit -m "{{.Form.Type}}{{if .Form.Scope}}({{.Form.Scope}}){{end}}{{if eq .Form.Breaking "yes"}}!{{end}}: {{.Form.Subject}}"'
+    loadingText: "Committing"
+    prompts:
+      - type: "menu"
+        key: "Type"
+        title: "Type of change"
+        options:
+          - { value: "feat", name: "feat", description: "a new feature", key: "f" }
+          - { value: "fix", name: "fix", description: "a bug fix", key: "x" }
+          - { value: "refactor", name: "refactor", description: "neither fixes a bug nor adds a feature", key: "r" }
+          - { value: "perf", name: "perf", description: "improves performance", key: "p" }
+          - { value: "test", name: "test", description: "tests only", key: "t" }
+          - { value: "docs", name: "docs", description: "documentation only", key: "d" }
+          - { value: "build", name: "build", description: "build system or dependencies", key: "b" }
+          - { value: "ci", name: "ci", description: "CI configuration", key: "c" }
+          - { value: "chore", name: "chore", description: "anything else", key: "o" }
+      - type: "input"
+        key: "Scope"
+        title: "Scope (optional)"
+      - type: "menu"
+        key: "Breaking"
+        title: "Breaking change?"
+        # Menu values cannot be empty, so the answer is a word and the command
+        # turns it into the `!` marker.
+        options:
+          - { value: "no", name: "no", key: "n" }
+          - { value: "yes", name: "yes", description: "appends ! to the type", key: "y" }
+      - type: "input"
+        key: "Subject"
+        title: "Subject"
+
+  - key: "y"
+    context: "localBranches, remoteBranches"
+    description: "Copy branch name to clipboard"
+    command: "printf '%s' {{if .SelectedRemoteBranch}}{{.SelectedRemoteBranch.Name | quote}}{{else}}{{.SelectedLocalBranch.Name | quote}}{{end}} | osc-copy"
+
+  - key: "X"
+    description: "Extras (blame, worktrees, diffs, repo repair)"
+    commandMenu:
+      - key: "b"
+        context: "files, commitFiles"
+        description: "Blame this file"
+        # delta paints blame too (blame-palette in common/.config/git/config),
+        # and pages it itself; `output: terminal` hands it the real terminal so
+        # that pager is usable.
+        command: "git blame --date=short -- {{if .SelectedCommitFile}}{{.SelectedCommitFile.Name | quote}}{{else}}{{.SelectedFile.Name | quote}}{{end}} | delta --paging=always"
+        output: terminal
+
+      - key: "h"
+        context: "files, commitFiles"
+        description: "History of this file (follows renames)"
+        command: "git log --follow --patch -- {{if .SelectedCommitFile}}{{.SelectedCommitFile.Name | quote}}{{else}}{{.SelectedFile.Name | quote}}{{end}}"
+        output: terminal
+
+      - key: "d"
+        context: "global"
+        description: "Diff working tree against the nearest branch point"
+        # git-diff-from-last-branch picks the closest base — another local
+        # branch or origin/main — instead of assuming main. Same script the
+        # `git-copy` helper uses.
+        command: "git-diff-from-last-branch"
+        output: terminal
+
+      - key: "c"
+        context: "global"
+        description: "Copy that diff to the clipboard"
+        command: "git-copy"
+        loadingText: "Copying diff"
+
+      - key: "w"
+        context: "localBranches"
+        description: "Add a worktree for this branch"
+        command: "git worktree add {{.Form.Path | quote}} {{.SelectedLocalBranch.Name | quote}}"
+        loadingText: "Adding worktree"
+        prompts:
+          - type: "input"
+            key: "Path"
+            title: "Worktree path"
+            initialValue: "../{{.SelectedLocalBranch.Name}}"
+
+      - key: "p"
+        context: "global"
+        description: "Prune worktrees and remote-tracking branches"
+        command: "git worktree prune --verbose && git remote prune origin"
+        output: popup
+        outputTitle: "Pruned"
+
+      - key: "D"
+        context: "localBranches"
+        description: "Delete local branches already merged into the base branch"
+        # --merged only lists branches whose tip is reachable from the base, so
+        # this cannot drop unmerged work; `git branch -d` refuses anyway.
+        command: "sh -c 'git branch --merged {{.Form.Base}} --format=\"%(refname:short)\" | grep -vxE \"{{.Form.Base}}|main|master|develop\" | xargs -r git branch -d'"
+        output: popup
+        outputTitle: "Deleted merged branches"
+        prompts:
+          - type: "input"
+            key: "Base"
+            title: "Merged into which branch?"
+            initialValue: "origin/main"
+            suggestions:
+              preset: "refs"
+
+      - key: "u"
+        context: "global"
+        description: "Remove stale git lock files"
+        command: "git-unlock"
+        output: popup
+        outputTitle: "git-unlock"
+
+      - key: "m"
+        context: "global"
+        description: "Run git maintenance now"
+        # The repo-size chores — commit-graph, incremental repack, loose object
+        # prune — that [maintenance] in the git config schedules.
+        command: "git maintenance run --task=commit-graph --task=loose-objects --task=incremental-repack"
+        loadingText: "Running git maintenance"
+        output: log

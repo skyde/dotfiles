@@ -13,6 +13,9 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 ## Optional checks
 
+- If you changed the lazygit config, run `./tests/check-lazygit-config.sh`.
+  lazygit ignores keys it does not recognise, so a bad edit does not fail — it
+  quietly does nothing.
 - Run ShellCheck on modified shell scripts if available: `shellcheck <changed .sh files>`
 - Run Stylua on modified Neovim Lua files if available: `stylua common/nvim/.config/nvim`
 - Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`

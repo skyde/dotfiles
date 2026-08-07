@@ -128,6 +128,17 @@ if [ -f "install-lazygit.sh" ]; then
   fi
 fi
 
+# Optional: Install difftastic (lazygit's `|` structural diff renderer, git dft)
+if [ -f "install-difftastic.sh" ]; then
+  install_difftastic=$(get_user_confirmation "Install the latest difftastic to ~/.local/bin? (y/N): ")
+  if [[ "$install_difftastic" =~ ^[Yy] ]]; then
+    echo "Running difftastic installation script..."
+    ./install-difftastic.sh
+  else
+    echo "Skipping difftastic installation"
+  fi
+fi
+
 # Optional: Install Yazi with enhanced features (GitHub binary for Linux)
 if [ -f "install-yazi.sh" ]; then
   install_yazi=$(get_user_confirmation "Install Yazi (may prompt again for install method)? (y/N): ")
