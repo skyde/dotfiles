@@ -1704,6 +1704,45 @@ do
 end
 
 --------------------------------------------------------------------------
+-- the tabline must not flicker while the view shuffles buffers
+--------------------------------------------------------------------------
+
+do
+  -- bufferline (always_show_bufferline = false, the LazyVim default) hides
+  -- the tabline while a single buffer is listed and re-shows it from a
+  -- BufAdd hook the moment another joins the list. The view lists buffers
+  -- only transiently — `:edit` lists a preview that is unlisted again a few
+  -- lines later, tabnew's leftover buffer is deleted straight away — but the
+  -- hook fires in between, and the flipped showtabline used to survive the
+  -- render: the bar popped in for one frame on every file switch, shoving
+  -- the whole screen down and back up.
+  for _, info in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+    pcall(vim.cmd, "bwipeout! " .. info.bufnr)
+  end
+  local group = vim.api.nvim_create_augroup("fake_bufferline", {})
+  local function toggle()
+    vim.o.showtabline = #vim.fn.getbufinfo({ buflisted = 1 }) > 1 and 2 or 0
+  end
+  vim.api.nvim_create_autocmd({ "BufAdd", "TabEnter" }, { group = group, callback = toggle })
+  toggle()
+  eq("tabline: hidden going in", 0, vim.o.showtabline)
+
+  open_settled({ scope = "working" })
+  eq("tabline: opening the view leaves it hidden", 0, vim.o.showtabline)
+  scrub("j")
+  eq("tabline: switching files leaves it hidden", 0, vim.o.showtabline)
+  scrub("jk")
+  eq("tabline: scrubbing leaves it hidden", 0, vim.o.showtabline)
+  feed("\r") -- focus the diff, materialising the preview
+  scrub("]f")
+  eq("tabline: ]f from inside the diff leaves it hidden", 0, vim.o.showtabline)
+  ui.close()
+
+  vim.api.nvim_del_augroup_by_id(group)
+  vim.o.showtabline = 1
+end
+
+--------------------------------------------------------------------------
 -- degenerate cases
 --------------------------------------------------------------------------
 

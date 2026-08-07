@@ -955,11 +955,32 @@ local function do_render_file(file, focus)
   vim.api.nvim_set_current_win(focus and target or state.panel_win)
 end
 
+---Run `fn` with the tabline pinned. bufferline auto-hides the tabline while
+---a single buffer is listed (always_show_bufferline = false) and re-shows it
+---from a BufAdd hook the moment another joins the list. The view lists
+---buffers only transiently — `:edit` lists a preview that track_preview
+---unlists again a few lines later, tabnew's leftover buffer is deleted
+---straight away — but the hook has already flipped showtabline by then, and
+---nothing flips it back before the next redraw: the bar pops in for one
+---frame, shoving every window down and back up. Nothing here changes how
+---many buffers are listed once it returns, so whatever value showtabline
+---had going in is the right one coming out.
+local function pin_tabline(fn, ...)
+  local showtabline = vim.o.showtabline
+  local ok, err = pcall(fn, ...)
+  if vim.o.showtabline ~= showtabline then
+    vim.o.showtabline = showtabline
+  end
+  if not ok then
+    error(err, 0)
+  end
+end
+
 ---All renders funnel through here so the navigation autocmds can tell the
 ---view placing its own buffers apart from an actual jump landing in a pane.
 local function render_file(file, focus)
   rendering = true
-  local ok, err = pcall(do_render_file, file, focus)
+  local ok, err = pcall(pin_tabline, do_render_file, file, focus)
   rendering = false
   if not ok then
     error(err, 0)
@@ -1694,6 +1715,10 @@ local function ensure_tab()
     return
   end
   local origin = vim.api.nvim_get_current_tabpage()
+  -- The leftover buffer below is listed until it is deleted a few lines
+  -- later; pin the tabline across that moment, the way pin_tabline does for
+  -- the renders, or bufferline pops it in for a frame on every open.
+  local showtabline = vim.o.showtabline
   vim.cmd("tabnew")
   -- `tabnew` leaves an empty unnamed buffer behind once the panel replaces it,
   -- which then sits in the bufferline as "[No Name]".
@@ -1711,6 +1736,9 @@ local function ensure_tab()
   vim.api.nvim_win_set_buf(win, buf)
   if vim.api.nvim_buf_is_valid(leftover) and vim.api.nvim_buf_get_name(leftover) == "" then
     pcall(vim.api.nvim_buf_delete, leftover, { force = true })
+  end
+  if vim.o.showtabline ~= showtabline then
+    vim.o.showtabline = showtabline
   end
   wo_local(win, "number", false)
   wo_local(win, "relativenumber", false)
