@@ -1,46 +1,15 @@
 #!/bin/bash
 set -e
 
-# Handled before anything else, so `--help` never depends on the repository
-# state or on the workflow existing.
-if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
-    echo "Usage: $0 [number_of_cycles]"
-    echo ""
-    echo "This script triggers and monitors GitHub Actions workflows"
-    echo "to test dotfiles installation across all platforms:"
-    echo "  - Linux (Ubuntu)"
-    echo "  - macOS (latest)"
-    echo "  - Windows (latest)"
-    echo ""
-    echo "Options:"
-    echo "  number_of_cycles  Number of test cycles to run (default: 3)"
-    echo "  --help, -h        Show this help message"
-    echo ""
-    echo "Environment:"
-    echo "  DOTFILES_WORKFLOW  Workflow to run (default: comprehensive-test.yml)"
-    echo "  DOTFILES_BRANCH    Branch to trigger on (default: the current branch)"
-    echo "  DOTFILES_REPO      owner/name (default: skyde/dotfiles)"
-    echo ""
-    echo "Requires a clean working tree: CI tests what is pushed, not what is local."
-    echo ""
-    echo "Examples:"
-    echo "  $0              # Run 3 test cycles"
-    echo "  $0 5            # Run 5 test cycles"
-    exit 0
-fi
-
 # GitHub repository and workflow monitoring script
 REPO="${DOTFILES_REPO:-skyde/dotfiles}"
 
-# The branch to trigger on, defaulting to whichever one is checked out. It used
-# to be hard-coded to "main", which is how this script came to push to main from
-# whatever branch you happened to be on (see main() below).
+# Defaults to the checked-out branch. Hard-coding "main" is how this came to
+# push to main from whatever branch you were on (see main() below).
 BRANCH="${DOTFILES_BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)}"
 
-# There is no simple-test.yml in this repository and there never has been, so
-# every `gh workflow run` and `gh run list` this script made was against a
-# workflow that does not exist. Default to one that does, and check before
-# doing anything rather than failing halfway through a cycle.
+# simple-test.yml does not exist and never has, so every `gh workflow run` and
+# `gh run list` here targeted nothing. Check it up front.
 WORKFLOW_FILE="${DOTFILES_WORKFLOW:-comprehensive-test.yml}"
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
@@ -169,8 +138,7 @@ run_platform_tests() {
     local test_count=${1:-3}
     local success_count=0
 
-    # The success-rate line divides by this, so a non-positive count is an
-    # arithmetic error rather than a no-op run.
+    # The success-rate line divides by this.
     if ! [[ "$test_count" =~ ^[0-9]+$ ]] || [ "$test_count" -lt 1 ]; then
         echo "❌ Number of cycles must be a positive integer (got '$test_count')." >&2
         return 1
@@ -226,10 +194,9 @@ run_platform_tests() {
 main() {
     echo "Checking current repository status..."
 
-    # Refuse rather than commit. This used to `git add -A`, commit everything in
-    # the working tree under the message "Auto-commit before platform testing"
-    # and push it to a hard-coded "main" — from whatever branch you were on,
-    # with no prompt. Running a test helper must never publish your work.
+    # Refuse rather than commit. This used to `git add -A`, commit the whole
+    # working tree and push it to a hard-coded "main", unprompted, from
+    # whatever branch you were on.
     if [ -n "$(git status --porcelain)" ]; then
         echo "❌ Working directory is not clean." >&2
         git status --short >&2
@@ -246,6 +213,26 @@ main() {
     local cycles=${1:-3}
     run_platform_tests "$cycles"
 }
+
+# Check command line arguments
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    echo "Usage: $0 [number_of_cycles]"
+    echo ""
+    echo "This script triggers and monitors GitHub Actions workflows"
+    echo "to test dotfiles installation across all platforms:"
+    echo "  - Linux (Ubuntu)"
+    echo "  - macOS (latest)"
+    echo "  - Windows (latest)"
+    echo ""
+    echo "Options:"
+    echo "  number_of_cycles  Number of test cycles to run (default: 3)"
+    echo "  --help, -h        Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0              # Run 3 test cycles"
+    echo "  $0 5            # Run 5 test cycles"
+    exit 0
+fi
 
 # Run main function with arguments
 main "$@"
