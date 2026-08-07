@@ -8,6 +8,23 @@
 require("hs.ipc")
 
 
+------------------------  Alert appearance  ------------------------------------
+-- The alerts below (hs.alert.show) are the only thing this config draws on
+-- screen, and they were on Hammerspoon's default dark-grey-on-white styling —
+-- the one surface on this machine that had nothing to do with the rest of the
+-- theme. Tokyo Night; palette reference: docs/tokyonight.md.
+--
+-- bg_dark rather than bg, because an alert floats over whatever is behind it
+-- and wants to read as a surface rather than as a hole; the accent blue border
+-- is the same one every other modal here uses (yazi's dialogs, lazygit's
+-- focused panel, tmux popups).
+hs.alert.defaultStyle.fillColor = { hex = "#16161e", alpha = 0.95 }
+hs.alert.defaultStyle.strokeColor = { hex = "#7aa2f7", alpha = 1 }
+hs.alert.defaultStyle.textColor = { hex = "#c0caf5", alpha = 1 }
+hs.alert.defaultStyle.strokeWidth = 2
+hs.alert.defaultStyle.radius = 8
+
+
 ---------------------------  Constants  ----------------------------------------
 local INTERNAL_KB_NAME = "Apple Internal Keyboard / Trackpad"
 local CMD_TAP_THRESHOLD = 0.15 -- seconds a press counts as a tap

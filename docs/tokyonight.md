@@ -277,6 +277,7 @@ accent chosen to be instantly findable against the blue-violet palette. Keep it.
 | zsh      | `common/.config/shell/theme.sh` (autosuggestions), `common/.zshrc` (completion menu) |
 | zsh syntax | `common/.config/fsh/tokyonight.ini` (fast-syntax-highlighting) |
 | PowerShell | `windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1` (PSReadLine) |
+| Hammerspoon | `mac/.hammerspoon/init.lua` (`hs.alert.defaultStyle`) |
 | ripgrep  | `common/.ripgreprc`                                   |
 | search pickers | `common/.local/bin/st-rg`, `common/.local/bin/st-zoekt` (the awk prefix) |
 | yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
