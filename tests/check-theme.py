@@ -744,6 +744,69 @@ def _check_starship_config(verbose):
     return problems
 
 
+def _check_bat_theme(verbose):
+    """BAT_THEME agrees between the shells, and names a theme bat has.
+
+    docs/tokyonight.md calls this "the single source of truth" for syntax
+    highlighting, and it reaches further than that suggests: bat reads it,
+    delta inherits bat's theme set, and the yazi preview, the lf preview and
+    the Ctrl-R history picker all shell out to bat precisely so they follow it.
+    One setting decides what code looks like in five places.
+
+    Two ways for that to break quietly, so both are checked. It is written out
+    twice, once per shell, so the two can disagree. And if the name stops
+    matching a theme bat actually carries -- a rename upstream, a cache never
+    built -- bat does not complain, it just falls back to its default and every
+    one of those five surfaces changes together.
+    """
+    import shutil
+    import subprocess
+
+    values = {}
+    for rel in ("common/.zshenv", "common/.bashrc-custom"):
+        path = os.path.join(REPO, rel)
+        if not os.path.isfile(path):
+            continue
+        m = re.search(r'^\s*export BAT_THEME=(.+)$',
+                      open(path, encoding="utf-8").read(), re.M)
+        if m:
+            values[rel] = m.group(1).strip().strip('"').strip("'")
+
+    problems = []
+    if len(values) < 2:
+        problems.append(
+            "BAT_THEME is exported in %s but not in both shells' files"
+            % ", ".join(sorted(values)) if values else
+            "BAT_THEME is not exported by either shell")
+    elif len(set(values.values())) > 1:
+        problems.append(
+            "BAT_THEME differs between the shells: %s"
+            % ", ".join("%s=%r" % kv for kv in sorted(values.items())))
+
+    theme = next(iter(values.values()), None)
+    # Debian ships the binary as batcat.
+    bat = shutil.which("bat") or shutil.which("batcat")
+    if theme and bat:
+        try:
+            out = subprocess.run([bat, "--list-themes"], capture_output=True,
+                                 text=True, timeout=30,
+                                 stdin=subprocess.DEVNULL)
+            names = {line.strip() for line in out.stdout.splitlines()}
+            if theme not in names:
+                problems.append(
+                    "BAT_THEME is %r, which %s does not have -- bat falls back "
+                    "to its default and takes delta, the yazi and lf previews "
+                    "and the history picker with it" % (theme, bat))
+            elif verbose:
+                print("  BAT_THEME %r exists in %s and matches in both shells"
+                      % (theme, os.path.basename(bat)))
+        except (OSError, subprocess.SubprocessError) as exc:
+            problems.append("could not ask bat for its themes: %s" % exc)
+    elif verbose and theme:
+        print("  BAT_THEME matches in both shells; bat not installed to verify it")
+    return problems
+
+
 def _check_ripgrep_config(verbose):
     """Let ripgrep parse its own config, since it is strict about colours.
 
@@ -900,6 +963,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_ripgrep_config(verbose))
     problems.extend(_check_yazi_configs(verbose))
     problems.extend(_check_starship_config(verbose))
+    problems.extend(_check_bat_theme(verbose))
     problems.extend(_check_nvim_delta_parity(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))

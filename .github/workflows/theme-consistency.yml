@@ -88,11 +88,15 @@ jobs:
           curl -fsSL https://starship.rs/install.sh | sh -s -- -y -b /usr/local/bin \
             || echo "starship unavailable; its config check will skip"
 
+      - name: Install bat
+        run: sudo apt-get install -y --no-install-recommends bat
+          || echo "bat unavailable; the BAT_THEME check will only compare the two shells"
+
       - name: Check the theme
         run: tests/check-theme.py --verbose
 
       # A checker that never fails is indistinguishable from a checker that is
-      # broken. This breaks one specific thing in a copy of the tree, thirteen
-      # times over, and requires the checker to notice each one and say why.
+      # broken. This breaks one specific thing in a copy of the tree, once per
+      # mutation, and requires the checker to notice each one and say why.
       - name: Check the checker
         run: tests/check-theme-selftest.py --verbose

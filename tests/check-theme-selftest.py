@@ -50,6 +50,8 @@ STARSHIP = "common/.config/starship.toml"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
 FF = "common/.local/bin/ff"
 PSPROFILE = "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
+ZSHENV = "common/.zshenv"
+BASHRC = "common/.bashrc-custom"
 
 # (name, check to run, file, pattern, replacement, expected words, tool needed)
 #
@@ -138,6 +140,18 @@ MUTATIONS = [
      r"\[hostname\]\n", "[hostname]\nnot_a_key = 1\n",
      "Unknown key", "starship"),
 
+    # BAT_THEME decides what code looks like in five places at once, and it is
+    # written out twice, once per shell.
+    ("BAT_THEME disagreeing between the shells", "parity", BASHRC,
+     r'export BAT_THEME="Visual Studio Dark\+"',
+     'export BAT_THEME="Monokai Extended"',
+     "differs between the shells", None),
+
+    ("BAT_THEME naming a theme bat does not have", "parity", ZSHENV,
+     r'export BAT_THEME="Visual Studio Dark\+"',
+     'export BAT_THEME="No Such Theme"',
+     "does not have", "bat|batcat"),
+
     ("a delta option that does not exist", "parity", GIT,
      r'blame-separator-style = "#3b4261"',
      'blame-separator-style = "#3b4261"\n    blame-timestamp-style = "#737aa2"',
@@ -182,7 +196,8 @@ def run_checker(root, check=None):
 
 
 def have(tool):
-    return shutil.which(tool) is not None
+    """True if any of the named binaries exists. "bat|batcat" for Debian."""
+    return any(shutil.which(name) for name in tool.split("|"))
 
 
 def run_mutations(files, verbose):

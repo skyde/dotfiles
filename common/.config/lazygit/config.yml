@@ -5,13 +5,25 @@ git:
   # error — it just disconnects delta and diffs quietly render as raw git
   # output. Verify against `lazygit --config` output after touching this
   # section, not by eyeballing the YAML.
+  #
+  # It is due to be renamed again. lazygit's master schema has no `pagers` and
+  # no `paging`; it has `git.diffRenderers`, an array whose entries take a
+  # `type` ("stdinFilter" | "extDiff" | "rawGit"), an optional `name`, and the
+  # same `colorArg`. `pagers` is still correct for every released version —
+  # 0.58 prints `pagers: []` in its defaults — so nothing changes here yet.
+  # This note exists so the next upgrade does not quietly disconnect delta and
+  # leave lazygit rendering raw git output, which is exactly how the yazi
+  # configs in this repo came to be silently ignored.
   pagers:
     - colorArg: always # Delta wants colored input; LazyGit handles paging itself
       pager: delta --dark --paging=never --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
   parseEmoji: false
 promptToReturnFromSubprocess: false
-promptToOpenMergeTool: false
-scrollOffBehavior: margin
+# Two keys used to sit here and neither did anything. `promptToOpenMergeTool`
+# is not a lazygit option at all — nothing in its schema has "mergeTool" in the
+# name — and `scrollOffBehavior` is real but belongs under `gui`, beside the
+# `scrollOffMargin` below that was already in the right place. Both moved or
+# removed; see the note on the theme block for how to tell.
 os:
   editPreset: nvim
   open: "code --reuse-window {{filename}}"
@@ -21,10 +33,21 @@ gui:
   scrollHeight: 32
   scrollPastBottom: false
   scrollOffMargin: 8
+  scrollOffBehavior: margin
   nerdFontsVersion: "3"
   showFileIcons: true
   theme:
-    lightTheme: false
+    # `lightTheme` used to be the first key here and is not one of lazygit's:
+    # ThemeConfig has exactly twelve, all of them below. It was inert.
+    #
+    # Checking that is not as easy as it sounds, and the note further up about
+    # verifying against `lazygit --config` is only half the story: that output
+    # omits every field with an empty default, so the whole `os:` section is
+    # missing from it and looks equally "unknown". The complete list is the
+    # schema:
+    #
+    #   curl -s https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json
+    #
     # Tokyo Night (night) — palette reference: docs/tokyonight.md
     activeBorderColor: ["#7aa2f7", "bold"]
     inactiveBorderColor: ["#292e42"]
