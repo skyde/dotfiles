@@ -29,6 +29,7 @@ _tn_dark3='84;92;126'      # #545c7e  line numbers, indices
 _tn_comment='86;95;137'    # #565f89  comments, muted text
 _tn_dark5='115;122;162'    # #737aa2  tertiary text
 _tn_red='247;118;142'      # #f7768e
+_tn_red1='219;75;75'       # #db4b4b  hard errors
 _tn_green='158;206;106'    # #9ece6a
 _tn_yellow='224;175;104'   # #e0af68
 _tn_blue='122;162;247'     # #7aa2f7
@@ -203,9 +204,41 @@ _eza="$_eza:da=38;2;$_tn_comment:in=38;2;$_tn_dark3:bl=38;2;$_tn_dark3"
 _eza="$_eza:hd=38;2;$_tn_blue;1:xx=38;2;$_tn_gutter:lp=38;2;$_tn_cyan"
 # The git column, in the same language the rest of the setup uses for git:
 # teal for new (docs/tokyonight.md gives teal to "untracked / new"), yellow for
-# modified, red for deleted, magenta for renamed.
+# modified, red for deleted, magenta for renamed. Ignored files recede to
+# comment grey; a conflict is the one thing here that is an error.
 _eza="$_eza:ga=38;2;$_tn_teal:gm=38;2;$_tn_yellow:gd=38;2;$_tn_red"
 _eza="$_eza:gv=38;2;$_tn_magenta:gt=38;2;$_tn_cyan"
+_eza="$_eza:gi=38;2;$_tn_comment:gc=38;2;$_tn_red1"
+
+# Per-repo branch state, for `eza --git-repos`. Magenta is the palette's branch
+# colour, so the main branch keeps it and other branches take the secondary
+# magenta -- the same pairing `git branch` uses in the git config.
+_eza="$_eza:Gm=38;2;$_tn_magenta:Go=38;2;$_tn_purple"
+_eza="$_eza:Gc=38;2;$_tn_green:Gd=38;2;$_tn_yellow"
+
+# root, in the red starship already gives a root prompt.
+_eza="$_eza:uR=38;2;$_tn_red:gR=38;2;$_tn_red"
+
+# eza's own file categories. These matter more than they look: LS_COLORS above
+# names 53 extensions, and eza recognises far more kinds than that by itself --
+# every file outside that list was being coloured by eza's built-in defaults,
+# which are not this palette. Each category is given the colour its extensions
+# already have above, so the theme reaches every file type eza knows rather
+# than only the ones spelled out.
+_eza="$_eza:im=38;2;$_tn_magenta:vi=38;2;$_tn_magenta"
+_eza="$_eza:mu=38;2;$_tn_purple:lo=38;2;$_tn_purple"
+_eza="$_eza:co=38;2;$_tn_red:do=38;2;$_tn_orange:sc=38;2;$_tn_green"
+_eza="$_eza:cr=38;2;$_tn_yellow:bu=38;2;$_tn_yellow"
+# Build output and editor leftovers are the "noise" group: present, not worth
+# reading, exactly like *.o and *.swp above.
+_eza="$_eza:cm=38;2;$_tn_comment:tm=38;2;$_tn_comment"
+
+# Structure: link counts recede, mount points and other specials borrow the
+# colours their file kinds already have, and an escaped byte in a filename is
+# the one thing in a listing that wants to look wrong.
+_eza="$_eza:lc=38;2;$_tn_dark3:lm=38;2;$_tn_dark3"
+_eza="$_eza:mp=38;2;$_tn_cyan:sp=38;2;$_tn_magenta"
+_eza="$_eza:bO=38;2;$_tn_red1:cc=38;2;$_tn_red1"
 EZA_COLORS="$_eza"
 export EZA_COLORS
 unset _eza
@@ -268,5 +301,5 @@ export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE
 
 unset _tn_bg _tn_bg_dark _tn_bg_high _tn_bg_visual _tn_gutter
 unset _tn_fg _tn_dark3 _tn_comment _tn_dark5
-unset _tn_red _tn_green _tn_yellow _tn_blue _tn_magenta _tn_cyan
+unset _tn_red _tn_red1 _tn_green _tn_yellow _tn_blue _tn_magenta _tn_cyan
 unset _tn_orange _tn_purple _tn_teal

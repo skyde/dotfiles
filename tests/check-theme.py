@@ -4,6 +4,7 @@
     tests/check-theme.py              # all checks
     tests/check-theme.py palette      # only one check
     tests/check-theme.py --verbose    # also print what passed
+    tests/check-theme.py swatch       # render the theme instead of checking it
 
 The theme is spread over a dozen config files in four different syntaxes, and
 nothing in any of them refers to any other. Every "keep these in sync" comment
@@ -78,13 +79,23 @@ def documented_colours(doc):
     names = {}
     for line in doc.splitlines():
         # Table rows look like: | `yellow` | `#e0af68` | warnings, modified |
+        # but the derived-colour tables put the hex first instead, so take the
+        # label from the first cell that is not itself a colour rather than
+        # from a fixed column.
         cells = [c.strip().strip("`") for c in line.split("|")]
-        row_name = cells[1] if len(cells) > 2 else ""
+        label = ""
+        for cell in cells[1:3]:
+            if cell and not HEX.match(cell) and not set(cell) <= set("-: "):
+                label = cell
+                break
+        # A row's label belongs to the colour sitting in its own cell, not to
+        # every colour the row happens to mention: the cursor row names both
+        # the black glyph it is about and the orange it sits on.
+        owned = {norm(c) for c in cells if HEX.fullmatch(c)}
         for found in HEX.findall(line):
             key = norm(found)
-            label = row_name if row_name and not HEX.match(row_name) else ""
             names.setdefault(key, set())
-            if label:
+            if label and key in owned:
                 names[key].add(label)
     return names
 
@@ -685,8 +696,50 @@ CHECKS = {
 }
 
 
+def swatch(doc):
+    """Print the whole theme, in the theme, so it can be looked at.
+
+    The checks above prove the numbers are right, which is not the same thing
+    as the theme being right. This renders every documented colour and every
+    pair the contrast table knows about, using real escape sequences -- so it
+    doubles as the fastest way to find out whether a terminal is really doing
+    24-bit colour or quietly approximating it.
+    """
+    known = documented_colours(doc)
+
+    def block(hexstr):
+        r, g, b = (int(hexstr[i:i + 2], 16) for i in (1, 3, 5))
+        return "\033[48;2;%d;%d;%dm      \033[0m" % (r, g, b)
+
+    def on(fg, bg, text):
+        fr, fg_, fb = (int(fg[i:i + 2], 16) for i in (1, 3, 5))
+        br, bg_, bb = (int(bg[i:i + 2], 16) for i in (1, 3, 5))
+        return "\033[38;2;%d;%d;%d;48;2;%d;%d;%dm%s\033[0m" % (
+            fr, fg_, fb, br, bg_, bb, text)
+
+    print("\033[1mPalette\033[0m  (docs/tokyonight.md, in the order it lists them)\n")
+    for hexstr, names in known.items():
+        label = ", ".join(sorted(names)) if names else ""
+        print("  %s  %s  %s" % (block(hexstr), hexstr, label))
+
+    print("\n\033[1mPairs\033[0m  (floors: %s)\n"
+          % ", ".join("%s %.1f:1" % (t, f) for t, f in sorted(TIERS.items())))
+    for tier, fg, bg, _source, what in PAIRS:
+        print("  %s  %6.2f:1  %-5s  %s"
+              % (on(fg, bg, "  sample  "), ratio(fg, bg), tier, what))
+
+    print("\n\033[1mFills\033[0m  (floor: %.2f:1 against the page)\n" % FILL_FLOOR)
+    for fill, page, _source, what in FILLS:
+        row = on("#c0caf5", page, "   page   ") + on("#c0caf5", fill, "   fill   ")
+        print("  %s  %6.2f:1  %s" % (row, ratio(fill, page), what))
+    return 0
+
+
 def main(argv):
     verbose = "--verbose" in argv or "-v" in argv
+    if "swatch" in argv:
+        return swatch(read_doc())
+
     wanted = [a for a in argv if not a.startswith("-")] or list(CHECKS)
     unknown = [w for w in wanted if w not in CHECKS]
     if unknown:

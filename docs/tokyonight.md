@@ -69,8 +69,19 @@ Taken from [`folke/tokyonight.nvim`](https://github.com/folke/tokyonight.nvim)
 | `blue0`    | `#3d59a1` | —     | search background                          |
 | `blue5`    | `#89ddff` | —     | punctuation, bright cyan accents           |
 
-Bright ANSI variants (9–15) are the accents lightened:
-`#ff899d` `#9fe044` `#faba4a` `#8db0ff` `#c7a9ff` `#a4daff` `#c0caf5`.
+Bright ANSI variants (9–15) are the accents lightened. ANSI 8 is the local
+deviation noted above.
+
+| Name             | Hex       | ANSI |
+| ---------------- | --------- | ---- |
+| `bright black`   | `#85899c` | 8    |
+| `bright red`     | `#ff899d` | 9    |
+| `bright green`   | `#9fe044` | 10   |
+| `bright yellow`  | `#faba4a` | 11   |
+| `bright blue`    | `#8db0ff` | 12   |
+| `bright magenta` | `#c7a9ff` | 13   |
+| `bright cyan`    | `#a4daff` | 14   |
+| `bright white`   | `#c0caf5` | 15   |
 
 ### Git colours
 
@@ -89,6 +100,7 @@ not listed here is drift, and `tests/check-theme.py` says so.
 | Hex       | Name             | Why it is not a palette colour                    |
 | --------- | ---------------- | ------------------------------------------------- |
 | `#1d202f` | ANSI 0           | Slot 0 is one notch above `bg` on purpose: a program printing "black" text against the terminal background would otherwise be invisible. |
+| `#ff5000` | cursor           | The shared "you are here" accent: kitty, wezterm, Neovim and the fzf pointer. Not a Tokyo Night colour at all — see "Local deviation: the cursor" below. |
 | `#000000` | cursor glyph     | True black under the `#ff5000` block cursor and nowhere else. Reads at 6.4:1 against the orange; `bg` would give 1.6:1. |
 | `#1f2335` | `bg_dark1`       | One step above `bg`. The "present but not focused" fill — yazi's which-key mask, lazygit's selection in an unfocused panel. |
 | `#24283b` | `bg` (storm)     | The storm variant's background, borrowed as the third step of delta's blame stripe. |
@@ -98,8 +110,10 @@ not listed here is drift, and `tests/check-theme.py` says so.
 An accent at full strength behind text is a highlighter pen: `green` under
 syntax-highlighted code is unreadable. These are the accents mixed down into
 `bg` until the text on top survives — every one clears 4.5:1 against both `fg`
-and Dark+'s plain `#d4d4d4`, which is what `tests/check-theme.py contrast`
-pins.
+and Dark+'s plain foreground, which is what `tests/check-theme.py contrast`
+pins. (Dark+'s own colours are deliberately not written down here: a hex in
+this document is a hex the checker will then permit anywhere in the tree, and
+the syntax theme's palette is not the UI's to borrow.)
 
 Mostly delta's diff body, which is what they were mixed for. btop borrows three
 of them for its process states, on the same reasoning: a background with text
@@ -259,7 +273,14 @@ covered from the moment its row lands here.
 tests/check-theme.py            # all three checks
 tests/check-theme.py contrast   # just one
 tests/check-theme.py --verbose  # and what passed
+tests/check-theme.py swatch     # render the theme instead of checking it
 ```
+
+`swatch` prints every colour in this document and every pair the contrast table
+knows about, using real escape sequences. Passing checks prove the numbers are
+right, which is not the same as the theme being right — and it is also the
+quickest way to find out whether a terminal is genuinely doing 24-bit colour or
+quietly approximating it.
 
 - **palette** — every colour literal in every file above is one this document
   names, including the ones written as SGR escapes (lf) or decimal triplets
