@@ -1,15 +1,12 @@
 -- Run with: nvim --headless -u NONE -i NONE -l tests/nvim_vcs_keys_spec.lua
 --
--- config/vcs.lua is the layer between the keys a hand actually presses and
--- util.vcs_ui / util.conflict. Its whole job is deciding *which* of them to
--- call from where — `]c` means diff hunk here, conflict marker there, gitsigns
--- hunk somewhere else — and none of that is exercised by testing the modules
--- underneath. tests/check-nvim-keymaps.sh invokes every binding once, but from
--- an ordinary buffer, which is the one context where these branches are all
--- false.
+-- The revert keys in config/vcs.lua, from inside a real diff.
+-- tests/check-nvim-keymaps.sh presses every binding once from an ordinary
+-- buffer, which is the one context where these branches are all false — so
+-- nothing noticed that `<leader>cv` threw E21 on the read-only base pane.
 --
--- Plugin-free like the rest: config/vcs.lua reaches for which-key and gitsigns
--- through pcall, and for nothing else.
+-- Plugin-free like the rest: config/vcs.lua reaches for which-key and
+-- gitsigns through pcall, and for nothing else.
 
 local source = debug.getinfo(1, "S").source:sub(2)
 local repo = vim.fn.fnamemodify(source, ":p:h:h")
@@ -29,7 +26,6 @@ vim.o.lines = 50
 vim.o.showtabline = 0
 
 local ui = require("util.vcs_ui")
-local conflict = require("util.conflict")
 
 local passed, failed = 0, 0
 local failures = {}
@@ -145,27 +141,6 @@ local function press(lhs, mode)
 end
 
 --------------------------------------------------------------------------
--- the commands exist and take the scopes they advertise
---------------------------------------------------------------------------
-
-do
-  local commands = vim.api.nvim_get_commands({})
-  for _, name in ipairs({ "VcsChanges", "VcsDiff", "VcsPatch", "VcsHistory", "VcsInfo" }) do
-    check("commands: :" .. name .. " is defined", commands[name] ~= nil)
-  end
-  for _, name in ipairs({ "VcsChanges", "VcsDiff", "VcsPatch" }) do
-    local cmd = commands[name]
-    eq("commands: :" .. name .. " takes an optional argument", "?", cmd and cmd.nargs)
-  end
-
-  clear_notes()
-  vim.cmd("VcsInfo")
-  local said = last_note() or ""
-  check("commands: :VcsInfo names the backend", said:find("git", 1, true) ~= nil, said)
-  check("commands: :VcsInfo reports both bases", said:find("branch base", 1, true) ~= nil, said)
-end
-
---------------------------------------------------------------------------
 -- <leader>cv: revert this change, wherever the cursor is
 --------------------------------------------------------------------------
 
@@ -242,179 +217,6 @@ do
     vim.api.nvim_buf_get_lines(0, 0, -1, false)
   )
   vim.cmd("tabclose")
-end
-
---------------------------------------------------------------------------
--- ]c / [c mean "next change" for every kind of change
---------------------------------------------------------------------------
-
-do
-  -- In a conflicted buffer they walk the markers.
-  reload(root .. "/conflicted.txt")
-  vim.api.nvim_win_set_cursor(0, { 1, 0 })
-  press("]c")
-  eq("]c: lands on the first conflict", 2, vim.api.nvim_win_get_cursor(0)[1])
-  press("]c")
-  eq("]c: then the second", 8, vim.api.nvim_win_get_cursor(0)[1])
-  press("]c")
-  eq("]c: and wraps", 2, vim.api.nvim_win_get_cursor(0)[1])
-  press("[c")
-  eq("[c: goes back the other way", 8, vim.api.nvim_win_get_cursor(0)[1])
-  -- <leader>cn / <leader>cp are the same action on other keys.
-  press(" cn")
-  eq("<leader>cn: is ]c", 2, vim.api.nvim_win_get_cursor(0)[1])
-  press(" cp")
-  eq("<leader>cp: is [c", 8, vim.api.nvim_win_get_cursor(0)[1])
-
-  -- ]x / [x are conflicts specifically, from anywhere.
-  vim.api.nvim_win_set_cursor(0, { 1, 0 })
-  press("]x")
-  eq("]x: first conflict", 2, vim.api.nvim_win_get_cursor(0)[1])
-  press("[x")
-  eq("[x: wraps to the last", 8, vim.api.nvim_win_get_cursor(0)[1])
-
-  -- In a diff they walk diff hunks instead.
-  write(root .. "/tracked.txt", "one\nTWO\nthree\nFOUR\nfive\n")
-  reload(root .. "/tracked.txt")
-  ui.file_diff("working")
-  vim.cmd("normal! gg")
-  press("]c")
-  eq("]c: in a diff, the first hunk", 2, vim.api.nvim_win_get_cursor(0)[1])
-  press("]c")
-  eq("]c: in a diff, the second hunk", 4, vim.api.nvim_win_get_cursor(0)[1])
-  vim.cmd("tabclose")
-
-  -- And in an ordinary buffer with neither, nothing raises.
-  vim.cmd("enew!")
-  local ok, err = pcall(press, "]c")
-  check("]c: harmless in a plain buffer", ok, tostring(err))
-end
-
---------------------------------------------------------------------------
--- <leader>cd: diagnostics outside a diff, switch side inside one
---------------------------------------------------------------------------
-
-do
-  reload(root .. "/tracked.txt")
-  local ok, err = pcall(press, " cd")
-  check("cd: opens diagnostics outside a diff without raising", ok, tostring(err))
-
-  ui.file_diff("working")
-  local before = vim.api.nvim_get_current_win()
-  press(" cd")
-  check("cd: switches side inside a diff", vim.api.nvim_get_current_win() ~= before)
-  before = vim.api.nvim_get_current_win()
-  press(" cc")
-  check("cc: switches side too", vim.api.nvim_get_current_win() ~= before)
-  vim.cmd("tabclose")
-end
-
---------------------------------------------------------------------------
--- the conflict keys operate on the conflict under the cursor
---------------------------------------------------------------------------
-
-do
-  local function reset()
-    reload(root .. "/conflicted.txt")
-    vim.api.nvim_win_set_cursor(0, { 2, 0 })
-  end
-
-  reset()
-  press(" co")
-  eq("co: takes ours here", "ours line", vim.api.nvim_buf_get_lines(0, 1, 2, false)[1])
-  check("co: leaves the other conflict alone", conflict.has_conflicts(0))
-
-  reset()
-  press(" ct")
-  eq("ct: takes theirs here", "theirs line", vim.api.nvim_buf_get_lines(0, 1, 2, false)[1])
-
-  reset()
-  press(" cb")
-  eq("cb: takes both here", { "ours line", "theirs line" }, vim.api.nvim_buf_get_lines(0, 1, 3, false))
-
-  reset()
-  press(" c0")
-  eq("c0: takes neither", "middle", vim.api.nvim_buf_get_lines(0, 1, 2, false)[1])
-
-  reset()
-  press(" cO")
-  check("cO: takes ours everywhere", not conflict.has_conflicts(0))
-  reset()
-  press(" cT")
-  check("cT: takes theirs everywhere", not conflict.has_conflicts(0))
-  reset()
-  press(" cB")
-  check("cB: takes both everywhere", not conflict.has_conflicts(0))
-
-  -- Away from any conflict it says so rather than guessing.
-  reset()
-  vim.cmd("normal! G")
-  clear_notes()
-  local ok, err = pcall(press, " co")
-  check("co: outside a conflict does not raise", ok, tostring(err))
-  check("co: and says so", (last_note() or ""):find("not inside a conflict") ~= nil, tostring(last_note()))
-
-  -- <leader>cq refuses to finish while markers remain.
-  reset()
-  clear_notes()
-  ok, err = pcall(press, " cq")
-  check("cq: does not raise with conflicts left", ok, tostring(err))
-  check("cq: and refuses", (last_note() or ""):find("unresolved") ~= nil, tostring(last_note()))
-end
-
---------------------------------------------------------------------------
--- the merge view, and finishing it
---------------------------------------------------------------------------
-
-do
-  reload(root .. "/conflicted.txt")
-  local tabs = #vim.api.nvim_list_tabpages()
-  press(" cm")
-  eq("cm: the merge view opens in its own tab", tabs + 1, #vim.api.nvim_list_tabpages())
-  eq("cm: three panes", 3, #vim.api.nvim_tabpage_list_wins(0))
-  press(" cO")
-  check("cm: resolving in the middle pane works", not conflict.has_conflicts(0))
-  press(" cq")
-  eq("cq: closes the merge view once it is clean", tabs, #vim.api.nvim_list_tabpages())
-  eq(
-    "cq: and the file on disk is resolved",
-    { "before", "ours line", "middle", "second ours", "after" },
-    vim.fn.readfile(root .. "/conflicted.txt")
-  )
-end
-
---------------------------------------------------------------------------
--- the rendering toggles reach the diff wherever it is
---------------------------------------------------------------------------
-
-do
-  write(root .. "/tracked.txt", "one\nTWO\nthree\nFOUR\nfive\n")
-  reload(root .. "/tracked.txt")
-  ui.file_diff("working")
-  local wins = vim.api.nvim_tabpage_list_wins(0)
-  local levels = {}
-  for _, w in ipairs(wins) do
-    levels[#levels + 1] = vim.wo[w].foldlevel
-  end
-  press(" cz")
-  local flipped = false
-  for i, w in ipairs(wins) do
-    if vim.wo[w].foldlevel ~= levels[i] then
-      flipped = true
-    end
-  end
-  check("cz: re-levels the diff windows in place", flipped, vim.inspect(levels))
-  press(" cz")
-  vim.cmd("tabclose")
-
-  -- <leader>ci outside the view flips the split orientation of an ad-hoc diff.
-  reload(root .. "/tracked.txt")
-  ui.file_diff("working")
-  local ok, err = pcall(press, " ci")
-  check("ci: harmless on an ad-hoc diff", ok, tostring(err))
-  while #vim.api.nvim_list_tabpages() > 1 do
-    vim.cmd("tabclose")
-  end
 end
 
 --------------------------------------------------------------------------

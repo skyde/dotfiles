@@ -292,14 +292,14 @@ unchanged.
 tests/run-nvim-specs.sh
 ```
 
-Every spec is self-contained and needs no plugins:
+Four specs, no plugins needed, each self-contained:
 
 * `nvim_vcs_spec.lua` — the backends, against throwaway git, jj and Mercurial
   repositories: renames, paths with spaces and non-ASCII characters, deleted and
-  untracked files, an empty repository, detached HEAD. Perforce runs against a
-  stub `p4` binary that speaks the real `-ztag` protocol, which is how that
-  backend is covered without a server. The jj and hg halves skip themselves
-  when the binary is missing, so an incomplete machine still runs the rest.
+  untracked files, an empty repository, a repository whose only commit is its
+  first, detached HEAD. Perforce runs against a stub `p4` binary that speaks the
+  real `-ztag` protocol, which is how that backend is covered without a server.
+  The jj and hg halves skip themselves when the binary is missing.
 * `nvim_conflict_spec.lua` — every conflict shape and choice, including
   `merge` style with no base section, multiple and adjacent conflicts,
   conflicts spanning the whole file, unlabelled markers, and near-miss text
@@ -307,24 +307,8 @@ Every spec is self-contained and needs no plugins:
 * `nvim_vcs_ui_spec.lua` — window layout, which buffer lands in which pane,
   scrubbing, the inline toggle, the diff-tab lifecycle, and the degenerate cases
   (no changes, no repository).
-* `nvim_inline_diff_spec.lua` — the overlay: hunk slicing, token emphasis,
-  move detection, folding, revert.
-* `nvim_chromium_spec.lua` — checkout detection, clangd selection and
-  compile-database staleness.
-* `nvim_vcs_keys_spec.lua` — `config/vcs.lua`, the layer that decides *which*
-  of the modules above a key means from where: `]c` as a diff hunk here, a
-  conflict marker there, a gitsigns hunk elsewhere; `<leader>cv` from either
-  side of a diff; the conflict keys on the conflict under the cursor.
-  `check-nvim-keymaps.sh` invokes each binding once from an ordinary buffer,
-  which is the single context where all of those branches are false.
-* `nvim_plugins_spec.lua` — the `opts` functions in `lua/plugins/`, driven
-  with the shapes LazyVim actually passes them. These are where an upstream
-  change silently turns a customisation into a no-op.
-* `nvim_options_spec.lua` — `config/options.lua`, whose whole job is side
-  effects: the settings that only make sense together, the clipboard provider
-  choosing itself by environment, and `diffopt` still agreeing with
-  `common/.config/git/config` (which is the entire basis for "a diff reads
-  the same in the editor as in the terminal").
+* `nvim_vcs_keys_spec.lua` — the revert keys from inside a real diff, where
+  one side of the pair is a read-only scratch.
 
 ```bash
 tests/check-nvim-keymaps.sh
@@ -334,20 +318,16 @@ Invokes every binding against the real config inside a throwaway repository.
 Callback maps must not raise even with no language server and no debug session
 attached — degrading with a message is fine, throwing is not.
 
-`run-nvim-specs.sh` and `stylua --check` run in CI (the `neovim` job in
+`run-nvim-specs.sh` runs in CI (the `neovim` job in
 `.github/workflows/comprehensive-test.yml`), which also installs Mercurial so
 the backend spec's `hg` half actually executes rather than skipping itself.
-`check-nvim-keymaps.sh` and `check-nvim-syntax-roles.sh` need the plugins and
-the tree-sitter parsers installed, so they stay manual — as does
-`nvim_clipboard_spec.lua`.
+The checks that need the plugins and the tree-sitter parsers installed stay
+manual, as does `nvim_clipboard_spec.lua`.
 
-A note for anyone writing a new spec: set `showtabline = 0` if you raise
-`'columns'`. Headless Neovim allocates its grid at 80x24 before any script
-runs and never resizes it without a UI attached, while `draw_tabline` still
-draws at the current width — so a spec that widens the terminal, opens a
-second tab and enters command-line mode writes past the end of that grid.
-Valgrind calls it an invalid write every time; whether it aborts is down to
-heap layout.
+Set `showtabline = 0` in any spec that raises `'columns'`: headless Neovim
+keeps its 80x24 grid while `draw_tabline` draws at the current width, so a
+wide spec that opens a second tab and enters command-line mode writes past
+the end of it.
 
 ## Backend notes
 

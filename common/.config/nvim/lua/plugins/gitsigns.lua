@@ -10,10 +10,8 @@ return {
   opts = {
     signcolumn = false,
     numhl = true,
-    -- Only worth the redraw cost on demand; gitsigns' own `<leader>ghb`
-    -- already covers the "who wrote this line" question. (Not LazyVim's
-    -- `<leader>gb`: config/vcs.lua takes that key for "changed files against
-    -- a revision you type".)
+    -- Only worth the redraw cost on demand; `<leader>gb` in LazyVim already
+    -- covers the "who wrote this line" question.
     current_line_blame = false,
   },
 }

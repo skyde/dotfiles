@@ -635,6 +635,15 @@ local function mute_folds(w)
   map_hl(w, "Folded", "InlineDiffFold")
 end
 
+---A blank fold fill on top of whatever 'fillchars' is configured globally.
+---Read from the global, never `vim.o`: that answers with the *current
+---window's* value, so a pane that already carries a `fold: ` picks up another
+---one on every render — "fold: ,fold: ,fold: " and growing.
+local function fold_fillchars(w)
+  local global = vim.api.nvim_get_option_value("fillchars", { scope = "global" })
+  wo_local(w, "fillchars", global ~= "" and (global .. ",fold: ") or "fold: ")
+end
+
 ---Keep a code pane's background at the normal colour even when unfocused.
 ---The theme dims inactive windows (tokyonight's dim_inactive) as a "where am
 ---I" cue, but in this view the eyes stay on the code while the cursor lives
@@ -666,8 +675,7 @@ local function diff_pane(w)
   -- collapsed gap reads the same in both renderings.
   wo_local(w, "foldtext", "v:lua.require'util.inline_diff'.foldtext()")
   mute_folds(w)
-  local fc = vim.o.fillchars
-  wo_local(w, "fillchars", fc ~= "" and (fc .. ",fold: ") or "fold: ")
+  fold_fillchars(w)
   wo_local(w, "number", true)
   wo_local(w, "relativenumber", true)
   vim.api.nvim_win_call(w, function()
@@ -711,8 +719,7 @@ local function inline_pane(win)
     wo_local(win, "foldtext", "v:lua.require'util.inline_diff'.foldtext()")
     mute_folds(win)
     wo_local(win, "foldlevel", 0)
-    local fc = vim.o.fillchars
-    wo_local(win, "fillchars", fc ~= "" and (fc .. ",fold: ") or "fold: ")
+    fold_fillchars(win)
   else
     -- Editing a buffer restores the window-local options it last had, so
     -- the expr folding from a collapsed render would silently come back.
@@ -1585,9 +1592,8 @@ end
 -- What `?` shows. Discoverability is the point: none of the panel keys
 -- should be learnable only by reading the source.
 local HELP = {
-  { "j / k / ↑ / ↓", "select file, diff follows" },
-  { "<CR> / <Space>", "focus the diff" },
-  { "o / l / → / <Tab>", "the same, for other fingers" },
+  { "j / k", "select file, diff follows" },
+  { "<CR> / Space", "focus the diff" },
   { "J / K", "scroll the diff from the list" },
   { "]c / [c", "next / previous change in the diff" },
   { "]f / [f", "next / previous file, from the diff or the list" },
@@ -1599,23 +1605,13 @@ local HELP = {
   { "X", "revert file" },
   { "m", "merge view for a conflicted file" },
   { "r", "hard refresh" },
-  { "?", "this list" },
   { "q", "close" },
 }
 
 local function show_help()
-  -- Pad the key column by display width, not by bytes: the arrows in it are
-  -- multibyte, and a %-12s would leave every description that follows one
-  -- sitting a few columns off from the rest.
-  local key_width = 0
+  local lines = {}
   for _, entry in ipairs(HELP) do
-    key_width = math.max(key_width, vim.fn.strdisplaywidth(entry[1]))
-  end
-  local lines, key_end = {}, {}
-  for i, entry in ipairs(HELP) do
-    local keys = "  " .. entry[1]
-    key_end[i] = #keys
-    lines[i] = keys .. (" "):rep(key_width - vim.fn.strdisplaywidth(entry[1])) .. "  " .. entry[2]
+    table.insert(lines, ("  %-12s %s"):format(entry[1], entry[2]))
   end
   local width = 0
   for _, l in ipairs(lines) do
@@ -1626,7 +1622,7 @@ local function show_help()
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
   for i = 1, #lines do
-    vim.api.nvim_buf_set_extmark(buf, ns, i - 1, 0, { end_col = key_end[i], hl_group = "Special" })
+    vim.api.nvim_buf_set_extmark(buf, ns, i - 1, 0, { end_col = 14, hl_group = "Special" })
   end
   local win = vim.api.nvim_open_win(buf, true, {
     relative = "editor",

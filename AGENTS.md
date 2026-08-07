@@ -17,10 +17,7 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 - Run Stylua on modified Neovim Lua files if available: `stylua common/.config/nvim`
 - Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`
   (self-contained, no plugins required), and `./tests/check-nvim-keymaps.sh` to
-  invoke every binding against the real config. The specs and `stylua --check`
-  also run in CI; the checks that need the plugins installed do not.
-  Install `hg` before running the specs if you can — the Mercurial half of
-  `nvim_vcs_spec.lua` skips itself silently when the binary is missing.
+  invoke every binding against the real config. The specs run in CI.
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines

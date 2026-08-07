@@ -30,7 +30,7 @@ The reference is the exact pair the VS Code config is running:
 - every rule in `editor.tokenColorCustomizations.textMateRules` in
   `common/.config/Code/User/settings.json`, which overrides most of it.
 
-Every hex in `vscode_syntax.lua` is the value VS Code *resolves* for a
+Every hex in `vscode-syntax.lua` is the value VS Code *resolves* for a
 construct once those two are combined, not a colour picked by eye. Resolution
 follows VS Code's own rules: the theme's rules and the user's rules go into one
 trie, more specific selectors beat less specific ones, ties go to whichever was

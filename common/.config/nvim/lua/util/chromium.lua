@@ -114,11 +114,7 @@ local function generated_out_dirs(root)
     return out
   end
   for name, kind in vim.fs.dir(root .. "/out") do
-    if
-      kind == "directory"
-      and name ~= "current_link"
-      and vim.uv.fs_stat(("%s/out/%s/build.ninja"):format(root, name))
-    then
+    if kind == "directory" and name ~= "current_link" and vim.uv.fs_stat(("%s/out/%s/build.ninja"):format(root, name)) then
       table.insert(out, "out/" .. name)
     end
   end
@@ -361,7 +357,7 @@ function M.enable_checkout_clangd_var(root)
     edited, n = text:gsub("(solutions%s*=%s*%[%s*{)", '%1\n    "custom_vars": { "checkout_clangd": True },', 1)
   end
   if n == 0 then
-    return nil, ('did not recognize %s; add "checkout_clangd": True to custom_vars by hand'):format(path)
+    return nil, ("did not recognize %s; add \"checkout_clangd\": True to custom_vars by hand"):format(path)
   end
   local out = io.open(path, "wb")
   if not out then

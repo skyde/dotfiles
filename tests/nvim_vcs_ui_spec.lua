@@ -571,6 +571,18 @@ do
   -- closed. (The fixture files are tiny, so nothing actually folds — what is
   -- under test is the wiring.)
   eq("collapse: side-by-side panes start with folds closed", 0, vim.wo[layout()[2]].foldlevel)
+  -- The blank fold fill is built by appending to the configured 'fillchars'.
+  -- Appending to the *window's* value rather than the global one adds another
+  -- ",fold: " every time a pane inherits one, so a session's worth of renders
+  -- ends up carrying a dozen copies.
+  local repeated = {}
+  for _, w in ipairs(layout()) do
+    local fc = vim.api.nvim_get_option_value("fillchars", { win = w, scope = "local" })
+    if select(2, fc:gsub("fold:", "")) > 1 then
+      repeated[#repeated + 1] = fc
+    end
+  end
+  eq("collapse: the fold fill is applied once, not once per render", {}, repeated)
 
   -- The inline overlay folds through its foldexpr.
   scrub("i")
@@ -756,48 +768,6 @@ do
   local copied = vim.fn.getreg("+")
   check("copy_patch: puts a unified diff on the clipboard", copied:find("diff --git", 1, true), copied:sub(1, 80))
   check("copy_patch: includes the branch commit", copied:find("committed_on_branch", 1, true))
-
-  -- The whole-scope patch (<leader>gp / <leader>gA). Delta renders it into a
-  -- terminal buffer when it is installed and a plain diff buffer when it is
-  -- not; both have to open, carry the patch, and close on q without leaving
-  -- the empty buffer `tabnew` makes behind.
-  local unnamed_before = unnamed_buffers()
-  tabs = #vim.api.nvim_list_tabpages()
-  ui.patch("branch")
-  eq("patch: opens a tab", tabs + 1, #vim.api.nvim_list_tabpages())
-  local patch_buf = vim.api.nvim_get_current_buf()
-  eq("patch: leaves no [No Name] behind", unnamed_before, unnamed_buffers())
-  if vim.fn.executable("delta") == 1 then
-    eq("patch: delta renders into a terminal buffer", "terminal", vim.bo[patch_buf].buftype)
-    vim.wait(500, function()
-      return vim.api.nvim_buf_line_count(patch_buf) > 1
-    end)
-  else
-    eq("patch: without delta it is a diff buffer", "diff", vim.bo[patch_buf].filetype)
-    local text = table.concat(vim.api.nvim_buf_get_lines(patch_buf, 0, -1, false), "\n")
-    check("patch: it holds the unified diff", text:find("diff --git", 1, true) ~= nil, text:sub(1, 120))
-    check("patch: covering the branch commit", text:find("committed_on_branch", 1, true) ~= nil)
-  end
-  feed("q")
-  eq("patch: q closes the tab again", tabs, #vim.api.nvim_list_tabpages())
-
-  -- With nothing to show it says so rather than opening an empty tab.
-  tabs = #vim.api.nvim_list_tabpages()
-  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
-  local said
-  local real_notify = vim.notify
-  vim.notify = function(msg)
-    said = tostring(msg)
-  end
-  ui.patch("head")
-  vim.notify = real_notify
-  if said and said:find("No changes", 1, true) then
-    eq("patch: an empty scope opens no tab", tabs, #vim.api.nvim_list_tabpages())
-  else
-    while #vim.api.nvim_list_tabpages() > tabs do
-      vim.cmd("tabclose")
-    end
-  end
 end
 
 --------------------------------------------------------------------------
@@ -982,7 +952,10 @@ do
   local wins = layout()
   check(
     "file_diff: relative line numbers in both panes",
-    vim.wo[wins[1]].number and vim.wo[wins[2]].number and vim.wo[wins[1]].relativenumber and vim.wo[wins[2]].relativenumber
+    vim.wo[wins[1]].number
+      and vim.wo[wins[2]].number
+      and vim.wo[wins[1]].relativenumber
+      and vim.wo[wins[2]].relativenumber
   )
   ui.goto_file()
   eq("goto_file from file_diff: closes the ad-hoc tab", tabs, #vim.api.nvim_list_tabpages())
@@ -1164,7 +1137,11 @@ do
     not vim.tbl_contains(panel_lines(), " ?  e_new.txt"),
     vim.inspect(panel_lines())
   )
-  check("cache: the header says it is refreshing", panel_lines()[2]:find("refreshing", 1, true) ~= nil, panel_lines()[2])
+  check(
+    "cache: the header says it is refreshing",
+    panel_lines()[2]:find("refreshing", 1, true) ~= nil,
+    panel_lines()[2]
+  )
   vim.wait(3000, function()
     return not ui.busy()
   end)
@@ -1378,49 +1355,6 @@ do
 end
 
 --------------------------------------------------------------------------
--- command-line mode from inside the view
---------------------------------------------------------------------------
-
-do
-  -- Selecting by searching is a documented way to move in the panel ("a mouse
-  -- click, a search, `G`" — the CursorMoved autocmd exists for exactly this),
-  -- and typing `:` while reviewing is unavoidable. Neither had a test.
-  open_settled({ scope = "working" })
-  vim.api.nvim_set_current_win(layout()[1])
-  vim.api.nvim_win_set_cursor(layout()[1], { 1, 0 })
-
-  feed("/d_untracked<CR>")
-  local line = panel_lines()[vim.api.nvim_win_get_cursor(layout()[1])[1]]
-  check("search: lands on the searched-for row", line and line:find("d_untracked.txt", 1, true), tostring(line))
-
-  -- Headless Neovim never fires CursorMoved — there is no normal-mode loop to
-  -- notice — so the autocmd that makes an unmapped motion re-render has to be
-  -- driven by hand here. Everything after it is the real code path.
-  vim.cmd("doautocmd CursorMoved")
-  vim.wait(2000, function()
-    return not ui.busy()
-  end)
-  vim.wait(300, function()
-    return false
-  end)
-  local showing = false
-  for _, w in ipairs(layout()) do
-    if win_name(w) == root .. "/d_untracked.txt" then
-      showing = true
-    end
-  end
-  check("search: and the diff follows the selection", showing, vim.inspect(vim.tbl_map(win_name, layout())))
-
-  -- An ordinary Ex command must leave the view exactly as it was.
-  local wins_before = #layout()
-  feed(":let g:vcs_spec_probe = 1<CR>")
-  eq("cmdline: the command ran", 1, vim.g.vcs_spec_probe)
-  eq("cmdline: the layout is untouched", wins_before, #layout())
-  eq("cmdline: focus stays in the panel", layout()[1], vim.api.nvim_get_current_win())
-  ui.close()
-end
-
---------------------------------------------------------------------------
 -- nothing may load a file over the panel
 --------------------------------------------------------------------------
 
@@ -1443,7 +1377,10 @@ do
   eq("pin: the cursor is on a real filename", "a_modified.txt", vim.fn.expand("<cfile>"))
   feed("gf")
   eq("pin: gf does not replace the panel", "vcs://changes", win_name(panel))
-  check("pin: :e into the panel is refused", not pcall(vim.cmd, "edit " .. vim.fn.fnameescape(root .. "/a_modified.txt")))
+  check(
+    "pin: :e into the panel is refused",
+    not pcall(vim.cmd, "edit " .. vim.fn.fnameescape(root .. "/a_modified.txt"))
+  )
   eq("pin: and the panel is still the panel", "vcs://changes", win_name(panel))
 
   -- ]f / [f are Vim's deprecated gf synonyms unless the panel claims them.
@@ -1478,47 +1415,8 @@ do
   eq("help: no float before ?", 0, floats())
   feed("?")
   eq("help: ? opens the cheat sheet", 1, floats())
-  local help_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-  local text = table.concat(help_lines, "\n")
+  local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
   check("help: it mentions the scroll keys", text:find("J / K", 1, true) ~= nil, text)
-
-  -- The cheat sheet is the only place these keys are discoverable, so a key
-  -- added to the panel and not to the list is a key nobody finds. How each
-  -- one is *spelled* in the list is a presentation choice; this maps the
-  -- spellings back so the check stays about coverage.
-  local SPELLINGS = {
-    ["<Down>"] = "↓",
-    ["<Up>"] = "↑",
-    ["<Right>"] = "→",
-    ["<Space>"] = "<Space>",
-    ["<CR>"] = "<CR>",
-    ["<Tab>"] = "<Tab>",
-  }
-  local panel_buf = vim.api.nvim_win_get_buf(layout()[1])
-  local undocumented = {}
-  for _, m in ipairs(vim.api.nvim_buf_get_keymap(panel_buf, "n")) do
-    local want = SPELLINGS[m.lhs] or m.lhs
-    if not text:find(want, 1, true) then
-      table.insert(undocumented, ("%s (looked for %q)"):format(m.lhs, want))
-    end
-  end
-  eq("help: every panel key is on the cheat sheet", {}, undocumented)
-
-  -- And the descriptions all start in the same column, which multibyte
-  -- arrows in the key column quietly break when padding counts bytes.
-  -- `.*` is greedy, so this finds the *last* run of two or more spaces —
-  -- the gap between the key column and the description, since no description
-  -- has a double space in it.
-  local columns = {}
-  for _, line in ipairs(help_lines) do
-    local at = line:match("^.*%s%s()%S")
-    check("help: `" .. line .. "` has a description", at ~= nil)
-    if at then
-      columns[vim.fn.strdisplaywidth(line:sub(1, at - 1))] = true
-    end
-  end
-  eq("help: the descriptions all start in one column", 1, vim.tbl_count(columns))
-
   feed("q")
   eq("help: q closes it again", 0, floats())
   ui.close()

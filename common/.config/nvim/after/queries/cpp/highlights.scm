@@ -2,7 +2,7 @@
 
 ;; Extra captures so Neovim can draw the distinctions the VS Code C++ grammar
 ;; (jeff-hykin.better-cpp-syntax) makes but nvim-treesitter's defaults do not.
-;; Colours for these groups live in lua/util/vscode_syntax.lua.
+;; Colours for these groups live in lua/plugins/vscode-syntax.lua.
 
 ;; Call parentheses are punctuation.section.arguments in VS Code, a colour of
 ;; their own. Grouping and parameter-list parens are not.

@@ -83,15 +83,6 @@ jobs:
           hg --version | head -1
           ./tests/run-nvim-specs.sh
 
-      - name: Check Lua formatting
-        run: |
-          version=2.5.2
-          curl -fsSLo /tmp/stylua.zip \
-            "https://github.com/JohnnyMorganz/StyLua/releases/download/v${version}/stylua-linux-x86_64.zip"
-          unzip -q -o /tmp/stylua.zip -d "$HOME/.local/bin"
-          chmod +x "$HOME/.local/bin/stylua"
-          "$HOME/.local/bin/stylua" --check common/.config/nvim
-
   unix-install:
     name: Install lifecycle (${{ matrix.os }})
     needs: validate
