@@ -16,7 +16,7 @@
 -- tracks typing; the base side is fixed at attach time. Backend-agnostic by
 -- construction: all it needs is the base content as a list of lines.
 
-local text = require("util.text")
+local diff_hunks = require("util.text").hunks
 
 local M = {}
 
@@ -153,7 +153,7 @@ local function token_diff(old, new)
   local function joined(toks)
     return #toks > 0 and (table.concat(toks, "\n") .. "\n") or ""
   end
-  local hunks = text.hunks(joined(old_toks), joined(new_toks))
+  local hunks = diff_hunks(joined(old_toks), joined(new_toks))
 
   local function span(offs, s, start, count)
     local from = offs[start] or #s
@@ -353,7 +353,7 @@ function M.render(buf)
   -- overlay slices hunks the same way native diff mode would — and linematch
   -- pairs each old line with the new line it actually resembles, which is
   -- what makes the char-level emphasis land on the right partner.
-  st.hunks = text.hunks(st.base_text, buf_text, {
+  st.hunks = diff_hunks(st.base_text, buf_text, {
     algorithm = "histogram",
     indent_heuristic = true,
     linematch = 60,
@@ -448,7 +448,6 @@ function M.render(buf)
       local spans = new_spans[row - start_b]
       local line_hl = new_moved[row] and select(2, move_colors()) or (spans and "InlineDiffAddDim" or "InlineDiffAdd")
       local nr_hl = new_moved[row] and "InlineDiffMovedAddNr" or "InlineDiffAddNr"
-      local text = lines[row] or ""
       -- The full-row wash is an eol range highlight, NOT line_hl_group: a
       -- range hl_group never paints over line_hl_group whatever its
       -- priority, so a line_hl wash would swallow the token emphasis and

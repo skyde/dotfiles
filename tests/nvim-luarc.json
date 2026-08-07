@@ -1,0 +1,35 @@
+// Settings for tests/check-nvim-types.sh, which runs lua-language-server over
+// common/.config/nvim/lua in --check mode.
+//
+// Kept out of the config tree on purpose: the editing experience there is
+// driven by .neoconf.json, and a .luarc.json sitting next to it would quietly
+// take over. The script appends workspace.library at run time, since where the
+// Neovim runtime and the plugins live is a property of the machine rather than
+// of this repository.
+{
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "runtime": {
+    "version": "LuaJIT",
+    "path": ["?.lua", "?/init.lua"]
+  },
+  "workspace": {
+    "checkThirdParty": false
+  },
+  "diagnostics": {
+    // Globals LazyVim installs at runtime and the plugin specs here assume.
+    // `vim` is deliberately absent: naming it here would declare it as an
+    // untyped global and silently switch off field checking on every `vim.*`
+    // call in the config — the runtime library already types it properly.
+    "globals": ["Snacks", "LazyVim", "MiniFiles"],
+    "disable": [
+      // Fires on every `pcall(vim.cmd, ...)`. vim.cmd is a callable table and
+      // the checker cannot see its __call, so it reads as passing a table where
+      // a function is wanted. Every hit is that one false positive, and the call
+      // form itself is the idiomatic one.
+      "param-type-mismatch",
+      // Fires on partially-specified option tables, which is how essentially
+      // every Neovim API is meant to be called.
+      "missing-fields"
+    ]
+  }
+}

@@ -62,6 +62,10 @@ elseif use_osc52 and vim.fn.executable("osc-copy") == 1 and vim.fn.executable("o
   }
 end
 
+-- Neovim's generated option metadata types 'clipboard' as a plain string[],
+-- which loses the vim.Option methods every list option actually has; the call
+-- is correct at runtime.
+---@diagnostic disable-next-line: undefined-field
 vim.opt.clipboard:append("unnamedplus")
 
 vim.diagnostic.config({ underline = false })

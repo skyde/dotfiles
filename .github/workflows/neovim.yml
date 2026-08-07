@@ -1,0 +1,159 @@
+name: Neovim Configuration
+
+# The Neovim config is the largest body of code in this repository and, until
+# this workflow existed, the only one nothing checked: ~7k lines of Lua with a
+# ~560-assertion spec suite that ran only when somebody remembered to.
+on:
+  push:
+    paths:
+      - "common/.config/nvim/**"
+      - "tests/**"
+      - ".github/workflows/neovim.yml"
+  pull_request:
+    paths:
+      - "common/.config/nvim/**"
+      - "tests/**"
+      - ".github/workflows/neovim.yml"
+  workflow_dispatch:
+
+env:
+  # The specs and the type check both read this; bump it together with what
+  # install-nvim.sh hands people.
+  NVIM_VERSION: stable
+
+jobs:
+  specs:
+    name: Specs (${{ matrix.os }}, nvim ${{ matrix.nvim }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        nvim: [stable]
+        include:
+          # An early warning that the next release breaks something, without
+          # letting it block a merge.
+          - os: ubuntu-latest
+            nvim: nightly
+            experimental: true
+    continue-on-error: ${{ matrix.experimental == true }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.nvim }}
+
+      - name: Report the version under test
+        run: nvim --version | head -3
+
+      # Plugin-free and hermetic: no network, no ~/.local/share/nvim, no
+      # system clipboard. Everything they touch is built in a tempdir.
+      - name: Run the Neovim specs
+        run: ./tests/run-nvim-specs.sh
+
+      - name: Check footpedal key transport
+        run: python3 tests/check-footpedal-keys.py
+
+  lint:
+    name: Format and types
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ env.NVIM_VERSION }}
+
+      - name: Install StyLua
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --check --config-path common/.config/nvim/stylua.toml common/.config/nvim tests
+
+      - name: Install lua-language-server
+        run: |
+          version="$(curl -fsSL https://api.github.com/repos/LuaLS/lua-language-server/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
+          echo "Installing lua-language-server $version"
+          curl -fsSL -o lls.tar.gz \
+            "https://github.com/LuaLS/lua-language-server/releases/download/${version}/lua-language-server-${version}-linux-x64.tar.gz"
+          mkdir -p "$HOME/lls"
+          tar xzf lls.tar.gz -C "$HOME/lls"
+          echo "$HOME/lls/bin" >> "$GITHUB_PATH"
+
+      # Undefined globals, calls with the wrong arity, values used without a
+      # nil check, and anything Neovim has deprecated — the class of mistake a
+      # spec only finds if it happens to take that branch.
+      - name: Type-check the Lua
+        run: ./tests/check-nvim-types.sh
+
+  integration:
+    name: Against the installed config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ env.NVIM_VERSION }}
+
+      # Unlike the specs, these two drive the config as actually assembled —
+      # LazyVim, the plugin set, the colorscheme — so the plugins have to be
+      # there. Pinned to lazy-lock.json, so a plugin's upstream moving cannot
+      # turn a green branch red on its own.
+      - name: Install the plugins at the pinned commits
+        run: |
+          mkdir -p "$HOME/.config"
+          ln -s "$PWD/common/.config/nvim" "$HOME/.config/nvim"
+          nvim --headless "+Lazy! restore" +qa
+          # :Lazy restore can rewrite the lockfile when a pinned commit has
+          # been garbage-collected upstream; that is a real problem to look at,
+          # not something to run the rest of the job on top of.
+          git diff --exit-code -- common/.config/nvim/lazy-lock.json
+
+      # The syntax-role check skips itself when the parsers are missing, so
+      # assert they landed rather than letting the job go green having checked
+      # nothing.
+      - name: Install the tree-sitter parsers the syntax check needs
+        run: |
+          nvim --headless \
+            -c 'lua require("nvim-treesitter").install({ "c", "cpp", "python", "lua" }):wait(300000)' \
+            -c qa
+          missing=()
+          for parser in c cpp python lua; do
+            compgen -G "$HOME/.local/share/nvim/**/parser/$parser.so" >/dev/null || missing+=("$parser")
+          done
+          if (( ${#missing[@]} )); then
+            echo "❌ parsers did not install: ${missing[*]}" >&2
+            exit 1
+          fi
+          echo "✅ parsers installed: c cpp python lua"
+        shell: bash -O globstar -eo pipefail {0}
+
+      # Invokes every parity binding against the real config and reports
+      # anything that raises.
+      - name: Invoke every keymap
+        run: ./tests/check-nvim-keymaps.sh
+
+      # C++ and Python must colour the same construct the same way.
+      - name: Check syntax role parity
+        run: ./tests/check-nvim-syntax-roles.sh
+
+      - name: Report startup cost
+        run: |
+          # Informational, not a gate: a shared CI runner is far too noisy to
+          # budget against. It is here so a regression is visible in the log.
+          for i in 1 2 3 4 5; do
+            nvim --headless --startuptime "startup.$i" +qa >/dev/null 2>&1
+            tail -1 "startup.$i" | awk '{ printf "run %d: %s ms\n", '"$i"', $1 }'
+          done

@@ -11,13 +11,30 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 3. If you changed already-installed packages, verify a restow preview:
    - `./apply.sh --no --restow`
 
+## Checks for the Neovim config
+
+Everything here also runs in CI (`.github/workflows/neovim.yml`), so a change
+that passes locally passes there. The first two need nothing but `nvim`; the
+rest need the tool named, and each skips cleanly when it is missing.
+
+- `./tests/run-nvim-specs.sh` — the specs. Self-contained: no plugins, no
+  network, no system clipboard, everything built in a tempdir. Run these on any
+  change to `common/.config/nvim/lua`.
+- `python3 tests/check-footpedal-keys.py` — the Shift+Fn transport, across bare
+  kitty, the VS Code terminal and tmux.
+- `stylua --check --config-path common/.config/nvim/stylua.toml common/.config/nvim tests`
+  — formatting. Drop `--check` to apply it.
+- `./tests/check-nvim-types.sh` — lua-language-server over the config: undefined
+  globals and fields, wrong arity, unchecked nils, deprecated Neovim APIs. Must
+  report zero problems.
+- `./tests/check-nvim-keymaps.sh` — invokes every parity binding against the
+  real config. Needs the plugins installed.
+- `./tests/check-nvim-syntax-roles.sh` — C++ and Python colour the same
+  construct the same way. Needs the plugins and the tree-sitter parsers.
+
 ## Optional checks
 
 - Run ShellCheck on modified shell scripts if available: `shellcheck <changed .sh files>`
-- Run Stylua on modified Neovim Lua files if available: `stylua common/nvim/.config/nvim`
-- Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`
-  (self-contained, no plugins required), and `./tests/check-nvim-keymaps.sh` to
-  invoke every binding against the real config.
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines
@@ -28,9 +45,12 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 ## Repository layout tips
 
-- Cross-platform packages live under `common/` (e.g., `shell`, `devtools`, `nvim`, `Code`, `kitty`, `lf`).
-- OS-specific configs live under `mac/` and `windows/` (e.g., `mac/hammerspoon`, `windows/Documents`).
-- Neovim configuration is under `common/nvim/.config/nvim`.
+- `common/`, `mac/` and `windows/` are the three Stow packages, each mirroring
+  `$HOME` directly — so a file's path inside a package is where it lands (e.g.
+  `common/.zshrc` -> `~/.zshrc`, `common/.config/kitty/kitty.conf` ->
+  `~/.config/kitty/kitty.conf`).
+- Neovim configuration is under `common/.config/nvim`; its specs and checks are
+  in `tests/`.
 - VS Code extensions are listed in `vscode_extensions.txt` and installed by scripts.
 
 Optional helpers present but not wired into the local scripts:

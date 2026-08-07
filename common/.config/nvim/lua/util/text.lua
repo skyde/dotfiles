@@ -19,6 +19,7 @@ local M = {}
 ---none has.
 ---
 ---@type fun(a: string, b: string, opts?: table): string|integer[][]|nil
+---@diagnostic disable-next-line: deprecated -- the fallback is the whole point
 M.diff = vim.text and vim.text.diff or vim.diff
 
 ---Hunk indices for two strings, as `{ start_a, count_a, start_b, count_b }`

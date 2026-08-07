@@ -46,7 +46,7 @@ cmd("VcsHistory", ui.history)
 cmd("VcsInfo", function()
   local vcs = require("util.vcs")
   local backend, root = vcs.detect()
-  if not backend then
+  if not (backend and root) then
     return vim.notify("No version control detected here", vim.log.levels.WARN)
   end
   vim.notify(

@@ -36,7 +36,7 @@ local M = {}
 ---@field name string
 ---@field bin string
 ---@field root fun(dir: string): string|nil
----@field rev fun(root: string, scope: string): string|nil
+---@field rev fun(root: string, scope: string): string  never nil: every backend falls back to a literal ref when the lookup fails
 ---@field changed fun(root: string, rev: string): VcsFile[]
 ---@field show fun(root: string, rev: string, path: string): string[]|nil
 ---@field raw_diff fun(root: string, rev: string, path: string|nil, orig: string|nil): string
@@ -300,7 +300,13 @@ end
 
 function git.staged(root, path)
   local res = sh({ "git", "diff", "--cached", "--name-only", "--", path }, root)
-  return ran(res) and vim.trim(res.stdout or "") ~= ""
+  -- Spelled out rather than `ran(res) and ...`: the short-circuit was correct,
+  -- but nothing reading it (a checker included) can tell that ran() is what
+  -- rules out the nil res dereferenced on the next line.
+  if not (res and res.code == 0) then
+    return false
+  end
+  return vim.trim(res.stdout or "") ~= ""
 end
 
 function git.stage(root, path)

@@ -33,7 +33,7 @@
 
 local vcs = require("util.vcs")
 local inline_diff = require("util.inline_diff")
-local text = require("util.text")
+local diff_hunks = require("util.text").hunks
 
 local M = {}
 
@@ -67,6 +67,11 @@ local ns = vim.api.nvim_create_namespace("vcs_ui")
 ---@field refreshing boolean|nil  a background revalidation is in flight
 ---@field previews table<integer, true>  buffers this view opened and unlisted
 ---@field navmapped table<integer, true>  real file buffers carrying view-local maps
+-- Deliberately left for the checker to infer as VcsState rather than annotated
+-- VcsState|nil: nil means "the view is closed", and every access here is behind
+-- valid(), a guard no static checker can follow. Spelling the nil out buys one
+-- honest warning at the assignment in close() and 170 false ones everywhere
+-- else, so close() carries the suppression instead.
 local state = nil
 
 -- The inline / side-by-side choice outlives the view, the way VS Code's
@@ -286,7 +291,7 @@ local function file_stats(root, file, base)
   local a = #base > 0 and (table.concat(base, "\n") .. "\n") or ""
   local b = #lines > 0 and (table.concat(lines, "\n") .. "\n") or ""
   local add, del = 0, 0
-  for _, h in ipairs(text.hunks(a, b)) do
+  for _, h in ipairs(diff_hunks(a, b)) do
     del = del + h[2]
     add = add + h[4]
   end
@@ -1236,7 +1241,9 @@ end
 ---autocmd alike.
 local function schedule_show()
   cancel_scrub()
-  scrub_timer = vim.uv.new_timer()
+  -- Out of libuv handles is not something to paper over: the debounce is what
+  -- keeps holding `j` through a changelist from rendering a diff per keystroke.
+  scrub_timer = assert(vim.uv.new_timer())
   scrub_timer:start(
     SCRUB_DELAY_MS,
     0,
@@ -1986,7 +1993,7 @@ end
 function M.open(opts)
   opts = opts or {}
   local backend, root = vcs.require()
-  if not backend then
+  if not (backend and root) then
     return
   end
 
@@ -2127,6 +2134,8 @@ function M.close()
       pcall(vim.cmd, "tabclose")
     end
   end
+  -- The one place the view is torn down; see the note on the declaration.
+  ---@diagnostic disable-next-line: cast-local-type
   state = nil
   -- The ]f/[f maps only mean something while the view exists; leaving them
   -- on real file buffers would surprise whoever edits those files later.
@@ -2199,7 +2208,7 @@ end
 ---@param scope string
 function M.file_diff(scope)
   local backend, root = vcs.require()
-  if not backend then
+  if not (backend and root) then
     return
   end
   local path = vcs.rel_path(root)
@@ -2333,7 +2342,7 @@ function M.change_position()
   end
   -- Match the settings native diff mode is using, or the count disagrees with
   -- where ]c actually stops.
-  local hunks = text.hunks(win_text(other), win_text(cur), {
+  local hunks = diff_hunks(win_text(other), win_text(cur), {
     algorithm = vim.o.diffopt:match("algorithm:(%w+)") or "myers",
     indent_heuristic = vim.o.diffopt:find("indent%-heuristic") ~= nil,
   })
@@ -2413,7 +2422,7 @@ end
 ---@param scope string
 function M.patch(scope)
   local backend, root = vcs.require()
-  if not backend then
+  if not (backend and root) then
     return
   end
   local rev = backend.rev(root, scope)
@@ -2446,7 +2455,7 @@ end
 ---@param scope string
 function M.copy_patch(scope)
   local backend, root = vcs.require()
-  if not backend then
+  if not (backend and root) then
     return
   end
   local text = backend.raw_diff(root, backend.rev(root, scope), nil)
@@ -2462,7 +2471,7 @@ end
 ---Revision history for the current file; picking one diffs it against now.
 function M.history()
   local backend, root = vcs.require()
-  if not backend then
+  if not (backend and root) then
     return
   end
   local path = vcs.rel_path(root)
