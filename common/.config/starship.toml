@@ -99,10 +99,14 @@ disabled = true
 #      git in both pays for the same probe twice.
 #   2. That fold is only safe when the module renders to nothing on empty
 #      output — starship does NOT hide a module whose command printed
-#      nothing, it renders the format with `$output` empty. So any literal
-#      text or spacing in `format` has to move into the command's output,
-#      leaving `format` as a bare styled `$output`. Where that is not
-#      possible, `when` stays (see git_cl).
+#      nothing, it renders the format with `$output` empty. So folding
+#      demands a bare styled `$output` as the whole `format`. Literal
+#      *text* can move from `format` into the command's output to get
+#      there (git_workspace's trailing "/"), but *whitespace* cannot:
+#      starship trims leading and trailing whitespace from custom command
+#      output, so a space printed there silently vanishes. A module whose
+#      spacing must live in `format` keeps its `when` gate
+#      (cloud_workspace, git_cl).
 #
 # `when = true` is required, not decorative: `when` defaults to *false*, so a
 # custom module that simply omits it never renders. As a TOML boolean it is
@@ -110,19 +114,17 @@ disabled = true
 
 [custom.cloud_workspace]
 description = "Cloud workspace name"
-when = true
-# Pure shell: `case` and parameter expansion are builtins, where the previous
-# `echo | grep` gate plus `echo | cut` command spawned four processes.
+# The gate lives in `when`, not folded into `command`: the trailing space
+# has to sit in `format` (starship would trim it from command output), and
+# a space in `format` needs the gate so non-cloud dirs render nothing.
+# Both shells are pure builtins — zero external process spawns.
+when = 'case "$PWD" in /google/src/cloud/*/*) exit 0 ;; *) exit 1 ;; esac'
 command = '''
-case "$PWD" in
-  /google/src/cloud/*/*)
-    rest=${PWD#/google/src/cloud/}
-    rest=${rest#*/}
-    printf '%s ' "${rest%%/*}"
-    ;;
-esac
+rest=${PWD#/google/src/cloud/}
+rest=${rest#*/}
+printf '%s' "${rest%%/*}"
 '''
-format = '[$output]($style)'
+format = '[$output]($style) '
 style = 'bold purple'
 
 [custom.git_workspace]
@@ -153,10 +155,11 @@ description = "Chromium CL number"
 require_repo = true
 # This one keeps its `when`: `format` wraps $output in the literal "at " and a
 # trailing space, so an empty output would render "at  " rather than nothing.
-# Folding the gate into `command` would need those literals moved inside it,
-# and they are deliberately unstyled while $output is bold blue. A repo where
-# some *other* branch has a CL is normal in Chromium, so "repo has any
-# gerritissue" is not a usable cheaper gate either.
+# Folding the gate into `command` is impossible here — the spacing cannot
+# move into the output (starship trims it), and "at" is deliberately
+# unstyled while $output is bold blue. A repo where some *other* branch has
+# a CL is normal in Chromium, so "repo has any gerritissue" is not a usable
+# cheaper gate either.
 # Check if the current branch has a gerritissue config
 when = """
 branch=$(git symbolic-ref --short HEAD 2>/dev/null)
