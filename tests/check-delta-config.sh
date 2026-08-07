@@ -254,6 +254,25 @@ expect "a mode change is visible"        '^M mode\.sh \(mode \+x\)|^new mode'
 expect "hunk headers carry file:line"    '^• keep\.txt:[0-9]+:'
 expect "tabs are not delta's default 8"  '^[0-9]+ {2,4}( {2}| {4})tab indented deeper'
 
+# Delta locates the matched word in grep output by the SGR code git wrapped it
+# in, and only recognises the default red (31). Spelling color.grep.match as a
+# hex emits 38;2;… instead, and delta stops highlighting matches entirely — a
+# change that looks like a pure colour tweak and silently costs a feature.
+# Read the raw line rather than asking git: an unquoted # starts a comment in
+# git config, so `git config --get` reports `bold reverse` for the broken
+# `match = bold reverse #f7768e` and the check would pass on a value that is
+# not even the colour its author meant.
+grep_match=$(sed -n '/^\[color "grep"\]$/,/^\[/p' "$cfg" |
+  sed -n 's/^[[:space:]]*match[[:space:]]*=[[:space:]]*//p')
+if [[ -z "$grep_match" ]]; then
+  pass "color.grep.match unset (delta's own grep-match-word-style is all there is)"
+elif [[ "$grep_match" == *"#"* ]]; then
+  fail "color.grep.match is a hex colour ($grep_match)" \
+    "delta only recognises git's named red; a hex here kills its match highlighting"
+else
+  pass "color.grep.match is a named colour ($grep_match), so delta still finds matches"
+fi
+
 # git add -p pipes the diff through `delta --color-only` and pairs the result
 # with the unfiltered diff line by line. Drop or add a line and the hunks it
 # offers stop matching what it shows.
