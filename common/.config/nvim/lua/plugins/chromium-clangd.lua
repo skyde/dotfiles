@@ -16,9 +16,12 @@
 -- find-usages answers that depend on which instance answered. One
 -- checkout, one clangd.
 --
--- The cmd is computed from the cwd at startup; opening a Chromium buffer in
--- a session started elsewhere is caught by config/chromium.lua's FileType
--- autocmd, which reconfigures and restarts clangd.
+-- cmd is a function, not a static argv: vim.lsp.config holds one cmd for
+-- every clangd client, and a static argv would leak one checkout's
+-- --compile-commands-dir and bundled binary into other checkouts and
+-- non-Chromium projects in the same session. Neovim resolves root_dir
+-- before spawning and passes the config in, so each client computes the
+-- argv its own root wants (see util.chromium.spawn_cmd).
 return {
   {
     "neovim/nvim-lspconfig",
@@ -26,7 +29,13 @@ return {
       local chromium = require("util.chromium")
       opts.servers = opts.servers or {}
       opts.servers.clangd = vim.tbl_deep_extend("force", opts.servers.clangd or {}, {
-        cmd = chromium.clangd_cmd(),
+        cmd = function(dispatchers, config)
+          return vim.lsp.rpc.start(chromium.spawn_cmd(config), dispatchers, {
+            cwd = config and config.cmd_cwd or nil,
+            env = config and config.cmd_env or nil,
+            detached = config and config.detached or nil,
+          })
+        end,
         ---@param bufnr integer
         ---@param on_dir fun(root_dir?: string)
         root_dir = function(bufnr, on_dir)

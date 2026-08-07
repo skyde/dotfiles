@@ -115,6 +115,26 @@ function M.clangd_cmd(path)
   return cmd
 end
 
+-- What each clangd was actually spawned with, by workspace root ("" when
+-- rootless). vim.lsp.config holds one cmd for every clangd client, so a
+-- static argv would leak one checkout's --compile-commands-dir (and
+-- binary) into other projects and other checkouts in the same session.
+-- Instead the plugin registers cmd as a *function*: Neovim resolves
+-- root_dir first and hands the config to it, so every client computes its
+-- own argv at spawn time — and records it here, which is how ensure_clangd
+-- can later tell a running client no longer matches what its root wants.
+local spawned = {} ---@type table<string, string[]>
+
+---argv for a client about to spawn, derived from its resolved root.
+---@param config? { root_dir?: string }
+---@return string[]
+function M.spawn_cmd(config)
+  local root_dir = config and config.root_dir or nil
+  local cmd = M.clangd_cmd(root_dir)
+  spawned[root_dir or ""] = cmd
+  return cmd
+end
+
 --------------------------------------------------------------------------
 -- the build directory
 --------------------------------------------------------------------------
@@ -376,6 +396,12 @@ function M.refresh(root)
 end
 
 local probed = {} ---@type table<string, true>
+local probing = {} ---@type table<string, true>
+
+-- Only translation units appear in the database — `ninja -t compdb` emits
+-- one entry per *compiled* file. Headers never show up, so probing one
+-- would read a "miss" every time and regenerate for nothing.
+local TU_EXTENSIONS = { c = true, cc = true, cpp = true, cxx = true, m = true, mm = true }
 
 ---Once per file per session: is this buffer's file actually *in* the
 ---database? A file the compdb does not mention gets heuristic flags and
@@ -389,6 +415,10 @@ function M.compdb_probe(root, file)
   if vim.fn.has("win32") == 1 then
     return -- compdb entries use forward slashes; this probe would only mis-miss
   end
+  local ext = file:match("%.(%a+)$")
+  if not ext or not TU_EXTENSIONS[ext:lower()] then
+    return -- headers (and nameless buffers) are never compdb entries
+  end
   file = vim.fn.fnamemodify(file, ":p"):gsub("/+$", "")
   if file:sub(1, #root + 1) ~= root .. "/" then
     return
@@ -398,17 +428,38 @@ function M.compdb_probe(root, file)
     return -- generated files are named relative to the build dir, not src
   end
   local key = root .. "\0" .. rel
-  if probed[key] or inflight[root] or M.stale(root) then
-    return -- a (re)generation is already due or running; it owns this
+  -- One scan per root at a time: the database is hundreds of MB, and a
+  -- burst of new buffers must not stack whole-file reads on the uv
+  -- threadpool. A file skipped here stays unmarked and is retried by a
+  -- later BufEnter.
+  if probed[key] or probing[root] or inflight[root] or M.stale(root) then
+    return
   end
+  local db = root .. "/compile_commands.json"
+  local before = vim.uv.fs_stat(db)
+  if not before then
+    return
+  end
+  probing[root] = true
   probed[key] = true
   -- Entries look like "file": "../../base/logging.cc" — match the
   -- src-relative path with its closing quote, plain-text.
-  M.file_contains(root .. "/compile_commands.json", "/" .. rel .. '"', function(found)
-    if found ~= false then
-      return
-    end
+  M.file_contains(db, "/" .. rel .. '"', function(found)
     vim.schedule(function()
+      probing[root] = nil
+      if found ~= false then
+        return
+      end
+      -- The database can be rewritten in place *under* the scan (a gn
+      -- debounce, a regeneration from VS Code or a terminal): a truncated
+      -- read then reports a false miss. Only trust a miss against the
+      -- same bytes the scan started on; otherwise forget the probe so a
+      -- later event retries against the new database.
+      local after = vim.uv.fs_stat(db)
+      if not after or after.mtime.sec ~= before.mtime.sec or after.size ~= before.size or inflight[root] then
+        probed[key] = nil
+        return
+      end
       vim.notify(("%s is not in compile_commands.json; regenerating"):format(rel), vim.log.levels.INFO)
       M.generate({ root = root, force = true, silent = true })
     end)
@@ -606,11 +657,39 @@ function M.gn_changed(root)
   )
 end
 
--- clangd is configured once per session (the plugin spec computes the cmd
--- from the cwd). When the first Chromium buffer shows up somewhere else —
--- nvim started at ~, then :e into a checkout — reconfigure and restart so
--- the bundled binary and fresh flags actually apply.
+-- Because the plugin registers cmd as a function of the resolved root, a
+-- client's very first spawn already carries the right binary and flags —
+-- there is nothing to reconfigure when a Chromium buffer first appears.
+-- What can still drift is a *running* client: the bundled clangd landing
+-- mid-session (gclient sync) changes what its root wants. ensure_clangd
+-- notices that drift and restarts. One wrinkle: vim.lsp.get_clients hides
+-- clients that have not finished the initialize handshake, so a restart
+-- issued the instant after a spawn silently restarts nothing — hence the
+-- bounded retry until the client is visible.
 local tuned = {} ---@type table<string, true>
+
+---@param root string
+---@param tries integer
+local function restart_when_visible(root, tries)
+  if not spawned[root] then
+    return -- nothing has spawned for this root; its first spawn will be right
+  end
+  local want = M.clangd_cmd(root)
+  if vim.deep_equal(spawned[root], want) then
+    return -- what runs is already right
+  end
+  if #vim.lsp.get_clients({ name = "clangd" }) > 0 then
+    M.restart_clangd()
+    return
+  end
+  if tries > 0 then
+    -- Spawned with a stale command but not yet visible: try again once
+    -- the handshake finishes.
+    vim.defer_fn(function()
+      restart_when_visible(root, tries - 1)
+    end, 500)
+  end
+end
 
 ---@param root string
 function M.ensure_clangd(root)
@@ -618,25 +697,7 @@ function M.ensure_clangd(root)
     return
   end
   tuned[root] = true
-  if not vim.lsp.config then
-    return
-  end
-  local want = M.clangd_cmd(root)
-  local have = (vim.lsp.config.clangd or {}).cmd
-  -- The whole command matters, not just the binary: flags shift with the
-  -- root (--compile-commands-dir) and a half-applied command means clangd
-  -- reading the wrong database with the right binary.
-  if vim.deep_equal(have, want) then
-    return
-  end
-  vim.lsp.config("clangd", { cmd = want })
-  -- Scheduled: on the first C++ FileType in a fresh root, the lsp-enable
-  -- machinery has only *queued* the client start (root resolution defers
-  -- it) — restarting synchronously here would restart nothing and leave
-  -- the stale command running.
-  vim.schedule(function()
-    M.restart_clangd()
-  end)
+  restart_when_visible(root, 10)
 end
 
 ---Forget the per-root tuning and re-run ensure_clangd — used when the
@@ -724,7 +785,10 @@ function M.diagnose(bufnr)
     add("ok", ("compile_commands.json: %.1f MB, current"):format(db_stat.size / 2 ^ 20))
   end
 
-  -- The running client.
+  -- The running client. :ChromiumCompdb is the advice because it both
+  -- regenerates and restarts — and unlike :LspRestart it always exists
+  -- (nvim 0.12's native :lsp command makes nvim-lspconfig skip defining
+  -- its Lsp* commands entirely).
   local clients = vim.lsp.get_clients({ name = "clangd" })
   if #clients == 0 then
     add("info", "clangd is not running yet (it starts with the first C++ buffer)")
@@ -733,34 +797,40 @@ function M.diagnose(bufnr)
       add(
         "warn",
         #clients .. " clangd instances are running; one per checkout is intended",
-        "duplicate instances double memory and race the index — :LspRestart clangd"
+        "duplicate instances double memory and race the index — :ChromiumCompdb restarts clangd"
       )
     end
     local client = clients[1]
-    local running = client.config and client.config.cmd
-    if type(running) == "table" and not vim.deep_equal(running, M.clangd_cmd(root)) then
+    local running = spawned[root]
+    if running and not vim.deep_equal(running, M.clangd_cmd(root)) then
       add(
         "warn",
-        "the running clangd was started with a different command than is now configured",
-        ":LspRestart clangd"
+        "the running clangd was spawned with a different command than its root now wants",
+        ":ChromiumCompdb restarts clangd onto the new command"
       )
     else
       add("ok", ("clangd running, %d buffers attached"):format(#vim.tbl_keys(client.attached_buffers or {})))
     end
     local croot = client.config and client.config.root_dir
     if croot and croot ~= root then
-      add("warn", "clangd's workspace root is " .. croot .. ", not the checkout root", ":LspRestart clangd")
+      add(
+        "warn",
+        "clangd's workspace root is " .. croot .. ", not the checkout root",
+        ":ChromiumCompdb restarts clangd"
+      )
     end
   end
 
-  -- The background index.
-  local shards, bytes = 0, 0
+  -- The background index. Count only — stat'ing 100k shards would hang
+  -- the report on exactly the checkouts it exists for.
+  local shards = 0
   local index_dir = root .. "/.cache/clangd/index"
   if vim.fn.isdirectory(index_dir) == 1 then
-    for name in vim.fs.dir(index_dir) do
+    for _ in vim.fs.dir(index_dir) do
       shards = shards + 1
-      local s = vim.uv.fs_stat(index_dir .. "/" .. name)
-      bytes = bytes + (s and s.size or 0)
+      if shards >= 200000 then
+        break
+      end
     end
   end
   if shards == 0 then
@@ -769,18 +839,17 @@ function M.diagnose(bufnr)
       "background index is empty — the first index of Chromium takes hours, and find-references is incomplete until it finishes"
     )
   else
-    add(
-      "ok",
-      ("background index: %d shards, %.0f MB (still grows while clangd is indexing)"):format(shards, bytes / 2 ^ 20)
-    )
+    add("ok", ("background index: %d shards (still grows while clangd is indexing)"):format(shards))
   end
 
-  -- The tools regeneration needs.
-  if vim.fn.executable("ninja") == 0 then
+  -- The tools regeneration needs. generate_compdb.py prefers the
+  -- checkout's own third_party/ninja/ninja and only falls back to PATH.
+  local own_ninja = root .. "/third_party/ninja/ninja"
+  if vim.fn.executable(own_ninja) == 0 and vim.fn.executable("ninja") == 0 then
     add(
       "error",
-      "ninja is not on PATH — generate_compdb.py runs `ninja -t compdb`, so regeneration will fail",
-      "put depot_tools on PATH"
+      "no ninja: neither " .. own_ninja .. " nor PATH has one — `ninja -t compdb` (regeneration) will fail",
+      "gclient sync fetches the bundled ninja, or put depot_tools on PATH"
     )
   end
   if vim.fn.executable("python3") == 0 and vim.fn.executable("python") == 0 then
@@ -794,13 +863,15 @@ function M.diagnose(bufnr)
   local ft = vim.bo[bufnr].filetype
   if (ft == "c" or ft == "cpp" or ft == "objc" or ft == "objcpp") and db_stat and not M.stale(root) then
     local rel = bufname:sub(#root + 2)
-    if rel ~= "" and rel:sub(1, 4) ~= "out/" and vim.fn.has("win32") == 0 then
+    local ext = bufname:match("%.(%a+)$")
+    local is_tu = ext ~= nil and TU_EXTENSIONS[ext:lower()] ~= nil
+    if is_tu and rel ~= "" and rel:sub(1, 4) ~= "out/" and vim.fn.has("win32") == 0 then
       local found ---@type boolean|nil
       local done = false
       M.file_contains(root .. "/compile_commands.json", "/" .. rel .. '"', function(f)
         found, done = f, true
       end)
-      vim.wait(10000, function()
+      vim.wait(5000, function()
         return done
       end)
       if found == true then
@@ -811,7 +882,14 @@ function M.diagnose(bufnr)
           rel .. " is not in compile_commands.json — clangd is guessing its flags",
           "new file: build once / :ChromiumCompdb; otherwise it is not built in this config"
         )
+      else
+        add("info", "membership scan of compile_commands.json did not finish in 5s; skipped")
       end
+    elseif not is_tu then
+      add(
+        "info",
+        "headers are never compile_commands.json entries; clangd infers their flags from a source file that includes them"
+      )
     end
   end
 

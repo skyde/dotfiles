@@ -10,7 +10,7 @@ automation, then closes the gaps the extension still leaves:
 | --- | --- |
 | generates `src/compile_commands.json` with `tools/clang/scripts/generate_compdb.py` when the first C++ file opens | `FileType` autocmd in `config/chromium.lua`, when the database is missing or older than the build dir's `build.ninja` |
 | regenerates whenever a GN file is edited | `BufWritePost *.gn,*.gni`, debounced 2s |
-| runs `clangd.restart` after regenerating | `:LspRestart clangd` (with a manual fallback) |
+| runs `clangd.restart` after regenerating | restarts clangd (stop-and-reattach; `:LspRestart` when the plugin provides it — under nvim 0.12's native `:lsp` command nvim-lspconfig defines no `Lsp*` commands) |
 | tracks the active build dir via the `out/current_link` symlink | same symlink, so VS Code and Neovim always index the same build |
 | relies on the vscode-clangd extension for gd/gu | `plugins/chromium-clangd.lua` configures clangd for real (nothing configured it before) |
 | — | re-checks freshness on every `BufEnter`/`FocusGained` (throttled), so a build, gn run, or `git pull` outside the editor is noticed mid-session, not next session |
@@ -69,7 +69,10 @@ plus what a checkout of this size forces:
 - `--compile-commands-dir=<src>` — pin database discovery instead of
   letting clangd walk up from each file; buffers under `out/` (generated
   sources reached via gd) would otherwise bind to whatever partial
-  `compile_commands.json` sits inside the build dir.
+  `compile_commands.json` sits inside the build dir. The command is
+  computed per client from its resolved root (cmd is a function), so this
+  pin never leaks into other checkouts or non-Chromium projects in the
+  same session.
 - `--log=error` — at the default level a Chromium session grows `lsp.log`
   by the gigabyte.
 

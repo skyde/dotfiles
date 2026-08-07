@@ -57,14 +57,11 @@ local root = temp .. "/chromium/src"
 local script = root .. "/tools/clang/scripts/generate_compdb.py"
 -- The stub is invoked the way the real one is (python3, cwd = src root);
 -- it records its arguments and writes an empty database where told to.
-write(
-  script,
-  table.concat({
-    "import sys",
-    'open("generate.log", "a").write(" ".join(sys.argv[1:]) + "\\n")',
-    'open(sys.argv[4], "w").write("[]")',
-  }, "\n") .. "\n"
-)
+write(script, table.concat({
+  "import sys",
+  'open("generate.log", "a").write(" ".join(sys.argv[1:]) + "\\n")',
+  'open(sys.argv[4], "w").write("[]")',
+}, "\n") .. "\n")
 write(root .. "/out/Default/build.ninja", "ninja\n")
 write(root .. "/base/logging.cc", "// c++\n")
 
@@ -281,17 +278,14 @@ check("gclient: the refusal says what to do", type(err) == "string" and err:find
 -- A stub gclient on PATH: logs its argv and cwd, then drops the bundled
 -- clangd where a real sync would.
 local stub_bin = temp .. "/bin"
-write(
-  stub_bin .. "/gclient",
-  table.concat({
-    "#!/bin/sh",
-    "pwd >> gclient.log",
-    'echo "$@" >> gclient.log',
-    "mkdir -p src/third_party/llvm-build/Release+Asserts/bin",
-    "printf '#!/bin/sh\\n' > src/third_party/llvm-build/Release+Asserts/bin/clangd",
-    "chmod +x src/third_party/llvm-build/Release+Asserts/bin/clangd",
-  }, "\n") .. "\n"
-)
+write(stub_bin .. "/gclient", table.concat({
+  "#!/bin/sh",
+  "pwd >> gclient.log",
+  'echo "$@" >> gclient.log',
+  "mkdir -p src/third_party/llvm-build/Release+Asserts/bin",
+  "printf '#!/bin/sh\\n' > src/third_party/llvm-build/Release+Asserts/bin/clangd",
+  "chmod +x src/third_party/llvm-build/Release+Asserts/bin/clangd",
+}, "\n") .. "\n")
 assert(vim.uv.fs_chmod(stub_bin .. "/gclient", 493))
 vim.env.PATH = stub_bin .. ":" .. vim.env.PATH
 
@@ -365,6 +359,15 @@ vim.wait(300)
 settle()
 eq("probe: generated and foreign files are skipped", 6, #generate_log())
 
+-- Headers are never compdb entries (`ninja -t compdb` lists translation
+-- units only); probing one would regenerate on every header opened.
+write(root .. "/base/logging.h", "// header\n")
+chromium.compdb_probe(root, root .. "/base/logging.h")
+chromium.compdb_probe(root, "")
+vim.wait(300)
+settle()
+eq("probe: headers and nameless buffers are skipped", 6, #generate_log())
+
 -- A build.ninja that moved regenerates on re-entry, mid-session — the old
 -- behavior checked once per session and went quietly stale.
 vim.wait(2100) -- clear the refresh throttle
@@ -385,7 +388,9 @@ local plug = dofile(repo .. "/common/.config/nvim/lua/plugins/chromium-clangd.lu
 local popts = { servers = {} }
 plug[1].opts(nil, popts)
 local clangd_opts = popts.servers.clangd
-check("plugin: sets a cmd", type(clangd_opts.cmd) == "table")
+check("plugin: cmd is a per-client function", type(clangd_opts.cmd) == "function")
+eq("spawn: argv follows the client's root", chromium.clangd_cmd(root), chromium.spawn_cmd({ root_dir = root }))
+eq("spawn: rootless argv is the stock one", chromium.clangd_cmd(nil), chromium.spawn_cmd({}))
 local called, got_root = false, nil
 clangd_opts.root_dir(vim.api.nvim_get_current_buf(), function(r)
   called, got_root = true, r
