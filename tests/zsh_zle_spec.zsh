@@ -126,6 +126,28 @@ assert_contains 'while a command runs the title is the command' \
 assert_contains 'and the directory it is running in' \
   "sleep 2 — $SPEC_REPO" "$_title_output"
 
+spec_section 'the terminal is told which directory the shell is in'
+
+# OSC 7. Without it, "open a new tab here" opens somewhere else — kitty's own
+# shell integration sends it, but nothing does inside tmux, in the VS Code
+# terminal, or over ssh.
+assert_contains 'the shell reports its directory as a file URI' \
+  $'\e]7;file://' "$_title_output"
+assert_contains 'the URI carries the working directory' \
+  "$SPEC_REPO" "${_title_output#*$'\e]7;'}"
+
+# A directory whose name needs escaping to be a URI at all. The encoding is done
+# with a single substitution rather than a loop over characters, so it is worth
+# checking that it produces what a terminal can parse.
+typeset -g _spacey="$SPEC_TMP/a directory with spaces"
+[[ -d $_spacey ]] || mkdir -p -- "$_spacey"
+typeset -g _spacey_output
+_spacey_output=$(spec_pty_raw 'true\r' "builtin cd -- ${(q)_spacey}" 0.5)
+assert_contains 'a space in the path is percent-encoded' \
+  'a%20directory%20with%20spaces' "$_spacey_output"
+refute_contains 'and the raw space is not sent' \
+  $'\e]7;file://'"${HOST}$SPEC_TMP/a directory" "$_spacey_output"
+
 spec_section 'a shell without a terminal skips the widget machinery'
 
 # Not merely an optimisation: fzf's files restore the whole option array in one

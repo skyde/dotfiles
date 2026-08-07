@@ -148,6 +148,21 @@ assert_option 'timestamps are recorded' extended_history on
 assert_option 'blank runs of whitespace are tidied first' hist_reduce_blanks on
 assert_option 'history expansion is confirmed before running' hist_verify on
 
+spec_section 'stock zsh worth having'
+
+assert_function 'zmv is available for bulk renames' zmv
+
+# zsh ships `run-help` as an alias for plain man, which cannot look up
+# `git commit`. The alias has to be removed before the real function can be
+# autoloaded, and it is easy to autoload it and not notice the alias still wins.
+refute_alias 'run-help is not left aliased to man' run-help
+assert_function 'run-help is the real function' run-help
+assert_function 'run-help knows about git subcommands' run-help-git
+assert_alias 'help reaches run-help' help 'run-help'
+
+assert 'long-running commands report their time' '(( REPORTTIME > 0 ))'
+assert_nonempty 'that report has a format' "${TIMEFMT-}"
+
 spec_section 'options that make the shell pleasant'
 
 assert_option 'a bare directory name changes to it' autocd on

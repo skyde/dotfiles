@@ -199,6 +199,30 @@ the plugins were deferred it is no longer the interesting one: that shell never
 reaches a prompt, so it never loads them. It reports ~20ms, and a change that
 improves it while leaving time-to-prompt alone has not made anything faster.
 
+## What the terminal is told
+
+At the prompt the shell sends the terminal two things it cannot work out for
+itself:
+
+- **The title** — the working directory at the prompt, the running command and
+  the directory while something runs, so a window in the middle of a long build
+  says so from the tab bar. Only for terminals that have a title.
+- **OSC 7** — the working directory as a `file://` URI, which is what makes
+  "open a new tab / split here" land in the right place and lets a terminal turn
+  a path in the output into a link. kitty's own shell integration sends this when
+  enabled; nothing sends it inside tmux, in the VS Code terminal, or over ssh.
+  The path is percent-encoded by a single substitution with no fork.
+
+## Odds and ends
+
+| Thing        | What it gives you                                              |
+| ------------ | -------------------------------------------------------------- |
+| `zmv`        | bulk rename by pattern: `zmv '(*).jpeg' '$1.jpg'`, `-n` to preview |
+| `help`       | `help git commit` opens git-commit(1) — zsh ships `run-help` aliased to plain `man`, which cannot do the subcommand part |
+| `REPORTTIME` | anything burning more than 10s of CPU reports user/system/elapsed afterwards |
+
+All autoloaded, so none of it costs anything until used.
+
 ## Behaviour worth knowing about
 
 - **`hist_verify`**: a history expansion (`!!`, `!$`) lands on the command line

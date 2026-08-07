@@ -819,8 +819,26 @@ case $TERM in
     # titles are taken from in every terminal here.
     _title_set() { print -n -- $'\e]0;'"$1"$'\a'; }
 
+    # OSC 7 tells the terminal which directory the shell is in. It is what makes
+    # "open a new tab / split here" land in the right place, and what lets a
+    # terminal turn a relative path in the output into a working link. kitty's own
+    # shell integration sends it when it is enabled, but nothing sends it inside
+    # tmux, in the VS Code terminal, or over ssh.
+    #
+    # The path has to be percent-encoded to be a URI. The substitution does that
+    # in one pass with no fork: (#m) puts each character that needs escaping in
+    # $MATCH, [##16] converts it to hex, and (l:2::0:) pads it to two digits. A
+    # path that needs no escaping comes through untouched.
+    _osc7_set() {
+      local encoded=${PWD//(#m)[^a-zA-Z0-9\/:_.!~*\'()-]/%${(l:2::0:)$(([##16]#MATCH))}}
+      print -n -- $'\e]7;file://'"${HOST}${encoded}"$'\e\\'
+    }
+
     # ${(%):-%~} expands the prompt escape without a fork, giving ~ for $HOME.
-    _title_precmd() { _title_set "${(%):-%~}"; }
+    _title_precmd() {
+      _title_set "${(%):-%~}"
+      _osc7_set
+    }
 
     _title_preexec() {
       local cmd=${1//[[:cntrl:]]/ }
@@ -838,6 +856,28 @@ case $TERM in
     add-zsh-hook preexec _title_preexec
     ;;
 esac
+
+# -------- stock zsh worth having
+#
+# All autoloaded, so none of it costs anything until it is used.
+
+# Bulk rename with a pattern: `zmv '(*).jpeg' '$1.jpg'`, and `zmv -n` to see what
+# it would do first.
+autoload -Uz zmv
+
+# `help git commit` opens git-commit(1), rather than zsh's one-line description of
+# a builtin. zsh ships run-help aliased to plain `man`, which cannot do the
+# subcommand part, so the alias goes first and the helpers that know how to split
+# `git commit` into a page name are autoloaded with it.
+(( $+aliases[run-help] )) && unalias run-help
+autoload -Uz run-help run-help-git run-help-ip run-help-openssl run-help-sudo
+alias help=run-help
+
+# Anything that burns more than ten seconds of CPU says so afterwards, with the
+# split between user and system time. It is the cheapest way to notice that a
+# command you thought was waiting on the network was in fact spinning.
+REPORTTIME=10
+TIMEFMT='%J — %*E elapsed, %U user, %S system, %P cpu'
 
 # -------- machine-specific overrides
 #
