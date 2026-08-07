@@ -5,14 +5,9 @@
 [mgr]
 cwd = { fg = "#7dcfff" }
 
-# Hovered row: the selection blue, not a reverse-video flip, so the file icon
-# and git status colours survive underneath the cursor.
-hovered = { fg = "#c0caf5", bg = "#283457" }
-
-# The hovered row in the preview pane. Yazi's default is `underline = true`,
-# which cuts a hard rule across an unfocused pane. A muted fill reads as the
-# same gesture as `hovered` above, just quieter because the pane isn't focused.
-preview_hovered = { fg = "#c0caf5", bg = "#292e42" }
+# Where a symlink points. The link's own name is already cyan (see [filetype]
+# below); the target is reference, so it recedes.
+symlink_target = { fg = "#565f89", italic = true }
 
 find_keyword = { fg = "#ff9e64", bold = true }
 find_position = { fg = "#bb9af7", bg = "reset", italic = true }
@@ -29,6 +24,26 @@ count_selected = { fg = "#16161e", bg = "#e0af68" }
 
 border_symbol = "│"
 border_style = { fg = "#292e42" }
+
+# The hovered row in each of the three panes.
+#
+# These lived under `[mgr]` as `hovered` and `preview_hovered` until yazi
+# v25.12.29 reclassified them here as `current` and `preview`. Yazi ignores
+# unknown keys without a word (see the gotcha in docs/tokyonight.md), so the
+# old names did not error — they just quietly stopped applying, and both panes
+# fell back to yazi's defaults, which are the two things the settings were
+# written to avoid: `reversed = true` on the current row and `underline = true`
+# on the preview's.
+[indicator]
+# The selection blue rather than a reverse-video flip, so the file icon and the
+# git status colours survive underneath the cursor.
+current = { fg = "#c0caf5", bg = "#283457" }
+
+# The parent and preview panes are not focused, so they get the quieter fill
+# rather than a hard rule across a pane you are not working in. Same gesture,
+# lower voice.
+parent = { fg = "#c0caf5", bg = "#292e42" }
+preview = { fg = "#c0caf5", bg = "#292e42" }
 
 [tabs]
 active = { fg = "#16161e", bg = "#7aa2f7", bold = true }
@@ -62,6 +77,7 @@ progress_normal = { fg = "#7aa2f7", bg = "#292e42" }
 progress_error = { fg = "#f7768e", bg = "#292e42" }
 
 [which]
+border = { fg = "#7aa2f7" }
 mask = { bg = "#1f2335" }
 cand = { fg = "#7dcfff" }
 rest = { fg = "#565f89" }
@@ -72,7 +88,8 @@ separator_style = { fg = "#3b4261" }
 [confirm]
 border = { fg = "#7aa2f7" }
 title = { fg = "#7aa2f7" }
-content = {}
+# `content` until v25.12.29, `body` since.
+body = {}
 list = { fg = "#7dcfff" }
 btn_yes = { fg = "#16161e", bg = "#9ece6a", bold = true }
 btn_no = { fg = "#16161e", bg = "#f7768e", bold = true }
@@ -107,14 +124,30 @@ inactive = { fg = "#a9b1d6" }
 [tasks]
 border = { fg = "#7aa2f7" }
 title = {}
-# Same treatment as preview_hovered: a fill rather than a hard underline.
+# Same treatment as the preview pane's indicator: a fill, not a hard underline.
 hovered = { fg = "#bb9af7", bg = "#292e42" }
 
+# Both spellings on purpose, and this one is a bet rather than a fix.
+#
+# Yazi is superseding `on` with `chord` and folding `run` and `desc` into
+# `action`, but that change is still unreleased — so today the old names are
+# the live ones and the new names do nothing, and after the next release it is
+# the other way round. Because yazi ignores keys it does not recognise without
+# complaining, carrying both means the help menu is themed either way, and the
+# old three can simply be deleted once the release lands.
+#
+# `footer` goes away in the same change and has no successor; it is harmless
+# until then.
 [help]
+border = { fg = "#7aa2f7" }
+hovered = { bg = "#283457", bold = true }
+# Post-rename names.
+chord = { fg = "#7dcfff" }
+action = { fg = "#a9b1d6" }
+# Pre-rename names, still the live ones as of v26.5.6.
 on = { fg = "#7dcfff" }
 run = { fg = "#bb9af7" }
 desc = { fg = "#a9b1d6" }
-hovered = { bg = "#283457", bold = true }
 footer = { fg = "#16161e", bg = "#c0caf5" }
 
 # Filetype colours. These mirror common/.config/lf/colors so the two file

@@ -93,26 +93,30 @@ not listed here is drift, and `tests/check-theme.py` says so.
 | `#1f2335` | `bg_dark1`       | One step above `bg`. The "present but not focused" fill — yazi's which-key mask, lazygit's selection in an unfocused panel. |
 | `#24283b` | `bg` (storm)     | The storm variant's background, borrowed as the third step of delta's blame stripe. |
 
-#### delta's diff washes
+#### Tinted washes — an accent used as a background
 
-The diff body cannot use the palette accents as backgrounds: `green` behind
-syntax-highlighted code is a highlighter pen. These are the accents mixed down
-into `bg` until the code on top stays readable — every one of them clears
-4.5:1 against both `fg` and Dark+'s plain `#d4d4d4`, which is what
-`tests/check-theme.py contrast` pins.
+An accent at full strength behind text is a highlighter pen: `green` under
+syntax-highlighted code is unreadable. These are the accents mixed down into
+`bg` until the text on top survives — every one clears 4.5:1 against both `fg`
+and Dark+'s plain `#d4d4d4`, which is what `tests/check-theme.py contrast`
+pins.
 
-| Hex       | Role                          |
-| --------- | ----------------------------- |
-| `#20432b` | added line                    |
-| `#2c5a3a` | added, emphasised token       |
-| `#17311f` | added, unchanged remainder    |
-| `#532727` | removed line                  |
-| `#683131` | removed, emphasised token     |
-| `#3f1f1f` | removed, unchanged remainder  |
-| `#2e2547` | moved from here (violet)      |
-| `#203356` | moved from here (indigo)      |
-| `#12384a` | moved to here (cyan)          |
-| `#15423d` | moved to here (teal)          |
+Mostly delta's diff body, which is what they were mixed for. btop borrows three
+of them for its process states, on the same reasoning: a background with text
+over it and no foreground key of its own to compensate.
+
+| Hex       | Role                                            |
+| --------- | ----------------------------------------------- |
+| `#20432b` | added line                                      |
+| `#2c5a3a` | added, emphasised token                         |
+| `#17311f` | added, unchanged remainder                      |
+| `#532727` | removed line; btop's paused process             |
+| `#683131` | removed, emphasised token                       |
+| `#3f1f1f` | removed, unchanged remainder                    |
+| `#2e2547` | moved from here (violet); btop's process banner |
+| `#203356` | moved from here (indigo); btop's followed process |
+| `#12384a` | moved to here (cyan)                            |
+| `#15423d` | moved to here (teal)                            |
 
 ### Gotcha: yazi ignores unknown keys
 
@@ -129,6 +133,26 @@ Silence there means the key name is wrong. The same trick enumerates the real
 schema. For `[filetype]` rules, `is` accepts exactly `none`, `hidden`, `link`,
 `orphan`, `dummy`, `block`, `char`, `fifo`, `sock`, `exec`, `sticky` — there is
 no `dir`; directories are matched with the name glob `*/`.
+
+This is not hypothetical, and the failure is worse than it sounds: yazi renames
+theme keys between releases, and a renamed key does not warn, it just stops
+applying and takes the default instead. Twice now the default has been the
+exact thing the setting was written to avoid.
+
+| Release     | Change                                                            |
+| ----------- | ----------------------------------------------------------------- |
+| `v25.12.29` | `[mgr] hovered` and `preview_hovered` → `[indicator] current` and `preview`. The defaults are `reversed = true` and `underline = true` — the reverse-video flip and the hard rule the settings exist to replace. |
+| `v25.12.29` | `[confirm] content` → `body`.                                      |
+| unreleased  | `[help] on` → `chord`, `run` and `desc` → `action`, `footer` removed. Both spellings are set in `theme.toml` until this lands. |
+
+So when yazi is upgraded, diff its shipped `theme-dark.toml` against ours and
+look at the key *names*, not just the colours:
+
+```bash
+curl -s https://raw.githubusercontent.com/sxyazi/yazi/main/yazi-config/preset/theme-dark.toml
+```
+
+A key we set that no longer appears there is doing nothing.
 
 ### Why yazi previews through bat, not `syntect_theme`
 

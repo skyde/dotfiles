@@ -96,3 +96,24 @@ theme[upload_end]="#f7768e"
 theme[process_start]="#7aa2f7"
 theme[process_mid]="#bb9af7"
 theme[process_end]="#f7768e"
+
+# Process states: paused, followed, and the banner over a followed process.
+#
+# These are the last six keys btop knows about, and leaving them out does not
+# mean "no colour" — btop falls back to a muddy red, blue and purple compiled
+# into the binary, which were the only things in this file that were not Tokyo
+# Night. (Their hex values are deliberately not quoted here: a colour written
+# down in this tree is a colour tests/check-theme.py expects the palette doc to
+# name, and these are precisely the ones it should not.)
+#
+# They are backgrounds with text on top and no matching foreground key of their
+# own for two of them, so they use the tinted washes rather than the accents
+# themselves: an accent at full strength behind text is a highlighter pen. Red
+# for paused, indigo for followed, violet for the banner — the same three
+# washes, and the same reasoning, as delta's diff body.
+theme[proc_pause_bg]="#532727"
+theme[proc_follow_bg]="#203356"
+theme[proc_banner_bg]="#2e2547"
+theme[proc_banner_fg]="#c0caf5"
+theme[followed_bg]="#203356"
+theme[followed_fg]="#c0caf5"
