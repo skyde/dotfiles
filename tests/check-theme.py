@@ -168,6 +168,56 @@ WEZTERM_KEYS = {
 }
 
 
+# VS Code's integrated terminal is the third terminal these dotfiles ship, and
+# it runs exactly the same tools as the other two.
+#
+# Only these keys are compared. The rest of settings.json is out of scope for
+# the palette check on purpose: it carries Dark+ token colours and a handful of
+# debug-view colours that are not Tokyo Night and are not trying to be.
+VSCODE_TERMINAL_KEYS = {
+    "background": "terminal.background",
+    "foreground": "terminal.foreground",
+    "cursor": "terminalCursor.foreground",
+    "cursor_text_color": "terminalCursor.background",
+    "selection_background": "terminal.selectionBackground",
+    "selection_foreground": "terminal.selectionForeground",
+    "color0": "terminal.ansiBlack",
+    "color1": "terminal.ansiRed",
+    "color2": "terminal.ansiGreen",
+    "color3": "terminal.ansiYellow",
+    "color4": "terminal.ansiBlue",
+    "color5": "terminal.ansiMagenta",
+    "color6": "terminal.ansiCyan",
+    "color7": "terminal.ansiWhite",
+    "color8": "terminal.ansiBrightBlack",
+    "color9": "terminal.ansiBrightRed",
+    "color10": "terminal.ansiBrightGreen",
+    "color11": "terminal.ansiBrightYellow",
+    "color12": "terminal.ansiBrightBlue",
+    "color13": "terminal.ansiBrightMagenta",
+    "color14": "terminal.ansiBrightCyan",
+    "color15": "terminal.ansiBrightWhite",
+}
+
+
+def parse_vscode_terminal() -> dict[str, str]:
+    """The terminal colours out of settings.json.
+
+    Read with a regex rather than a JSON parser: the file is JSON with
+    comments, and the point here is to find a fixed set of known keys, not to
+    understand the document.
+    """
+    text = read("common/.config/Code/User/settings.json")
+    # Drop line comments so a commented-out key is not mistaken for a live one.
+    text = re.sub(r"^\s*//.*$", "", text, flags=re.M)
+    values: dict[str, str] = {}
+    for key in VSCODE_TERMINAL_KEYS.values():
+        match = re.search(rf'"{re.escape(key)}"\s*:\s*"(#[0-9a-fA-F]{{6}})"', text)
+        if match:
+            values[key] = norm(match.group(1))
+    return values
+
+
 def parse_kitty_theme() -> dict[str, str]:
     values: dict[str, str] = {}
     for line in read("common/.config/kitty/themes/tokyonight_night.conf").splitlines():
@@ -236,6 +286,24 @@ def check_terminals(report: Report) -> None:
                 f"{key} is {expected} in kitty but {actual} in wezterm",
             )
     report.ok("kitty and wezterm agree on every shared slot")
+
+    vscode = parse_vscode_terminal()
+    for key, setting in VSCODE_TERMINAL_KEYS.items():
+        expected = kitty.get(key)
+        if expected is None:
+            continue  # already reported above
+        actual = vscode.get(setting)
+        if actual is None:
+            report.fail(
+                "terminals",
+                f"VS Code's settings.json does not set {setting} (kitty's {key})",
+            )
+        elif actual != expected:
+            report.fail(
+                "terminals",
+                f"{key} is {expected} in kitty but {setting} is {actual} in VS Code",
+            )
+    report.ok("VS Code's integrated terminal agrees with kitty")
 
 
 # --- 3. one file-type table, three dialects --------------------------------

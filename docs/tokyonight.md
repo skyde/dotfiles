@@ -56,10 +56,12 @@ enough apart that adjacent commits separate.
 | `dark3`      | `#545c7e` | inactive tabs, line numbers          |
 | `terminal_black` | `#414868` | ANSI 8 (upstream value — see note) |
 
-> **Note on ANSI 8.** kitty and wezterm here use `#85899c` instead of the
-> upstream `#414868`. That is deliberate: `#414868` is close to unreadable for
-> "bright black" text that CLI tools use for de-emphasised output. Keep the two
-> terminals in sync.
+> **Note on ANSI 8.** kitty, wezterm and VS Code's integrated terminal all use
+> `#85899c` instead of the upstream `#414868`. That is deliberate: `#414868` is
+> close to unreadable for "bright black" text that CLI tools use for
+> de-emphasised output. Keep all **three** terminals in sync — VS Code's is a
+> terminal like the other two, running the same tools, and it is the one that
+> gets forgotten. `tests/check-theme.py` compares them.
 
 ### Accents
 
@@ -308,6 +310,7 @@ it fails the test.
 | kitty    | `common/.config/kitty/themes/tokyonight_night.conf`   |
 | kitty    | `common/.config/kitty/kitty.conf` (dim opacity, includes the theme) |
 | wezterm  | `common/.config/wezterm/wezterm.lua`                  |
+| VS Code terminal | `common/.config/Code/User/settings.json` (the `terminal.*` keys) |
 | tmux     | `common/.tmux.conf` (the `# Theme` section)           |
 | Neovim   | `common/.config/nvim/lua/plugins/tokyonight.lua`      |
 | Neovim   | `common/.config/nvim/lua/util/inline_diff.lua` (the diff tints) |
@@ -338,8 +341,9 @@ It checks five things:
 1. **Every colour is documented here.** Any hex or `38;2;R;G;B` triple in a
    themed config has to appear somewhere in this file. That is what makes this
    document the registry rather than a description that rots.
-2. **kitty and wezterm agree**, slot for slot: background, foreground, cursor,
-   selection and all sixteen ANSI colours.
+2. **All three terminals agree**, slot for slot: background, foreground,
+   cursor, selection and all sixteen ANSI colours, across kitty, wezterm and
+   VS Code's integrated terminal.
 3. **One file-type table, three dialects.** `LS_COLORS` (asked of a real shell,
    not reparsed), `lf/colors` and yazi's `[filetype]` rules must agree on every
    extension and file kind, colour *and* boldness — including where yazi says
