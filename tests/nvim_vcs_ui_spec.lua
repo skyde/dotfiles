@@ -1438,6 +1438,23 @@ do
     panel_lines()[vim.api.nvim_win_get_cursor(panel)[1]]:find("a_modified", 1, true) ~= nil
   )
 
+  -- Two jumps can share a tick — `<C-o><C-o>` arrives as one chunk of
+  -- typeahead, which Neovim drains ahead of scheduled callbacks. Adoption
+  -- must land on where the pane actually ended up, not on the buffer the
+  -- first event named (which would find the pane holding the second and
+  -- bail, leaving the navigation unadopted entirely).
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/d_untracked.txt"))
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/c_renamed.txt"))
+  settle_nav()
+  eq("adopt burst: the pane holds the last jump", root .. "/c_renamed.txt", vim.api.nvim_buf_get_name(0))
+  eq("adopt burst: it is rendered, not left bare", 3, #layout())
+  check("adopt burst: both panes are diffs", vim.wo[layout()[2]].diff and vim.wo[layout()[3]].diff)
+  check(
+    "adopt burst: the panel selection follows the last jump",
+    panel_lines()[vim.api.nvim_win_get_cursor(panel)[1]]:find("c_renamed", 1, true) ~= nil,
+    vim.inspect(panel_lines()) .. " cursor " .. vim.api.nvim_win_get_cursor(panel)[1]
+  )
+
   -- An unchanged file has an empty diff: it shows plain, with the stale base
   -- pane and diff mode cleaned away. (Earlier sections left this file open
   -- and listed; drop that so the jump is what opens it.)

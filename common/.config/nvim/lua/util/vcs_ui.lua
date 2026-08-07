@@ -106,7 +106,10 @@ local refresh_inflight = {} ---@type table<string, integer>
 -- True while the view itself is placing buffers into windows, so the
 -- navigation autocmds can tell the view's own renders from an actual jump.
 local rendering = false
+-- One adoption is scheduled per tick; nav_win_pending carries the window it
+-- should look at, overwritten by any later navigation in the same tick.
 local nav_pending = false
+local nav_win_pending = nil ---@type integer|nil
 -- Buffers the buffer list picked up from a navigation inside the view —
 -- `:edit` and the LSP jumps both list their target as a side effect (BufAdd
 -- fires for either). Adoption turns exactly these into previews, and never a
@@ -1667,11 +1670,11 @@ local function ensure_tab()
   -- telling the view; adopt it (see do_adopt_nav). Scheduled, so the jump
   -- has finished placing the cursor before the pane is re-dressed — and both
   -- events are watched because :edit and nvim_win_set_buf fire them in
-  -- different orders, with nav_pending collapsing the pair into one adoption.
+  -- different orders.
   vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
     group = group,
     callback = function(ev)
-      if rendering or nav_pending or not valid() then
+      if rendering or not valid() then
         return
       end
       if vim.api.nvim_get_current_tabpage() ~= state.tab then
@@ -1690,10 +1693,24 @@ local function ensure_tab()
       if name == "" or name == state.shown_name then
         return
       end
+      -- Coalesce to one adoption per tick — a single jump fires several of
+      -- these — but resolve the buffer only when it runs, never here. Two
+      -- jumps can share a tick (`<C-o><C-o>` arrives as one chunk of
+      -- typeahead, which Neovim drains ahead of scheduled callbacks), and
+      -- adopting the buffer the *first* event named would find the pane
+      -- holding the second one and bail, leaving the navigation unadopted.
+      nav_win_pending = nav_win
+      if nav_pending then
+        return
+      end
       nav_pending = true
       vim.schedule(function()
         nav_pending = false
-        adopt_nav(nav_win, ev.buf)
+        local win = nav_win_pending
+        nav_win_pending = nil
+        if win and vim.api.nvim_win_is_valid(win) then
+          adopt_nav(win, vim.api.nvim_win_get_buf(win))
+        end
       end)
     end,
   })
@@ -2002,6 +2019,7 @@ function M.close()
   refresh_gen = refresh_gen + 1
   render_gen = render_gen + 1
   nav_listed = {}
+  nav_win_pending = nil
   local previews = state and state.previews or {}
   local navmapped = state and state.navmapped or {}
   if state and state.inline_buf then
