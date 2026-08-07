@@ -312,6 +312,17 @@ spec_pty_run_then_type() {
   print -r -- "$(<$SPEC_TMP/pty-buffer)"
 }
 
+# spec_pty_raw <keys> [setup code] [delay]
+#   Everything the terminal emitted, escape sequences and all. For the things a
+#   shell says to the terminal rather than to the user — the title, in
+#   particular, which has no other way of being observed.
+spec_pty_raw() {
+  local keys=$1 setup=${2-} delay=${3-0}
+  _spec_pty_write_script "$setup"
+  command python3 "$SPEC_REPO/tests/zsh_pty.py" "$SPEC_TMP/pty-type.zsh" \
+    --delay "$delay" --send "$keys" 2>/dev/null
+}
+
 _spec_pty_write_script() {
   local setup=$1
   local script="$SPEC_TMP/pty-type.zsh" out="$SPEC_TMP/pty-buffer"
@@ -373,8 +384,17 @@ spec_bare_path() {
     # under a PATH without it prints "compdump:138: command not found: mv" and
     # every "startup is silent" assertion fails for a reason that has nothing to
     # do with the config. A machine with no fzf still has coreutils.
-    for tool in zsh sh cat cp mv rm ls mkdir mktemp stty tput uname sed awk grep git tr; do
-      src=$(command -v -- "$tool" 2>/dev/null) || continue
+    # python3 is in the list for the harness's sake — tests/zsh_pty.py needs it
+    # to open a terminal — not because the shell ever looks for it.
+    for tool in zsh sh cat cp mv rm ls mkdir mktemp stty tput uname sed awk grep git tr touch python3; do
+      # `whence -p`, not `command -v`: this shell has `cat` aliased to bat and
+      # `git` wrapped in a function, and command -v answers with the alias text
+      # ("alias cat=batcat") or the bare function name. Those became symlinks to
+      # nothing — `git -> git`, pointing at itself — so anything in the config
+      # that shells out to git in the bare environment silently did nothing, and
+      # a spec that checked for its effect failed for a reason that was entirely
+      # the harness's.
+      src=$(whence -p -- "$tool" 2>/dev/null) || continue
       ln -sf -- "$src" "$dir/$tool"
     done
   fi

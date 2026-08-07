@@ -36,6 +36,22 @@ _bare_prompt=$(PATH=$(spec_bare_path) spec_zsh -i -c 'print -r -- $PS1' 2>/dev/n
 assert_contains 'the fallback prompt is used when starship is missing' '%~' "$_bare_prompt"
 assert_contains 'the fallback prompt reports the last exit status' '%(?.' "$_bare_prompt"
 
+# What the fallback actually *draws*, not what its format string says. vcs_info
+# needs a precmd hook, a zstyle and prompt_subst all in agreement, and a mistake
+# in any of the three shows up as a prompt with no branch on it — which nobody
+# would notice on a machine where starship is installed.
+if spec_can_pty; then
+  typeset -g _bare_drawn _branch
+  _branch=$(command git -C "$SPEC_REPO" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  _bare_drawn=$(PATH=$(spec_bare_path) spec_pty_raw 'true\n' '' 0.7)
+  assert_contains 'the fallback prompt draws the working directory' \
+    "$SPEC_REPO" "$_bare_drawn"
+  if [[ -n $_branch ]]; then
+    assert_contains 'the fallback prompt draws the git branch' \
+      "$_branch" "$_bare_drawn"
+  fi
+fi
+
 spec_section 'the init cache'
 
 assert_function '_zcache_source is available' _zcache_source

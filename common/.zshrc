@@ -707,9 +707,46 @@ fi
 
 unset -f _source_zsh_plugin
 
+# -------- terminal title: where you are, and what is running
+#
+# This replaces a `source ~/.local/bin/tmux-title.zsh` that had nothing to
+# source: no such file exists here or in the repository. It would not have done
+# anything for tmux either — .tmux.conf sets allow-rename off and names windows
+# itself through automatic-rename-format, so a window title from the shell is
+# ignored on purpose. What was missing is the *terminal's* title: the kitty tab
+# and the OS window, which say "zsh" for every window without this.
+#
+# At the prompt the title is the directory. While a command runs it is the
+# command and the directory, so a window in the middle of a long build says so
+# from the tab bar.
+case $TERM in
+  xterm* | rxvt* | screen* | tmux* | alacritty* | kitty* | wezterm* | vte* | konsole* | foot* | ansi)
+    # OSC 0 sets the icon name and the window title together, which is what tab
+    # titles are taken from in every terminal here.
+    _title_set() { print -n -- $'\e]0;'"$1"$'\a'; }
+
+    # ${(%):-%~} expands the prompt escape without a fork, giving ~ for $HOME.
+    _title_precmd() { _title_set "${(%):-%~}"; }
+
+    _title_preexec() {
+      local cmd=${1//[[:cntrl:]]/ }
+      # Truncated, because a title longer than the tab is worse than a short
+      # one: the part that identifies the window scrolls out of view.
+      (( ${#cmd} > 40 )) && cmd="${cmd[1,39]}…"
+      # The command is concatenated rather than interpolated into a prompt
+      # string: `print -P` on a command line containing %~ or %F would expand
+      # those too.
+      _title_set "$cmd — ${(%):-%~}"
+    }
+
+    autoload -Uz add-zsh-hook
+    add-zsh-hook precmd _title_precmd
+    add-zsh-hook preexec _title_preexec
+    ;;
+esac
+
 # -------- machine-specific overrides
+#
+# Last, so a machine can override anything above it.
 # shellcheck disable=SC1090
 [[ -r "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
-
-# Dynamic Tmux Title
-[[ -f ~/.local/bin/tmux-title.zsh ]] && source ~/.local/bin/tmux-title.zsh

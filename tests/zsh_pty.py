@@ -72,11 +72,13 @@ def main(argv):
 
     pid, fd = pty.fork()
     if pid == 0:
-        # Child: becomes the shell. A $TERM that exists in terminfo matters —
-        # bindings looked up through zsh/terminfo silently do nothing under
-        # TERM=dumb, which is what some CI environments export.
-        if os.environ.get("TERM", "") in ("", "dumb", "unknown"):
-            os.environ["TERM"] = "xterm-256color"
+        # Child: becomes the shell. $TERM is pinned rather than inherited, for the
+        # same reason as the window size below: what the config does depends on
+        # it. Bindings looked up through zsh/terminfo do nothing under TERM=dumb,
+        # and the terminal title is only set for terminals known to have one — so
+        # inheriting whatever the CI image exports (TERM=linux, TERM=dumb) would
+        # make the specs pass or fail according to where they ran.
+        os.environ["TERM"] = os.environ.get("ZSH_PTY_TERM", "xterm-256color")
         try:
             os.execvp("zsh", ["zsh"] + zsh_args)
         except OSError as exc:  # pragma: no cover - only on a broken PATH

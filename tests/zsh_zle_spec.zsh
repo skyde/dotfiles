@@ -61,6 +61,23 @@ if spec_have fzf; then
     '[[ -s $ZSH_CACHE_DIR/fzf-init.zsh.zwc ]]'
 fi
 
+spec_section 'the terminal title'
+
+# Every window said "zsh" before this: the line that was supposed to set a title
+# sourced a file that does not exist. tmux is not the point — it names its own
+# windows and has allow-rename off — the kitty tab and the OS window are.
+typeset -g _title_output
+_title_output=$(spec_pty_raw 'sleep 2\n' '' 1.0)
+
+assert_contains 'at the prompt the title is the working directory' \
+  $'\e]0;'"$SPEC_REPO" "$_title_output"
+
+assert_contains 'while a command runs the title is the command' \
+  $'\e]0;sleep 2' "$_title_output"
+
+assert_contains 'and the directory it is running in' \
+  "sleep 2 — $SPEC_REPO" "$_title_output"
+
 spec_section 'a shell without a terminal skips the widget machinery'
 
 # Not merely an optimisation: fzf's files restore the whole option array in one
