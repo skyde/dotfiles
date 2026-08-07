@@ -62,6 +62,22 @@ return {
         -- Make the split separator readable; the default is close to bg.
         hl.WinSeparator = { fg = c.bg_highlight, bold = true }
 
+        -- The selected row in the completion menu. blink.cmp is disabled, so
+        -- this is Neovim's native menu — the one actually on screen — and it
+        -- was the only "selected row" in the setup not wearing bg_visual: the
+        -- theme blends a shade of its own for it. fzf's bg+, tmux's mode-style,
+        -- zsh's completion menu, yazi's hovered row and Neovim's own Visual
+        -- and WildMenu are all #283457, so this joins them.
+        hl.PmenuSel = { bg = c.bg_visual }
+
+        -- Line numbers. The theme uses fg_gutter, which is a colour meant for
+        -- gutters and separators rather than for text — docs/tokyonight.md
+        -- assigns line numbers to dark3, and delta already paints the line
+        -- numbers in a diff #545c7e. With the sign column off and cursorline
+        -- disabled this column is the whole gutter, so it may as well be
+        -- readable, and match the diffs it sits next to.
+        hl.LineNr = { fg = c.dark3 }
+
         -- Code itself is coloured to match VS Code rather than Tokyo Night; the
         -- chrome above stays. Applied here, rather than from a ColorScheme
         -- autocmd, because LazyVim re-applies the colorscheme by calling

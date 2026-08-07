@@ -273,6 +273,16 @@ command would reach fzf as several separate, unrunnable candidates), and fzf
 must get `--ansi` explicitly (that is what makes it hand back the plain command
 instead of one full of escape sequences).
 
+### One selected row
+
+`bg_visual` `#283457` is *the* "this is the row you are on" fill, and it is
+worth checking a new tool against: fzf's `bg+`, tmux's `mode-style`, zsh's
+completion menu, yazi's `hovered`, btop's `selected_bg`, and Neovim's `Visual`,
+`WildMenu` and `PmenuSel` are all the same colour. Neovim's completion menu was
+the exception until it was overridden — the theme blends a shade of its own for
+`PmenuSel` — which mattered because blink.cmp is disabled here, so that native
+menu is the one on screen.
+
 ### Two kinds of match
 
 Highlighted matches come in two flavours here, and they deliberately look
