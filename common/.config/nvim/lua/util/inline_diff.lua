@@ -65,6 +65,13 @@ local PALETTE = {
   -- by dimming, a hue lean, or a strikethrough.
   InlineDiffMovedFromDim = { bg = "#3f1f1f", fg = "#8a7080" },
   InlineDiffMovedToDim = { bg = "#17311f" },
+  -- The dim pair with a whisper of the delta move hues: the red leans
+  -- violet, the green leans teal — enough to say "not a real delete/add"
+  -- without leaving the red/green families. Two intensities.
+  InlineDiffMovedFromSubtle = { bg = "#3a212b", fg = "#8a7080" },
+  InlineDiffMovedToSubtle = { bg = "#16332c" },
+  InlineDiffMovedFromSubtle2 = { bg = "#352337", fg = "#8a7080" },
+  InlineDiffMovedToSubtle2 = { bg = "#143539" },
   InlineDiffMovedFromTint = { bg = "#4a2139" },
   InlineDiffMovedToTint = { bg = "#175035" },
   InlineDiffMovedFromStrike = { bg = "#3f1f1f", fg = "#8a7080", strikethrough = true },
@@ -221,6 +228,8 @@ M.move_hint = "absolute"
 local MOVE_COLOR_GROUPS = {
   delta = { from = "InlineDiffMovedDelete", to = "InlineDiffMovedAdd" },
   dim = { from = "InlineDiffMovedFromDim", to = "InlineDiffMovedToDim" },
+  subtle = { from = "InlineDiffMovedFromSubtle", to = "InlineDiffMovedToSubtle" },
+  subtle2 = { from = "InlineDiffMovedFromSubtle2", to = "InlineDiffMovedToSubtle2" },
   strike = { from = "InlineDiffMovedFromStrike", to = "InlineDiffAdd" },
   strikedim = { from = "InlineDiffMovedFromStrike", to = "InlineDiffMovedToDim" },
   tint = { from = "InlineDiffMovedFromTint", to = "InlineDiffMovedToTint" },
