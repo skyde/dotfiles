@@ -13,6 +13,10 @@ vim.api.nvim_create_user_command("ChromiumOutDir", function()
   chromium.pick_out_dir()
 end, { desc = "Pick the Chromium build dir xrefs are generated against" })
 
+vim.api.nvim_create_user_command("ChromiumClangd", function()
+  chromium.install_bundled_clangd()
+end, { desc = "Install the bundled clangd (checkout_clangd in .gclient + gclient sync)" })
+
 local group = vim.api.nvim_create_augroup("chromium_compdb", { clear = true })
 
 -- Opening C++ inside a checkout: make sure clangd is the bundled one, and
@@ -28,6 +32,7 @@ local function check_buf(buf)
     return
   end
   chromium.ensure_clangd(root)
+  chromium.offer_bundled_clangd(root)
   if not checked[root] then
     checked[root] = true
     if chromium.stale(root) then

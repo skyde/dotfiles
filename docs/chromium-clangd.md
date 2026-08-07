@@ -23,6 +23,7 @@ Nothing here runs outside a Chromium checkout (detected by the presence of
 | --- | --- |
 | `:ChromiumCompdb` | force-regenerate `compile_commands.json` and restart clangd |
 | `:ChromiumOutDir` | pick the build dir xrefs index; re-points `out/current_link` and regenerates |
+| `:ChromiumClangd` | install the bundled clangd: sets `checkout_clangd` in `.gclient` and runs `gclient sync` |
 
 Without `out/current_link`, the generated out dir with the newest
 `build.ninja` — the one actually being built — is used.
@@ -31,12 +32,21 @@ Without `out/current_link`, the generated out dir with the newest
 
 Inside a checkout, clangd is the checkout's own
 `third_party/llvm-build/Release+Asserts/bin/clangd`, version-matched to the
-clang whose flags appear in the compile commands. Keep it synced by adding
-to `.gclient`:
+clang whose flags appear in the compile commands. It only exists when
+`.gclient` opts in:
 
 ```python
 "custom_vars": { "checkout_clangd": True },
 ```
+
+When the binary is missing, opening a C++ file prompts to set this up:
+accepting edits `.gclient` (a minimal textual insertion; a file it cannot
+recognize is refused, never mangled) and runs `gclient sync`, then restarts
+clangd onto the bundled binary. Declining falls back to PATH's clangd —
+which mostly works but can silently misparse tip-of-tree flags —
+and `:ChromiumClangd` performs the same setup later. It has to be
+`gclient sync`: clangd is a GCS dep in DEPS gated on `checkout_clangd`, so
+`gclient runhooks` alone never fetches it.
 
 Flags follow [//docs/clangd.md](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/clangd.md):
 `--background-index`, and `--header-insertion=never` (automatic include
