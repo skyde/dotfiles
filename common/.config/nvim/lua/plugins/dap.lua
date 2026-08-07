@@ -39,27 +39,14 @@ return {
         end,
         desc = "DAP Continue",
       },
-      {
-        "<leader>tn",
-        function()
-          require("dap").step_over()
-        end,
-        desc = "DAP Step Over",
-      },
-      {
-        "<leader>ti",
-        function()
-          require("dap").step_into()
-        end,
-        desc = "DAP Step Into",
-      },
-      {
-        "<leader>to",
-        function()
-          require("dap").step_out()
-        end,
-        desc = "DAP Step Out",
-      },
+      -- Stepping is deliberately absent here. config/parity.lua owns the whole
+      -- <leader>t cluster (step over/into/out, up/down the call stack, the
+      -- dapui views) to keep it together and matching the VS Code layout, and
+      -- it loads on VeryLazy — after lazy.nvim has registered these triggers,
+      -- so declaring them in both places left three dead entries that looked
+      -- authoritative and were silently replaced. Nothing is lost by dropping
+      -- them: parity.lua reaches dap through `require`, which lazy.nvim's
+      -- loader answers by loading the plugin, exactly as a `keys` trigger does.
       {
         "<leader>dr",
         function()
