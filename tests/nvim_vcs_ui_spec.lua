@@ -1245,6 +1245,29 @@ do
   check("header: says file 1 of N", panel_lines()[2]:match("file 1 of %d+") ~= nil, panel_lines()[2])
   scrub("j")
   check("header: follows the cursor to file 2", panel_lines()[2]:match("file 2 of %d+") ~= nil, panel_lines()[2])
+
+  -- <leader>gb compares against a revision you type, which is none of the
+  -- three scopes. Calling it "uncommitted" is the panel lying about what is
+  -- on screen — and <leader>gc afterwards has to come back rather than focus
+  -- a view still built against that other base.
+  local first = vim.trim(git(root, "rev-list", "--max-parents=0", "HEAD"))
+  ui.open({ rev = first })
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+  check("adhoc: the header says the base is custom", panel_lines()[1]:find("custom base", 1, true), panel_lines()[1])
+  check("adhoc: and the listing is against that revision", panel_lines()[2]:find(first:sub(1, 12), 1, true))
+
+  ui.focus({ scope = "working" })
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+  check("adhoc: <leader>gc comes back to the working scope", panel_lines()[1]:find("uncommitted", 1, true))
+  check(
+    "adhoc: and off the custom base",
+    not panel_lines()[2]:find(first:sub(1, 12), 1, true),
+    panel_lines()[2]
+  )
   ui.close()
 end
 

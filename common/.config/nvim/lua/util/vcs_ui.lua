@@ -461,7 +461,11 @@ end
 
 local function render_panel()
   local buf = state.panel_buf
-  local scope_label = ({ working = "uncommitted", branch = "since fork point", head = "last commit" })[state.scope]
+  -- An explicitly given base is not any of the three scopes, and saying
+  -- "uncommitted" over a listing built against some other revision is the
+  -- panel lying about what you are looking at.
+  local scope_label = state.adhoc and "custom base"
+    or ({ working = "uncommitted", branch = "since fork point", head = "last commit" })[state.scope]
     or state.scope
   local header = {
     ("%s · %s"):format(state.backend.name, scope_label),
@@ -1939,6 +1943,10 @@ function refresh_listing()
   refresh_gen = refresh_gen + 1
   local gen = refresh_gen
   local backend, root, scope = state.backend, state.root, state.scope
+  -- An explicit base stays put; only the working tree it is compared against
+  -- moves. Re-asking for the scope's revision here would quietly slide the
+  -- view off the revision it was opened on.
+  local pinned = state.adhoc and state.rev or nil
   local key = listing_key(root, scope)
   refresh_inflight[key] = gen
   state.refreshing = true
@@ -1946,7 +1954,7 @@ function refresh_listing()
 
   vcs.async(function()
     local ok, err = pcall(function()
-      local rev = backend.rev(root, scope)
+      local rev = pinned or backend.rev(root, scope)
       local files = rev and backend.changed(root, rev) or nil
       -- A newer revalidation of this same listing owns the truth now. The
       -- view merely having closed is not that: its result is still worth
@@ -2048,6 +2056,7 @@ function M.open(opts)
   cancel_scrub()
   ensure_tab()
   state.backend, state.root, state.scope, state.rev = backend, root, scope, rev
+  state.adhoc = opts.rev ~= nil
   state.refreshing = nil
   if cached then
     state.files = cached.files
@@ -2080,7 +2089,9 @@ end
 ---@param opts? { scope?: string, rev?: string }
 function M.focus(opts)
   opts = opts or {}
-  if valid() and not opts.rev and (not opts.scope or opts.scope == state.scope) then
+  -- An ad-hoc base is not "the working scope" however state.scope reads, so
+  -- <leader>gc after <leader>gb has to re-open rather than just focus.
+  if valid() and not opts.rev and not state.adhoc and (not opts.scope or opts.scope == state.scope) then
     vim.api.nvim_set_current_tabpage(state.tab)
     vim.api.nvim_set_current_win(state.panel_win)
     return
