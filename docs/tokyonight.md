@@ -245,7 +245,31 @@ YAZI_CONFIG_HOME=/tmp/probe yazi --debug 2>&1 | grep "invalid color"
 ```
 
 Silence there means the key name is wrong. The same trick enumerates the real
-schema. For `[filetype]` rules, `is` accepts exactly `none`, `hidden`, `link`,
+schema.
+
+**Renames are the dangerous case**, because nothing about the config looks
+wrong afterwards — the setting is still there, still spelled correctly, and
+has simply stopped being read. yazi v25.12.29 moved `[mgr] hovered` and
+`preview_hovered` into `[indicator]` as `current` and `preview`, and renamed
+`[confirm] content` to `body`; until this was noticed, the hovered row had
+silently gone back to `reversed` and the preview row to `underline` — the two
+defaults those settings exist to override.
+
+`tests/check-theme.py` cannot catch that: a colour that is never read is still
+a valid colour. Re-audit by diffing against the version of upstream's preset
+your yazi actually ships, which lists every key it reads:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sxyazi/yazi/main/yazi-config/preset/theme-dark.toml \
+  | grep -oE '^\[[a-z]+\]|^[a-z_]+ *=' | tr -d ' ='
+```
+
+Compare that against the section and key names here, and check anything that
+differs against yazi's CHANGELOG — the preset on `main` includes unreleased
+renames, so the CHANGELOG is what says whether a difference applies to the
+release you are running. (`[help]`'s `on`/`run`/`desc`/`footer` are the current
+example: superseded on `main`, not in any release yet, so they stay as they
+are here.) For `[filetype]` rules, `is` accepts exactly `none`, `hidden`, `link`,
 `orphan`, `dummy`, `block`, `char`, `fifo`, `sock`, `exec`, `sticky` — there is
 no `dir`; directories are matched with the name glob `*/`.
 

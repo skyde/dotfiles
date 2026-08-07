@@ -5,15 +5,6 @@
 [mgr]
 cwd = { fg = "#7dcfff" }
 
-# Hovered row: the selection blue, not a reverse-video flip, so the file icon
-# and git status colours survive underneath the cursor.
-hovered = { fg = "#c0caf5", bg = "#283457" }
-
-# The hovered row in the preview pane. Yazi's default is `underline = true`,
-# which cuts a hard rule across an unfocused pane. A muted fill reads as the
-# same gesture as `hovered` above, just quieter because the pane isn't focused.
-preview_hovered = { fg = "#c0caf5", bg = "#292e42" }
-
 find_keyword = { fg = "#ff9e64", bold = true }
 find_position = { fg = "#bb9af7", bg = "reset", italic = true }
 
@@ -29,6 +20,28 @@ count_selected = { fg = "#16161e", bg = "#e0af68" }
 
 border_symbol = "│"
 border_style = { fg = "#292e42" }
+
+# The hovered row in each column.
+#
+# These lived in [mgr] as `hovered` and `preview_hovered` until yazi
+# v25.12.29 reclassified them here as `current` and `preview` (and split out
+# `parent`, which `hovered` used to cover). Renamed keys do not warn — yazi
+# silently ignores what it does not recognise, the gotcha further down this
+# repo's docs/tokyonight.md — so the old names had quietly stopped doing
+# anything and both rows had fallen back to the defaults these settings exist
+# to avoid: `reversed` for the hovered row and `underline` for the preview.
+# On a yazi older than v25.12.29, put `current` back under [mgr] as `hovered`.
+#
+# parent and current: the selection blue, not a reverse-video flip, so the
+# file icon and git status colours survive underneath the cursor.
+#
+# preview: yazi's default there is `underline = true`, which cuts a hard rule
+# across an unfocused pane. A muted fill is the same gesture as the row above,
+# just quieter because that pane is not focused.
+[indicator]
+parent = { fg = "#c0caf5", bg = "#283457" }
+current = { fg = "#c0caf5", bg = "#283457" }
+preview = { fg = "#c0caf5", bg = "#292e42" }
 
 [tabs]
 active = { fg = "#16161e", bg = "#7aa2f7", bold = true }
@@ -71,7 +84,8 @@ separator_style = { fg = "#3b4261" }
 [confirm]
 border = { fg = "#7aa2f7" }
 title = { fg = "#7aa2f7" }
-content = {}
+# `content` until v25.12.29, `body` since.
+body = {}
 list = { fg = "#7dcfff" }
 btn_yes = { fg = "#16161e", bg = "#9ece6a", bold = true }
 btn_no = { fg = "#16161e", bg = "#f7768e", bold = true }

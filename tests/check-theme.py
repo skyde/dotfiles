@@ -653,8 +653,9 @@ SHARED_ROLES = [
             ("common/.tmux.conf", r"mode-style\s+'bg=(#[0-9a-fA-F]{6})"),
             ("common/.zshrc", r"'ma=48;2;(\d+;\d+;\d+)'"),
             (
+                # [indicator] current — `[mgr] hovered` before yazi v25.12.29.
                 "common/.config/yazi/theme.toml",
-                r"^hovered = \{ fg = \"#[0-9a-fA-F]{6}\", bg = \"(#[0-9a-fA-F]{6})\"",
+                r"^current = \{ fg = \"#[0-9a-fA-F]{6}\", bg = \"(#[0-9a-fA-F]{6})\"",
             ),
             (
                 "common/.config/btop/themes/tokyo-night.theme",
