@@ -432,10 +432,12 @@ It checks seven things:
 5. **One name for the syntax theme.** `~/.zshenv`, `~/.bashrc-custom`,
    delta's `syntax-theme` and `~/.config/bat/config` must all name the same
    one, or two panes render the same file differently.
-6. **One cursor.** `#ff5000` is the only colour here that is not Tokyo Night
-   at all, and it is worth nothing unless it is the same everywhere, so every
-   setting that colours "where you are" is compared against it — eleven of
-   them, across the three terminals, Neovim and fzf.
+6. **The roles that only work if they are one colour.** Some colours earn
+   their keep by being identical everywhere: "you are here" is worthless if it
+   is orange in one pane and white in the next, and a selected row that shifts
+   shade between panes reads as two different kinds of selection. The cursor
+   (11 settings), the selected row (7), an in-buffer search match (4) and the
+   current match (2) are each compared across every tool that sets them.
 7. **This file's table above points at files that exist**, and lists every
    file the test checks.
 

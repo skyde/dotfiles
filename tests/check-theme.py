@@ -11,7 +11,8 @@ written down:
   3. the file-type table is the same in LS_COLORS, lf and yazi
   4. Neovim's inline diff uses delta's tints, exactly
   5. every file naming the syntax theme names the same one
-  6. the shared #ff5000 cursor is the same in every tool that sets it
+  6. the roles that only work if they are one colour (the cursor, the
+     selected row, a search match) are that one colour everywhere
   7. docs/tokyonight.md's file table points at files that exist
 
 Run it after touching any colour:
@@ -590,65 +591,144 @@ def check_syntax_theme(report: Report) -> None:
         report.ok(f"every file names the same syntax theme ({names.pop()!r})")
 
 
-# --- 6. one cursor, everywhere ---------------------------------------------
+# --- 6. the roles that must be one colour ----------------------------------
 
-CURSOR = "#ff5000"
-
-# Every setting that colours "where you are". This is the one colour in the
-# setup that is not Tokyo Night at all — it is chosen to be findable against a
-# blue-violet palette — so it is worth nothing unless it is the same in all of
-# them. docs/tokyonight.md: "Keep it."
-CURSOR_SETTINGS = [
-    ("common/.config/kitty/themes/tokyonight_night.conf", r"^cursor\s+(#[0-9a-fA-F]{6})"),
-    ("common/.config/wezterm/wezterm.lua", r"cursor_bg\s*=\s*'(#[0-9a-fA-F]{6})'"),
-    ("common/.config/wezterm/wezterm.lua", r"cursor_border\s*=\s*'(#[0-9a-fA-F]{6})'"),
-    (
-        "common/.config/wezterm/wezterm.lua",
-        r"quick_select_label_bg\s*=\s*\{\s*Color\s*=\s*'(#[0-9a-fA-F]{6})'",
-    ),
-    (
-        "common/.config/Code/User/settings.json",
-        r'"editorCursor\.foreground"\s*:\s*"(#[0-9a-fA-F]{6})"',
-    ),
-    (
-        "common/.config/Code/User/settings.json",
-        r'"terminalCursor\.foreground"\s*:\s*"(#[0-9a-fA-F]{6})"',
-    ),
-    (
-        "common/.config/nvim/lua/plugins/tokyonight.lua",
-        r"hl\.Cursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
-    ),
-    (
-        "common/.config/nvim/lua/plugins/tokyonight.lua",
-        r"hl\.TermCursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
-    ),
-    (
-        "common/.config/nvim/lua/plugins/tokyonight.lua",
-        r"hl\.lCursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
-    ),
-    (
-        "common/.config/nvim/lua/plugins/tokyonight.lua",
-        r"hl\.CursorIM\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
-    ),
-    ("common/.config/shell/theme.sh", r"pointer:(#[0-9a-fA-F]{6})"),
+# Some colours only earn their keep by being the same in every tool that uses
+# them. "You are here" is worthless if it is orange in one pane and white in
+# the next; a selected row that shifts shade between two panes reads as two
+# different kinds of selection. Each role below lists every setting that makes
+# the claim, so a tool added later cannot quietly make it in a new colour.
+#
+# A pattern's capture may be a hex, an "R;G;B" SGR triple, or a name the config
+# uses for the colour (Lua's `c.bg_visual`) — anything in `aliases`.
+SHARED_ROLES = [
+    {
+        "name": "the cursor",
+        "hex": "#ff5000",
+        "aliases": (),
+        # The one colour here that is not Tokyo Night at all: chosen to be
+        # findable against a blue-violet palette. docs/tokyonight.md: "Keep it."
+        "settings": [
+            ("common/.config/kitty/themes/tokyonight_night.conf", r"^cursor\s+(#[0-9a-fA-F]{6})"),
+            ("common/.config/wezterm/wezterm.lua", r"cursor_bg\s*=\s*'(#[0-9a-fA-F]{6})'"),
+            ("common/.config/wezterm/wezterm.lua", r"cursor_border\s*=\s*'(#[0-9a-fA-F]{6})'"),
+            (
+                "common/.config/wezterm/wezterm.lua",
+                r"quick_select_label_bg\s*=\s*\{\s*Color\s*=\s*'(#[0-9a-fA-F]{6})'",
+            ),
+            (
+                "common/.config/Code/User/settings.json",
+                r'"editorCursor\.foreground"\s*:\s*"(#[0-9a-fA-F]{6})"',
+            ),
+            (
+                "common/.config/Code/User/settings.json",
+                r'"terminalCursor\.foreground"\s*:\s*"(#[0-9a-fA-F]{6})"',
+            ),
+            (
+                "common/.config/nvim/lua/plugins/tokyonight.lua",
+                r"hl\.Cursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+            ),
+            (
+                "common/.config/nvim/lua/plugins/tokyonight.lua",
+                r"hl\.TermCursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+            ),
+            (
+                "common/.config/nvim/lua/plugins/tokyonight.lua",
+                r"hl\.lCursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+            ),
+            (
+                "common/.config/nvim/lua/plugins/tokyonight.lua",
+                r"hl\.CursorIM\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+            ),
+            ("common/.config/shell/theme.sh", r"pointer:(#[0-9a-fA-F]{6})"),
+        ],
+    },
+    {
+        "name": "the selected row",
+        "hex": "#283457",
+        # Neovim names it rather than spelling it, which is the better habit.
+        "aliases": ("c.bg_visual",),
+        "settings": [
+            ("common/.config/shell/theme.sh", r"bg\+:(#[0-9a-fA-F]{6})"),
+            ("common/.tmux.conf", r"mode-style\s+'bg=(#[0-9a-fA-F]{6})"),
+            ("common/.zshrc", r"'ma=48;2;(\d+;\d+;\d+)'"),
+            (
+                "common/.config/yazi/theme.toml",
+                r"^hovered = \{ fg = \"#[0-9a-fA-F]{6}\", bg = \"(#[0-9a-fA-F]{6})\"",
+            ),
+            (
+                "common/.config/btop/themes/tokyo-night.theme",
+                r'theme\[selected_bg\]="(#[0-9a-fA-F]{6})"',
+            ),
+            (
+                "common/.config/lazygit/config.yml",
+                r'selectedLineBgColor:\s*\["(#[0-9a-fA-F]{6})"\]',
+            ),
+            (
+                "common/.config/nvim/lua/plugins/tokyonight.lua",
+                r"hl\.PmenuSel\s*=\s*\{\s*bg\s*=\s*([\w.]+)\s*\}",
+            ),
+        ],
+    },
+    {
+        "name": "a match inside text you are reading",
+        "hex": "#3d59a1",
+        "aliases": (),
+        # The other half of this convention — orange for the *current* match —
+        # is the role below. See "Two kinds of match" in docs/tokyonight.md.
+        "settings": [
+            ("common/.tmux.conf", r"copy-mode-match-style\s+'bg=(#[0-9a-fA-F]{6})"),
+            (
+                "common/.config/wezterm/wezterm.lua",
+                r"copy_mode_inactive_highlight_bg\s*=\s*\{\s*Color\s*=\s*'(#[0-9a-fA-F]{6})'",
+            ),
+            (
+                "common/.config/wezterm/wezterm.lua",
+                r"quick_select_match_bg\s*=\s*\{\s*Color\s*=\s*'(#[0-9a-fA-F]{6})'",
+            ),
+            # less gets it through theme.sh's shorthand for the same colour.
+            ("common/.config/shell/theme.sh", r"_tn_bg_search='48;2;(\d+;\d+;\d+)'"),
+        ],
+    },
+    {
+        "name": "the current match",
+        "hex": "#ff9e64",
+        "aliases": (),
+        "settings": [
+            ("common/.tmux.conf", r"copy-mode-current-match-style\s+'bg=(#[0-9a-fA-F]{6})"),
+            (
+                "common/.config/wezterm/wezterm.lua",
+                r"copy_mode_active_highlight_bg\s*=\s*\{\s*Color\s*=\s*'(#[0-9a-fA-F]{6})'",
+            ),
+        ],
+    },
 ]
 
 
-def check_cursor(report: Report) -> None:
-    for relative, pattern in CURSOR_SETTINGS:
-        match = re.search(pattern, read(relative), re.M)
-        if not match:
-            report.fail(
-                "cursor",
-                f"{relative} no longer sets the cursor colour the test looks for "
-                f"({pattern})",
-            )
-        elif norm(match.group(1)) != CURSOR:
-            report.fail(
-                "cursor",
-                f"{relative} sets the cursor to {norm(match.group(1))}, not {CURSOR}",
-            )
-    report.ok(f"the cursor is {CURSOR} in all {len(CURSOR_SETTINGS)} places that set it")
+def check_shared_roles(report: Report) -> None:
+    for role in SHARED_ROLES:
+        expected = role["hex"]
+        for relative, pattern in role["settings"]:
+            match = re.search(pattern, read(relative), re.M)
+            if not match:
+                report.fail(
+                    "roles",
+                    f"{relative} no longer sets {role['name']} where the test looks "
+                    f"for it ({pattern})",
+                )
+                continue
+            found = match.group(1)
+            if re.fullmatch(r"\d{1,3};\d{1,3};\d{1,3}", found):
+                found = sgr_to_hex(*found.split(";"))
+            if norm(found) != expected and found not in role["aliases"]:
+                report.fail(
+                    "roles",
+                    f"{relative} sets {role['name']} to {found}, not {expected}",
+                )
+        report.ok(
+            f"{role['name']} is {expected} in all {len(role['settings'])} "
+            f"places that set it"
+        )
 
 
 # --- 7. the docs point at real files ---------------------------------------
@@ -702,7 +782,7 @@ def main() -> int:
         check_filetypes,
         check_diff_tints,
         check_syntax_theme,
-        check_cursor,
+        check_shared_roles,
         check_doc_paths,
     ):
         try:
