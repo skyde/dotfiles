@@ -87,10 +87,14 @@ sides, exactly the way delta renders a patch in the terminal: the unchanged
 part of an edited line dims, the changed tokens brighten (skipped when a line
 was rewritten wholesale, where emphasis would cover everything). Lines that
 merely **moved** — deleted in one place, reinserted verbatim in another — get
-delta's moved violet/cyan on both ends, with pointers between them — the
-departure says `→ 87`, the arrival says `← 12`, in buffer line numbers —
-instead of reading as unrelated delete + add. Trailing whitespace on a new
-line gets delta's whitespace-error red. The colours are the delta palette
+their own colours instead of reading as unrelated delete + add: the
+departure a dimmed red leaning violet with faded text, the arrival a dimmed
+green leaning teal — still red-family "left from here" and green-family
+"landed here", but recognizably neither a real delete nor a real add. Like
+git's `--color-moved` and delta, moves are colour-only; optional pointer
+hints (relative jump offsets, partner-side glyphs) stay selectable via
+`move_hint` in `util/inline_diff.lua`. Trailing whitespace on a new line
+gets delta's whitespace-error red. The colours are the delta palette
 from the git config, verbatim, so this view and `git diff` in a terminal are
 the same picture; the overlay also slices hunks with the same histogram +
 linematch settings as `'diffopt'`, so both renderings agree about what a

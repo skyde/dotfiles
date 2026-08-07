@@ -222,8 +222,12 @@ end
 --               above, lands here; no upward arrow anywhere)
 --   "deponly"   only the departure points ("↓ 18"); the arrival is colour only
 --   "none"      colour only, the way git --color-moved and delta render moves
-M.move_colors = "delta"
-M.move_hint = "absolute"
+--
+-- The shipped look: the dim red/green family pair with a violet/teal lean
+-- ("subtle2" — quiet like a dimmed delete/add, but recognizably neither),
+-- and no hints at all. The alternatives stay selectable for tuning.
+M.move_colors = "subtle2"
+M.move_hint = "none"
 
 local MOVE_COLOR_GROUPS = {
   delta = { from = "InlineDiffMovedDelete", to = "InlineDiffMovedAdd" },

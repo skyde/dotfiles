@@ -241,12 +241,23 @@ do
   local buf = mkbuf({ "keep one", "keep two", "local function relocated()" })
   inline.attach(buf, { "keep one", "local function relocated()", "keep two" })
   local chunks, line_hl, _, eol = detail(buf)
-  eq("moves: the arrival is coloured as a move, not an add", "InlineDiffMovedAdd", line_hl[3])
+  eq("moves: the arrival is coloured as a move, not an add", "InlineDiffMovedToSubtle2", line_hl[3])
   eq("moves: the departure is coloured as a move, not a delete", {
+    { "local function relocated()", "InlineDiffMovedFromSubtle2" },
+  }, chunks)
+  eq("moves: colour-only — no pointer at the arrival", nil, eol[3])
+
+  -- The alternative colourings and hints stay selectable.
+  inline.move_colors, inline.move_hint = "delta", "absolute"
+  inline.render(buf)
+  local chunks2, line_hl2, _, eol2 = detail(buf)
+  eq("moves: delta colours are still selectable", "InlineDiffMovedAdd", line_hl2[3])
+  eq("moves: absolute hints are still selectable", {
     { "local function relocated()", "InlineDiffMovedDelete" },
     { "  → 3", "InlineDiffMovedHint" },
-  }, chunks)
-  eq("moves: the arrival points back at the departure", "← 2", eol[3])
+  }, chunks2)
+  eq("moves: the arrival points back under absolute hints", "← 2", eol2[3])
+  inline.move_colors, inline.move_hint = "subtle2", "none"
   inline.detach(buf)
 end
 
@@ -257,7 +268,7 @@ do
   inline.attach(buf, { "end", "gamma" })
   local _, line_hl = detail(buf)
   for row, hl in pairs(line_hl) do
-    check("moves: short lines never count as moved (row " .. row .. ")", hl ~= "InlineDiffMovedAdd", hl)
+    check("moves: short lines never count as moved (row " .. row .. ")", not hl:find("^InlineDiffMovedTo"), hl)
   end
   inline.detach(buf)
 end
