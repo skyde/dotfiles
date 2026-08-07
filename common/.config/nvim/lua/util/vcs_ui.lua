@@ -2207,7 +2207,26 @@ function M.file_diff(scope)
     return
   end
   local rev = backend.rev(root, scope)
+  -- A renamed file's base lives at its old path. Asking for the new one gets
+  -- nothing back, so this reported "no version at <rev> (new file?)" and
+  -- diffed against an empty buffer — a rename with a one-line edit rendered as
+  -- the whole file freshly added. The panel has always resolved this, via
+  -- base_content's `file.orig or file.path`; only this path, which is what
+  -- <leader>gd and <leader>ga go through, did not.
+  --
+  -- changed() is consulted only when the direct lookup misses, which is the
+  -- added-or-renamed case and already the slow one.
+  local base_path = path
   local base = backend.show(root, rev, path)
+  if not base then
+    for _, file in ipairs(backend.changed(root, rev)) do
+      if file.path == path and file.orig then
+        base_path = file.orig
+        base = backend.show(root, rev, file.orig)
+        break
+      end
+    end
+  end
   if not base then
     vim.notify(("%s has no version at %s (new file?)"):format(path, rev:sub(1, 12)), vim.log.levels.INFO)
     base = {}
@@ -2218,7 +2237,7 @@ function M.file_diff(scope)
   local right = vim.api.nvim_get_current_win()
   vim.cmd("leftabove vertical split")
   local left = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_buf(left, scratch(("vcs://%s/%s"):format(rev:sub(1, 12), path), base, path))
+  vim.api.nvim_win_set_buf(left, scratch(("vcs://%s/%s"):format(rev:sub(1, 12), base_path), base, base_path))
 
   diff_pane(left)
   diff_pane(right)

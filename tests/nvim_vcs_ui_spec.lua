@@ -12,6 +12,19 @@ local repo = vim.fn.fnamemodify(source, ":p:h:h")
 vim.opt.runtimepath:prepend(repo .. "/common/.config/nvim")
 
 -- A realistic terminal, so the layout assertions mean something.
+--
+-- Do not add `:redraw` anywhere in this file. Widening `columns` with no UI
+-- attached and then opening a tab or a split makes Neovim abort on the next
+-- redraw with "double free or corruption" — reproducible on v0.12.4 with no
+-- config at all:
+--
+--   nvim --headless -u NONE -i NONE -l /tmp/m.lua
+--   -- where m.lua is:  vim.o.columns = 200  vim.cmd("tabnew")  vim.cmd("redraw")
+--
+-- It is an upstream bug in `-l` mode specifically (the same script via
+-- `-c luafile` is fine) and nothing to do with this config: everything here
+-- works against a real UI. Assertions read buffer and window state directly,
+-- which never needs a redraw.
 vim.o.columns = 200
 vim.o.lines = 50
 
@@ -781,6 +794,35 @@ do
     win_name(layout()[2])
   )
   ui.close()
+
+  -- The standalone file_diff (<leader>gd / <leader>ga) resolved the base from
+  -- the current buffer's path alone, so on a renamed file it found nothing at
+  -- the base revision, said "no version at <rev> (new file?)" and diffed
+  -- against an empty buffer: a rename plus one edited line rendered as the
+  -- entire file freshly added. The panel had always followed file.orig here.
+  vim.cmd("edit " .. vim.fn.fnameescape(root .. "/c_renamed.txt"))
+  local said
+  local real_notify = vim.notify
+  vim.notify = function(msg, ...)
+    said = tostring(msg)
+    return real_notify(msg, ...)
+  end
+  ui.file_diff("working")
+  vim.notify = real_notify
+
+  eq("file_diff: a rename does not report itself as a new file", nil, said)
+  local panes = layout()
+  eq(
+    "file_diff: base pane holds the pre-rename content",
+    vim.split(string.rep("stable\n", 8), "\n", { trimempty = true }),
+    win_lines(panes[1])
+  )
+  check(
+    "file_diff: base pane is named after the old path",
+    win_name(panes[1]):find("c_untouched.txt", 1, true),
+    win_name(panes[1])
+  )
+  vim.cmd("tabclose")
 end
 
 --------------------------------------------------------------------------
