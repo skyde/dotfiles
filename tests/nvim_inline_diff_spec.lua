@@ -485,6 +485,120 @@ do
 end
 
 --------------------------------------------------------------------------
+-- the empty file, on either side
+--------------------------------------------------------------------------
+
+do
+  -- A Neovim buffer cannot hold zero lines, so an emptied one is { "" } while
+  -- an added or untracked file's base is {}. Joined naively those are "\n"
+  -- and "", which never compare equal — the buffer keeps reporting one added
+  -- line, and reverting it produces { "" } all over again.
+  eq("difftext: no lines is the empty string", "", inline.difftext({}))
+  eq("difftext: one blank line is the empty string too", "", inline.difftext({ "" }))
+  eq("difftext: real content keeps its trailing newline", "a\nb\n", inline.difftext({ "a", "b" }))
+
+  local buf = mkbuf({ "" })
+  inline.attach(buf, {})
+  eq("empty: a blank buffer against an empty base has no changes", 0, select(2, inline.hunk_position(buf)))
+  inline.detach(buf)
+
+  -- An added file, reverted: the hunk goes away and stays away.
+  buf = mkbuf({ "added one", "added two" })
+  inline.attach(buf, {})
+  eq("empty: an added file is one hunk", 1, select(2, inline.hunk_position(buf)))
+  inline.goto_first(buf)
+  check("empty: the added hunk reverts", inline.revert_hunk(buf))
+  eq("empty: reverting an added file empties the buffer", { "" }, vim.api.nvim_buf_get_lines(buf, 0, -1, false))
+  eq("empty: and leaves nothing still reported as added", 0, select(2, inline.hunk_position(buf)))
+  eq("empty: with no overlay left to draw", {}, vim.api.nvim_buf_get_extmarks(buf, ns, 0, -1, {}))
+  check("empty: reverting again finds nothing", not inline.revert_hunk(buf))
+  inline.detach(buf)
+
+  -- The other direction: a file emptied against a real base.
+  buf = mkbuf({ "" })
+  inline.attach(buf, { "gone one", "gone two" })
+  eq("empty: emptying a file is one hunk", 1, select(2, inline.hunk_position(buf)))
+  inline.goto_first(buf)
+  check("empty: the deletion reverts", inline.revert_hunk(buf))
+  local restored = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  check(
+    "empty: reverting the deletion brings the base back",
+    restored[1] == "gone one" and restored[2] == "gone two",
+    vim.inspect(restored)
+  )
+  inline.detach(buf)
+end
+
+--------------------------------------------------------------------------
+-- property: reverting every hunk lands exactly on the base
+--------------------------------------------------------------------------
+
+do
+  -- Fixed seed, so a failure here is a failure everyone can reproduce. The
+  -- shapes are the ones that break naive hunk arithmetic: empty sides, blank
+  -- lines, whitespace-only lines, deletions and insertions at both ends.
+  math.randomseed(20260807)
+  local WORDS = { "alpha", "beta", "", "  indented", "trailing   ", "}", "\tTAB", "ünïcode 名前" }
+
+  local function rand_lines(n)
+    local out = {}
+    for i = 1, n do
+      out[i] = WORDS[math.random(#WORDS)]
+    end
+    return out
+  end
+
+  local converged, restored, raised = 0, 0, 0
+  local rounds = 250
+  for round = 1, rounds do
+    local base = rand_lines(math.random(0, 12))
+    local edited = vim.deepcopy(base)
+    for _ = 1, math.random(0, 6) do
+      local kind = math.random(3)
+      if #edited == 0 or kind == 1 then
+        table.insert(edited, math.random(#edited + 1), WORDS[math.random(#WORDS)])
+      elseif kind == 2 then
+        table.remove(edited, math.random(#edited))
+      else
+        edited[math.random(#edited)] = WORDS[math.random(#WORDS)]
+      end
+    end
+
+    local buf = mkbuf(edited)
+    local ok = pcall(function()
+      inline.attach(buf, base)
+      -- Revert the first hunk over and over. Each pass has to make progress,
+      -- or the overlay and the buffer disagree about what "empty" means.
+      for _ = 1, 100 do
+        if select(2, inline.hunk_position(buf)) == 0 then
+          return
+        end
+        inline.goto_first(buf)
+        if not inline.revert_hunk(buf) then
+          error(("round %d: hunks remained but revert found none"):format(round))
+        end
+      end
+      error(
+        ("round %d: revert never converged (base=%s edited=%s)"):format(round, vim.inspect(base), vim.inspect(edited))
+      )
+    end)
+    if ok then
+      converged = converged + 1
+      local final = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+      if vim.deep_equal(final, #base > 0 and base or { "" }) then
+        restored = restored + 1
+      end
+    else
+      raised = raised + 1
+    end
+    inline.detach(buf)
+  end
+  eq("property: nothing raises", 0, raised)
+  eq("property: every round converges", rounds, converged)
+  eq("property: and lands exactly on the base", rounds, restored)
+end
+
+--------------------------------------------------------------------------
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 if failed > 0 then

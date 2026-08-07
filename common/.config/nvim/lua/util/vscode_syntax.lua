@@ -162,6 +162,21 @@ local by_lang = {
 }
 by_lang.c = by_lang.cpp
 
+-- Every semantic-token modifier this setup can see: the LSP standard set plus
+-- the extras clangd invents. Used twice below — once to flatten the
+-- `@lsp.typemod.*` combinations and once for the bare `@lsp.mod.*` groups —
+-- and it has to stay one list: a modifier cleared on one side and not the
+-- other paints again from the side that was missed.
+-- stylua: ignore
+local MODIFIERS = {
+  "abstract", "async", "declaration", "defaultLibrary", "definition",
+  "deprecated", "documentation", "modification", "readonly", "static",
+  -- clangd's non-standard modifiers
+  "classScope", "constructorOrDestructor", "dependentName", "fileScope",
+  "functionScope", "globalScope", "usedAsMutablePointer",
+  "usedAsMutableReference", "virtual",
+}
+
 --- Write every group into a tokyonight highlight table.
 ---@param hl table map of highlight group name to attributes
 local function apply(hl)
@@ -222,17 +237,9 @@ local function apply(hl)
   -- instance class.defaultLibrary -> @type.builtin). Clearing every combination
   -- that VS Code has no opinion about makes the outcome deterministic: only the
   -- type colour, or the one meaningful override, ever paints.
-  local modifiers = {
-    "abstract", "async", "declaration", "defaultLibrary", "definition",
-    "deprecated", "documentation", "modification", "readonly", "static",
-    -- clangd's non-standard modifiers
-    "classScope", "constructorOrDestructor", "dependentName", "fileScope",
-    "functionScope", "globalScope", "usedAsMutablePointer",
-    "usedAsMutableReference", "virtual",
-  }
   for type_name, fg in pairs(semantic_types) do
     set("@lsp.type." .. type_name, fg)
-    for _, mod in ipairs(modifiers) do
+    for _, mod in ipairs(MODIFIERS) do
       local override = typemod[type_name .. "." .. mod]
       if override then
         set("@lsp.typemod." .. type_name .. "." .. mod, override)
@@ -247,14 +254,7 @@ local function apply(hl)
   -- applied last wins. VS Code has no such concept -- a modifier only matters in
   -- combination with a type. Clearing these leaves the type and typemod groups
   -- above as the only things that paint.
-  for _, mod in ipairs({
-    "abstract", "async", "declaration", "defaultLibrary", "definition",
-    "deprecated", "documentation", "modification", "readonly", "static",
-    -- clangd's non-standard modifiers
-    "classScope", "constructorOrDestructor", "dependentName", "fileScope",
-    "functionScope", "globalScope", "usedAsMutablePointer",
-    "usedAsMutableReference", "virtual",
-  }) do
+  for _, mod in ipairs(MODIFIERS) do
     hl["@lsp.mod." .. mod] = {}
   end
 

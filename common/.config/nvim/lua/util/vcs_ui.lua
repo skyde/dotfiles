@@ -282,8 +282,9 @@ local function file_stats(root, file, base)
   else
     lines = {}
   end
-  local a = #base > 0 and (table.concat(base, "\n") .. "\n") or ""
-  local b = #lines > 0 and (table.concat(lines, "\n") .. "\n") or ""
+  -- Same normalisation the overlay uses, so the panel's "+1 -0" and the diff
+  -- it decorates cannot disagree about whether an empty buffer is empty.
+  local a, b = inline_diff.difftext(base), inline_diff.difftext(lines)
   local add, del = 0, 0
   for _, h in ipairs(vim.diff(a, b, { result_type = "indices" }) or {}) do
     del = del + h[2]

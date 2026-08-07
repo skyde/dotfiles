@@ -317,6 +317,25 @@ end
 -- rendering
 --------------------------------------------------------------------------
 
+---Lines as the one string `vim.diff` wants.
+---
+---The empty case is the whole reason this is a function. A Neovim buffer can
+---never hold zero lines, so an emptied buffer arrives as `{ "" }` while an
+---empty base — an added or untracked file — is `{}`. Joined naively those
+---become "\n" and "", which never compare equal: the buffer still reports one
+---added line, and reverting it produces `{ "" }` again. That is an infinite
+---loop for anything walking hunks to convergence, and in the editor it is an
+---added file whose "you changed this" wash never goes away no matter how many
+---times you revert it. A blank-only buffer *is* an empty file here.
+---@param lines string[]
+---@return string
+function M.difftext(lines)
+  if #lines == 0 or (#lines == 1 and lines[1] == "") then
+    return ""
+  end
+  return table.concat(lines, "\n") .. "\n"
+end
+
 ---Where a hunk lives for the cursor. A pure deletion occupies no buffer
 ---lines; its red virtual text hangs above line start_b + 1 (or below the last
 ---line), so both neighbouring rows count as "on" it.
@@ -346,7 +365,7 @@ function M.render(buf)
     return
   end
   local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-  local buf_text = table.concat(lines, "\n") .. "\n"
+  local buf_text = M.difftext(lines)
   -- Matched to 'diffopt' (histogram, indent-heuristic, linematch) so the
   -- overlay slices hunks the same way native diff mode would — and linematch
   -- pairs each old line with the new line it actually resembles, which is
@@ -513,7 +532,7 @@ function M.attach(buf, base)
   -- definition the user or theme made deliberately.
   setup_highlights()
   M.detach(buf)
-  states[buf] = { base = base, base_text = #base > 0 and (table.concat(base, "\n") .. "\n") or "" }
+  states[buf] = { base = base, base_text = M.difftext(base) }
   M.render(buf)
   vim.api.nvim_create_autocmd({ "TextChanged", "InsertLeave" }, {
     group = vim.api.nvim_create_augroup("vcs_inline_diff_" .. buf, { clear = true }),
