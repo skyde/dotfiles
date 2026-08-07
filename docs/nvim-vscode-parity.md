@@ -138,8 +138,10 @@ rather than rebuilt, so the jumplist survives and `<C-o>` walks back — each
 return trip adopted the same way. Files a jump opens are previews like any
 other; a buffer that was already open on purpose stays in the buffer list.
 The code panes also pin their normal background (`NormalNC` rewired to
-`Normal`), so tokyonight's `dim_inactive` never darkens the code side while
-the cursor lives in the file list — the eyes are on the code either way.
+`Normal`), so no dim-on-blur scheme can darken the code side while the cursor
+lives in the file list — the eyes are on the code either way. (`dim_inactive`
+itself is off in the theme config: focus changing a window's brightness reads
+as the panes changing colour under you.)
 
 Rendering a diff costs a subprocess, so `j` / `k` move the cursor immediately
 and the diff follows once the keys stop (80 ms). Holding `j` through a

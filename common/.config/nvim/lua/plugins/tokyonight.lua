@@ -23,9 +23,11 @@ return {
         sidebars = "dark",
       },
 
-      -- Dim windows that do not have focus. With splits open this is the
-      -- cheapest possible "where am I" cue.
-      dim_inactive = true,
+      -- Keep every window at the same brightness whether or not it has focus:
+      -- the dim-on-blur "where am I" cue reads as the panes changing colour
+      -- under you (most visibly in the vcs diff view's file list), and the
+      -- cursor line number is cue enough.
+      dim_inactive = false,
 
       on_highlights = function(hl, c)
         -- The shared #ff5000 cursor, matching kitty, wezterm and the fzf
