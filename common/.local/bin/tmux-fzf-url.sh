@@ -12,7 +12,13 @@ if [[ -z "$candidates" ]]; then
   exit 0
 fi
 
-chosen=$(echo "$candidates" | fzf --tmux center,80%,40% --exit-0 --no-preview --prompt="Open> " || true)
+# border-native hands the border to tmux, which draws it from
+# popup-border-style / popup-border-lines in ~/.tmux.conf — the rounded blue
+# that marks a floating window in Neovim, yazi and lazygit. Without it fzf
+# passes -B to display-popup and, since FZF_DEFAULT_OPTS asks for
+# --style=minimal, nothing draws a border at all and the picker bleeds into
+# the pane behind it. Needs fzf 0.58+, which --style=minimal already does.
+chosen=$(echo "$candidates" | fzf --tmux center,80%,40%,border-native --exit-0 --no-preview --prompt="Open> " || true)
 
 if [[ -z "$chosen" ]]; then
   exit 0
