@@ -26,11 +26,24 @@ Taken from [`folke/tokyonight.nvim`](https://github.com/folke/tokyonight.nvim)
 | `bg`             | `#1a1b26` | default background                        |
 | `bg_dark`        | `#16161e` | status lines, sidebars, floats, popups    |
 | `black`          | `#15161e` | ANSI 0 background-ish, tab bar background  |
+| `terminal_bg`    | `#1d202f` | ANSI 0 in kitty and wezterm               |
+| `bg_dark1`       | `#1f2335` | a fill that must read as inactive next to `bg_visual` |
+| `bg_storm`       | `#24283b` | the third step of the blame stripe        |
 | `bg_highlight`   | `#292e42` | inactive borders, boxes, subtle fills     |
 | `bg_visual`      | `#283457` | visual selection                          |
 | `selection`      | `#2e3c64` | terminal selection background             |
 | `fg_gutter`      | `#3b4261` | gutter, inactive separators               |
 | `blue7`          | `#394b70` | dim accents                               |
+
+> **`fg_gutter` is not a text colour.** `#3b4261` is darker than the `#414868`
+> called out below as unreadable, so anything you actually have to *read* —
+> a hostname, a window index, a pane number — takes `comment` instead. Use
+> `fg_gutter` for gutters, separators and scrollbars, which is what it is for.
+
+The four near-background shades (`bg`, `bg_dark1`, `bg_storm`, `bg_highlight`)
+exist as a sequence, and delta's `blame-palette` uses them as exactly that:
+four steps close enough that a wall of blame does not turn into stripes, far
+enough apart that adjacent commits separate.
 
 ### Foregrounds
 
@@ -76,6 +89,119 @@ Bright ANSI variants (9–15) are the accents lightened:
 | `add`     | `#449dab` |
 | `change`  | `#6183bb` |
 | `delete`  | `#914c54` |
+
+### Diff tints
+
+Diff backgrounds are their own family, not palette accents. They have to be
+dark enough that syntax-highlighted code stays readable on top — every one of
+these is a *background* under an unchanged foreground — and they have to come
+in three strengths, because both delta and Neovim's inline diff distinguish
+the changed part of a line from the rest of it.
+
+|            | non-emph  | body      | emph      |
+| ---------- | --------- | --------- | --------- |
+| added      | `#17311f` | `#20432b` | `#2c5a3a` |
+| removed    | `#3f1f1f` | `#532727` | `#683131` |
+
+Moved code (git's `diff.colorMoved`) sits between unchanged and changed, so it
+gets its own quieter pair: violet-indigo for "left from here", cyan-teal for
+"landed here".
+
+| Direction        | delta's `map-styles` key | Hex       |
+| ---------------- | ------------------------ | --------- |
+| moved from, body | `bold purple`            | `#2e2547` |
+| moved from, alt  | `bold blue`              | `#203356` |
+| moved to, body   | `bold cyan`              | `#12384a` |
+| moved to, alt    | `bold yellow`            | `#15423d` |
+
+`tests/check-theme.py` asserts that Neovim's `InlineDiff*` groups use these
+same values, because the inline diff exists to look like delta.
+
+The inline diff needs more shades than delta does — it renders several move
+pairs on screen at once and has to keep them apart, which delta never has to
+do — so it extends the family with subtler tints of the same two hues, plus
+two muted foregrounds for ghosted text and line numbers. Those live in
+`lua/util/inline_diff.lua` beside the code that uses them:
+
+| Role                          | Hex       |
+| ----------------------------- | --------- |
+| moved-from, subtler steps     | `#3a212b` `#352337` `#4a2139` |
+| moved-to, subtler steps       | `#16332c` `#143539` `#175035` |
+| ghosted moved-from foreground | `#8a7080` |
+| folded region marker          | `#2f334d` |
+| added line number             | `#6f9157` |
+| moved-added line number       | `#5a7f9c` |
+| whitespace error              | `#db4b4b` |
+
+### Dark+ on the command line
+
+The zsh line editor is the one piece of chrome that is also *code*, and it is
+coloured as code — from `BAT_THEME`'s Visual Studio Dark+, set on
+`FAST_HIGHLIGHT_STYLES` / `ZSH_HIGHLIGHT_STYLES` in `~/.zshrc`.
+
+The reason is Ctrl-R. That picker pipes history through `bat`, so the same
+command is already being painted in Dark+ one keystroke before it lands on the
+prompt; anything else would mean accepting a history entry recoloured it.
+
+| Role                                        | Hex       |
+| ------------------------------------------- | --------- |
+| plain text, redirections, `;` and `\|`       | `#d4d4d4` |
+| comments                                    | `#6a9955` |
+| strings                                     | `#ce9178` |
+| commands, functions, aliases, `$(…)`        | `#dcdcaa` |
+| control words, and precommands like `sudo`  | `#c586c0` |
+| variables, assignments, interpolation       | `#9cdcfe` |
+| globs, history expansion, escapes           | `#d7ba7d` |
+| options                                     | `#569cd6` |
+| numbers and file descriptors                | `#b5cea8` |
+
+Two things stay Tokyo Night, because they are facts about the machine rather
+than about syntax and Dark+ has no vocabulary for either: a word that resolves
+to no command is `red`, and a path that has not resolved to anything yet is
+`comment`. A path that *does* exist gets an underline instead of a hue.
+
+> **Two Dark+ variants are in play, on purpose.** These are bat's built-in
+> `Visual Studio Dark+`. The editor side — Neovim's `lua/util/vscode_syntax.lua`
+> — mirrors `Visual Studio Dark - C++` plus the token overrides in the VS Code
+> settings, which resolves some of the same roles to different hexes (strings
+> are `#dfa67c` there, comments `#7a987a`). Each side matches the thing it sits
+> next to: the prompt matches the picker above it, the buffer matches VS Code.
+> See `docs/vscode-syntax-parity.md`.
+
+### One file-type table, four listings
+
+`ls`, `eza`, `fd`, zsh's completion menu, `lf` and `yazi` all list files, and
+all six now agree on what a `.zip` or a broken symlink looks like. The table
+is written three times because the tools speak three dialects:
+
+- `common/.config/shell/theme.sh` builds `LS_COLORS`, which GNU `ls`, `eza`,
+  `fd` and — through a `list-colors` zstyle in `~/.zshrc` — zsh's completion
+  menu all read;
+- `common/.config/lf/colors` says it again, because lf reads `LS_COLORS` from
+  the environment but needs its own copy when launched without one;
+- yazi's `[filetype]` rules say it a third time, in yazi's schema.
+
+Check 3 of `tests/check-theme.py` is what keeps the three honest.
+
+`eza` also draws columns `LS_COLORS` has no vocabulary for, so `EZA_COLORS`
+covers those with eza's own keys (`man eza_colors`). The permission bits
+deliberately take yazi's per-column meanings — read yellow, write red, execute
+green, separators in the gutter grey — so `drwxr-xr-x` reads the same in
+`ls -l` as in yazi's footer. It is applied *on top of* `LS_COLORS` rather than
+replacing it: there is no leading `reset`, so an extension the table does not
+name keeps eza's built-in colour, which is ANSI-indexed and therefore already
+Tokyo Night by way of the terminal palette.
+
+### Man pages
+
+`less` renders man's bold, underline and standout with the terminal's
+defaults. `LESS_TERMCAP_*` in `theme.sh` replaces those three with `blue`,
+`green` and `orange`-on-`bg_highlight`.
+
+`GROFF_NO_SGR=1` is set alongside them and is not optional: without it groff
+emits its own SGR sequences and `less` never consults termcap at all, so the
+variables have no effect. It is still supported in groff 1.24 (it is the
+documented equivalent of `grotty -c`).
 
 ### Gotcha: yazi ignores unknown keys
 
@@ -125,6 +251,11 @@ instead of one full of escape sequences).
 
 ### Why matches are inverted, not just recoloured
 
+Every search surface paints a match as an inverted yellow block, never as
+recoloured text: fzf's `hl`/`hl+`, delta's `grep-match-word-style`, and
+ripgrep's `match` (which has no `reverse` style, so `.ripgreprc` inverts by
+hand — `bg` as the foreground, `yellow` as the background).
+
 `hl`/`hl+` are `#e0af68`/`#faba4a` with `bold:reverse`, so what you typed shows
 up as a solid yellow block. This is not a style preference, it is the only thing
 that survives the picker above: fzf replaces just the *foreground* of the
@@ -169,16 +300,55 @@ accent chosen to be instantly findable against the blue-violet palette. Keep it.
 
 ## Where the theme lives
 
+`tests/check-theme.py` reads this table, so a themed file that is missing from
+it fails the test.
+
 | Tool     | File                                                 |
 | -------- | ---------------------------------------------------- |
 | kitty    | `common/.config/kitty/themes/tokyonight_night.conf`   |
+| kitty    | `common/.config/kitty/kitty.conf` (dim opacity, includes the theme) |
 | wezterm  | `common/.config/wezterm/wezterm.lua`                  |
 | tmux     | `common/.tmux.conf` (the `# Theme` section)           |
 | Neovim   | `common/.config/nvim/lua/plugins/tokyonight.lua`      |
+| Neovim   | `common/.config/nvim/lua/util/inline_diff.lua` (the diff tints) |
 | lazygit  | `common/.config/lazygit/config.yml` (`gui.theme`)     |
 | delta    | `common/.config/git/config` (`[delta]`)               |
 | starship | `common/.config/starship.toml` (`[palettes.tokyonight]`) |
-| fzf      | `common/.config/shell/theme.sh`                       |
+| fzf, ls, man | `common/.config/shell/theme.sh`                   |
+| zsh      | `common/.zshrc` (completion menu, command line, suggestions) |
+| ripgrep  | `common/.ripgreprc`                                   |
+| search   | `common/.local/bin/st-rg`, `common/.local/bin/st-zoekt` |
 | yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
 | lf       | `common/.config/lf/colors`                            |
 | btop     | `common/.config/btop/themes/tokyo-night.theme`        |
+
+## Keeping it consistent
+
+Half of these tools describe the same thing in a different dialect — hex here,
+decimal SGR triples there, a TOML table somewhere else — so nothing but care
+stops them drifting apart. `tests/check-theme.py` is that care, written down:
+
+```bash
+tests/check-theme.py            # report drift, exit non-zero
+tests/check-theme.py --verbose  # and list what passed
+```
+
+It checks five things:
+
+1. **Every colour is documented here.** Any hex or `38;2;R;G;B` triple in a
+   themed config has to appear somewhere in this file. That is what makes this
+   document the registry rather than a description that rots.
+2. **kitty and wezterm agree**, slot for slot: background, foreground, cursor,
+   selection and all sixteen ANSI colours.
+3. **One file-type table, three dialects.** `LS_COLORS` (asked of a real shell,
+   not reparsed), `lf/colors` and yazi's `[filetype]` rules must agree on every
+   extension and file kind, colour *and* boldness — including where yazi says
+   it by mime type and the other two by extension.
+4. **The inline diff uses delta's tints**, exactly, since it exists to look
+   like delta.
+5. **This file's table above points at files that exist**, and lists every
+   file the test checks.
+
+The checks are only as good as their scope: `CHROME_FILES` at the top of the
+script is the list of files that get checked. Theme something new, add it
+there and to the table above.

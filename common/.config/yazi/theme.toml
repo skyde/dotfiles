@@ -148,6 +148,9 @@ rules = [
   # --- documents → orange ---
   { mime = "application/pdf", fg = "#ff9e64" },
   { mime = "application/epub+zip", fg = "#ff9e64" },
+  # By name rather than mime: DjVu has no registered type most mime
+  # databases agree on, so the extension is what lf and LS_COLORS match too.
+  { name = "*.djvu", fg = "#ff9e64" },
   { name = "*.docx", fg = "#ff9e64" },
   { name = "*.xlsx", fg = "#ff9e64" },
   { name = "*.pptx", fg = "#ff9e64" },
@@ -202,7 +205,10 @@ rules = [
   { name = "*", is = "link", fg = "#7dcfff" },
   { name = "*", is = "block", fg = "#e0af68" },
   { name = "*", is = "char", fg = "#e0af68" },
-  { name = "*", is = "fifo", fg = "#bb9af7" },
+  # Yellow, with the block and char devices above and against the magenta
+  # socket below. That is what lf and LS_COLORS say, and what `ls` has said
+  # since long before either — pi is yellow, so is magenta.
+  { name = "*", is = "fifo", fg = "#e0af68" },
   { name = "*", is = "sock", fg = "#bb9af7" },
   { name = "*", is = "sticky", fg = "#c0caf5", bg = "#7aa2f7" },
   { name = "*", is = "exec", fg = "#9ece6a" },
