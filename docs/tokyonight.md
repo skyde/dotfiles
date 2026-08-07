@@ -10,9 +10,21 @@ Note that *syntax highlighting* is deliberately **not** Tokyo Night — `bat`,
 Night is the UI chrome (backgrounds, borders, status bars, selections); Dark+ is
 the code itself.
 
-`BAT_THEME` in `~/.zshenv` is the single source of truth for that syntax theme.
-It is read directly by `bat`, and indirectly by `delta` (which uses bat's theme
-set) and by yazi (see below). Change it there and all three follow.
+`BAT_THEME` in `~/.zshenv` is the source of truth for that syntax theme. It is
+read directly by `bat`, and indirectly by `delta` (which uses bat's theme set)
+and by yazi (see below). Change it there and all three follow.
+
+`~/.config/bat/config` names the same theme as a **fallback**, not a competing
+source: bat prefers the environment variable, so that file only matters when
+there is no environment to read — bat launched from an editor task, a GUI app
+or a cron job, which would otherwise fall back to bat's own default and look
+nothing like the rest of the setup. Same reasoning as vendoring btop's theme
+instead of trusting the packaged copy.
+
+The name is written out in four files by the time you count `~/.bashrc-custom`
+and delta's `syntax-theme`, and two panes rendering the same file differently
+is a subtle thing to notice, so `tests/check-theme.py` checks that all four say
+the same thing.
 
 ## Palette
 
@@ -363,6 +375,7 @@ it fails the test.
 | delta, git | `common/.config/git/config` (`[delta]`, and git's own `[color "…"]`) |
 | starship | `common/.config/starship.toml` (`[palettes.tokyonight]`) |
 | fzf, ls, man | `common/.config/shell/theme.sh`                   |
+| bat      | `common/.config/bat/config` (syntax theme fallback)   |
 | zsh      | `common/.zshrc` (completion menu, command line, suggestions) |
 | ripgrep  | `common/.ripgreprc`                                   |
 | PowerShell | `windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1` (PSReadLine, rg) |
@@ -397,7 +410,10 @@ It checks five things:
    it by mime type and the other two by extension.
 4. **The inline diff uses delta's tints**, exactly, since it exists to look
    like delta.
-5. **This file's table above points at files that exist**, and lists every
+5. **One name for the syntax theme.** `~/.zshenv`, `~/.bashrc-custom`,
+   delta's `syntax-theme` and `~/.config/bat/config` must all name the same
+   one, or two panes render the same file differently.
+6. **This file's table above points at files that exist**, and lists every
    file the test checks.
 
 The checks are only as good as their scope: `CHROME_FILES` at the top of the

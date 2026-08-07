@@ -7,10 +7,11 @@ and nothing but care has been keeping them in agreement. This is that care,
 written down:
 
   1. every colour in a themed config is one docs/tokyonight.md documents
-  2. kitty and wezterm agree, slot for slot
+  2. kitty, wezterm and VS Code's terminal agree, slot for slot
   3. the file-type table is the same in LS_COLORS, lf and yazi
   4. Neovim's inline diff uses delta's tints, exactly
-  5. docs/tokyonight.md's file table points at files that exist
+  5. every file naming the syntax theme names the same one
+  6. docs/tokyonight.md's file table points at files that exist
 
 Run it after touching any colour:
 
@@ -558,7 +559,37 @@ def check_diff_tints(report: Report) -> None:
     report.ok("the inline diff and delta use the same tints")
 
 
-# --- 5. the docs point at real files ---------------------------------------
+# --- 5. one name for the syntax theme --------------------------------------
+
+# Where the syntax theme is named, and the pattern that pulls the name out.
+# These have to agree: bat, delta and the yazi preview are meant to render the
+# same file identically, and each learns the theme from a different one of
+# these. A change to one alone is invisible until two panes disagree.
+SYNTAX_THEME_SOURCES = [
+    ("common/.zshenv", r'BAT_THEME="([^"]+)"'),
+    ("common/.bashrc-custom", r'BAT_THEME="([^"]+)"'),
+    ("common/.config/git/config", r'syntax-theme\s*=\s*"([^"]+)"'),
+    ("common/.config/bat/config", r'--theme="([^"]+)"'),
+]
+
+
+def check_syntax_theme(report: Report) -> None:
+    found: dict[str, str] = {}
+    for relative, pattern in SYNTAX_THEME_SOURCES:
+        match = re.search(pattern, read(relative))
+        if not match:
+            report.fail("syntax-theme", f"{relative} no longer names a syntax theme")
+            continue
+        found[relative] = match.group(1)
+    names = set(found.values())
+    if len(names) > 1:
+        listing = ", ".join(f"{path} says {name!r}" for path, name in sorted(found.items()))
+        report.fail("syntax-theme", f"the syntax theme is not the same everywhere: {listing}")
+    elif names:
+        report.ok(f"every file names the same syntax theme ({names.pop()!r})")
+
+
+# --- 6. the docs point at real files ---------------------------------------
 
 
 def check_doc_paths(report: Report) -> None:
@@ -608,6 +639,7 @@ def main() -> int:
         check_terminals,
         check_filetypes,
         check_diff_tints,
+        check_syntax_theme,
         check_doc_paths,
     ):
         try:
