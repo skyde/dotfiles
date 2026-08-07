@@ -57,6 +57,11 @@ jobs:
 
           python3 -m unittest discover -s tests -p 'test_*.py'
 
+      # Not picked up by the discovery above: check-theme.py is a checker, not
+      # a unittest module. It needs nothing but python3 and a POSIX shell.
+      - name: Check theme consistency
+        run: ./tests/check-theme.py --verbose
+
   unix-install:
     name: Install lifecycle (${{ matrix.os }})
     needs: validate
