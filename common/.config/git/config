@@ -96,14 +96,20 @@
     trustExitCode = false
 
 # --- Delta styling ---
-# Everything lives in this one [delta] section on purpose. On delta 0.18 named
-# [delta "..."] features are effectively dead: beyond the long-known dropping
-# of commit-style / file-style / *-decoration-style, neither DELTA_FEATURES nor
-# --features applies a feature section from git config at all (verified with a
-# probe feature that changed nothing). For an occasional toggle use a `git -c
-# delta.<option>=<value>` alias instead — git exports -c to the pager through
-# GIT_CONFIG_PARAMETERS, which delta reads like any other git config. See the
-# `sbs` alias at the bottom for the side-by-side example.
+# Everything lives in this one [delta] section on purpose. Named [delta "..."]
+# features are only half-wired on delta 0.18.2, which is worse than being
+# broken outright — probing one feature key at a time shows plain options like
+# hunk-header-style and tabs *do* come through --features / DELTA_FEATURES,
+# every *-style key silently does not, and side-by-side reports as set under
+# `--show-config` while the output stays unified. A feature section therefore
+# applies some of what you wrote and drops the rest with no error. Don't use
+# them: for an occasional toggle use a `git -c delta.<option>=<value>` alias,
+# which git exports to the pager through GIT_CONFIG_PARAMETERS and delta reads
+# like any other git config. See the `sbs` alias at the bottom.
+#
+# Keys are validated against the installed delta by tests/check-delta-config.sh
+# — delta ignores unknown keys in git config without a word, so a typo or an
+# option from a newer release reads as live config and does nothing.
 # Palette reference: docs/tokyonight.md
 [delta]
     # Syntax highlighting stays Visual Studio Dark+ on purpose, matching bat and
@@ -113,40 +119,109 @@
     # Be explicit for TUIs like LazyGit
     dark = true                 # better than 'light = false' under TUIs
     true-color = always
-    navigate = true             # n / N to jump between hunks (regex below)
+    navigate = true             # n / N to jump between files (regex below)
     side-by-side = false
     line-numbers = true
 
+    # Tabs render at the width VS Code shows them at ("editor.tabSize": 2 with
+    # detectIndentation off, in Code/User/settings.json in this repo), so a
+    # tab-indented file is indented the same depth in the diff as in the editor
+    # you are about to open it in. Delta's default of 8 also costs real width:
+    # it does not wrap in unified mode — long lines run off the panel rather
+    # than continuing — so every column spent on indentation is a column of
+    # code lost, and lazygit's diff panel is half a screen wide.
+    tabs = 2
 
-    # File headers are omitted entirely: every hunk header carries file:line,
-    # so a standalone header row — plus its decoration, labels and the blank
-    # rows around it — bought four rows of height per file and repeated what
-    # the hunk headers already say; in lazygit the panel names the file on top
-    # of that. Two costs, both accepted: a pure rename with no content change
-    # renders no diff at all (git status and lazygit's files panel still show
-    # it), and n/N loses its file-header anchor, so navigate-regex points it
-    # at hunk headers instead.
-    file-style = omit
-    navigate-regex = "^• "
+    # How many lines delta holds while pairing removals with additions to find
+    # the changed tokens within a line. The default 32 is far too small here,
+    # because diff.context = 10 above makes hunks correspondingly bigger: on a
+    # block replacement (rename a variable through a function, reflow a table)
+    # measured emphasis coverage was 27/60 lines at 32, 3/300 at 32 for a
+    # larger block, and complete at 512 for anything up to ~256 lines. The
+    # buffer has to hold the whole run of removals plus the run of additions,
+    # so it wants roughly twice the block size. Delta's docs warn this hurts
+    # performance on whole-file adds; on 12k- and 20k-line diffs the cost from
+    # 32 to 16384 was under the run-to-run noise, so 512 is free.
+    line-buffer-size = 512
 
-    # Hunk headers. No decoration at all: with file+line-number in the header
-    # text itself, the blue single line after a blank row separates fine, and
+    # Delta's own annotations — the ↵ that marks a wrapped line in side-by-side,
+    # the tab markers — default to bare ANSI blue, the one colour in the output
+    # that is not from the palette. It has to stay legible on the minus and
+    # plus backgrounds, which rules out the comment grey.
+    inline-hint-style = "#7aa2f7"
+
+    # File headers. These were omitted for a while, on the reasoning that every
+    # hunk header already carries file:line. That reasoning only holds for
+    # files that *have* a hunk — and the ones that don't are exactly the ones
+    # worth seeing. With file-style = omit, `git diff` renders a changed binary
+    # file and a chmod as one blank line and nothing else: no filename, no
+    # marker, nothing. A blob swap and a script quietly becoming executable
+    # were both invisible in the terminal and in lazygit's diff panel, which
+    # runs this same config. Pure renames vanished the same way. That is a
+    # correctness hole in review, not a matter of taste, so the header is back
+    # at its cheapest: no decoration, one row plus the blank row that
+    # file-style = omit was paying for anyway.
+    #
+    # The labels are git's own status letters, matching `git status --short`
+    # and the changed-files panel in lua/util/vcs_ui.lua, so the terminal and
+    # the editor name a change the same way. For the files that carry no hunk
+    # delta adds its own note: "M blob.bin (binary file)", "M run.sh (mode +x)".
+    # (C is git's "copied", not vcs_ui's "conflict" — copy detection is off by
+    # default, so it is near enough unreachable.)
+    file-style = "bold #7aa2f7"
+    file-decoration-style = omit
+    file-added-label = "A"
+    file-removed-label = "D"
+    file-modified-label = "M"
+    file-renamed-label = "R"
+    file-copied-label = "C"
+    # Joins the two sides of a rename ("R old ⟶ new") and the two sides of a
+    # merge-conflict header. Delta's default is "⟶  " — the trailing spaces
+    # land on top of the space delta already inserts, giving "old ⟶   new".
+    # Deliberately not "→": that is delta's own line-truncation marker.
+    right-arrow = "⟶"
+    # n / N step file to file, and commit to commit under `git log -p`. Hunks
+    # are a scroll away; files are what you actually want to skip to. Content
+    # lines can never collide with this: they all start with the line-number
+    # gutter, so column 0 is a digit or a space, never a status letter.
+    navigate-regex = "^([ADMRC] |commit )"
+
+    # Hunk headers. No decoration: with file+line-number in the header text
+    # itself, the single coloured line after a blank row separates fine, and
     # the old box+ul spent three extra rows on every hunk.
+    #
+    # The filename stays here even though the file header above now repeats it.
+    # The duplication costs one row, and only at the first hunk of a file; drop
+    # it and *every* hunk after the first stops saying where it is, which is
+    # precisely when you need telling — mid-file, several screens down. It also
+    # keeps the header in the file:line: shape that compilers and rg emit, so
+    # it can be copied straight into an editor. Since it is a locator rather
+    # than a headline it is painted in the comment grey, one step under the
+    # file header, with the line number — the part that actually changes — in
+    # the accent blue.
+    #
     # The function context — code from lines *above* the hunk that read as a
     # line of code wearing the wrong line number — is stripped at the source
     # by the [diff "nofunc"] driver above; delta prints whatever context git
     # emits regardless of which style attributes are listed here (dropping
-    # `syntax` only stops highlighting it).
+    # `syntax` only stops highlighting it). What is left is a trailing ": ",
+    # the separator for a context string that never arrives. There is no
+    # option to suppress it, and file:line: is the idiomatic shape anyway.
     hunk-header-style = file line-number
-    hunk-header-file-style = "#7aa2f7"
-    hunk-header-line-number-style = "bold #7aa2f7"
+    hunk-label = "•"
+    hunk-header-file-style = "#565f89"
+    hunk-header-line-number-style = "#7aa2f7"
     hunk-header-decoration-style = omit
 
     # Commit meta (same reasoning as the file header)
     commit-style = "bold #c0caf5"
     commit-decoration-style = "#292e42 ul"
 
-    # Diff body
+    # Diff body.
+    # These nine colours are mirrored, hex for hex, by the highlight groups in
+    # lua/util/inline_diff.lua so the Neovim inline diff and a terminal patch
+    # are the same picture. Change one here and change it there — the pairing
+    # is asserted by tests/check-delta-config.sh.
     plus-style = "syntax #20432b"
     plus-emph-style = "syntax #2c5a3a"
     plus-non-emph-style = "syntax #17311f"
@@ -174,18 +249,31 @@
 
     # Blame (delta paints `git blame` too): cycle four near-background shades so
     # adjacent commits separate without the stripes shouting.
+    # There is no blame-timestamp-style on 0.18.2 — only -format and
+    # -output-format — so the metadata column takes the default foreground.
+    # A key by that name lived here for a while doing nothing at all, which is
+    # what tests/check-delta-config.sh now exists to catch.
+    # Blame lines are only recognised at all when the author name is two
+    # characters or more; a one-letter name falls through delta's parser and
+    # prints raw.
     blame-code-style = syntax
     blame-palette = "#1a1b26 #1f2335 #24283b #292e42"
     blame-separator-style = "#3b4261"
-    blame-timestamp-style = "#565f89"
 
-    # Merge conflicts (merge.conflictstyle = zdiff3 above shows all three sides)
+    # Merge conflicts (merge.conflictstyle = zdiff3 above shows all three sides).
+    # The ▼/▲ bars are drawn the full width of the terminal and are the outer
+    # boundary, so the two inner headers need no decoration of their own — the
+    # box they used to carry spent four rows inside the one region where you
+    # are trying to read code closely. Ours and theirs were also both yellow,
+    # which left the side label as the only thing telling them apart; they now
+    # take the accent blue and the branch magenta, the same split the conflict
+    # highlighting in lua/util/conflict.lua draws in the editor.
     merge-conflict-begin-symbol = "▼"
     merge-conflict-end-symbol = "▲"
-    merge-conflict-ours-diff-header-style = "#e0af68 bold"
-    merge-conflict-ours-diff-header-decoration-style = "#292e42 box"
-    merge-conflict-theirs-diff-header-style = "#e0af68 bold"
-    merge-conflict-theirs-diff-header-decoration-style = "#292e42 box"
+    merge-conflict-ours-diff-header-style = "#7aa2f7 bold"
+    merge-conflict-ours-diff-header-decoration-style = omit
+    merge-conflict-theirs-diff-header-style = "#bb9af7 bold"
+    merge-conflict-theirs-diff-header-decoration-style = omit
 
     # `delta --grep` / rg integration. Matches are inverted yellow blocks for
     # the same reason as fzf's hl/hl+ (see theme.sh): a recoloured foreground

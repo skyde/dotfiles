@@ -148,18 +148,48 @@ nothing.
 ### Gotcha: delta feature sections
 
 Delta's colours must sit in the plain `[delta]` section, **not** in a named
-`[delta "..."]` feature. As of delta 0.18, `commit-style`, `file-style` and
-every `*-decoration-style` key is read only from the plain section; setting them
-in a feature is silently ignored, which leaves diff headers un-themed while the
-diff body looks correct.
+`[delta "..."]` feature.
 
-It is worse than that, though: on delta 0.18 a feature section in git config is
-not applied **at all** — not via `DELTA_FEATURES`, and not via `--features`
-either (verified with a probe feature whose format change never rendered). The
-working escape hatch for an occasional toggle is a `git -c delta.<option>=<value>`
-alias: git exports `-c` settings to its pager through `GIT_CONFIG_PARAMETERS`,
-and delta reads that like any other git config. That is how the `sbs`
-side-by-side alias in `common/.config/git/config` works.
+Probing delta 0.18.2 one key at a time, a feature section turns out to be
+*half* wired, which is more dangerous than being ignored outright:
+
+| Key in a `[delta "probe"]` section | Applied via `--features` / `DELTA_FEATURES`? |
+| ---------------------------------- | -------------------------------------------- |
+| `hunk-header-style`, `tabs`         | yes                                          |
+| every `*-style` colour key          | no                                           |
+| `side-by-side`                      | reported as `true` by `--show-config`, but the output stays unified |
+
+So a feature section takes some of what you wrote, drops the rest without a
+word, and can even report a setting as live while the renderer ignores it.
+Don't use them. The working escape hatch for an occasional toggle is a
+`git -c delta.<option>=<value>` alias: git exports `-c` settings to its pager
+through `GIT_CONFIG_PARAMETERS`, and delta reads that like any other git
+config. That is how the `sbs` side-by-side alias in
+`common/.config/git/config` works.
+
+### Gotcha: delta ignores keys it does not know
+
+Delta takes its settings from git config, and git config has no schema, so a
+key delta has never heard of is neither an error nor a warning — it simply
+does nothing while looking like live configuration. `blame-timestamp-style`
+sat in the `[delta]` section for a while; there is no such option on 0.18.2
+(only `blame-timestamp-format` and `-output-format`), and the timestamps were
+never styled. `tests/check-delta-config.sh` now diffs every key in the section
+against `delta --help` so this cannot recur silently.
+
+### Gotcha: `file-style = omit` hides whole changes
+
+Omitting the file header looks like a pure economy — every hunk header already
+carries `file:line`. But a change with no hunk has nowhere else to appear: a
+binary file whose contents changed, and a file whose mode changed, each
+rendered as a single blank line in `git diff` and in lazygit's diff panel.
+Pure renames went the same way. Keep the header; `file-decoration-style = omit`
+already reduces it to one row.
+
+The diff-body colours are also mirrored, hex for hex, by the highlight groups
+in `common/.config/nvim/lua/util/inline_diff.lua`, so the Neovim inline diff
+and a terminal patch are the same picture. Change one, change the other —
+`tests/check-delta-config.sh` asserts the pairing.
 
 ### Local deviation: the cursor
 

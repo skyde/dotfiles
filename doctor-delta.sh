@@ -72,3 +72,8 @@ echo
 echo "Last check, in your own shell (not this script):  type git"
 echo "If it prints a function and delta is freshly installed, open a new"
 echo "terminal — the wrapper decided pager-vs-less before delta existed."
+echo
+echo "This script checks the plumbing — that git reaches delta at all. For the"
+echo "[delta] section itself (keys this delta does not have, the palette shared"
+echo "with Neovim, and whether every kind of change still renders something):"
+echo "  tests/check-delta-config.sh"

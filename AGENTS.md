@@ -18,6 +18,12 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 - Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`
   (self-contained, no plugins required), and `./tests/check-nvim-keymaps.sh` to
   invoke every binding against the real config.
+- Run `./tests/check-delta-config.sh` if you touched the `[delta]` section of
+  `common/.config/git/config` or the palette in `lua/util/inline_diff.lua`. It
+  validates every key against the installed delta (unknown keys are ignored
+  silently, so typos look live), asserts the two files' diff colours still
+  match, and renders a fixture diff to confirm no kind of change — binary, mode,
+  rename, delete — has become invisible. Skips cleanly if delta is not installed.
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines
