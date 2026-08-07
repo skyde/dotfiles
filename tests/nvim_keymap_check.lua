@@ -279,10 +279,19 @@ local function check_documented_keys()
           lnum = lnum + 1
           -- A which-key group label declares a prefix, not a binding.
           if not line:find("group%s*=") then
-            for key in line:gmatch('"(<leader>[^"%s]*)"') do
-              -- A bare "<leader>" is a prefix being concatenated (the tab-number
-              -- loop), not a key in its own right.
-              if key ~= "<leader>" and not documented[ALIASES[key] or key] then
+            local at = 1
+            while true do
+              local from, to, key = line:find('"(<leader>[^"%s]*)"', at)
+              if not from then
+                break
+              end
+              at = to + 1
+              -- A literal that is concatenated onto is a prefix, not a key: the
+              -- tab-number loop builds "<leader>" .. i, the window loop builds
+              -- "<leader>w" .. key. The keys they produce are covered by the
+              -- ranges the document lists.
+              local prefix = line:sub(to + 1):match("^%s*%.%.") ~= nil
+              if not prefix and not documented[ALIASES[key] or key] then
                 table.insert(undocumented, ("%s (%s/%s:%d)"):format(key, dir, name, lnum))
               end
             end

@@ -278,6 +278,20 @@ unchanged.
 | `<leader>bn` `<leader>bh` `<leader>bl` | new tab / move it left / move it right |
 | `<leader>0` | last tab (`<leader>1`–`<leader>9` pick one by number) |
 
+### Windows
+
+VS Code calls these editor groups and binds the whole family under `<leader>w`;
+these are the same commands under the same keys. `<C-w>h` and friends still work
+— this is the VS Code spelling of them, not a replacement.
+
+| Key | Action |
+| --- | --- |
+| `<leader>wh` `<leader>wj` `<leader>wk` `<leader>wl` | focus the window left / below / above / right |
+| `<leader>wH` `<leader>wJ` `<leader>wK` `<leader>wL` | move this window left / below / above / right |
+| `<leader>ws` `<leader>wv` | split below / split right |
+| `<leader>wf` | zoom the window to fill the tab, standing in for VS Code's full screen |
+| `<leader>wd` `<leader>wm` | close the window / toggle zoom (LazyVim) |
+
 ## Deliberate differences
 
 * **`<leader>1`–`<leader>9` are tabs, not editor slots.** VS Code numbers
@@ -294,6 +308,17 @@ unchanged.
 * **No diffview.nvim.** It only supports git and hg, and having it own
   `<leader>gc` for git while something else owned it for jj and p4 would mean
   two different review UIs. One UI for every backend was the better trade.
+* **A handful of VS Code `<leader>` keys have no Neovim binding**, because what
+  they do has no counterpart here rather than because they were forgotten:
+  `<leader>a` / `<leader>i` / `<leader>ff` / `<leader>fT` / `<leader>sT` run
+  VS Code tasks that shell out to `st` / `si` / a terminal, which `<leader>sz`,
+  `<leader>si` and `<BS>n` already cover directly; `<leader>bp` / `<leader>bu`
+  / `<leader>bP` / `<leader>bD` pin, unpin and reopen editors, and Neovim's
+  buffer list has no pinning; `<leader>gr` and `<leader>gT` drive VS Code's SCM
+  sidebar, which `<leader>gc` replaces wholesale; `<leader>dB{c,d,e,r}` and
+  `<leader>t{I,U,D}` are breakpoint- and call-stack-list operations that belong
+  to the debug sidebar. Add any of them if the muscle memory turns out to
+  matter — nothing is shadowing those keys.
 
 ## Tests
 

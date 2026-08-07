@@ -76,6 +76,40 @@ map("n", "<leader>E", function()
 end, { desc = "Reveal in file manager" })
 
 --------------------------------------------------------------------------
+-- windows (<leader>w)
+--------------------------------------------------------------------------
+
+-- The VS Code config binds a whole <leader>w family for editor groups — focus
+-- one, move the editor into one, split, full screen — and none of it had a
+-- Neovim equivalent, so eleven keys built into muscle memory did nothing here.
+-- <C-w> does all of it natively; these are the same commands under the keys the
+-- other editor uses. LazyVim's own <leader>wd and <leader>wm are left alone.
+for key, cmd in pairs({
+  h = "h", -- focus the window to the left, VS Code's focusLeftGroup
+  j = "j",
+  k = "k",
+  l = "l",
+  H = "H", -- move this window left, VS Code's moveEditorToLeftGroup
+  J = "J",
+  K = "K",
+  L = "L",
+}) do
+  local moving = key:match("%u") ~= nil
+  local where = ({ h = "left", j = "below", k = "above", l = "right" })[key:lower()]
+  map("n", "<leader>w" .. key, "<C-w>" .. cmd, {
+    desc = moving and ("Move window %s"):format(where) or ("Focus window %s"):format(where),
+  })
+end
+map("n", "<leader>ws", "<C-w>s", { desc = "Split window below" })
+map("n", "<leader>wv", "<C-w>v", { desc = "Split window right" })
+-- VS Code's toggleFullScreen has no counterpart in a terminal; zooming the
+-- window to fill the tab is the same intent, and is what LazyVim's <leader>wm
+-- already does.
+map("n", "<leader>wf", function()
+  Snacks.toggle.zoom():toggle()
+end, { desc = "Zoom window (VS Code full screen)" })
+
+--------------------------------------------------------------------------
 -- search
 --------------------------------------------------------------------------
 
