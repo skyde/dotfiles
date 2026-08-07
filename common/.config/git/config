@@ -177,7 +177,9 @@
     blame-code-style = syntax
     blame-palette = "#1a1b26 #1f2335 #24283b #292e42"
     blame-separator-style = "#3b4261"
-    blame-timestamp-style = "#565f89"
+    # dark5, not comment: the timestamp has to stay legible on all four
+    # stripes, and comment grey on the lightest of them is 2.17:1.
+    blame-timestamp-style = "#737aa2"
 
     # Merge conflicts (merge.conflictstyle = zdiff3 above shows all three sides)
     merge-conflict-begin-symbol = "▼"

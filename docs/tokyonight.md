@@ -43,10 +43,13 @@ Taken from [`folke/tokyonight.nvim`](https://github.com/folke/tokyonight.nvim)
 | `dark3`      | `#545c7e` | inactive tabs, line numbers          |
 | `terminal_black` | `#414868` | ANSI 8 (upstream value — see note) |
 
-> **Note on ANSI 8.** kitty and wezterm here use `#85899c` instead of the
-> upstream `#414868`. That is deliberate: `#414868` is close to unreadable for
-> "bright black" text that CLI tools use for de-emphasised output. Keep the two
-> terminals in sync.
+> **Note on ANSI 8.** kitty, wezterm and the VS Code integrated terminal all
+> use `#85899c` instead of the upstream `#414868`. That is deliberate:
+> `#414868` reads at 1.9:1 against `bg`, which is close to unreadable for the
+> "bright black" that CLI tools use for de-emphasised output; `#85899c` gets it
+> to 4.9:1 while still receding. There are **three** copies of the 16 ANSI
+> slots — the third one is easy to forget, so `tests/check-theme.py parity`
+> compares all three.
 
 ### Accents
 
@@ -76,6 +79,40 @@ Bright ANSI variants (9–15) are the accents lightened:
 | `add`     | `#449dab` |
 | `change`  | `#6183bb` |
 | `delete`  | `#914c54` |
+
+### Derived surfaces
+
+Colours that are not in the upstream palette but are used deliberately. Each
+one earns its place below by doing something no palette entry does; anything
+not listed here is drift, and `tests/check-theme.py` says so.
+
+| Hex       | Name             | Why it is not a palette colour                    |
+| --------- | ---------------- | ------------------------------------------------- |
+| `#1d202f` | ANSI 0           | Slot 0 is one notch above `bg` on purpose: a program printing "black" text against the terminal background would otherwise be invisible. |
+| `#000000` | cursor glyph     | True black under the `#ff5000` block cursor and nowhere else. Reads at 6.4:1 against the orange; `bg` would give 1.6:1. |
+| `#1f2335` | `bg_dark1`       | One step above `bg`. The "present but not focused" fill — yazi's which-key mask, lazygit's selection in an unfocused panel. |
+| `#24283b` | `bg` (storm)     | The storm variant's background, borrowed as the third step of delta's blame stripe. |
+
+#### delta's diff washes
+
+The diff body cannot use the palette accents as backgrounds: `green` behind
+syntax-highlighted code is a highlighter pen. These are the accents mixed down
+into `bg` until the code on top stays readable — every one of them clears
+4.5:1 against both `fg` and Dark+'s plain `#d4d4d4`, which is what
+`tests/check-theme.py contrast` pins.
+
+| Hex       | Role                          |
+| --------- | ----------------------------- |
+| `#20432b` | added line                    |
+| `#2c5a3a` | added, emphasised token       |
+| `#17311f` | added, unchanged remainder    |
+| `#532727` | removed line                  |
+| `#683131` | removed, emphasised token     |
+| `#3f1f1f` | removed, unchanged remainder  |
+| `#2e2547` | moved from here (violet)      |
+| `#203356` | moved from here (indigo)      |
+| `#12384a` | moved to here (cyan)          |
+| `#15423d` | moved to here (teal)          |
 
 ### Gotcha: yazi ignores unknown keys
 

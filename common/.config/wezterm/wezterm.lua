@@ -53,7 +53,8 @@ config.colors = {
     },
     inactive_tab = {
       bg_color = '#292e42',
-      fg_color = '#545c7e',
+      -- dark5 rather than upstream's dark3: #545c7e on this fill is 2.05:1.
+      fg_color = '#737aa2',
     },
     inactive_tab_edge = '#16161e',
     inactive_tab_hover = {

@@ -32,7 +32,8 @@ border_style = { fg = "#292e42" }
 
 [tabs]
 active = { fg = "#16161e", bg = "#7aa2f7", bold = true }
-inactive = { fg = "#545c7e", bg = "#292e42" }
+# dark5, matching kitty's inactive tab: dark3 on this fill is 2.05:1.
+inactive = { fg = "#737aa2", bg = "#292e42" }
 
 [mode]
 normal_main = { fg = "#16161e", bg = "#7aa2f7", bold = true }
@@ -148,6 +149,7 @@ rules = [
   # --- documents → orange ---
   { mime = "application/pdf", fg = "#ff9e64" },
   { mime = "application/epub+zip", fg = "#ff9e64" },
+  { name = "*.djvu", fg = "#ff9e64" },
   { name = "*.docx", fg = "#ff9e64" },
   { name = "*.xlsx", fg = "#ff9e64" },
   { name = "*.pptx", fg = "#ff9e64" },
