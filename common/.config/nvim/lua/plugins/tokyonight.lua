@@ -34,6 +34,21 @@ return {
         -- pointer. options.lua points every guicursor mode at this one group.
         hl.Cursor = { fg = "#000000", bg = "#ff5000" }
 
+        -- ...every mode it lists, that is. Terminal mode is not in that list,
+        -- so it falls back to Neovim's default `t:block-TermCursor`, and
+        -- tokyonight does not define TermCursor at all — which left the cursor
+        -- in a :terminal buffer as plain reverse video, the one place in the
+        -- setup where it was not the orange. lCursor and CursorIM are the same
+        -- story by a different route: they are the cursor under :lmap or an
+        -- IME, and the theme paints them its own fg-on-bg.
+        --
+        -- All three are the same claim as Cursor — "you are here" — so they
+        -- get the same colour. tests/check-theme.py checks the eight places
+        -- that make that claim still agree.
+        hl.TermCursor = { fg = "#000000", bg = "#ff5000" }
+        hl.lCursor = { fg = "#000000", bg = "#ff5000" }
+        hl.CursorIM = { fg = "#000000", bg = "#ff5000" }
+
         -- signcolumn is off and cursorline is disabled (see config/options.lua),
         -- so the only remaining "current position" cue is the line number.
         -- Give it the cursor orange instead of the theme's muted grey.

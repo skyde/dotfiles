@@ -618,6 +618,18 @@ CURSOR_SETTINGS = [
         "common/.config/nvim/lua/plugins/tokyonight.lua",
         r"hl\.Cursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
     ),
+    (
+        "common/.config/nvim/lua/plugins/tokyonight.lua",
+        r"hl\.TermCursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+    ),
+    (
+        "common/.config/nvim/lua/plugins/tokyonight.lua",
+        r"hl\.lCursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+    ),
+    (
+        "common/.config/nvim/lua/plugins/tokyonight.lua",
+        r"hl\.CursorIM\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+    ),
     ("common/.config/shell/theme.sh", r"pointer:(#[0-9a-fA-F]{6})"),
 ]
 

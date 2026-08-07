@@ -353,9 +353,18 @@ side-by-side alias in `common/.config/git/config` works.
 
 ### Local deviation: the cursor
 
-The cursor is **`#ff5000`** (a hot orange) everywhere — kitty, wezterm, Neovim,
-and the fzf pointer. It is not part of Tokyo Night; it is a deliberate personal
-accent chosen to be instantly findable against the blue-violet palette. Keep it.
+The cursor is **`#ff5000`** (a hot orange) everywhere — kitty, wezterm, VS
+Code's editor and terminal, Neovim, and the fzf pointer. It is not part of
+Tokyo Night; it is a deliberate personal accent chosen to be instantly
+findable against the blue-violet palette. Keep it.
+
+"Everywhere" takes some doing in Neovim. `options.lua` points guicursor at the
+`Cursor` group for the modes it lists, but terminal mode is not one of them and
+falls back to Neovim's default `t:block-TermCursor` — and tokyonight defines no
+`TermCursor`, so the cursor in a `:terminal` buffer was plain reverse video.
+`lCursor` and `CursorIM`, the cursor under `:lmap` or an IME, are the theme's
+own fg-on-bg for the same sort of reason. All three are set alongside `Cursor`
+in `plugins/tokyonight.lua`.
 
 ## Where the theme lives
 
@@ -414,8 +423,9 @@ It checks seven things:
    delta's `syntax-theme` and `~/.config/bat/config` must all name the same
    one, or two panes render the same file differently.
 6. **One cursor.** `#ff5000` is the only colour here that is not Tokyo Night
-   at all, and it is worth nothing unless it is the same everywhere, so all
-   eight settings that colour "where you are" are compared against it.
+   at all, and it is worth nothing unless it is the same everywhere, so every
+   setting that colours "where you are" is compared against it — eleven of
+   them, across the three terminals, Neovim and fzf.
 7. **This file's table above points at files that exist**, and lists every
    file the test checks.
 
