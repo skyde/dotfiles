@@ -2,14 +2,21 @@ name: Script Validation and Syntax Checking
 
 on:
   push:
+    # common/.local/bin and lib hold most of the shell in this repo and almost
+    # none of it is named *.sh, so an "**.sh" filter never fired for them —
+    # editing st, si, osc-copy or git-copy ran no validation at all.
     paths:
       - "**.sh"
       - "**.ps1"
+      - "common/.local/bin/**"
+      - "lib/**"
       - ".github/workflows/**"
   pull_request:
     paths:
       - "**.sh"
       - "**.ps1"
+      - "common/.local/bin/**"
+      - "lib/**"
       - ".github/workflows/**"
   workflow_dispatch:
 
@@ -30,18 +37,28 @@ jobs:
         run: |
           echo "🔍 Running ShellCheck analysis..."
 
-          # Find and check all shell scripts
-          find . -name "*.sh" -type f | while read -r script; do
-            echo "Checking: $script"
-            if shellcheck --severity=error "$script"; then
-              echo "✅ $script passed ShellCheck"
-            else
-              echo "❌ $script failed ShellCheck"
-              exit 1
-            fi
-          done
+          # Select by shebang, not by extension. Matching "*.sh" skipped 24 of
+          # the repo's 50 shell scripts, including every tool in
+          # common/.local/bin — st, si, ff, osc-copy, git-copy and the rest,
+          # which is where most of the shell actually lives.
+          mapfile -t scripts < <(
+            git ls-files | while IFS= read -r f; do
+              [ -f "$f" ] || continue
+              head -n 1 "$f" | grep -qE '^#!.*(bash|/sh$|env sh)' && printf '%s\n' "$f"
+            done
+          )
 
-          echo "✅ All shell scripts passed ShellCheck"
+          printf 'Checking %d shell scripts:\n' "${#scripts[@]}"
+          printf '  %s\n' "${scripts[@]}"
+
+          # --severity=warning, not error: the repo is clean at this level, so
+          # anything new stands out instead of accumulating below the bar.
+          if shellcheck --severity=warning "${scripts[@]}"; then
+            echo "✅ All shell scripts passed ShellCheck"
+          else
+            echo "❌ ShellCheck reported problems"
+            exit 1
+          fi
 
   powershell-validation:
     name: PowerShell Script Validation

@@ -1,7 +1,30 @@
 #!/usr/bin/env bash
+# st — search a tree, picking the fastest backend it has.
+#
+#   st [--code] [PATH]
+#
+# Zoekt when PATH has an index, ripgrep otherwise. Both halves take the same
+# arguments, so everything is forwarded untouched.
 set -euo pipefail
 
-if [[ -d .zoekt ]]; then
+# Work out which tree is being searched, so the index probe looks in the same
+# place st-zoekt and st-rg will. Testing a bare `.zoekt` only ever consulted the
+# current directory, so `st ~/some/indexed/tree` from anywhere else fell through
+# to ripgrep even with an index sitting right there.
+args=("$@")
+target="$PWD"
+for arg in "${args[@]}"; do
+  case "$arg" in
+  --code) ;;
+  *) target="$arg" ;;
+  esac
+done
+
+if [[ -f "$target" ]]; then
+  target="$(dirname "$target")"
+fi
+
+if [[ -d "$target/.zoekt" ]]; then
   exec st-zoekt "$@"
 else
   exec st-rg "$@"

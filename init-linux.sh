@@ -25,10 +25,43 @@ ensure_apt zsh-autosuggestions
 ensure_apt zsh-syntax-highlighting
 ensure_apt fonts-jetbrains-mono
 
-# Install kitty term info to ensure we can ssh properly
-$SUDO curl -LO https://raw.githubusercontent.com/kovidgoyal/kitty/master/terminfo/kitty.terminfo
-tic -x -o ~/.terminfo kitty.terminfo
-rm -f kitty.terminfo
+# Install kitty terminfo so ssh sessions from kitty come up correctly.
+#
+# Downloaded into a temp directory rather than the current one. `curl -LO`
+# writes to the cwd, and init.sh runs this from the repo root, so a failure
+# anywhere between the download and the `rm` left kitty.terminfo sitting in the
+# checkout as an untracked file — and `set -e` guaranteed that whenever tic was
+# missing (ncurses-bin is not installed everywhere) or the download failed. The
+# sudo was doing nothing but making that stray file root-owned; fetching a file
+# into a temp directory and compiling it into ~/.terminfo needs no privileges.
+#
+# Non-fatal too: a machine that cannot reach GitHub, or has no tic, should still
+# finish the rest of its setup.
+install_kitty_terminfo() {
+  if ! have tic; then
+    echo "[warn] tic not found (install ncurses-bin); skipping kitty terminfo" >&2
+    return 0
+  fi
+
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  # shellcheck disable=SC2064  # expand tmp_dir now, it is about to go out of scope
+  trap "rm -rf '$tmp_dir'" RETURN
+
+  if ! curl -fsSLo "$tmp_dir/kitty.terminfo" \
+    https://raw.githubusercontent.com/kovidgoyal/kitty/master/terminfo/kitty.terminfo; then
+    echo "[warn] could not download kitty.terminfo; skipping" >&2
+    return 0
+  fi
+
+  if tic -x -o "$HOME/.terminfo" "$tmp_dir/kitty.terminfo"; then
+    echo "Installed kitty terminfo into ~/.terminfo"
+  else
+    echo "[warn] tic failed to compile kitty.terminfo; skipping" >&2
+  fi
+}
+
+install_kitty_terminfo
 
 # Change default shell to zsh
 if have zsh; then

@@ -70,7 +70,11 @@ export RG_AWK_SCRIPT='BEGIN{
       if (match(rest, /^[^:]*:[^:]*:[^:]*:/)) {
         rest = substr(rest, RLENGTH + 1);
       }
-      pretty = mag p rst " " gre rst " " gre rst " " rest;
+      # l and c belong between the colour codes; without them this emitted a
+      # green-on, green-off pair around nothing and the row showed no location
+      # at all — the header above says the display is "path:line[:col]: text",
+      # and st-zoekt renders exactly that from the identical branch.
+      pretty = mag p rst " " gre l rst " " gre c rst " " rest;
     } else {
       if (match(rest, /^[^:]*:[^:]*:/)) {
         rest = substr(rest, RLENGTH + 1);

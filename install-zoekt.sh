@@ -72,7 +72,10 @@ EOF2
   exit 1
 fi
 
-version_spec="${ZOEK_VERSION:-latest}"
+# ZOEK_VERSION was a typo for ZOEKT_VERSION and the only way to pin a version,
+# so anyone who spelled the tool's name right got "latest" without being told.
+# Accept the correct name, and keep honouring the old one.
+version_spec="${ZOEKT_VERSION:-${ZOEK_VERSION:-latest}}"
 go_env=(GO111MODULE=on)
 if go env GOTOOLCHAIN >/dev/null 2>&1; then
   go_env+=(GOTOOLCHAIN=auto)

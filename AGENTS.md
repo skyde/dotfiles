@@ -36,9 +36,10 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 - Neovim configuration is under `common/nvim/.config/nvim`.
 - VS Code extensions are listed in `vscode_extensions.txt` and installed by scripts.
 
-Optional helpers present but not wired into the local scripts:
+Shared helpers:
 
-- `lib/run_ensure.sh` and `lib/cask_app_map.sh` are optional utilities for package management. They are not invoked by `init.sh`/`apply.sh` in this repo but can be sourced manually if desired.
+- `lib/run_ensure.sh` provides `have`, `confirm_change`, `ensure_brew`, `ensure_cask` and `ensure_apt`, and sources `lib/cask_app_map.sh` for the cask→`.app` mapping. `init-linux.sh`, `init-macos.sh` and `install-fast-syntax-highlighting.sh` all source it, and `init.sh` runs the first two — so changing either file affects a real install path. (This note used to say they were unused; they are not.)
+- Note that `lib/run_ensure.sh` sets `-euo pipefail`, which applies to whatever sources it.
 
 Avoid committing secrets or personal data.
 

@@ -81,8 +81,9 @@ install_from_github() {
   # Requires: curl, unzip/tar
   local repo="sxyazi/yazi"
   local os_arch_triple=""
-  local uname_s="$(uname -s)"
-  local uname_m="$(uname -m)"
+  local uname_s uname_m
+  uname_s="$(uname -s)"
+  uname_m="$(uname -m)"
 
   case "$uname_s" in
     Linux)

@@ -1,10 +1,33 @@
-# Create new session detached, name first window 'AI'
-tmux new-session -d -s "$SESSION_NAME" -n "AI"
-tmux send-keys -t "$SESSION_NAME":1 "gemini --yolo --resume" C-m
+#!/usr/bin/env bash
+# Build the default window layout for a new session. Called by tmux-session
+# with SESSION_NAME in the environment; drop a tmux-session-default-layout-local
+# on PATH to override the layout per machine.
+#
+# The shebang is not decorative. tmux-session execs this file directly, and
+# without one execve fails with ENOEXEC and the caller's shell silently retries
+# it under /bin/sh — so the layout ran under a different shell than it was
+# written for, and would not run at all from anything that does not do that
+# fallback.
+set -euo pipefail
 
-# Create second window 'AI'
-tmux new-window -t "$SESSION_NAME":2 -n "AI"
-tmux send-keys -t "$SESSION_NAME":2 "gemini --yolo" C-m
+if [[ -z "${SESSION_NAME:-}" ]]; then
+  echo "tmux-session-default-layout: SESSION_NAME is not set" >&2
+  exit 1
+fi
 
-# Create third window 'terminal'
-tmux new-window -t "$SESSION_NAME":3 -n "terminal"
+# Address windows by the id tmux hands back, not by a literal index.
+#
+# This used to send to "$SESSION_NAME":1 and create ":2" and ":3", which is only
+# right while base-index is 1. That comes from this repo's own .tmux.conf, so
+# against any server started without it — a default server, one launched by
+# another tool, or a machine where the dotfiles are not applied yet — the first
+# window landed at index 0, the send-keys hit "can't find window: 1", and the
+# session came up as windows 0, 2 and 3 with nothing running in the first one.
+# Window ids are assigned by tmux and never depend on the option.
+window_ai_resume="$(tmux new-session -d -s "$SESSION_NAME" -n "AI" -P -F '#{window_id}')"
+tmux send-keys -t "$window_ai_resume" "gemini --yolo --resume" C-m
+
+window_ai="$(tmux new-window -t "$SESSION_NAME:" -n "AI" -P -F '#{window_id}')"
+tmux send-keys -t "$window_ai" "gemini --yolo" C-m
+
+tmux new-window -t "$SESSION_NAME:" -n "terminal"

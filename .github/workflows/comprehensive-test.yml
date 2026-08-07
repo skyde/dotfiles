@@ -51,9 +51,31 @@ jobs:
           test -x apply.sh
           test -x update.sh
 
-          while IFS= read -r -d '' script; do
+          # Syntax-check by shebang rather than by extension: most of this
+          # repo's shell lives in common/.local/bin under names like st, si and
+          # osc-copy, none of which a '*.sh' glob matches.
+          checked=0
+          while IFS= read -r script; do
+            [ -f "$script" ] || continue
+            head -n 1 "$script" | grep -qE '^#!.*(bash|/sh$|env sh)' || continue
             bash -n "$script"
-          done < <(git ls-files -z '*.sh')
+            checked=$((checked + 1))
+          done < <(git ls-files)
+          echo "bash -n over $checked shell scripts"
+
+          # Every executable in common/.local/bin is run by name from a keymap,
+          # a tmux binding or another script, so a missing shebang or lost
+          # execute bit is a real breakage rather than a style nit.
+          while IFS= read -r script; do
+            head -n 1 "$script" | grep -q '^#!' || {
+              echo "Missing shebang: $script" >&2
+              exit 1
+            }
+            test -x "$script" || {
+              echo "Not executable: $script" >&2
+              exit 1
+            }
+          done < <(git ls-files 'common/.local/bin/*')
 
           python3 -m unittest discover -s tests -p 'test_*.py'
 
