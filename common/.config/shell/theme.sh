@@ -34,6 +34,43 @@ FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --reverse --ansi --info=inline --style=minim
 export FZF_DEFAULT_OPTS
 unset _fzf_tn
 
+# --- what Ctrl-T and Alt-C list -------------------------------------------
+# fd rather than the default find walk: it honours .gitignore, and --hidden is
+# not optional in a dotfiles repo, where nearly every interesting file starts
+# with a dot. .git itself is excluded because its contents are never the thing
+# you were looking for.
+#
+# Debian and Ubuntu ship fd as fdfind (the name fd belonged to another package).
+# With neither installed these stay unset and fzf falls back to
+# FZF_DEFAULT_COMMAND for Ctrl-T and to its own find walk for Alt-C, so the
+# bindings still work — they just list a little less.
+if command -v fd >/dev/null 2>&1; then
+	_fzf_fd=fd
+elif command -v fdfind >/dev/null 2>&1; then
+	_fzf_fd=fdfind
+else
+	_fzf_fd=''
+fi
+
+if [ -n "$_fzf_fd" ]; then
+	FZF_CTRL_T_COMMAND="$_fzf_fd --hidden --follow --exclude .git"
+	FZF_ALT_C_COMMAND="$_fzf_fd --type d --hidden --follow --exclude .git"
+	export FZF_CTRL_T_COMMAND FZF_ALT_C_COMMAND
+fi
+unset _fzf_fd
+
+# Preview panes for those two, through the fzf-preview script stowed into
+# ~/.local/bin, which knows how to show a directory, a text file, an image and a
+# binary. Keeping it in a script rather than inline here means bash, zsh and the
+# st-* helpers cannot drift, and the quoting only has to be right once.
+#
+# ctrl-/ toggles the preview: the same key as in the Ctrl-R picker.
+if command -v fzf-preview >/dev/null 2>&1; then
+	FZF_CTRL_T_OPTS="--preview 'fzf-preview {}' --preview-window=right,60%,border-left --bind=ctrl-/:toggle-preview"
+	FZF_ALT_C_OPTS="--preview 'fzf-preview {}' --preview-window=right,50%,border-left --bind=ctrl-/:toggle-preview"
+	export FZF_CTRL_T_OPTS FZF_ALT_C_OPTS
+fi
+
 # --- Ctrl-R history highlighting ------------------------------------------
 # Syntax-highlight the history entries in the Ctrl-R picker with the same
 # BAT_THEME as bat, delta, VS Code and the yazi preview.

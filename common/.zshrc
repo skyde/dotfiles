@@ -212,8 +212,53 @@ if (( $+commands[zoxide] )); then
   _zcache_source zoxide-init "$commands[zoxide]" -- zoxide init zsh
 fi
 
-# -------- fzf-powered history search (Ctrl-R), deduped & reverse-chronological
+# -------- fzf
 if (( $+commands[fzf] )); then
+  # fzf's own shell integration — Ctrl-T to paste a path, Alt-C to cd into a
+  # directory, and the ** completion trigger — was sourced by .bashrc-custom but
+  # never by .zshrc, so the shell actually in use was the one missing it.
+  #
+  # fzf ships that integration two ways. `fzf --zsh` prints it on stdout (0.48
+  # and later); older builds install it as files, in a directory that depends
+  # entirely on who packaged it. The generator below tries the first and falls
+  # back to hunting for the second, and its result goes through the same cache as
+  # the other init scripts — so a warm start reads one compiled file and spawns
+  # nothing, and upgrading fzf invalidates it.
+  #
+  # Loaded only with a terminal attached. Everything in it is a zle widget,
+  # which a `zsh -i -c ...` shell — what an editor or a tool uses to run one
+  # command — can never reach; and fzf's files end by restoring the entire
+  # option array in a single eval, which without a terminal tries to set the
+  # read-only `zle` option and prints "can't change option: zle" on stderr. That
+  # line would then land in the middle of the output of every such command.
+  _fzf_init_text() {
+    local integration dir file
+    if integration=$(fzf --zsh 2>/dev/null) && [[ -n $integration ]]; then
+      print -r -- "$integration"
+      return 0
+    fi
+    # Same locations as .bashrc-custom looks in, plus Homebrew's.
+    #
+    # The cache holds `source` lines rather than the text of those thousand-odd
+    # lines. Copying them in so they would be byte-compiled with the rest was
+    # measured and made no difference: what the two files cost is running them —
+    # defining the widgets, saving and restoring the option array — not parsing
+    # them. `source` lines keep the file that is read the file that shipped.
+    for file in key-bindings.zsh completion.zsh; do
+      for dir in /usr/share/fzf /usr/share/doc/fzf/examples \
+        /opt/homebrew/opt/fzf/shell /usr/local/opt/fzf/shell \
+        "$HOME/.fzf/shell" "$HOME/.fzf"; do
+        if [[ -r $dir/$file ]]; then
+          print -r -- "source ${(q)dir}/$file"
+          break
+        fi
+      done
+    done
+  }
+  [[ -t 0 ]] && _zcache_source fzf-init "$commands[fzf]" -- _fzf_init_text
+  unset -f _fzf_init_text
+
+  # ---- history search (Ctrl-R), deduped & reverse-chronological
   _fzf_history_widget() {
     local selected
     # --ansi is passed explicitly, not just inherited from FZF_DEFAULT_OPTS:
@@ -244,6 +289,9 @@ if (( $+commands[fzf] )); then
     zle reset-prompt
   }
   zle -N _fzf_history_widget
+  # Bound after the integration above, which puts fzf's own fzf-history-widget
+  # on Ctrl-R. This one wins on purpose: it dedupes, syntax-highlights the list
+  # and previews the focused entry wrapped.
   bindkey '^R' _fzf_history_widget
 fi
 

@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# fzf-preview — the preview pane for every fzf picker in these dotfiles.
+#
+#   fzf-preview PATH          preview a file or directory
+#   fzf-preview PATH:LINE     preview a file centred on that line
+#
+# Written as a script rather than a long --preview string so that the zsh
+# bindings, the bash bindings and the helper scripts in this directory all show
+# the same thing, and so the quoting only has to be right once. Everything it
+# uses is optional: with no bat, no eza and no chafa it still prints something
+# useful.
+#
+# Not `set -e`: a preview that cannot render is expected to fall through to a
+# plainer view, never to leave the pane blank.
+set -uo pipefail
+
+target="${1:-}"
+[[ -n $target ]] || exit 0
+
+# Callers like st-rg pass "file:line". A colon is legal in a filename, so the
+# split only happens when the whole path does not exist as given and the tail
+# really is a number.
+line=""
+if [[ ! -e $target && $target =~ ^(.*):([0-9]+):?[0-9]*$ ]]; then
+  target="${BASH_REMATCH[1]}"
+  line="${BASH_REMATCH[2]}"
+fi
+
+# fzf exports the pane size; fall back to the terminal's own when run by hand.
+width="${FZF_PREVIEW_COLUMNS:-${COLUMNS:-80}}"
+height="${FZF_PREVIEW_LINES:-${LINES:-40}}"
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+# Debian and Ubuntu ship bat as batcat, because the name bat was taken.
+bat_cmd=""
+if have bat; then
+  bat_cmd=bat
+elif have batcat; then
+  bat_cmd=batcat
+fi
+
+if [[ ! -e $target ]]; then
+  printf '%s: no such file or directory\n' "$target"
+  exit 0
+fi
+
+# Every renderer below is attempted rather than exec'd, so an option an older
+# build does not recognise falls through to the next-plainest view instead of
+# leaving the pane showing only an error.
+if [[ -d $target ]]; then
+  # Two levels is the useful compromise: enough to see how a directory is
+  # organised, not so much that a node_modules scrolls the real entries away.
+  if have eza; then
+    eza --tree --level=2 --icons --group-directories-first --color=always \
+      -- "$target" && exit 0
+  fi
+  if have tree; then
+    tree -L 2 -C -- "$target" && exit 0
+  fi
+  ls -A -- "$target"
+  exit 0
+fi
+
+# An image is worth showing when the terminal can: chafa renders to cells, so it
+# works over ssh and inside tmux where the graphics protocols often do not.
+case "${target,,}" in
+  *.png | *.jpg | *.jpeg | *.gif | *.bmp | *.webp | *.avif)
+    if have chafa; then
+      chafa --size="${width}x${height}" -- "$target" && exit 0
+    fi
+    ;;
+esac
+
+# Anything that is not text: say what it is and how big, rather than pouring
+# bytes into the terminal.
+if have file && [[ $(file --mime-encoding --brief -- "$target" 2>/dev/null) == binary ]]; then
+  file --brief -- "$target"
+  bytes="$(wc -c <"$target" | tr -d ' ')"
+  if have numfmt; then
+    printf 'size: %s\n' "$(printf '%s\n' "$bytes" | numfmt --to=iec --suffix=B)"
+  else
+    printf 'size: %s bytes\n' "$bytes"
+  fi
+  exit 0
+fi
+
+if [[ -n $bat_cmd ]]; then
+  bat_args=(
+    --style=numbers
+    --color=always
+    --paging=never
+    --terminal-width="$width"
+  )
+  if [[ -n $line ]]; then
+    # Centre the match: half a pane above, half below, clamped at the top.
+    context=$((height / 2))
+    start=$((line - context))
+    ((start < 1)) && start=1
+    bat_args+=(--highlight-line="$line" --line-range="$start:$((start + height))")
+  else
+    # Enough to judge a file by, without reading a 50MB log into the pager.
+    bat_args+=(--line-range=":500")
+  fi
+  "$bat_cmd" "${bat_args[@]}" -- "$target" && exit 0
+fi
+
+# No bat: still respect the line window, so a picker's preview lands near the
+# match instead of always at the top of the file.
+if [[ -n $line ]]; then
+  context=$((height / 2))
+  start=$((line - context))
+  ((start < 1)) && start=1
+  exec sed -n "${start},$((start + height))p" "$target"
+fi
+exec head -n 500 -- "$target"

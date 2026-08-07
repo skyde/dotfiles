@@ -83,6 +83,17 @@ fi
 export HOME="$bench_home"
 export ZDOTDIR="$bench_home"
 
+# The sandbox HOME mirrors common/ with symlinks, so ~/.local points into the
+# checkout. Redirected here for the same reason as in tests/run-zsh-specs.sh: a
+# tool that keeps state under ~/.local/share (zoxide does) would otherwise write
+# into the working tree while being benchmarked.
+if ! $use_real_home; then
+  export XDG_CACHE_HOME="$bench_home/.cache"
+  export XDG_DATA_HOME="$sandbox/data"
+  export XDG_STATE_HOME="$sandbox/state"
+  mkdir -p "$XDG_CACHE_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME"
+fi
+
 if $profile; then
   # zprof has to be loaded before the config runs, so the profiled shell gets a
   # ZDOTDIR of its own whose .zshrc wraps the real one. .zshenv is symlinked
@@ -99,40 +110,66 @@ EOF
   exit "$?"
 fi
 
+# The timing loop, run below with a terminal attached if one can be arranged.
+#
+# Measuring `zsh -i -c exit` from a plain pipe would leave out real work: the
+# config skips fzf's key bindings when there is no terminal, because they are
+# widgets nothing without one can reach. A shell you actually sit in front of
+# pays for them, so the number should include them.
+timing_script="$(mktemp)"
+result_file="$(mktemp)"
+trap 'rm -rf "${sandbox:-}" "${prof_dir:-}" "$timing_script" "$result_file"' EXIT
+
+cat >"$timing_script" <<'SCRIPT'
+zmodload zsh/datetime
+integer runs=${ZSH_BENCH_RUNS:-20}
+local -a samples
+integer i
+float start
+
 # The first startups build the completion dump and warm the page cache; they are
 # not what a normal shell start costs, so they are run and thrown away.
-zsh --no-globalrcs -i -c exit >/dev/null 2>&1
-zsh --no-globalrcs -i -c exit >/dev/null 2>&1
+repeat 2 zsh --no-globalrcs -i -c exit >/dev/null 2>&1
 
-report="$(
-  zsh -f -c '
-    zmodload zsh/datetime
-    integer runs=$1
-    local -a samples
-    integer i
-    float start
-    for (( i = 1; i <= runs; i++ )); do
-      start=$EPOCHREALTIME
-      zsh --no-globalrcs -i -c exit >/dev/null 2>&1
-      samples+=( $(( (EPOCHREALTIME - start) * 1000.0 )) )
-    done
-    samples=( ${(on)samples} )
-    integer mid=$(( (runs + 1) / 2 ))
-    integer p90=$(( (runs * 9 + 9) / 10 ))
-    (( p90 > runs )) && p90=runs
-    float total=0
-    for s in $samples; do (( total += s )); done
-    printf "%.1f %.1f %.1f %.1f %.1f\n" \
-      $samples[1] $samples[mid] $samples[p90] $samples[-1] $(( total / runs ))
-  ' _ "$runs"
-)" || {
+for (( i = 1; i <= runs; i++ )); do
+  start=$EPOCHREALTIME
+  zsh --no-globalrcs -i -c exit >/dev/null 2>&1
+  samples+=( $(( (EPOCHREALTIME - start) * 1000.0 )) )
+done
+
+samples=( ${(on)samples} )
+integer mid=$(( (runs + 1) / 2 ))
+integer p90=$(( (runs * 9 + 9) / 10 ))
+(( p90 > runs )) && p90=runs
+float total=0
+for s in $samples; do (( total += s )); done
+printf "%.1f %.1f %.1f %.1f %.1f\n" \
+  $samples[1] $samples[mid] $samples[p90] $samples[-1] $(( total / runs )) \
+  >| $ZSH_BENCH_RESULT
+SCRIPT
+
+export ZSH_BENCH_RUNS="$runs"
+export ZSH_BENCH_RESULT="$result_file"
+
+attached="with a terminal attached"
+if command -v python3 >/dev/null 2>&1; then
+  ZSH_PTY_TIMEOUT=$((60 + runs * 3)) \
+    python3 tests/zsh_pty.py "$timing_script" >/dev/null 2>&1
+else
+  # No python3 to open a pty: measure what can be measured and say what is
+  # missing, rather than quietly reporting a smaller number.
+  attached="without a terminal (no python3 for a pty; fzf's bindings not included)"
+  zsh -f "$timing_script"
+fi
+
+if [[ ! -s "$result_file" ]]; then
   echo "benchmark failed" >&2
   exit 1
-}
+fi
 
-read -r bmin bmed bp90 bmax bmean <<<"$report"
+read -r bmin bmed bp90 bmax bmean <"$result_file"
 
-printf 'zsh interactive startup over %s runs (ms)\n' "$runs"
+printf 'zsh interactive startup over %s runs, %s (ms)\n' "$runs" "$attached"
 printf '  min %8s\n  median %5s\n  p90 %8s\n  max %8s\n  mean %7s\n' \
   "$bmin" "$bmed" "$bp90" "$bmax" "$bmean"
 

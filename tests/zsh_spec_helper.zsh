@@ -248,6 +248,31 @@ spec_env_value() {
   command env -u "$var" zsh --no-globalrcs -c "print -r -- \${$var-}" 2>/dev/null
 }
 
+# spec_pty_capture <zsh code>
+#   Runs the code in an interactive shell that has a real terminal, and returns
+#   what it printed. For the parts of the config that only exist with a terminal
+#   attached — fzf's key bindings, anything looked up through zsh/terminfo, the
+#   line editor itself.
+#
+#   The code's output is redirected to a file inside the pty rather than read
+#   back off the terminal, so none of it has to be recovered from the echo of the
+#   input or from the prompt drawn around it.
+spec_pty_capture() {
+  local code=$1
+  local script="$SPEC_TMP/pty-script.zsh" out="$SPEC_TMP/pty-output"
+  {
+    print -r -- "{"
+    print -r -- "$code"
+    print -r -- "} >| ${(q)out} 2>&1"
+  } >| "$script"
+  : >| "$out"
+  command python3 "$SPEC_REPO/tests/zsh_pty.py" "$script" >/dev/null 2>&1
+  print -r -- "$(<$out)"
+}
+
+# spec_can_pty — true when a pty-backed shell can be run at all.
+spec_can_pty() { (( $+commands[python3] )); }
+
 # spec_stub <name> <shell body>
 #   Puts an executable of that name first on PATH and prints its path. Lets a
 #   spec exercise a wrapper function — `gg`, `e`, `code`, the git wrapper —

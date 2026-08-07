@@ -33,6 +33,17 @@ trap 'rm -rf "$sandbox"' EXIT
 export XDG_CACHE_HOME="$sandbox/cache"
 mkdir -p "$XDG_CACHE_HOME"
 
+# The fake HOME mirrors common/ with symlinks, so ~/.local in it points *into the
+# checkout*. Any tool that stores state under ~/.local/share or ~/.local/state
+# would therefore write into the working tree — zoxide did exactly that, and its
+# database, full of the specs' temporary directories, ended up staged for commit.
+# Pointing the XDG data and state directories at the sandbox keeps the checkout
+# read-only for the duration of a run.
+export XDG_DATA_HOME="$sandbox/data"
+export XDG_STATE_HOME="$sandbox/state"
+export XDG_RUNTIME_DIR="$sandbox/runtime"
+mkdir -p "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_RUNTIME_DIR"
+
 # Mirror common/ into a fake HOME the way stow would: a symlink per entry, with
 # .config expanded one level so a spec can add files under it. Anything new in
 # common/ is picked up automatically.
@@ -54,6 +65,15 @@ mirror_common() {
 
 status=0
 ran=0
+
+# The state of the working tree before anything runs. Compared again at the end:
+# a spec that writes into the checkout — through one of those ~/.local symlinks,
+# or by using the repo as a scratch directory — is a bug in the spec, and one
+# that otherwise shows up much later as a stray file swept into a commit.
+tree_before=""
+if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; then
+  tree_before="$(git status --porcelain)"
+fi
 
 for spec in tests/zsh_*_spec.zsh; do
   [[ -e "$spec" ]] || continue
@@ -91,6 +111,15 @@ done
 if ((ran == 0)); then
   echo "no specs matched ${filter:-*}" >&2
   exit 1
+fi
+
+if [[ -n "$tree_before" || -n "$(git status --porcelain 2>/dev/null)" ]]; then
+  tree_after="$(git status --porcelain 2>/dev/null)"
+  if [[ "$tree_before" != "$tree_after" ]]; then
+    printf '\nFAILED: the specs changed the working tree\n' >&2
+    diff <(printf '%s\n' "$tree_before") <(printf '%s\n' "$tree_after") >&2 || true
+    status=1
+  fi
 fi
 
 exit "$status"

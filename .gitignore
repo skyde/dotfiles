@@ -4,3 +4,8 @@
 .dotfiles_backup_*
 
 __pycache__/
+
+# zoxide keeps its database here; it is machine state, not configuration,
+# and a dotfiles clone should not carry one machine every directory the other
+# has visited.
+common/.local/share/zoxide/

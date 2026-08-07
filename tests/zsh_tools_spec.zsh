@@ -224,6 +224,62 @@ fi
 
 assert_contains 'grep colours its output' '--color=auto' "${aliases[grep]-}"
 
+spec_section 'fzf pickers know what to list and how to preview it'
+
+if spec_have fzf; then
+  # Unset means "fall back to fzf's own walker", which still works — so these
+  # are only asserted where fd, the tool they are built on, exists.
+  if (( $+commands[fd] || $+commands[fdfind] )); then
+    assert_contains 'Ctrl-T lists hidden files too' '--hidden' \
+      "$(spec_env_value FZF_CTRL_T_COMMAND)"
+    assert_contains 'Ctrl-T skips .git' '--exclude .git' \
+      "$(spec_env_value FZF_CTRL_T_COMMAND)"
+    assert_contains 'Alt-C lists only directories' '--type d' \
+      "$(spec_env_value FZF_ALT_C_COMMAND)"
+  fi
+
+  if (( $+commands[fzf-preview] )); then
+    assert_contains 'Ctrl-T previews the highlighted path' 'fzf-preview' \
+      "$(spec_env_value FZF_CTRL_T_OPTS)"
+    assert_contains 'Alt-C previews the highlighted directory' 'fzf-preview' \
+      "$(spec_env_value FZF_ALT_C_OPTS)"
+  fi
+fi
+
+spec_section 'fzf-preview'
+
+if (( $+commands[fzf-preview] )); then
+  # A preview pane that comes up empty or spills an error is worse than a plain
+  # one, so each kind of target is checked for something recognisable.
+  assert_contains 'a directory shows what is in it' 'zsh_tools_spec' \
+    "$(FZF_PREVIEW_COLUMNS=80 fzf-preview "$SPEC_REPO/tests" 2>&1)"
+
+  assert_contains 'a text file shows its contents' 'shellcheck shell' \
+    "$(FZF_PREVIEW_COLUMNS=80 fzf-preview "$SPEC_REPO/tests/zsh_tools_spec.zsh" 2>&1)"
+
+  # "path:line" is what the st-* pickers pass; the window has to land on the
+  # line, not at the top of the file.
+  typeset -g _numbered="$SPEC_TMP/numbered.txt"
+  : >| "$_numbered"
+  for i in {1..400}; do print -r -- "line-$i" >> "$_numbered"; done
+  typeset -g _line_preview
+  _line_preview=$(FZF_PREVIEW_COLUMNS=80 FZF_PREVIEW_LINES=20 fzf-preview "$_numbered:300" 2>&1)
+  assert_contains 'a line reference previews around that line' 'line-300' "$_line_preview"
+  refute_contains 'a line reference does not preview from the top' 'line-1 ' "$_line_preview"
+
+  assert_contains 'a binary reports its type instead of its bytes' 'size:' \
+    "$(fzf-preview "${commands[zsh]}" 2>&1)"
+
+  # fzf runs the preview for whatever is highlighted, including a path that has
+  # just been deleted; it must not spill a shell error into the pane.
+  typeset -g _missing_preview
+  _missing_preview=$(fzf-preview "$SPEC_TMP/definitely-not-here" 2>&1)
+  assert_eq 'a missing path previews cleanly' 0 "$?"
+  assert_contains 'a missing path says so' 'no such file' "$_missing_preview"
+else
+  spec_skip 'fzf-preview' 'fzf-preview is not on PATH (~/.local/bin not stowed?)'
+fi
+
 spec_section 'man pages'
 
 if (( $+commands[bat] || $+commands[batcat] )); then
