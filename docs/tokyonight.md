@@ -302,7 +302,7 @@ accent chosen to be instantly findable against the blue-violet palette. Keep it.
 | ripgrep  | `common/.ripgreprc`                                   |
 | search pickers | `common/.local/bin/st-rg`, `common/.local/bin/st-zoekt` (the awk prefix) |
 | yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
-| lf       | `common/.config/lf/colors` (file names), `common/.config/lf/lfrc` (the `# Theme` section) |
+| lf       | `common/.config/lf/colors` (file names), `common/.config/lf/lfrc` (the `# Theme` section), `common/.config/lf/icons` (deliberately colourless) |
 | btop     | `common/.config/btop/themes/tokyo-night.theme`        |
 
 `tests/check-theme.py` reads this table to decide what to scan, so a tool is
