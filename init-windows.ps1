@@ -34,19 +34,43 @@ if (Test-Path "$llvmBin\clang.exe") {
         $env:PATH += ";$llvmBin"
         Write-Host "Temporarily added LLVM to PATH for this session."
     }
-    $clangVersion = & "$llvmBin\clang.exe" --version
+    $clangVersion = (& "$llvmBin\clang.exe" --version | Select-Object -First 1)
     Write-Host "clang is available: $clangVersion"
-} else {
+} elseif (Test-Path $llvmBin) {
     Write-Warning "LLVM is installed but clang.exe was not found in $llvmBin. You may need to reinstall or check your LLVM installation."
+} else {
+    # The old else-branch asserted "LLVM is installed" whenever clang.exe was
+    # absent — which is exactly what a machine without LLVM looks like, so the
+    # message told you to reinstall something you had never installed.
+    Write-Warning "LLVM not found at $llvmBin. Install it with: winget install LLVM.LLVM"
 }
 
-# Check for JetBrainsMono Nerd Font installation
-$fontName = "JetBrainsMono Nerd Font"
-$fontInstalled = (Get-ChildItem -Path "$env:WINDIR\Fonts" -Include "*JetBrainsMono*NF*.ttf" -Recurse -ErrorAction SilentlyContinue | Measure-Object).Count -gt 0
+# Check for JetBrainsMono Nerd Font installation.
+#
+# Matched on the names Nerd Fonts actually ships. The old pattern was
+# "*JetBrainsMono*NF*.ttf", which requires the literal text "NF" after the
+# family name; current releases are called JetBrainsMonoNerdFont-Regular.ttf,
+# JetBrainsMonoNerdFontMono-Bold.ttf and so on, none of which contain it. The
+# check matched nothing and warned on every run, even with the font installed.
+#
+# Per-user installs land in %LOCALAPPDATA%\Microsoft\Windows\Fonts and were not
+# looked at either, so a font installed without admin rights read as missing.
+$fontDirs = @(
+    (Join-Path $env:WINDIR 'Fonts'),
+    (Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts')
+) | Where-Object { $_ -and (Test-Path $_) }
+
+$fontInstalled = @(
+    $fontDirs | ForEach-Object {
+        Get-ChildItem -Path $_ -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like 'JetBrainsMono*Nerd*Font*.ttf' -or $_.Name -like 'JetBrainsMono*Nerd*Font*.otf' }
+    }
+).Count -gt 0
+
 if (-not $fontInstalled) {
-    Write-Warning "JetBrainsMono-NF font is not installed. Please install it manually from https://github.com/ryanoasis/nerd-fonts/releases."
+    Write-Warning "JetBrainsMono Nerd Font is not installed. Install it from https://github.com/ryanoasis/nerd-fonts/releases, or with: winget install DEVCOM.JetBrainsMonoNerdFont"
 } else {
-    Write-Host "JetBrainsMono-NF font is already installed."
+    Write-Host "JetBrainsMono Nerd Font is already installed."
 }
 
 # Configure key repeat behavior for Vim and general usage
