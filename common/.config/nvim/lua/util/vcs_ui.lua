@@ -1125,6 +1125,10 @@ local PREFETCH_MAX_BYTES = 32 * 1024 * 1024
 -- how many times running before pressing on regardless.
 local PREFETCH_YIELD_MS = 60
 local PREFETCH_YIELD_MAX = 50
+-- Floor on the gap between the sweep's intermediate panel repaints. See paint()
+-- in prefetch_bases: the point of those is that the +n -n numbers visibly
+-- arrive, and past a few a second nobody can read them anyway.
+local PAINT_MIN_INTERVAL_MS = 150
 
 ---Roughly how much memory a cached base occupies.
 local function content_bytes(lines)
@@ -1188,11 +1192,26 @@ local function prefetch_bases()
   vcs.async(function()
     local ok, err = pcall(function()
       local stats_dirty = 0
-      local function paint()
-        if stats_dirty > 0 and gen == prefetch_gen and valid() then
-          render_panel()
-          stats_dirty = 0
+      local last_paint = 0
+      ---@param force boolean|nil  the last paint of a sweep, which always lands
+      local function paint(force)
+        if stats_dirty == 0 or gen ~= prefetch_gen or not valid() then
+          return
         end
+        -- A repaint rewrites every panel line and re-places two extmarks per
+        -- row: under a millisecond on a short listing, ~19ms on a two-thousand
+        -- file one. The batch counter alone does not bound that — 2000 files in
+        -- batches of 16 is 125 chances to spend 19ms on the main thread, and
+        -- only about forty rows are on screen to see the result. Rate-limit the
+        -- intermediate paints instead, so numbers still visibly arrive while the
+        -- sweep stops competing with typing.
+        local now = vim.uv.hrtime() / 1e6
+        if not force and last_paint > 0 and now - last_paint < PAINT_MIN_INTERVAL_MS then
+          return
+        end
+        last_paint = now
+        render_panel()
+        stats_dirty = 0
       end
       -- Files this sweep has already looked at, so one the render path filled
       -- in is passed over rather than reconsidered on every pick.
@@ -1262,7 +1281,7 @@ local function prefetch_bases()
           end
         end
       end
-      paint()
+      paint(true)
     end)
     -- Only the newest prefetch owns the flag; and it must clear it on error
     -- too, or busy() would report a prefetch that no longer exists.
