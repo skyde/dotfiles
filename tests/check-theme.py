@@ -902,6 +902,45 @@ def _check_git_colours(verbose):
     return problems
 
 
+def _check_wezterm_config(verbose):
+    """Have wezterm evaluate its config, since it validates every colour.
+
+    wezterm's config is Lua that has to convert into a Rust struct, so a bad
+    key or an unparseable colour is a hard error naming both -- "Error
+    processing colors.foreground ... failed to parse #zzzzzz as RgbaColor".
+    That makes it the strictest oracle here.
+
+    `ls-fonts` is used only because it is a subcommand that loads the config
+    and exits. Its own complaint -- that the configured font is not installed
+    -- is ignored: that is a property of the machine, not of the config, and
+    treating it as a failure would make this fail on every box without
+    JetBrainsMono.
+    """
+    import shutil
+    import subprocess
+
+    if shutil.which("wezterm") is None:
+        if verbose:
+            print("  wezterm not installed, its config not evaluated")
+        return []
+
+    conf = os.path.join(REPO, "common/.config/wezterm/wezterm.lua")
+    try:
+        out = subprocess.run(["wezterm", "--config-file", conf, "ls-fonts"],
+                             capture_output=True, text=True, timeout=60,
+                             stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return ["could not run wezterm: %s" % exc]
+
+    problems = []
+    for line in (out.stdout + out.stderr).splitlines():
+        if "ERROR" in line and "font" not in line.lower():
+            problems.append("wezterm: %s" % line.split("ERROR", 1)[-1].strip())
+    if verbose and not problems:
+        print("  wezterm evaluates its config with every colour parsing")
+    return problems
+
+
 def _check_ripgrep_config(verbose):
     """Let ripgrep parse its own config, since it is strict about colours.
 
@@ -1082,6 +1121,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_bat_theme(verbose))
     problems.extend(_check_kitty_config(verbose))
     problems.extend(_check_git_colours(verbose))
+    problems.extend(_check_wezterm_config(verbose))
     problems.extend(_check_nvim_delta_parity(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))

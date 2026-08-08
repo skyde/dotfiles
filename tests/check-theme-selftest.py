@@ -49,6 +49,7 @@ BTOP = "common/.config/btop/themes/tokyo-night.theme"
 STARSHIP = "common/.config/starship.toml"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
 NVIM_THEME = "common/.config/nvim/lua/plugins/tokyonight.lua"
+WEZTERM = "common/.config/wezterm/wezterm.lua"
 FF = "common/.local/bin/ff"
 PSPROFILE = "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
 ZSHENV = "common/.zshenv"
@@ -89,6 +90,12 @@ MUTATIONS = [
      r'c\.terminal\.black_bright = "#85899c"',
      'c.terminal.black_bright = "#414868"',
      "ANSI 8 disagrees", None),
+
+    # wezterm's config is Lua converted into a Rust struct, so an unparseable
+    # colour is a hard error naming the key. The strictest oracle here.
+    ("a wezterm colour wezterm cannot parse", "parity", WEZTERM,
+     r"inactive_tab_edge = '#16161e'", "inactive_tab_edge = '#zzzzzz'",
+     "failed to parse", "wezterm"),
 
     ("a titlebar that disagrees between terminals", "parity", KITTY,
      r"macos_titlebar_color #16161e", "macos_titlebar_color #1a1b26",

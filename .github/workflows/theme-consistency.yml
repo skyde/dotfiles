@@ -96,6 +96,19 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends kitty
           || echo "kitty unavailable; its config check will skip"
 
+      # wezterm is the strictest of the config oracles — its Lua has to convert
+      # into a Rust struct, so an unparseable colour is a hard error naming the
+      # key. Worth the download; not fatal if it fails.
+      - name: Install wezterm
+        run: |
+          url=https://github.com/wez/wezterm/releases/download/20240203-110809-5046fc22/wezterm-20240203-110809-5046fc22.Ubuntu22.04.deb
+          if curl -fsSL -o /tmp/wezterm.deb "$url"; then
+            sudo dpkg -i /tmp/wezterm.deb || sudo apt-get -y -f install
+            wezterm --version
+          else
+            echo "wezterm unavailable; its config check will skip"
+          fi
+
       - name: Check the theme
         run: tests/check-theme.py --verbose
 
