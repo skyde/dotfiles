@@ -597,6 +597,29 @@ BAT_CALL_SITES = [
 ]
 BAT_INVOCATION = re.compile(r"(?<![\w-])bat\s+--")
 
+# COLORTERM has to be *set*, not merely mentioned. Every one of these files
+# explains in a comment why it forces truecolor, and an earlier version of this
+# check accepted the explanation as the deed: deleting the real
+# `export COLORTERM` from lf/preview.sh left the comment above it, and the
+# check went on passing.
+BAT_COLORTERM_SET = re.compile(
+    r'COLORTERM\s*=|export\s+COLORTERM|:env\(\s*[\'"]COLORTERM[\'"]')
+
+# yazi previews through bat from Lua, which spawns it as a command object
+# rather than a shell word, so the pattern above never saw it. It has two
+# spawn paths -- the plain one and the byte-capped one for single-line
+# monsters -- and each sets COLORTERM separately, so one could lose it while
+# the other kept it and only huge files would go dull.
+BAT_LUA = "common/.config/yazi/plugins/bat-preview.yazi/main.lua"
+# Two shapes: the plain path spawns bat directly, the capped one pipes into it
+# inside an `sh -c` string. Both are bat, both need COLORTERM.
+BAT_LUA_SPAWN = re.compile(r'Command\(\s*"bat"\s*\)|(?<![\w-])bat\s+--')
+# Deliberately short. The two spawn paths sit ~28 lines apart, so a window wide
+# enough to reach from one to the other would let either of them satisfy the
+# check on the other's behalf -- and the failure being guarded against is
+# exactly one of them losing it while the other keeps it.
+BAT_LUA_WINDOW = 15
+
 
 def _check_bat_truecolor(verbose):
     problems = []
@@ -611,15 +634,33 @@ def _check_bat_truecolor(verbose):
             if stripped.startswith("#") or not BAT_INVOCATION.search(line):
                 continue
             sites += 1
-            # On the line itself, or exported earlier in the same file.
-            if "COLORTERM" in line or any("COLORTERM" in earlier
-                                          for earlier in lines[:i - 1]):
+            # On the line itself, or really set earlier in the same file --
+            # in code, not in the comment that explains why it is needed.
+            earlier = [e for e in lines[:i - 1]
+                       if not e.strip().startswith("#")]
+            if BAT_COLORTERM_SET.search(line) or any(
+                    BAT_COLORTERM_SET.search(e) for e in earlier):
                 continue
             problems.append(
                 "%s:%d runs bat without forcing COLORTERM, so this pane drops "
                 "to 256 colours under tmux, the VS Code terminal or ssh"
                 % (rel, i)
             )
+    lua = os.path.join(REPO, BAT_LUA)
+    if os.path.isfile(lua):
+        lua_lines = open(lua, encoding="utf-8").read().splitlines()
+        for i, line in enumerate(lua_lines):
+            if line.strip().startswith("--") or not BAT_LUA_SPAWN.search(line):
+                continue
+            sites += 1
+            window = lua_lines[i:i + BAT_LUA_WINDOW]
+            if not any(BAT_COLORTERM_SET.search(w) for w in window
+                       if not w.strip().startswith("--")):
+                problems.append(
+                    "%s:%d spawns bat without setting COLORTERM on it, so "
+                    "this preview path drops to 256 colours"
+                    % (BAT_LUA, i + 1))
+
     if verbose and not problems:
         print("  %d bat call sites all force truecolor" % sites)
     return problems

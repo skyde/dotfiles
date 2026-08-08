@@ -47,6 +47,8 @@ TMUX = "common/.tmux.conf"
 RGRC = "common/.ripgreprc"
 BTOP = "common/.config/btop/themes/tokyo-night.theme"
 DOCTOR = "doctor-theme.sh"
+PREVIEW_SH = "common/.config/lf/preview.sh"
+BATPREVIEW = "common/.config/yazi/plugins/bat-preview.yazi/main.lua"
 STZOEKT = "common/.local/bin/st-zoekt"
 LAZYGIT = "common/.config/lazygit/config.yml"
 STARSHIP = "common/.config/starship.toml"
@@ -347,6 +349,23 @@ MUTATIONS = [
      r"mag=\\\"\\\\033\[38;2;122;162;247m",
      'mag=\\"\\\\033[38;2;158;206;106m',
      "the same result, two colours", None),
+
+    # Every one of these files explains in a comment why it forces truecolor,
+    # and the check used to accept the explanation as the deed: deleting the
+    # real export left the comment above it and nothing complained.
+    ("a bat call site whose COLORTERM is only a comment", "parity", PREVIEW_SH,
+     r"COLORTERM=truecolor\nexport COLORTERM\n", "",
+     "without forcing COLORTERM", None),
+
+    # yazi previews through bat from Lua, with two spawn paths ~28 lines apart
+    # that each set COLORTERM separately. Aimed at the capped one, which runs
+    # bat inside an `sh -c` string rather than as a command object, so it needs
+    # both a different pattern and a window too short to be covered by the
+    # other path's env call.
+    ("a yazi preview path that drops to 256 colours", "parity", BATPREVIEW,
+     r'Command\("sh"\)\n\tpcall\(function\(\)\n\t\tcmd = cmd:env\("COLORTERM", "truecolor"\)',
+     'Command("sh")\n\tpcall(function()\n\t\tcmd = cmd',
+     "drops to 256 colours", None),
 
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
