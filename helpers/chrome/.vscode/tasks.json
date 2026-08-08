@@ -78,6 +78,66 @@
         "clear": true
       },
       "problemMatcher": []
+    },
+    {
+      "label": "chromium: launch renderer for native attach",
+      "type": "shell",
+      "command": "${workspaceFolder}/tools/grab_renderer_pid.sh",
+      "args": [
+        "${config:chromium.nativeAttachUrl}",
+        "${config:chromium.rendererPidFile}",
+        "${config:chromium.nativeUserDataDir}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "CHROME": "${workspaceFolder}/${config:chromium.buildDir}/${config:chromium.runtimeExecutable}",
+          "GRAB_RENDERER_TIMEOUT": "${config:chromium.rendererWaitTimeout}"
+        }
+      },
+      "osx": {
+        "options": {
+          "cwd": "${workspaceFolder}",
+          "env": {
+            "CHROME": "${workspaceFolder}/${config:chromium.buildDir}/${config:chromium.runtimeExecutableMac}",
+            "GRAB_RENDERER_TIMEOUT": "${config:chromium.rendererWaitTimeout}"
+          }
+        }
+      },
+      "linux": {
+        "options": {
+          "cwd": "${workspaceFolder}",
+          "env": {
+            "CHROME": "${workspaceFolder}/${config:chromium.buildDir}/${config:chromium.runtimeExecutableLinux}",
+            "GRAB_RENDERER_TIMEOUT": "${config:chromium.rendererWaitTimeout}"
+          }
+        }
+      },
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}\\tools\\grab_renderer_pid.ps1",
+          "-Chrome",
+          "${workspaceFolder}\\${config:chromium.buildDir}\\${config:chromium.runtimeExecutableWindows}",
+          "-Url",
+          "${config:chromium.nativeAttachUrl}",
+          "-OutFile",
+          "${config:chromium.rendererPidFile}",
+          "-ProfileDir",
+          "${config:chromium.nativeUserDataDir}",
+          "-TimeoutSeconds",
+          "${config:chromium.rendererWaitTimeout}"
+        ]
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
     }
   ]
 }

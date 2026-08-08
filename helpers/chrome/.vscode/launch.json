@@ -51,6 +51,34 @@
         "script import lldbinit",
         "script import chromium_visualizers"
       ]
+    },
+    {
+      "name": "Chromium: Attach renderer by URL (CodeLLDB)",
+      "type": "lldb",
+      "request": "attach",
+      "pid": "${input:chromiumRendererPid}",
+      "preLaunchTask": "chromium: launch renderer for native attach",
+      "stopOnEntry": false,
+      "initCommands": [
+        "script sys.path[:0] = ['${workspaceFolder}/tools/lldb']",
+        "script import lldbinit",
+        "script import chromium_visualizers"
+      ],
+      "postRunCommands": [
+        "process signal SIGUSR1"
+      ]
+    }
+  ],
+  // Requires the Command Variable extension for reading the renderer PID file.
+  "inputs": [
+    {
+      "id": "chromiumRendererPid",
+      "type": "command",
+      "command": "extension.commandvariable.file.content",
+      "args": {
+        "fileName": "${config:chromium.rendererPidFile}",
+        "trim": true
+      }
     }
   ]
 }
