@@ -864,7 +864,7 @@ quietly approximating it.
 
   The same machinery answers a blunter question: how much of the theme is
   actually pinned? `--report-unpinned` changes each colour to another
-  *documented* colour and reports where nothing failed. 244 of 568 do not — which is not all wrong, a
+  *documented* colour and reports where nothing failed. 224 of 548 do not — which is not all wrong, a
   colour with no counterpart in another tool has nothing to be pinned to — but
   it is the honest number, and it is where the next check should come from.
   `.zshrc` was 32 of its 41 until the command line got tied to the table above;
