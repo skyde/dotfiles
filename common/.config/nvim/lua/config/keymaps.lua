@@ -167,13 +167,14 @@ map("n", "<D-a>", "ggVG", { desc = "Select all" })
 pcall(vim.keymap.del, "n", "<S-h>")
 pcall(vim.keymap.del, "n", "<S-l>")
 
--- These are commented out for now as they are not working. Maybe kitty on Mac does not pick up the event?
--- Next buffer: Cmd+Shift+]
+-- Cmd+Shift+] / Cmd+Shift+[ as Neovim sees them in a GUI such as Neovide. A
+-- terminal cannot deliver them — Cmd is invisible to Neovim there — which is
+-- what the Shift+F pair below is for, not that these are unused.
 map("n", "<D-S-]>", ":bnext<CR>", { desc = "Next buffer" })
--- Previous buffer: Cmd+Shift+[
 map("n", "<D-S-[>", ":bprevious<CR>", { desc = "Previous buffer" })
 
--- Same actions via Shift+F12/F13 (sent by kitty Cmd+Shift+] and [)
+-- The same two through the Shift+F space, which is how kitty forwards
+-- Cmd+Shift+[ and Cmd+Shift+] — see docs/footpedal-keys.md.
 map_shift_f(1, "<cmd>bprevious<CR>", { mode = { "n", "i" }, desc = "Previous buffer" })
 map_shift_f(12, "<cmd>bnext<CR>", { mode = { "n", "i" }, desc = "Next buffer" })
 

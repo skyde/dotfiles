@@ -69,8 +69,11 @@ map("n", "<leader>E", function()
   if path == "" then
     path = vim.fn.getcwd()
   end
+  -- `/select,` and the path are a single argument to explorer. Split into two,
+  -- it silently drops the selection and opens the default folder instead —
+  -- which looks like the key half-working rather than being passed wrong.
   local opener = vim.fn.has("mac") == 1 and { "open", "-R", path }
-    or vim.fn.has("win32") == 1 and { "explorer", "/select,", path }
+    or vim.fn.has("win32") == 1 and { "explorer", "/select," .. path }
     or { "xdg-open", vim.fn.fnamemodify(path, ":h") }
   vim.system(opener)
 end, { desc = "Reveal in file manager" })

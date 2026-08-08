@@ -460,6 +460,72 @@ do
 end
 
 --------------------------------------------------------------------------
+-- config.parity: reveal in file manager
+--------------------------------------------------------------------------
+
+-- The one binding in parity.lua that builds a command line rather than calling
+-- a plugin, so it is the one that can be wrong on a platform nobody is sitting
+-- at. Loading the module needs no plugins: every callback reaches for Snacks
+-- and dap from inside itself, and which-key is behind a pcall.
+do
+  vim.g.mapleader = " "
+  package.loaded["config.parity"] = nil
+  require("config.parity")
+
+  local reveal = vim.fn.maparg(" E", "n", false, true).callback
+  check("reveal: the binding exists", type(reveal) == "function", type(reveal))
+
+  local real_has, real_system = vim.fn.has, vim.system
+  ---Run the binding as if on `os`, and return the argv it would have spawned.
+  local function argv_on(os_name, path)
+    local spawned
+    vim.fn.has = function(feature)
+      if feature == "mac" then
+        return os_name == "mac" and 1 or 0
+      end
+      if feature == "win32" then
+        return os_name == "win" and 1 or 0
+      end
+      return real_has(feature)
+    end
+    vim.system = function(cmd)
+      spawned = cmd
+      return { wait = function() end }
+    end
+    vim.cmd("enew")
+    local scratch = vim.api.nvim_get_current_buf()
+    if path then
+      vim.api.nvim_buf_set_name(scratch, path)
+    end
+    local ok = pcall(reveal)
+    pcall(vim.api.nvim_buf_delete, scratch, { force = true })
+    vim.fn.has, vim.system = real_has, real_system
+    check(("reveal: the %s branch does not raise"):format(os_name), ok, "it raised")
+    return spawned
+  end
+
+  eq("reveal: macOS reveals the file itself", { "open", "-R", "/tmp/mac/file.c" }, argv_on("mac", "/tmp/mac/file.c"))
+  -- One argument, not two. Split apart, explorer drops the selection and opens
+  -- the default folder — the key looks half-broken rather than misinvoked.
+  eq(
+    "reveal: Windows passes /select, and the path as one argument",
+    { "explorer", "/select,/tmp/win/file.c" },
+    argv_on("win", "/tmp/win/file.c")
+  )
+  eq(
+    "reveal: elsewhere it opens the containing directory",
+    { "xdg-open", "/tmp/lin" },
+    argv_on("linux", "/tmp/lin/file.c")
+  )
+  -- A scratch buffer has no path; the working directory is the sensible answer.
+  eq(
+    "reveal: an unnamed buffer falls back to the cwd",
+    { "xdg-open", vim.fn.fnamemodify(vim.fn.getcwd(), ":h") },
+    argv_on("linux", nil)
+  )
+end
+
+--------------------------------------------------------------------------
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 if failed > 0 then
