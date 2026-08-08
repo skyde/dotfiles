@@ -142,22 +142,24 @@ pins. (Dark+'s own colours are deliberately not written down here: a hex in
 this document is a hex the checker will then permit anywhere in the tree, and
 the syntax theme's palette is not the UI's to borrow.)
 
-Mostly delta's diff body, which is what they were mixed for. btop borrows three
-of them for its process states, on the same reasoning: a background with text
-over it and no foreground key of its own to compensate.
+delta's diff body, which is what they were mixed for, and nothing else. This
+table used to say btop borrowed three of them for its process states. It did
+not: btop has no theme key for a followed, paused or bannered process, and the
+six keys that appeared to set them were dropped unread — see the btop theme
+file, and the "dead keys" section below.
 
-| Hex       | Role                                            |
-| --------- | ----------------------------------------------- |
-| `#20432b` | added line                                      |
-| `#2c5a3a` | added, emphasised token                         |
-| `#17311f` | added, unchanged remainder                      |
-| `#532727` | removed line; btop's paused process             |
-| `#683131` | removed, emphasised token                       |
-| `#3f1f1f` | removed, unchanged remainder                    |
-| `#2e2547` | moved from here (violet); btop's process banner |
-| `#203356` | moved from here (indigo); btop's followed process |
-| `#12384a` | moved to here (cyan)                            |
-| `#15423d` | moved to here (teal)                            |
+| Hex       | Role                        |
+| --------- | --------------------------- |
+| `#20432b` | added line                  |
+| `#2c5a3a` | added, emphasised token     |
+| `#17311f` | added, unchanged remainder  |
+| `#532727` | removed line                |
+| `#683131` | removed, emphasised token   |
+| `#3f1f1f` | removed, unchanged remainder |
+| `#2e2547` | moved from here (violet)    |
+| `#203356` | moved from here (indigo)    |
+| `#12384a` | moved to here (cyan)        |
+| `#15423d` | moved to here (teal)        |
 
 #### These washes are what a colour-blind reader has
 
@@ -798,25 +800,43 @@ quietly approximating it.
   | tmux | a server on its own socket, then `show-options` | an option name tmux drops on load |
   | lazygit | its own `--config` dump, for `gui.theme` only | a theme key lazygit has no field for |
   | the doctor | its swatches, against what `theme.sh` really exports | a demo colour the shell stopped producing |
+  | btop | `strings` on its binary, which lists its theme key names | a theme key btop has never had, e.g. `proc_pause_bg` |
   | the search pickers | their awk prefixes, against `~/.ripgreprc` | a result `rg` and its picker paint differently |
   | git | `--get-color` on every `color.*` key | an attribute typo the hex scan cannot see, e.g. `#7aa2f7 blod` |
   | wezterm | `ls-fonts`, which evaluates the config | any colour it cannot parse, by key name — the strictest of them |
 
   Each of these was added because the one before it found something real.
 
-  Two tools are still absent, and the reason is now measured rather than
-  asserted — this paragraph used to name three, and the third turned out to be
-  wrong. None of them validates its config, but all three *render*, and
-  rendered output is an oracle of a different kind: set one key to a colour
+  Two tools still cannot be asked whether a setting *took effect*, and the
+  reason is measured rather than asserted — this paragraph used to name three,
+  and the third turned out to be wrong. Neither validates its config, but both
+  *render*, and rendered output is an oracle of a different kind: set one key
+  to a colour
   nothing else uses and see whether it reaches the screen. That works. It just
   does not reach far enough.
 
-  **btop** loads an unknown theme key without a word, and its debug log says
-  nothing beyond "Loading theme file". Its output does carry 41 of the 48
-  theme colours, but the seven it misses are the load- and state-dependent ones
-  — gradient endpoints that only paint under load, process states that need a
+  **btop** cannot be asked whether it *applied* a key. It loads an unknown one
+  without a word, its debug log says nothing beyond "Loading theme file", and
+  the rendered-output route is flaky: its output carries 41 of the 48 theme
+  colours, but the seven it misses are the load- and state-dependent ones —
+  gradient endpoints that only paint under load, process states that need a
   selection — so a check built on it would fail on a quiet machine and pass on
-  a busy one. Rejected for flakiness, not for impossibility.
+  a busy one.
+
+  It can be asked whether a key *exists*, which is a smaller question and the
+  one that was actually going wrong. btop's key names are plain string literals
+  in the binary, so `strings $(command -v btop)` is the vocabulary, and
+  membership in it is a real test. That is how six dead keys in this repo's
+  theme were found: `proc_follow_bg`, `followed_bg`, `followed_fg`,
+  `proc_pause_bg`, `proc_banner_bg` and `proc_banner_fg`, all spelled
+  correctly, all commented with the reasoning behind their colours, and none of
+  them a name btop has ever had. Confirmed a second way, without the binary:
+  the union of every theme btop ships is 42 keys, and after the removal this
+  repo's theme is exactly that set with nothing left over.
+
+  The check reads a set of sentinel keys first and gives up if those are absent
+  too, so a stripped binary produces no answer rather than a wrong one —
+  absence is only evidence when presence is.
 
   **eza** discards a malformed `EZA_COLORS` code without a word. A per-key
   sentinel does work, and an unknown key correctly fails to reach the output,

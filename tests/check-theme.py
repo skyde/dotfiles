@@ -284,6 +284,65 @@ def _keyed_colour_lines(path, text):
     return out
 
 
+def _check_btop_keys(verbose):
+    """Every key in btop's theme is one btop has.
+
+    btop was written off as un-oracle-able here: it loads a theme by looking
+    each entry up in its own default-theme map and dropping what it does not
+    recognise, without a word, and its debug log does not say which. So six
+    keys sat in this file setting the colours of a followed, paused and
+    bannered process -- spelled correctly, commented, and never once read.
+
+    It turns out the map is legible from outside. btop's key names are plain
+    string literals in the binary, so `strings btop` is the list, and asking
+    whether a name is in it is a real membership test rather than a guess.
+
+    The sentinels are what make that safe. A stripped or differently-built
+    binary would yield no names at all, and every key in the file would look
+    invalid; so a handful of keys that must be present are checked first, and
+    if they are not, the reading is discarded rather than reported. Absence is
+    only evidence when presence is too.
+    """
+    import shutil
+    import subprocess
+
+    btop = shutil.which("btop")
+    theme = os.path.join(REPO, BTOP)
+    if not btop or not os.path.isfile(theme):
+        if verbose:
+            print("  btop not installed, its theme keys not checked")
+        return []
+    try:
+        out = subprocess.run(["strings", btop], capture_output=True,
+                             text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if out.returncode != 0:
+        return []
+    vocabulary = set(out.stdout.split())
+
+    sentinels = ("main_bg", "main_fg", "selected_bg", "graph_text",
+                 "inactive_fg", "div_line")
+    missing = [s for s in sentinels if s not in vocabulary]
+    if missing:
+        if verbose:
+            print("  btop's binary does not read as a list of theme keys "
+                  "(%s absent), so its keys are not checked"
+                  % ", ".join(missing))
+        return []
+
+    body = uncommented(theme, open(theme, encoding="utf-8").read())
+    keys = re.findall(r"^\s*theme\[(\w+)\]", body, re.M)
+    unknown = [k for k in keys if k not in vocabulary]
+    if unknown:
+        return ["%s sets %d key(s) btop does not have (%s) -- btop drops what "
+                "it does not recognise, so these read correctly and never "
+                "paint" % (BTOP, len(unknown), ", ".join(sorted(set(unknown))))]
+    if verbose:
+        print("  btop knows all %d of its theme keys" % len(keys))
+    return []
+
+
 def _check_repeated_keys(verbose):
     """No config assigns the same key two different colours.
 
@@ -347,7 +406,7 @@ TOOL_CHECKS = {
     "_check_yazi_configs", "_check_starship_config", "_check_bat_theme",
     "_check_kitty_config", "_check_git_colours", "_check_wezterm_config",
     "_check_git_paints", "_check_tmux_options", "_check_lazygit_theme_keys",
-    "_check_doctor_swatches", "_check_shell_exports",
+    "_check_doctor_swatches", "_check_shell_exports", "_check_btop_keys",
 }
 
 
@@ -2738,6 +2797,7 @@ def check_parity(doc, verbose):
     # that it is still valid shell.
     problems.extend(run_check(_check_ls_colors, lf_entries))
     problems.extend(run_check(_check_repeated_keys, verbose))
+    problems.extend(run_check(_check_btop_keys, verbose))
     problems.extend(run_check(_check_shell_parity, verbose))
     problems.extend(run_check(_check_delta_options, verbose))
     problems.extend(run_check(_check_ripgrep_config, verbose))
@@ -2976,6 +3036,21 @@ PAIRS = [
     ("text", "#c0caf5", "#1a1b26", BTOP, "btop body"),
     ("muted", "#565f89", "#1a1b26", BTOP, "btop inactive text"),
     ("text", "#c0caf5", "#283457", BTOP, "btop selected process"),
+    # `graph_text` is measured against the page, not against the graph it is
+    # drawn over, and that is worth writing down because measured the other way
+    # it is 1.04:1 against the orange end of the `available` ramp and looks
+    # like a bug. It is not one: of the twelve themes btop ships that define
+    # both a graph_text and a gradient, twelve put graph_text below 3:1 against
+    # their own worst gradient colour. A convention no upstream theme observes
+    # is not the convention.
+    ("text", "#a9b1d6", "#1a1b26", BTOP, "btop graph labels"),
+    ("ui", "#7aa2f7", "#1a1b26", BTOP, "btop highlighted field"),
+    # There are no rows here for a followed, paused or bannered process. Those
+    # states exist in btop and are painted from hardcoded colours; the six
+    # theme keys that appeared to set them were not keys btop has. Measuring
+    # them would have been measuring a config that never reaches the screen --
+    # and it nearly happened, since the pairs were written before the keys were
+    # checked.
 
     # The command line. Both shells and both platforms share these roles, and
     # all of them sit on the page rather than on a fill.

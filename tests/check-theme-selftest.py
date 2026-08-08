@@ -215,6 +215,13 @@ MUTATIONS = [
      r"`common/\.config/nvim/lua/util/vscode_syntax\.lua`", "`common/.config/nvim/lua/util/gone.lua`",
      "stale", None),
 
+    # btop drops a theme key it does not recognise without a word, which is how
+    # six of them sat in this file painting nothing. `strings` on the binary is
+    # the list of names it does have.
+    ("a btop theme key btop has never had", "parity", BTOP,
+     r"theme\[inactive_fg\]", "theme[proc_pause_bg]",
+     "btop does not have", "btop"),
+
     # A key assigned twice is inert config that reads as live config, and none
     # of these formats says so: git merges repeated sections and takes the last
     # value, kitty takes the last line. Both shapes, because the git one is

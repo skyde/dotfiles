@@ -97,16 +97,24 @@ theme[process_start]="#7aa2f7"
 theme[process_mid]="#bb9af7"
 theme[process_end]="#f7768e"
 
-# The states a process can be put into from the process list. btop's fallbacks
-# for these are hardcoded and off-palette — a dull blue for following, a dull
-# red for paused, a dull purple behind the banner — which is exactly the sort
-# of thing that only shows up once you press the key and then looks wrong.
+# Six keys used to sit here, setting the colours of a followed process, a
+# paused one, and the banner drawn over it: proc_follow_bg, followed_bg,
+# followed_fg, proc_pause_bg, proc_banner_bg and proc_banner_fg. They are gone
+# because btop has never had them.
 #
-# A followed process takes blue0, the same background that marks a highlighted
-# row elsewhere; a paused one takes red1, the palette's hard-stop red.
-theme[proc_follow_bg]="#3d59a1"
-theme[followed_bg]="#3d59a1"
-theme[followed_fg]="#c0caf5"
-theme[proc_pause_bg]="#db4b4b"
-theme[proc_banner_bg]="#9d7cd8"
-theme[proc_banner_fg]="#16161e"
+# The comment above them said btop's fallbacks for these states are hardcoded
+# and off-palette, which is true, and then set six keys to fix it, which did
+# nothing at all. btop reads a theme by looking each entry up in its own
+# default-theme map and dropping what it does not recognise, so six lines can
+# be spelled correctly, sit in the file for as long as you like, and never
+# reach the screen. That is this file's own failure mode -- see the "dead keys"
+# section in docs/tokyonight.md -- and it happened here.
+#
+# The vocabulary is legible from outside: btop's key names are plain string
+# literals, so `strings $(command -v btop)` lists them, and none of the six
+# appears even as a substring. Confirmed a second way, without the binary --
+# the union of every theme btop ships is 42 keys, and after this removal the
+# 42 in this file are exactly that set, with nothing left over.
+#
+# tests/check-theme.py checks every key here against the binary's list, so if
+# btop ever grows these it will say so by starting to accept them.

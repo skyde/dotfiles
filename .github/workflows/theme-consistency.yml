@@ -115,6 +115,15 @@ jobs:
             echo "lazygit unavailable; its theme-key check will skip"
           fi
 
+      # btop cannot say whether it applied a key, but it can say whether the
+      # key exists: its theme names are string literals in the binary, and six
+      # keys in this repo's theme turned out not to be among them. Not fatal
+      # if the package is unavailable — the check skips itself, and it skips
+      # itself again if the binary does not read as a list of key names.
+      - name: Install btop
+        run: sudo apt-get install -y --no-install-recommends btop
+          || echo "btop unavailable; its theme-key check will skip"
+
       - name: Install kitty
         run: sudo apt-get install -y --no-install-recommends kitty
           || echo "kitty unavailable; its config check will skip"
