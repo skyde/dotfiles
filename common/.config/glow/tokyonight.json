@@ -1,0 +1,160 @@
+{
+  "_comment": [
+    "Tokyo Night (night) for glow's markdown rendering, with Visual Studio",
+    "Dark+ inside fenced code blocks. Palette reference: docs/tokyonight.md.",
+    "",
+    "The split is the repo's usual one -- chrome is Tokyo Night, code is Dark+",
+    "-- and here the two meet inside one document. Headings, links, rules and",
+    "quotes are chrome. A fenced block is code, and `bat README.md` highlights",
+    "that same fence, so the chroma table below is bat's Visual Studio Dark+",
+    "rather than VS Code's published Dark+: reading a file through glow and",
+    "through bat should not recolour it.",
+    "",
+    "glamour parses this with encoding/json, which drops keys it does not know",
+    "without a word -- the same trap as yazi's theme. The key names here are",
+    "the json tags in charmbracelet/glamour ansi/style.go, all of them; check",
+    "against that file if a setting ever seems to stop applying. (This",
+    "_comment key is itself dropped, which is how it can be here at all.)",
+    "",
+    "This is a whole style, not an overlay. WithStylePath unmarshals the file",
+    "into an empty StyleConfig -- nothing is merged in from glamour's own dark",
+    "style -- so every prefix, indent and format below has to be carried even",
+    "though none of them is a colour. Drop `item.block_prefix` and the bullets",
+    "stop appearing.",
+    "",
+    "Code blocks are approximate and cannot be otherwise: glamour hardcodes",
+    "chromaFormatter = \"terminal256\" and glow never calls WithChromaFormatter,",
+    "so the chroma table below is rounded to the 256-colour cube on the way out",
+    "(#569cd6 lands on #5fafd7). The markdown chrome above it is true 24-bit.",
+    "If glamour ever takes the colour profile into account there, these values",
+    "become exact with no change here."
+  ],
+
+  "document": {
+    "block_prefix": "\n",
+    "block_suffix": "\n",
+    "color": "#c0caf5",
+    "margin": 2
+  },
+  "block_quote": {
+    "color": "#565f89",
+    "italic": true,
+    "indent": 1,
+    "indent_token": "│ "
+  },
+  "paragraph": {},
+  "list": {
+    "level_indent": 2
+  },
+
+  "heading": {
+    "block_suffix": "\n",
+    "color": "#7aa2f7",
+    "bold": true
+  },
+  "h1": {
+    "prefix": " ",
+    "suffix": " ",
+    "color": "#16161e",
+    "background_color": "#7aa2f7",
+    "bold": true
+  },
+  "h2": { "prefix": "## " },
+  "h3": { "prefix": "### " },
+  "h4": { "prefix": "#### " },
+  "h5": { "prefix": "##### " },
+  "h6": {
+    "prefix": "###### ",
+    "color": "#737aa2",
+    "bold": false
+  },
+
+  "text": {},
+  "strikethrough": { "crossed_out": true },
+  "emph": { "italic": true },
+  "strong": { "bold": true },
+  "hr": {
+    "color": "#3b4261",
+    "format": "\n--------\n"
+  },
+  "item": { "block_prefix": "• " },
+  "enumeration": { "block_prefix": ". " },
+  "task": {
+    "ticked": "[✓] ",
+    "unticked": "[ ] "
+  },
+
+  "link": {
+    "color": "#73daca",
+    "underline": true
+  },
+  "link_text": {
+    "color": "#7dcfff",
+    "bold": true
+  },
+  "image": {
+    "color": "#bb9af7",
+    "underline": true
+  },
+  "image_text": {
+    "color": "#737aa2",
+    "format": "Image: {{.text}} →"
+  },
+
+  "code": {
+    "prefix": " ",
+    "suffix": " ",
+    "color": "#dcdcdc",
+    "background_color": "#292e42"
+  },
+
+  "code_block": {
+    "color": "#dcdcdc",
+    "margin": 2,
+    "chroma": {
+      "text": { "color": "#dcdcdc" },
+      "error": { "color": "#db4b4b", "bold": true },
+      "comment": { "color": "#608b4e" },
+      "comment_preproc": { "color": "#c586c0" },
+      "keyword": { "color": "#c586c0" },
+      "keyword_reserved": { "color": "#c586c0" },
+      "keyword_namespace": { "color": "#c586c0" },
+      "keyword_type": { "color": "#569cd6" },
+      "operator": { "color": "#dcdcdc" },
+      "punctuation": { "color": "#dcdcdc" },
+      "name": { "color": "#dcdcdc" },
+      "name_builtin": { "color": "#569cd6" },
+      "name_tag": { "color": "#569cd6" },
+      "name_attribute": { "color": "#9cdcfe" },
+      "name_class": { "color": "#9cdcfe" },
+      "name_constant": { "color": "#9cdcfe" },
+      "name_decorator": { "color": "#dcdcaa" },
+      "name_exception": { "color": "#9cdcfe" },
+      "name_function": { "color": "#dcdcaa" },
+      "name_other": { "color": "#9cdcfe" },
+      "literal": { "color": "#b5cea8" },
+      "literal_number": { "color": "#b5cea8" },
+      "literal_date": { "color": "#b5cea8" },
+      "literal_string": { "color": "#d69d85" },
+      "literal_string_escape": { "color": "#e3bbab" },
+      "generic_deleted": { "color": "#f7768e" },
+      "generic_inserted": { "color": "#9ece6a" },
+      "generic_emph": { "italic": true },
+      "generic_strong": { "bold": true },
+      "generic_subheading": { "color": "#565f89" }
+    }
+  },
+
+  "table": {
+    "color": "#a9b1d6",
+    "center_separator": "┼",
+    "column_separator": "│",
+    "row_separator": "─"
+  },
+
+  "definition_list": {},
+  "definition_term": { "color": "#7aa2f7" },
+  "definition_description": { "block_prefix": "\n🠶 " },
+  "html_block": { "color": "#565f89" },
+  "html_span": { "color": "#565f89" }
+}

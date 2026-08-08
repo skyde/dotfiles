@@ -238,6 +238,62 @@ something a value here can fix; the shell *around* the string is unaffected.
 > next to: the prompt matches the picker above it, the buffer matches VS Code.
 > See `docs/vscode-syntax-parity.md`.
 
+### Markdown in the terminal: `glow`
+
+`glow` is the one place where the chrome/code split happens *inside a single
+document*, so it is worth being explicit about where the line falls.
+
+Headings, links, block quotes, rules, tables and the inline-code chip are
+chrome, and take Tokyo Night. `h1` is `bg_dark` on `blue`, which is the same
+pair kitty gives its active tab; a link is `green1`, which is kitty's
+`url_color`; the rule is `fg_gutter`, the separator colour.
+
+A fenced block is code, so it takes Dark+ — and specifically **bat's** Dark+,
+not the published values in the command-line table above. `bat README.md`
+highlights the fence contents too, with the syntax it detects from the info
+string, so glow and bat are two ways of looking at the same file in the same
+terminal. That is the "two panes rendering the same file differently" case, and
+it is the one place in the setup where bat's port is the right one to copy.
+
+Two things about the result are worth knowing before you go looking for a bug:
+
+- **Code blocks are 256-colour.** glamour hardcodes
+  `chromaFormatter = "terminal256"` and glow never calls
+  `WithChromaFormatter`, so the chroma table is rounded to the cube on the way
+  out — `#569cd6` renders as `#5fafd7`. Nothing in the config can reach 24-bit
+  there. The markdown chrome around it is true 24-bit. If glamour ever picks
+  the formatter from the colour profile, these values become exact for free.
+- **A few chrome colours come out one unit low.** Sweeping all 256 byte values
+  through glow, 24 of them lose one: `33+4k`, `66+8k` and `132+16k` for
+  `k = 0..7`. So `#7aa2f7` arrives as `#79a2f7` and `#292e42` as `#282e41`.
+  It is a rounding artefact in glow's colour layer, it is invisible, and it is
+  not the config drifting — do not "correct" the style file to chase it.
+
+The style is pointed at by `GLOW_STYLE` in `theme.sh` rather than by `style` in
+`glow.yml`, because a path in the config file does not work. `glow.yml` carries
+the explanation.
+
+Those Dark+ values are bat's, and four of them are not the ones the
+command-line table above carries — that table is VS Code's *published* Dark+,
+and bat's compiled port resolves some roles a few units away. Measured by
+rendering shell, Python, C++ and JSON through
+`bat --theme="Visual Studio Dark+"`, identically on 0.24.0, 0.25.0 and 0.26.1:
+
+| Role                   | bat emits | the command-line table |
+| ---------------------- | --------- | ---------------------- |
+| plain text             | `#dcdcdc` | `#d4d4d4`              |
+| comments               | `#608b4e` | `#6a9955`              |
+| strings                | `#d69d85` | `#ce9178`              |
+| string escapes         | `#e3bbab` | `#d7ba7d`              |
+| commands and functions | `#dcdcaa` | `#dcdcaa`              |
+| control words          | `#c586c0` | `#c586c0`              |
+| variables              | `#9cdcfe` | `#9cdcfe`              |
+| keywords and types     | `#569cd6` | `#569cd6`              |
+| numbers                | `#b5cea8` | `#b5cea8`              |
+
+Each side matches the thing it sits next to: the prompt matches the Ctrl-R
+picker, the fence matches `bat`.
+
 ### One file-type table, four listings
 
 `ls`, `eza`, `fd`, zsh's completion menu, `lf` and `yazi` all list files, and
@@ -499,6 +555,7 @@ it fails the test.
 | search   | `common/.local/bin/st-rg`, `common/.local/bin/st-zoekt` |
 | yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
 | lf       | `common/.config/lf/colors`                            |
+| glow     | `common/.config/glow/tokyonight.json`, `common/.config/glow/glow.yml` |
 | btop     | `common/.config/btop/themes/tokyo-night.theme`        |
 | swatches | `doctor-theme.sh` (renders the palette, so it holds a copy) |
 

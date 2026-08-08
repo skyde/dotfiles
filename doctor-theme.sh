@@ -53,6 +53,7 @@ check_file "$config_home/yazi/theme.toml"
 check_file "$config_home/lazygit/config.yml"
 check_file "$config_home/btop/themes/tokyo-night.theme"
 check_file "$config_home/kitty/themes/tokyonight_night.conf"
+check_file "$config_home/glow/tokyonight.json"
 
 # --- 3. did this shell actually export what theme.sh sets? -----------------
 #
@@ -82,10 +83,20 @@ check_env FZF_DEFAULT_OPTS "#ff5000" "fzf, including the cursor-orange pointer"
 check_env LESS_TERMCAP_md "" "man page bold"
 check_env GROFF_NO_SGR "1" "without it less never consults termcap"
 check_env RIPGREP_CONFIG_PATH "" "ripgrep's colours and excludes"
+# glow's style cannot live in glow.yml — the path there is never expanded — so
+# the environment is the only place it can come from. See docs/tokyonight.md.
+check_env GLOW_STYLE "glow" "glow's markdown rendering"
 
 if [ -n "$RIPGREP_CONFIG_PATH" ] && [ ! -e "$RIPGREP_CONFIG_PATH" ]; then
 	fail "RIPGREP_CONFIG_PATH points at $RIPGREP_CONFIG_PATH, which does not exist" \
 		"rg silently ignores a missing config, so its colours fall back to the defaults"
+fi
+
+# Same trap as ripgrep's, and worse: glow *errors out* rather than falling back,
+# so a stale path here means glow does not render at all.
+if [ -n "$GLOW_STYLE" ] && [ ! -e "$GLOW_STYLE" ]; then
+	fail "GLOW_STYLE points at $GLOW_STYLE, which does not exist" \
+		"glow fails with 'unable to create renderer' rather than falling back to a default style"
 fi
 
 # --- 4. what it actually looks like ----------------------------------------
