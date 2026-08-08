@@ -184,6 +184,61 @@ do
     rename_patch:find("rename from renamed-from.txt", 1, true),
     rename_patch:sub(1, 200)
   )
+  -- Pathspec magic. git reads a path argument as a pattern: `*`, `?` and `[` are
+  -- globs and a leading `:` introduces magic, so `git add -- "star*.txt"` stages
+  -- every file the glob matches and `:notes.txt` cannot be named at all. Both
+  -- are ordinary filenames, and both used to make staging touch the wrong files.
+  local ps = temp .. "/git-pathspec"
+  vim.fn.mkdir(ps, "p")
+  git(ps, "init", "-q", "-b", "main")
+  local awkward = { "star*.txt", "stars.txt", "q?.txt", "qX.txt", ":notes.txt", "brack[et].txt" }
+  for i, name in ipairs(awkward) do
+    write(ps .. "/" .. name, "base " .. i .. "\n")
+  end
+  git(ps, "add", "-A")
+  git(ps, "commit", "-qm", "base")
+  for i, name in ipairs(awkward) do
+    write(ps .. "/" .. name, "base " .. i .. "\nedited\n")
+  end
+
+  local pb, proot = vcs.detect(ps)
+  local prev = pb.rev(proot, "working")
+  eq("git pathspec: staging one file stages one file", true, pb.stage(proot, "star*.txt"))
+  eq("git pathspec: the file named by the glob is staged", true, pb.staged(proot, "star*.txt"))
+  eq("git pathspec: the file the glob would match is not", false, pb.staged(proot, "stars.txt"))
+  eq("git pathspec: unstaging it again works", true, pb.unstage(proot, "star*.txt"))
+  eq("git pathspec: and it is no longer staged", false, pb.staged(proot, "star*.txt"))
+  eq("git pathspec: a name beginning with a colon can be staged", true, pb.stage(proot, ":notes.txt"))
+  eq("git pathspec: and reads back as staged", true, pb.staged(proot, ":notes.txt"))
+  eq("git pathspec: a `?` name stages only itself", true, pb.stage(proot, "q?.txt"))
+  eq("git pathspec: the single-character match is untouched", false, pb.staged(proot, "qX.txt"))
+  truthy(
+    "git pathspec: raw_diff scoped to a glob-ish name",
+    pb.raw_diff(proot, prev, "star*.txt"):find("edited", 1, true)
+  )
+  eq("git pathspec: log of a glob-ish name returns revisions", true, #pb.log(proot, "star*.txt") >= 1)
+  git(ps, "reset", "-q")
+  eq("git pathspec: revert restores just that file", true, pb.revert(proot, prev, { path = "star*.txt", status = "M" }))
+  eq("git pathspec: the reverted file is back to base", { "base 1" }, vim.fn.readfile(ps .. "/star*.txt"))
+  eq("git pathspec: its neighbour is left edited", { "base 2", "edited" }, vim.fn.readfile(ps .. "/stars.txt"))
+
+  -- Staging a rename is two index entries. Adding only the new path leaves the
+  -- old one tracked, so the commit records a copy and an unstaged deletion.
+  git(ps, "mv", "qX.txt", "moved.txt")
+  local renamed
+  for _, f in ipairs(pb.changed(proot, prev)) do
+    if f.path == "moved.txt" then
+      renamed = f
+    end
+  end
+  eq("git pathspec: the rename is seen", "qX.txt", renamed and renamed.orig)
+  git(ps, "reset", "-q")
+  eq("git pathspec: staging a rename succeeds", true, pb.stage(proot, renamed.path, renamed.orig))
+  local index = vim.trim(git(ps, "diff", "--cached", "--name-status", "--find-renames"))
+  truthy("git pathspec: the index records a rename, not an add", index:find("^R"), index)
+  eq("git pathspec: unstaging the pair succeeds", true, pb.unstage(proot, renamed.path, renamed.orig))
+  eq("git pathspec: and the index is empty again", "", vim.trim(git(ps, "diff", "--cached", "--name-only")))
+
   eq("git: unmodified file absent", nil, working["deep/a/b/c/nested.txt"])
   eq("git: working scope excludes the branch commit", nil, working["src/main.c"])
 

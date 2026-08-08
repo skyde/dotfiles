@@ -1603,8 +1603,11 @@ local function stage_toggle()
     return
   end
   vcs.async(function()
-    local staged = backend.staged(root, file.path)
-    local ok = staged and backend.unstage(root, file.path) or (not staged and backend.stage(root, file.path))
+    -- file.orig rides along: a rename is two index entries, and staging only
+    -- the new one leaves the old path still tracked.
+    local staged = backend.staged(root, file.path, file.orig)
+    local ok = staged and backend.unstage(root, file.path, file.orig)
+      or (not staged and backend.stage(root, file.path, file.orig))
     vim.notify(
       ok and ("%s %s"):format(staged and "Unstaged" or "Staged", file.path)
         or ("Could not %s %s"):format(staged and "unstage" or "stage", file.path),

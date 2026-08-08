@@ -42,9 +42,9 @@ local M = {}
 ---@field raw_diff fun(root: string, rev: string, path: string|nil, orig: string|nil): string
 ---@field log fun(root: string, path: string): table[]
 ---@field revert fun(root: string, rev: string, file: VcsFile): boolean|nil
----@field staged fun(root: string, path: string): boolean|nil
----@field stage fun(root: string, path: string): boolean|nil
----@field unstage fun(root: string, path: string): boolean|nil
+---@field staged fun(root: string, path: string, orig: string|nil): boolean|nil
+---@field stage fun(root: string, path: string, orig: string|nil): boolean|nil
+---@field unstage fun(root: string, path: string, orig: string|nil): boolean|nil
 
 --------------------------------------------------------------------------
 -- helpers
@@ -276,14 +276,24 @@ function git.show(root, rev, path)
   return lines(res.stdout)
 end
 
+---git reads a path argument as a *pathspec*, where `*`, `?`, `[` and a leading
+---`:` are syntax rather than filename characters. `git add -- "star*.txt"`
+---stages every file the glob matches, not the one named that, and a file called
+---`:notes.txt` cannot be named at all. `:(literal)` turns all of it off.
+---@param path string repo-relative path
+---@return string pathspec
+local function git_path(path)
+  return ":(literal)" .. path
+end
+
 function git.raw_diff(root, rev, path, orig)
   local cmd = { "git", "diff", "--no-color", "--find-renames", rev }
   if path then
     -- For a renamed file both paths must be in the pathspec, or the rename
     -- pair is split and the diff degenerates into a delete plus an add.
-    vim.list_extend(cmd, { "--", path })
+    vim.list_extend(cmd, { "--", git_path(path) })
     if orig then
-      table.insert(cmd, orig)
+      table.insert(cmd, git_path(orig))
     end
   end
   local res = sh(cmd, root)
@@ -298,7 +308,7 @@ function git.log(root, path)
     "--date=short",
     "--pretty=format:%H\t%ad\t%an\t%s",
     "--",
-    path,
+    git_path(path),
   }, root)
   local out = {}
   if res and res.code == 0 then
@@ -317,18 +327,18 @@ function git.revert(root, rev, file)
   if file.status == "A" then
     -- Added: there is nothing at `rev` to restore, so reverting means
     -- removing the file — from the index too, when it is staged.
-    return ran(sh({ "git", "rm", "-fq", "--ignore-unmatch", "--", file.path }, root))
+    return ran(sh({ "git", "rm", "-fq", "--ignore-unmatch", "--", git_path(file.path) }, root))
   end
   if file.orig then
     -- A rename reverts as: drop the new path, resurrect the old one.
-    sh({ "git", "rm", "-fq", "--ignore-unmatch", "--", file.path }, root)
+    sh({ "git", "rm", "-fq", "--ignore-unmatch", "--", git_path(file.path) }, root)
   end
   -- `checkout <rev> -- <path>` resets both the index and the working tree.
-  return ran(sh({ "git", "checkout", rev, "--", file.orig or file.path }, root))
+  return ran(sh({ "git", "checkout", rev, "--", git_path(file.orig or file.path) }, root))
 end
 
 function git.staged(root, path)
-  local res = sh({ "git", "diff", "--cached", "--name-only", "--", path }, root)
+  local res = sh({ "git", "diff", "--cached", "--name-only", "--", git_path(path) }, root)
   -- Spelled out rather than `ran(res) and ...`: the short-circuit was correct,
   -- but nothing reading it (a checker included) can tell that ran() is what
   -- rules out the nil res dereferenced on the next line.
@@ -338,12 +348,23 @@ function git.staged(root, path)
   return vim.trim(res.stdout or "") ~= ""
 end
 
-function git.stage(root, path)
-  return ran(sh({ "git", "add", "--", path }, root))
+---A rename has to be staged as a pair. Adding only the new path leaves the old
+---one still in the index, so what gets committed is a copy plus an untracked
+---deletion rather than the move that was made.
+function git.stage(root, path, orig)
+  local cmd = { "git", "add", "--", git_path(path) }
+  if orig then
+    table.insert(cmd, git_path(orig))
+  end
+  return ran(sh(cmd, root))
 end
 
-function git.unstage(root, path)
-  return ran(sh({ "git", "restore", "--staged", "--", path }, root))
+function git.unstage(root, path, orig)
+  local cmd = { "git", "restore", "--staged", "--", git_path(path) }
+  if orig then
+    table.insert(cmd, git_path(orig))
+  end
+  return ran(sh(cmd, root))
 end
 
 --------------------------------------------------------------------------
