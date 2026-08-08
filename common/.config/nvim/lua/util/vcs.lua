@@ -207,33 +207,62 @@ function git.rev(root, scope)
   return one(sh({ "git", "rev-parse", "--verify", "--quiet", ref }, root)) or ref
 end
 
+---Split NUL-separated output into fields, dropping the trailing empty one.
+---@param s string|nil
+---@return string[]
+local function nul_fields(s)
+  if not s or s == "" then
+    return {}
+  end
+  local out = vim.split(s, "\0", { plain = true })
+  while #out > 0 and out[#out] == "" do
+    table.remove(out)
+  end
+  return out
+end
+
 function git.changed(root, rev)
   local out = {}
   local seen = {}
-  local res = sh({ "git", "-c", "core.quotepath=false", "diff", "--name-status", "--find-renames", rev }, root)
+  ---@param path string
+  ---@param status string
+  ---@param orig string|nil
+  local function add(path, status, orig)
+    if path ~= "" and not seen[path] then
+      seen[path] = true
+      table.insert(out, { path = path, status = status, orig = orig })
+    end
+  end
+
+  -- -z, not the default line output. Without it git wraps any path containing a
+  -- tab, a double quote, a backslash or a control byte in quotes and C-escapes
+  -- the inside — `core.quotepath=false` only turns off the octal escaping of
+  -- *non-ASCII* bytes, not the quoting itself — so those files arrived with
+  -- quotes and backslashes baked into the name and could not be opened at all.
+  -- -z emits the fields raw, separated by NUL, which also makes a filename
+  -- containing a newline parse correctly instead of splitting into two rows.
+  local res = sh({ "git", "diff", "--name-status", "--find-renames", "-z", rev }, root)
   if res and res.code == 0 then
-    for _, line in ipairs(lines(res.stdout)) do
-      local status, path = line:match("^(%a)%d*\t(.+)$")
-      if status then
-        -- Renames arrive as "R100\told\tnew". The new path is what we can
-        -- open; the old one is what the base content has to be fetched as,
-        -- otherwise a rename diffs as a wholly added file.
-        local old, new = path:match("^(.-)\t(.+)$")
-        path = new or path
-        if not seen[path] then
-          seen[path] = true
-          table.insert(out, { path = path, status = status, orig = old })
-        end
+    local fields = nul_fields(res.stdout)
+    local i = 1
+    while i <= #fields do
+      local status = fields[i]:sub(1, 1)
+      if status == "R" or status == "C" then
+        -- A rename or copy is three fields: status, old path, new path. The new
+        -- path is what can be opened; the old one is where the base content has
+        -- to be fetched from, or a rename diffs as a wholly added file.
+        add(fields[i + 2] or "", status, fields[i + 1])
+        i = i + 3
+      else
+        add(fields[i + 1] or "", status, nil)
+        i = i + 2
       end
     end
   end
-  local untracked = sh({ "git", "-c", "core.quotepath=false", "ls-files", "--others", "--exclude-standard" }, root)
+  local untracked = sh({ "git", "ls-files", "--others", "--exclude-standard", "-z" }, root)
   if untracked and untracked.code == 0 then
-    for _, path in ipairs(lines(untracked.stdout)) do
-      if not seen[path] then
-        seen[path] = true
-        table.insert(out, { path = path, status = "?" })
-      end
+    for _, path in ipairs(nul_fields(untracked.stdout)) do
+      add(path, "?", nil)
     end
   end
   return out

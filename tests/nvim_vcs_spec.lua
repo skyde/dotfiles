@@ -87,6 +87,14 @@ local function build_git_repo()
   write(root .. "/deep/a/b/c/nested.txt", "nested\n")
   write(root .. "/renamed-from.txt", string.rep("stable content line\n", 20))
   write(root .. "/binary.bin", "\0\1\2\3\4binary\0")
+  -- Names git cannot print literally. It wraps each of these in double quotes
+  -- and C-escapes the inside, and `core.quotepath=false` does not turn that off
+  -- — it only governs the octal escaping of non-ASCII bytes. Parsed from the
+  -- line output, the quotes and backslashes end up in the path and the file
+  -- cannot be opened; the backend asks for -z instead.
+  write(root .. '/has"quote.c', "// a quote in the name\n")
+  write(root .. "/has\\backslash.c", "// a backslash in the name\n")
+  write(root .. "/has\ttab.c", "// a tab in the name\n")
   git(root, "add", "-A")
   git(root, "commit", "-qm", "initial")
   -- Stand in for a remote trunk so the fork-point logic has something to find.
@@ -105,6 +113,11 @@ local function build_git_repo()
   write(root .. "/added-staged.txt", "staged add\n")
   git(root, "add", "added-staged.txt")
   write(root .. "/untracked.txt", "untracked\n")
+  write(root .. '/has"quote.c', "// a quote in the name\n// edited\n")
+  write(root .. "/has\\backslash.c", "// a backslash in the name\n// edited\n")
+  write(root .. "/has\ttab.c", "// a tab in the name\n// edited\n")
+  -- Untracked too, so the ls-files half is covered as well.
+  write(root .. '/untracked"quote.c', "// untracked, with a quote\n")
   git(root, "mv", "renamed-from.txt", "renamed-to.txt")
   return root
 end
@@ -139,6 +152,15 @@ do
   eq("git: untracked file", "?", working["untracked.txt"])
   eq("git: rename reports the new path", "R", working["renamed-to.txt"])
   eq("git: rename does not also report the old path", nil, working["renamed-from.txt"])
+  -- The names git has to quote. Each must come back as the real path, or the
+  -- file simply cannot be opened from the changed-files view.
+  eq("git: a name containing a double quote", "M", working['has"quote.c'])
+  eq("git: a name containing a backslash", "M", working["has\\backslash.c"])
+  eq("git: a name containing a tab", "M", working["has\ttab.c"])
+  eq("git: an untracked name containing a double quote", "?", working['untracked"quote.c'])
+  for _, name in ipairs({ 'has"quote.c', "has\\backslash.c", "has\ttab.c", 'untracked"quote.c' }) do
+    eq(("git: %q names a file that exists"):format(name), 1, vim.fn.filereadable(root .. "/" .. name))
+  end
 
   -- The old path rides along on the record, so the diff UI can fetch the base
   -- content that actually existed instead of treating a rename as an add.
