@@ -69,25 +69,33 @@ src="$sandbox/chromium/src"
 mkdir -p "$src/tools/clang/scripts" "$src/out/Default" "$src/base"
 printf 'ninja\n' >"$src/out/Default/build.ninja"
 cat >"$src/tools/clang/scripts/generate_compdb.py" <<'EOF'
-"""Stand-in for Chromium's generator: writes a database for the checkout's
-own sources, which is all the editor side of the chain needs to be real."""
+"""Stand-in for Chromium's generator.
+
+Writes a database for the checkout's own sources in the shape the real one
+produces: `ninja -t compdb` names each file relative to the build directory,
+so entries read "file": "../../base/logging.cc" with "directory" pointing at
+out/<config>. The membership probe matches on exactly that, so the fixture
+has to have it right or it is not testing the real thing.
+"""
 import json, os, sys
 
 out = sys.argv[sys.argv.index("-o") + 1] if "-o" in sys.argv else "compile_commands.json"
+build = sys.argv[sys.argv.index("-p") + 1]
 root = os.getcwd()
+build_dir = os.path.join(root, build)
 entries = []
 for dirpath, _, names in os.walk(root):
-    if os.path.relpath(dirpath, root).startswith(("out", "tools")):
+    if os.path.relpath(dirpath, root).split(os.sep)[0] in ("out", "tools"):
         continue
     for name in names:
         if name.endswith((".cc", ".cpp")):
-            path = os.path.join(dirpath, name)
+            rel = os.path.relpath(os.path.join(dirpath, name), build_dir)
             entries.append({
-                "directory": root,
-                "file": os.path.relpath(path, root),
-                "command": "clang++ -std=c++17 -c " + os.path.relpath(path, root),
+                "directory": build_dir,
+                "file": rel,
+                "command": "clang++ -std=c++17 -c " + rel,
             })
-json.dump(entries, open(os.path.join(root, out), "w"), indent=1)
+json.dump(entries, open(os.path.join(root, out), "w"), indent=2)
 EOF
 cat >"$src/base/logging.h" <<'EOF'
 #pragma once
@@ -100,6 +108,13 @@ EOF
 cat >"$src/main.cc" <<'EOF'
 #include "base/logging.h"
 int main() { return log_value(7); }
+EOF
+# A generated source, the kind gd lands on. It lives under the build dir and
+# is named relative to it in the database, so it must attach to the same
+# client as the rest of the checkout rather than splitting off its own.
+mkdir -p "$src/out/Default/gen"
+cat >"$src/out/Default/gen/generated.cc" <<'EOF'
+int generated_value() { return 3; }
 EOF
 
 export NVIM_LSP_SANDBOX="$sandbox"

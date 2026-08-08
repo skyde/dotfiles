@@ -177,6 +177,20 @@ end, 200)
 check("compile_commands.json was generated", vim.uv.fs_stat(src .. "/compile_commands.json") ~= nil)
 check("the database is not stale afterwards", not chromium.stale(src))
 
+-- `ninja -t compdb` names each file relative to the build dir, so entries
+-- read "file": "../../main.cc". The membership probe matches on that; if it
+-- ever stops matching, every C++ file opened reads as missing and forces a
+-- regeneration, which is a rebuild of a several-hundred-megabyte database
+-- per buffer. Ask the probe's own question, through the report.
+local scanned, scan_done = nil, false
+chromium.file_contains(src .. "/compile_commands.json", '/main.cc"', function(f)
+  scanned, scan_done = f, true
+end)
+vim.wait(10000, function()
+  return scan_done
+end, 50)
+eq("the database names files the way the probe looks for them", true, scanned)
+
 -- The restart after a regeneration is what makes clangd re-read the database.
 -- It has to leave exactly one client, attached to the buffers the old one was
 -- serving — including buffers with unsaved changes, and including the case
@@ -235,6 +249,41 @@ local back_alone = vim.wait(25000, function()
 end, 200)
 check("restart: a lone clangd comes back attached too", back_alone)
 
+-- Two kinds of buffer that must not set the machinery off. A header is never
+-- a compile_commands.json entry (`ninja -t compdb` lists translation units),
+-- and a generated file under out/ is named relative to the build dir, not the
+-- source root — probing either reads as a miss and rebuilds the database on
+-- every one of them. Generated files also have to land on the checkout's own
+-- client: they are what gd jumps to, and a second client for them would mean
+-- a second background index of Chromium.
+local function db_mtime()
+  local st = vim.uv.fs_stat(src .. "/compile_commands.json")
+  return st and (st.mtime.sec * 1e9 + (st.mtime.nsec or 0)) or 0
+end
+local checkout_client = clangd_for(src)[1]
+local quiet_before = db_mtime()
+vim.cmd("edit " .. vim.fn.fnameescape(src .. "/base/logging.h"))
+vim.wait(3000)
+vim.cmd("edit " .. vim.fn.fnameescape(src .. "/out/Default/gen/generated.cc"))
+vim.wait(20000, function()
+  return #vim.lsp.get_clients({ bufnr = 0, name = "clangd" }) > 0
+end, 100)
+vim.wait(3000, function()
+  return chromium.busy()
+end, 100)
+vim.wait(10000, function()
+  return not chromium.busy()
+end, 100)
+local gen_client = vim.lsp.get_clients({ bufnr = 0, name = "clangd" })[1]
+check(
+  "a generated file under out/ joins the checkout's clangd",
+  gen_client ~= nil and checkout_client ~= nil and gen_client.id == checkout_client.id,
+  ("checkout %s, generated %s"):format(checkout_client and checkout_client.id, gen_client and gen_client.id)
+)
+eq("a header and a generated file regenerate nothing", quiet_before, db_mtime())
+
+vim.cmd("edit " .. vim.fn.fnameescape(src .. "/main.cc"))
+vim.wait(1000)
 local findings = chromium.diagnose(vim.api.nvim_get_current_buf())
 local function finding(pattern)
   for _, f in ipairs(findings) do
