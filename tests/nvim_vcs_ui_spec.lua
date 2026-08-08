@@ -1794,6 +1794,93 @@ do
 end
 
 --------------------------------------------------------------------------
+-- the panel tree, over randomly generated path sets
+--------------------------------------------------------------------------
+
+do
+  -- build_rows groups a flat path list into a tree and compacts chains of
+  -- single-child directories onto one line — `a/b/c/` — which is a loop over a
+  -- structure it is mutating as it walks. The fixtures here have one such chain;
+  -- generated path sets have them at every depth, sharing prefixes in ways
+  -- nobody would think to write down.
+  --
+  -- The property is simple and total: however the tree comes out, every file
+  -- gets exactly one row, no file is invented, and the header agrees.
+  vim.cmd("cd " .. vim.fn.fnameescape(root))
+  vcs.clear_cache()
+  math.randomseed(4242)
+
+  local WORDS = { "src", "base", "ui", "net", "a", "b", "c", "gpu", "media", "third_party", "deep" }
+  local function random_path()
+    local parts = {}
+    for _ = 1, math.random(0, 4) do
+      table.insert(parts, WORDS[math.random(#WORDS)])
+    end
+    table.insert(parts, ("f%d.cc"):format(math.random(999)))
+    return table.concat(parts, "/")
+  end
+
+  local backend = vcs.backends.git
+  local real_changed, real_show = backend.changed, backend.show
+  -- These paths do not exist, so the base prefetch would spawn a `git show` per
+  -- file and wait for each to fail. The property is about how rows are laid
+  -- out, not about content, so answer instantly instead.
+  backend.show = function()
+    return nil
+  end
+  local wrong_rows, wrong_header, wrong_names = {}, {}, {}
+
+  open_settled({ scope = "working" })
+  for case = 1, 60 do
+    local seen, files, basenames = {}, {}, {}
+    for _ = 1, math.random(1, 30) do
+      local path = random_path()
+      if not seen[path] then
+        seen[path] = true
+        table.insert(files, { path = path, status = "M" })
+        table.insert(basenames, path:match("[^/]+$"))
+      end
+    end
+    table.sort(basenames)
+
+    backend.changed = function()
+      return vim.deepcopy(files)
+    end
+    -- refresh(), not open(): open paints from the listing cache when it has one.
+    ui.refresh()
+    vim.wait(6000, function()
+      return not ui.busy()
+    end)
+
+    local rows = {}
+    for _, line in ipairs(panel_lines()) do
+      local name = line:match("^ [MAD?RC]  %s*(%S.*)$")
+      if name then
+        table.insert(rows, vim.trim(name))
+      end
+    end
+    if #rows ~= #files then
+      table.insert(wrong_rows, ("case %d: %d rows for %d files"):format(case, #rows, #files))
+    end
+    table.sort(rows)
+    if not vim.deep_equal(rows, basenames) then
+      table.insert(wrong_names, ("case %d: rows %s"):format(case, table.concat(rows, ",")))
+    end
+    if not (panel_lines()[2] or ""):find("of " .. #files, 1, true) then
+      table.insert(wrong_header, ("case %d: %q wanted 'of %d'"):format(case, panel_lines()[2] or "", #files))
+    end
+  end
+  backend.changed, backend.show = real_changed, real_show
+
+  check("tree: every file gets exactly one row", #wrong_rows == 0, wrong_rows[1])
+  check("tree: and it is that file, not another", #wrong_names == 0, wrong_names[1])
+  check("tree: the header count agrees", #wrong_header == 0, wrong_header[1])
+
+  ui.close()
+  vcs.clear_cache()
+end
+
+--------------------------------------------------------------------------
 -- collapsing unchanged regions
 --------------------------------------------------------------------------
 
