@@ -485,6 +485,139 @@ do
 end
 
 --------------------------------------------------------------------------
+-- properties, over randomly generated file pairs
+--------------------------------------------------------------------------
+
+-- The cases above are hand-picked shapes: a deletion at the top, at the bottom,
+-- an edit next to an insert. They cover what someone thought to write down.
+-- These check invariants that must hold for *any* pair of files, over a few
+-- hundred generated ones — empty files, blank lines, non-ASCII, long lines, and
+-- edits piled on top of each other in whatever order the generator picks.
+--
+-- The seed is fixed, so a failure here is reproducible rather than a spooky
+-- once-a-week red build.
+do
+  math.randomseed(2024)
+
+  local function rand_lines(n)
+    local out = {}
+    for i = 1, n do
+      local r = math.random(6)
+      if r == 1 then
+        out[i] = ""
+      elseif r == 2 then
+        out[i] = "  indented " .. math.random(5)
+      elseif r == 3 then
+        out[i] = string.rep("x", math.random(1, 40))
+      elseif r == 4 then
+        out[i] = "ünïcode ✓ " .. math.random(9)
+      else
+        out[i] = "line " .. math.random(20)
+      end
+    end
+    return out
+  end
+
+  ---A few random edits: deletions, replacements and insertions, in any order.
+  local function mutate(lines)
+    local out = vim.deepcopy(lines)
+    for _ = 1, math.random(0, 5) do
+      local op = math.random(3)
+      if #out == 0 then
+        op = 3
+      end
+      if op == 1 then
+        table.remove(out, math.random(#out))
+      elseif op == 2 then
+        out[math.random(#out)] = "CHANGED " .. math.random(99)
+      else
+        table.insert(out, math.random(#out + 1), "ADDED " .. math.random(99))
+      end
+    end
+    return out
+  end
+
+  local CASES = 300
+  local attach_failures, revert_failures, bounds_failures, restore_failures = {}, {}, {}, {}
+
+  for case = 1, CASES do
+    local base = rand_lines(math.random(0, 25))
+    local work = mutate(base)
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, work)
+    vim.api.nvim_set_current_buf(buf)
+
+    local ok, err = pcall(inline.attach, buf, base)
+    if not ok then
+      table.insert(attach_failures, ("case %d: %s"):format(case, tostring(err)))
+    else
+      -- Every mark the overlay places has to sit on a row the buffer has.
+      local count = vim.api.nvim_buf_line_count(buf)
+      for _, m in ipairs(vim.api.nvim_buf_get_extmarks(buf, ns, 0, -1, {})) do
+        if m[2] < 0 or m[2] > count - 1 then
+          table.insert(bounds_failures, ("case %d: mark at row %d of %d"):format(case, m[2], count))
+        end
+      end
+
+      -- The index is a position among the hunks, so it cannot exceed the total.
+      local index, total = inline.hunk_position(buf)
+      if index < 0 or index > total then
+        table.insert(bounds_failures, ("case %d: hunk %d of %d"):format(case, index, total))
+      end
+
+      -- Reverting every hunk has to reconstruct the base exactly. This is the
+      -- property that matters: <leader>cv is destructive, and a revert that
+      -- lands the wrong lines is silent data loss.
+      local guard = 0
+      while guard < 100 do
+        guard = guard + 1
+        local _, remaining = inline.hunk_position(buf)
+        if remaining == 0 then
+          break
+        end
+        pcall(vim.api.nvim_win_set_cursor, 0, { 1, 0 })
+        local moved = inline.goto_hunk(buf, -1)
+        local row = vim.api.nvim_win_get_cursor(0)[1]
+        if row < 1 or row > math.max(vim.api.nvim_buf_line_count(buf), 1) then
+          table.insert(bounds_failures, ("case %d: goto_hunk landed on row %d"):format(case, row))
+        end
+        local rok, rerr = pcall(inline.revert_hunk, buf)
+        if not rok then
+          table.insert(revert_failures, ("case %d: %s"):format(case, tostring(rerr)))
+          break
+        end
+        if not moved then
+          break
+        end
+      end
+
+      local got = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+      -- An empty base is the one shape a buffer cannot represent: Neovim has no
+      -- zero-line buffer, so { "" } is as close as reverting can get.
+      local expected = #base > 0 and base or { "" }
+      if not vim.deep_equal(got, expected) then
+        table.insert(
+          restore_failures,
+          ("case %d: base=%s got=%s"):format(
+            case,
+            vim.inspect(base):gsub("%s+", " "),
+            vim.inspect(got):gsub("%s+", " ")
+          )
+        )
+      end
+    end
+
+    inline.detach(buf)
+    pcall(vim.api.nvim_buf_delete, buf, { force = true })
+  end
+
+  check(("properties: attach never raises (%d cases)"):format(CASES), #attach_failures == 0, attach_failures[1])
+  check("properties: revert never raises", #revert_failures == 0, revert_failures[1])
+  check("properties: marks and hunk indices stay in bounds", #bounds_failures == 0, bounds_failures[1])
+  check("properties: reverting every hunk restores the base exactly", #restore_failures == 0, restore_failures[1])
+end
+
+--------------------------------------------------------------------------
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 if failed > 0 then
