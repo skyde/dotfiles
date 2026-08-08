@@ -141,14 +141,19 @@
     "scrollbar.shadow": "#00000000",
     "widget.shadow": "#00000000",
 
-    // Line numbers
-    "editorLineNumber.foreground": "#585858",
+    // Line numbers: dark3, the colour docs/tokyonight.md assigns them, and the
+    // one Neovim's LineNr and delta's line-numbers-*-style already use. This
+    // was a neutral #585858, near enough in weight to look deliberate and off
+    // the palette all the same — the gutter is the one column that sits beside
+    // a diff, and a diff here is delta's.
+    "editorLineNumber.foreground": "#545c7e",
 
     // Scroll Bar
     "scrollbarSlider.background": "#ffffff17",
 
-    // Inlays
-    "editorInlayHint.foreground": "#606060",
+    // Inlays: `comment`, the palette's role for text that is present but not
+    // what you are reading. Was a neutral #606060.
+    "editorInlayHint.foreground": "#565f89",
     "editorInlayHint.background": "#00000000",
 
     // Debug Mode

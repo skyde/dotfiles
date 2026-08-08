@@ -669,16 +669,21 @@ It checks seven things:
    shade between panes reads as two different kinds of selection. Seven roles
    are compared across every tool that sets them — the cursor (11 settings),
    the selected row (7), an in-buffer search match (4), the current match (2),
-   and the three that make a search result one picture wherever you ask it:
-   the file path (6), the line number (7) and the yellow block behind a match
-   (6).
+   a file path in search output (6), the yellow block behind a filter match
+   (6), and a line number (12).
 
-   Those last three are the ones the repo had been asserting in comments and
+   The last three are the ones the repo had been asserting in comments and
    checking nowhere, which is exactly how `grep` came to be answering in
    magenta and green while `rg`, `git grep` and the `st` pickers agreed. Each
    tool spells a colour in its own dialect — a hex, an SGR triple, ripgrep's
-   commas, a `${_tn_blue}` the shell will expand — and the check normalises all
-   four.
+   commas, a `${_tn_blue}` the shell will expand, a `c.dark3` Neovim resolves —
+   and the check normalises all of them.
+
+   A line number is deliberately one role and not two. The number beside an
+   `rg` hit, in delta's diff, in Neovim's gutter and in VS Code's gutter is the
+   same thing seen in four places, and they sit next to each other constantly:
+   delta renders inside the editor's terminal, a hand's width from the editor's
+   own gutter. VS Code's was a neutral #585858 until this check was written.
 7. **This file's table above points at files that exist**, and lists every
    file the test checks.
 

@@ -927,14 +927,31 @@ SHARED_ROLES = [
         ],
     },
     {
-        "name": "a line number in search output",
+        "name": "a line number",
         "hex": "#545c7e",
-        "aliases": ("${_tn_dark3}",),
+        # theme.sh names it, and Neovim names it rather than spelling it.
+        "aliases": ("${_tn_dark3}", "c.dark3"),
         # dark3, not fg_gutter: this is a number you read, and the note under
         # the backgrounds table says anything you actually read takes a text
-        # colour. Neovim's LineNr and delta's line numbers are the same shade
-        # for the same reason.
+        # colour rather than the gutter one.
+        #
+        # One role, not two. A line number in `rg` output, in delta's diff, in
+        # Neovim's gutter and in VS Code's gutter are the same thing seen in
+        # four places, and they sit next to each other constantly — delta's
+        # diff renders inside the editor's terminal, beside the editor's own
+        # gutter. VS Code's was a neutral #585858 until this check was written.
         "settings": [
+            ("common/.config/git/config", r"line-numbers-left-style\s*=\s*\"(#[0-9a-fA-F]{6})\""),
+            ("common/.config/git/config", r"line-numbers-right-style\s*=\s*\"(#[0-9a-fA-F]{6})\""),
+            ("common/.config/git/config", r"line-numbers-zero-style\s*=\s*\"(#[0-9a-fA-F]{6})\""),
+            (
+                "common/.config/nvim/lua/plugins/tokyonight.lua",
+                r"hl\.LineNr\s*=\s*\{\s*fg\s*=\s*([\w.]+)\s*\}",
+            ),
+            (
+                "common/.config/Code/User/settings.json",
+                r'"editorLineNumber\.foreground"\s*:\s*"(#[0-9a-fA-F]{6})"',
+            ),
             ("common/.ripgreprc", r"--colors=line:fg:(\d+,\d+,\d+)"),
             ("common/.ripgreprc", r"--colors=column:fg:(\d+,\d+,\d+)"),
             # Anchored on the GREP_COLORS assignment: `ln` is also LS_COLORS'
