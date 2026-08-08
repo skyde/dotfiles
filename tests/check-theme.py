@@ -808,6 +808,28 @@ def _check_palette_variables(doc, verbose):
                     "%s: the %s swatch paints %s and the palette's %s is %s"
                     % (DOCTOR, name, actual, name, norm(wanted)))
 
+    # starship restates the palette a third time, as a named TOML table its
+    # modules then refer to by name. Same shape again: a name the palette
+    # already defines, beside a hex.
+    star = os.path.join(REPO, STARSHIP)
+    if os.path.isfile(star):
+        text = uncommented(star, open(star, encoding="utf-8").read())
+        block = re.search(r"\[palettes\.tokyonight\](.*?)(?=\n\[|\Z)",
+                          text, re.S)
+        if block:
+            for name, stated in re.findall(
+                    r'^(\w+)\s*=\s*"(#[0-9a-fA-F]{6})"', block.group(1), re.M):
+                checked += 1
+                wanted = by_name.get(name.lower())
+                if wanted is None:
+                    problems.append(
+                        "%s: the palette defines %s = %s and the doc names no "
+                        "such entry" % (STARSHIP, name, norm(stated)))
+                elif norm(wanted) != norm(stated):
+                    problems.append(
+                        "%s: the palette defines %s = %s and the doc's %s is %s"
+                        % (STARSHIP, name, norm(stated), name, norm(wanted)))
+
     if verbose and not problems:
         print("  %d palette statement(s) agree with their label and the doc"
               % checked)

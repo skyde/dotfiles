@@ -440,6 +440,13 @@ MUTATIONS = [
      r'block "247;118;142" "red', 'block "158;206;106" "red',
      "is labelled", None),
 
+    # starship restates the palette a third time, as a named TOML table its
+    # modules then refer to by name -- so a wrong entry here repaints
+    # everything that names it, and the name still reads correctly.
+    ("a starship palette entry that is not the doc's", "parity", STARSHIP,
+     r'magenta = "#bb9af7"', 'magenta = "#9d7cd8"',
+     "the doc's magenta is", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be
