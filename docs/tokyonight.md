@@ -469,6 +469,7 @@ quietly approximating it.
   | starship | `explain`, then its session log under `STARSHIP_CACHE` | an unknown section or key |
   | bat | `--list-themes` | `BAT_THEME` naming a theme it does not carry |
   | kitty | its own config loader via `+runpy` | an unknown option key |
+  | git | the real commands against a throwaway repository | a colour slot git does not have |
   | git | `--get-color` on every `color.*` key | an attribute typo the hex scan cannot see, e.g. `#7aa2f7 blod` |
   | wezterm | `ls-fonts`, which evaluates the config | any colour it cannot parse, by key name — the strictest of them |
 

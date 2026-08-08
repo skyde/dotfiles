@@ -673,6 +673,131 @@ def _check_command_lines(verbose):
     return problems
 
 
+# Slots this fixture cannot reach, and why. Kept explicit rather than silently
+# skipped: a slot that is never exercised is a slot whose name is never checked,
+# and that is exactly the thing being looked for here.
+GIT_UNEXERCISED = {
+    "color.status.nobranch": "needs a detached HEAD",
+    "color.status.unmerged": "needs a merge conflict, which stops `changed` "
+                             "from being reachable in the same tree",
+    "color.branch.plain": "git paints no branch with it in any state reached here",
+    "color.decorate.stash": "needs refs/stash asked for by name",
+    "color.decorate.grafted": "needs a grafted or replaced commit",
+}
+
+# Which commands can show a section's colours at all.
+GIT_SECTION_COMMANDS = {
+    "status": [["status"], ["status", "-sb"]],
+    "branch": [["branch", "-a", "-vv"]],
+    "decorate": [["log", "--decorate", "--all", "-3"]],
+}
+
+# A colour nothing in the palette uses, so its presence in the output can only
+# have come from the slot being overridden.
+GIT_SENTINEL = "#010203"
+
+
+def _git_section(body, name):
+    """The body of a [color "x"] section, or "" when it is absent."""
+    section = name.split(".", 1)[1] if "." in name else name
+    m = re.search(r'\[color "%s"\](.*?)(?=\n\[|\Z)' % re.escape(section),
+                  body, re.S)
+    return m.group(1) if m else ""
+
+
+def _check_git_paints(verbose):
+    """Every git colour slot in the config is a slot git actually has.
+
+    git ignores a config key it does not recognise, so a misspelled slot --
+    `color.status.chagned` -- reads correctly in the file and does nothing
+    forever. Same failure as the phantom delta option, same as three dead
+    lazygit keys.
+
+    There is no list of valid slots to check against, and writing one here
+    would make the checker its own authority. So git is asked. Each key in the
+    config is overridden to a sentinel colour nothing else uses, the real
+    commands are run against a small repository holding every state, and the
+    sentinel has to come back. A name git does not know paints nothing.
+
+    The sentinel matters: four of these slots share #bb9af7, so looking for
+    the configured colour would have found it in the output no matter which of
+    the four was misspelled.
+    """
+    import shutil
+    import subprocess
+    import tempfile
+
+    if not shutil.which("git"):
+        return []
+    cfg = os.path.join(REPO, GIT)
+    if not os.path.isfile(cfg):
+        return []
+    body = open(cfg, encoding="utf-8").read()
+
+    tmp = tempfile.mkdtemp(prefix="theme-git-")
+    work = os.path.join(tmp, "work")
+    env = dict(os.environ, GIT_CONFIG_GLOBAL=cfg, GIT_CONFIG_SYSTEM="/dev/null",
+               HOME=tmp, GIT_TERMINAL_PROMPT="0")
+    ident = ["-c", "user.email=t@t", "-c", "user.name=t"]
+
+    def git(*args, cwd=None):
+        return subprocess.run(["git"] + list(args), cwd=cwd or work, env=env,
+                              capture_output=True, text=True)
+
+    problems = []
+    try:
+        up = os.path.join(tmp, "up")
+        os.makedirs(up)
+        git("init", "-q", "-b", "main", ".", cwd=up)
+        open(os.path.join(up, "f.txt"), "w").write("a\n")
+        git("add", "-A", cwd=up)
+        git(*ident, "commit", "-qm", "init", cwd=up)
+        git("tag", "v0", cwd=up)
+        git("clone", "-q", up, work, cwd=tmp)
+        # every state a slot might need, short of a conflict
+        open(os.path.join(work, "tracked.txt"), "w").write("a\n")
+        git("add", "-A")
+        git(*ident, "commit", "-qm", "second")
+        open(os.path.join(work, "tracked.txt"), "a").write("b\n")  # changed
+        open(os.path.join(work, "staged.txt"), "w").write("c\n")
+        git("add", "staged.txt")                                   # added
+        open(os.path.join(work, "untracked.txt"), "w").write("d\n")
+        git("branch", "-q", "other", "main")                       # branch.local
+
+        sgr = "38;2;%d;%d;%d" % tuple(
+            int(GIT_SENTINEL[i:i + 2], 16) for i in (1, 3, 5))
+        checked = 0
+        for section, commands in sorted(GIT_SECTION_COMMANDS.items()):
+            for key, _colour in re.findall(
+                    r'^\s*(\w+)\s*=\s*"?(#[0-9a-fA-F]{6})',
+                    _git_section(body, "color." + section), re.M):
+                full = "color.%s.%s" % (section, key)
+                painted = any(
+                    sgr in git("--no-pager", "-c", "color.ui=always",
+                               "-c", "core.pager=cat",
+                               "-c", "%s=%s" % (full, GIT_SENTINEL),
+                               *cmd).stdout
+                    for cmd in commands)
+                if full in GIT_UNEXERCISED:
+                    if painted:
+                        problems.append(
+                            "%s is listed as unexercisable (%s) and git does "
+                            "paint with it -- the exemption is stale"
+                            % (full, GIT_UNEXERCISED[full]))
+                    continue
+                checked += 1
+                if not painted:
+                    problems.append(
+                        "%s paints nothing -- git does not know that slot, so "
+                        "the key reads correctly and does nothing" % full)
+        if verbose and not problems:
+            print("  %d git colour slot(s) paint; %d cannot be reached here"
+                  % (checked, len(GIT_UNEXERCISED)))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return problems
+
+
 def _check_mime_extension_bridge(verbose):
     """A file matched by mime in yazi and by extension in lf is one colour.
 
@@ -1448,6 +1573,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_nvim_delta_parity(verbose))
     problems.extend(_check_colour_coverage(doc, verbose))
     problems.extend(_check_mime_extension_bridge(verbose))
+    problems.extend(_check_git_paints(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))
 

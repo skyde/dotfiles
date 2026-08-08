@@ -300,6 +300,15 @@ MUTATIONS = [
      '{ mime = "**/audio/*", fg = "#bb9af7" }',
      "the same file, two colours", None),
 
+    # git ignores a config key it does not recognise, so a misspelled slot is
+    # a setting that reads correctly in the file and does nothing forever --
+    # the same shape as the phantom delta option and the three dead lazygit
+    # keys. There is no list of valid slots to check against, so git itself
+    # is asked: paint a real repository and see whether the colour arrives.
+    ("a git colour slot that git does not have", "parity", GIT,
+     r"    untracked = \"#1abc9c\"", '    untraked = "#1abc9c"',
+     "paints nothing", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be
