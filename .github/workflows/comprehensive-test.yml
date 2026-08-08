@@ -62,6 +62,17 @@ jobs:
       - name: Check theme consistency
         run: ./tests/check-theme.py --verbose
 
+      # The other half: whether upstream still reads the keys we set. This one
+      # asks yazi, delta, btop and lazygit directly, so it needs the network,
+      # and it can start failing without a line of this repo changing — a
+      # rename upstream is news, but it is not a defect in somebody's pull
+      # request. So it runs on the weekly schedule and on demand, where
+      # "upstream moved" is exactly what you want to be told, and pull requests
+      # stay with check-theme.py. See docs/tokyonight.md, "dead keys".
+      - name: Audit theme keys against upstream
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: ./tests/audit-theme-keys.py --verbose
+
   unix-install:
     name: Install lifecycle (${{ matrix.os }})
     needs: validate
