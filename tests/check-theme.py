@@ -40,6 +40,7 @@ table at the bottom of docs/tokyonight.md. Theme a new tool, add its row to
 that table, and it is covered from then on.
 """
 
+import math
 import os
 import re
 import sys
@@ -1646,10 +1647,117 @@ FILLS = [
 ]
 
 
+# --------------------------------------------------------------------------
+# Colour-vision deficiency.
+#
+# delta's added and removed backgrounds are 39.7 apart in Lab and 3.0 apart to
+# a deuteranope -- the same colour. That is not a fault to be repainted away:
+# roughly one man in twelve cannot separate those hues no matter what green and
+# red you pick, so a diff that carries direction in hue alone is broken for
+# them by construction.
+#
+# This diff does not. Direction lives in the line-number gutter -- a removed
+# line has no new number, so its column is blank -- and *presence* lives in
+# lightness, which CVD leaves alone: added and removed each stand ~23 from the
+# page for a deuteranope, against 32 and 27 for everyone else. Three states,
+# separable without hue.
+#
+# So what is worth pinning is not the hue difference, which cannot be fixed,
+# but the lightness difference, which can be lost by a well-meaning tweak that
+# makes a tint subtler. Anything that drifts a diff background back toward the
+# page takes the last cue a deuteranope has.
+CVD_FLOOR = 10.0
+CVD_HEADING = "Tinted washes"
+
+
+def _cvd_tints(doc):
+    """The tinted-wash table, read from the doc rather than copied here.
+
+    An earlier version listed the seven hexes in this file, which made the
+    check an assertion about its own constants: the tints could drift in the
+    doc and in every config together and it would still have passed. The table
+    is the source of truth for what a tinted wash is, so it is what gets read.
+    """
+    section = doc.split(CVD_HEADING, 1)
+    if len(section) != 2:
+        return []
+    tints = []
+    for line in section[1].splitlines():
+        if line.startswith("#"):
+            break
+        cells = [c.strip() for c in line.split("|")]
+        if len(cells) >= 3 and re.fullmatch(r"`#[0-9a-fA-F]{6}`", cells[1]):
+            tints.append((norm(cells[1].strip("`")), cells[2]))
+    return tints
+
+
+def _to_lms(hexstr):
+    r, g, b = (_linear(int(hexstr[i:i + 2], 16) / 255) for i in (1, 3, 5))
+    return (17.8824 * r + 43.5161 * g + 4.11935 * b,
+            3.45565 * r + 27.1554 * g + 3.86714 * b,
+            0.0299566 * r + 0.184309 * g + 1.46709 * b)
+
+
+def _deuteranope(hexstr):
+    """Brettel/Vienot simulation of the commonest colour-vision deficiency."""
+    L, M, S = _to_lms(hexstr)
+    M = 0.494207 * L + 1.24827 * S
+    rgb = (0.0809444479 * L - 0.130504409 * M + 0.116721066 * S,
+           -0.0102485335 * L + 0.0540193266 * M - 0.113614708 * S,
+           -0.000365296938 * L - 0.00412161469 * M + 0.693511405 * S)
+    out = []
+    for c in rgb:
+        c = max(0.0, min(1.0, c))
+        c = 12.92 * c if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055
+        out.append(max(0, min(255, round(c * 255))))
+    return "#%02x%02x%02x" % tuple(out)
+
+
+def _lab(hexstr):
+    r, g, b = (_linear(int(hexstr[i:i + 2], 16) / 255) for i in (1, 3, 5))
+    X = r * 0.4124 + g * 0.3576 + b * 0.1805
+    Y = r * 0.2126 + g * 0.7152 + b * 0.0722
+    Z = r * 0.0193 + g * 0.1192 + b * 0.9505
+
+    def f(t):
+        return t ** (1 / 3) if t > 0.008856 else 7.787 * t + 16 / 116
+
+    fx, fy, fz = f(X / 0.95047), f(Y), f(Z / 1.08883)
+    return (116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz))
+
+
+def _delta_e(a, b):
+    return math.dist(_lab(a), _lab(b))
+
+
+def _check_cvd(doc, verbose):
+    tints = _cvd_tints(doc)
+    if not tints:
+        return ["docs/tokyonight.md no longer has a %r table, so the diff "
+                "tints cannot be checked for colour-vision safety"
+                % CVD_HEADING]
+    problems = []
+    page = "#1a1b26"
+    for tint, what in tints:
+        got = _delta_e(_deuteranope(tint), _deuteranope(page))
+        if got < CVD_FLOOR:
+            problems.append(
+                "%s: %s is only %.1f from the page to a deuteranope -- the "
+                "hue that separates it from its opposite is already gone for "
+                "them, so this lightness step is the whole cue"
+                % (what, tint, got))
+        elif verbose:
+            print("  %6.1f dE  cvd   %s" % (got, what))
+    return problems
+
+
+def _linear(c):
+    """One sRGB channel, 0-1, undone back to light."""
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
 def luminance(hexstr):
-    parts = [int(hexstr[i:i + 2], 16) / 255.0 for i in (1, 3, 5)]
-    lin = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
-           for c in parts]
+    lin = [_linear(int(hexstr[i:i + 2], 16) / 255.0) for i in (1, 3, 5)]
     return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
 
 
@@ -1716,6 +1824,7 @@ def check_contrast(doc, verbose):
             print("  %6.2f:1  fill  %s" % (got, what))
 
     problems.extend(_check_stated_pairs(verbose))
+    problems.extend(_check_cvd(doc, verbose))
     return problems
 
 

@@ -280,6 +280,18 @@ MUTATIONS = [
      r"\nbackground #1a1b26", "\nbackground #16161e",
      "background disagrees", None),
 
+    # A tinted wash too faint to survive colour blindness. For a deuteranope
+    # the hue separating added from removed is already gone -- 3.0 apart, the
+    # same colour -- so the lightness step off the page is the only cue left,
+    # and a subtler tint takes it without looking wrong to anyone who can see
+    # the hue. Added as a new row rather than by editing one, so the palette
+    # check stays quiet and this proves the CVD floor specifically.
+    ("a tinted wash too faint to survive colour blindness", "contrast",
+     TOKYODOC,
+     r"\| `#15423d` \| moved to here \(teal\)([^|]*)\|",
+     r"| `#15423d` | moved to here (teal)\1|\n| `#1d2229` | a wash that is barely there |",
+     "deuteranope", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be

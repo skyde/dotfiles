@@ -137,6 +137,32 @@ over it and no foreground key of its own to compensate.
 | `#12384a` | moved to here (cyan)                            |
 | `#15423d` | moved to here (teal)                            |
 
+#### These washes are what a colour-blind reader has
+
+delta's added and removed backgrounds are 39.7 apart in Lab and **3.0** apart
+to a deuteranope — the same colour. That is not a fault to repaint away: about
+one man in twelve cannot separate those hues whatever green and red you pick,
+so a diff carrying direction in hue alone is broken for them by construction.
+
+This diff does not carry it in hue. Direction lives in the line-number gutter,
+because `line-numbers-left-format` is empty and a removed line therefore has no
+number at all, and *presence* lives in lightness, which colour-vision
+deficiency leaves alone:
+
+| | everyone | deuteranope |
+| --- | --- | --- |
+| added vs the page | 32.3 | **22.9** |
+| removed vs the page | 27.2 | **24.2** |
+| added vs removed | 39.7 | **3.0** |
+
+Three states — blank gutter, numbered and tinted, numbered and plain — all
+separable without hue.
+
+So the thing worth pinning is not the hue difference, which cannot be fixed,
+but the lightness difference, which a well-meaning tweak toward subtlety can
+quietly remove. `tests/check-theme.py contrast` simulates deuteranopia on every
+row of the table above and requires each to stand at least 10 from the page.
+
 ### Why the shell theme is interactive-only
 
 `common/.config/shell/theme.sh` returns immediately unless the shell is
