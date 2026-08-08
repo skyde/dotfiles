@@ -221,6 +221,15 @@ MUTATIONS = [
      r'\n\s*\["@tag\.attribute"\] = c\.variable,[^\n]*', "",
      "does not map it", None),
 
+    # The pair that motivated the derived scan: sticky directories were
+    # #c0caf5 on #7aa2f7, 1.56:1, in yazi and lf and LS_COLORS at once. All
+    # three agreeing is what hid it -- parity was satisfied and no hand-written
+    # row named the pair, so nothing had an opinion about whether it was
+    # readable. Putting the old value back has to fail.
+    ("an unreadable pair that no hand-written row names", "contrast", YAZI,
+     r'is = "sticky", fg = "#16161e"', 'is = "sticky", fg = "#c0caf5"',
+     "below 4.5:1", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be

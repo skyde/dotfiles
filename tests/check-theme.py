@@ -1693,6 +1693,66 @@ def check_contrast(doc, verbose):
             )
         elif verbose:
             print("  %6.2f:1  fill  %s" % (got, what))
+
+    problems.extend(_check_stated_pairs(verbose))
+    return problems
+
+
+# yazi is the one config that writes a foreground and a background together on
+# a single line, which makes every pair in it readable without a human deciding
+# which pairs exist. PAIRS above is hand-written and therefore covers what
+# someone thought to list: 10 of yazi's 16 real pairs were missing from it, and
+# one of those was the least readable pair in the repository.
+STATED_PAIRS = [
+    (YAZI, r'\bfg\s*=\s*"(#[0-9a-fA-F]{6})"', r'\bbg\s*=\s*"(#[0-9a-fA-F]{6})"'),
+]
+STATED_FLOOR = 4.5
+
+
+def _check_stated_pairs(verbose):
+    """Every foreground a config states against its own background is legible.
+
+    Derived rather than listed, so it cannot go stale and a pair added later
+    is covered the day it lands. That is the whole point: the sticky-directory
+    rule was `#c0caf5` on `#7aa2f7` -- 1.56:1, effectively unreadable -- in
+    yazi, lf and LS_COLORS alike, and it survived precisely because all three
+    agreed, so the parity check was satisfied and no row in PAIRS named it.
+
+    A line setting fg and bg to the same colour is skipped: those are yazi's
+    solid marker blocks, where the point is a bar of colour with no text.
+
+    Where PAIRS already tiers a pair, that tier wins. Some of these are meant
+    to be quiet -- an inactive tab label is `ui`, not body text -- and the
+    hand-written list is where that judgement belongs. The derived floor only
+    applies to pairs nobody has tiered, which is exactly the set that had no
+    floor at all before.
+    """
+    tiered = {(norm(fg), norm(bg)): TIERS[tier]
+              for tier, fg, bg, _source, _what in PAIRS}
+    problems, checked = [], 0
+    for rel, fg_pat, bg_pat in STATED_PAIRS:
+        path = os.path.join(REPO, rel)
+        if not os.path.isfile(path):
+            continue
+        for lineno, line in enumerate(open(path, encoding="utf-8"), 1):
+            if line.lstrip().startswith("#"):
+                continue
+            fg, bg = re.search(fg_pat, line), re.search(bg_pat, line)
+            if not (fg and bg):
+                continue
+            f, b = norm(fg.group(1)), norm(bg.group(1))
+            if f == b:
+                continue
+            checked += 1
+            got = ratio(f, b)
+            floor = tiered.get((f, b), STATED_FLOOR)
+            if got < floor:
+                problems.append(
+                    "%s:%d: %s on %s is %.2f:1, below %.1f:1 -- %s"
+                    % (rel, lineno, f, b, got, floor, line.strip()[:60]))
+    if verbose and not problems:
+        print("  %6s   %d stated fg/bg pairs, all at or above %.1f:1"
+              % ("", checked, STATED_FLOOR))
     return problems
 
 

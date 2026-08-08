@@ -249,7 +249,7 @@ rules = [
   { url = "*", is = "char", fg = "#e0af68" },
   { url = "*", is = "fifo", fg = "#bb9af7" },
   { url = "*", is = "sock", fg = "#bb9af7" },
-  { url = "*", is = "sticky", fg = "#c0caf5", bg = "#7aa2f7" },
+  { url = "*", is = "sticky", fg = "#16161e", bg = "#7aa2f7" },
   { url = "*", is = "exec", fg = "#9ece6a" },
   { url = "*", is = "dummy", fg = "#737aa2" },
 

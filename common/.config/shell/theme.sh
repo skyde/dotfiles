@@ -170,7 +170,7 @@ _ls_kinds="${_ls_kinds}:su=38;2;${_tn_bg_dark};48;2;${_tn_red}"
 _ls_kinds="${_ls_kinds}:sg=38;2;${_tn_bg_dark};48;2;${_tn_yellow}"
 _ls_kinds="${_ls_kinds}:tw=38;2;${_tn_bg_dark};48;2;${_tn_green}"
 _ls_kinds="${_ls_kinds}:ow=38;2;${_tn_blue};48;2;${_tn_bg_visual}"
-_ls_kinds="${_ls_kinds}:st=38;2;${_tn_fg};48;2;${_tn_blue}"
+_ls_kinds="${_ls_kinds}:st=38;2;${_tn_bg_dark};48;2;${_tn_blue}"
 # archives → red
 _ls_arch="*.tar=38;2;${_tn_red}:*.tgz=38;2;${_tn_red}"
 _ls_arch="${_ls_arch}:*.gz=38;2;${_tn_red}:*.bz2=38;2;${_tn_red}"

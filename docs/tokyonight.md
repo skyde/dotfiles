@@ -460,3 +460,20 @@ quietly approximating it.
 - **contrast** — every foreground/background pair clears the floor for the job
   it does, and every focused fill stands off the page behind it. The tiers, and
   why they are not simply WCAG AA, are in the script.
+
+  Two lists feed it. One is written by hand and says what each pair is *for*,
+  which is the only way a deliberately quiet pair — an inactive tab label — can
+  be held to a lower floor than body text. The other is derived: yazi states a
+  foreground and a background on the same line, so every pair in that file can
+  be read off it and held to 4.5:1 without anyone listing it. The hand-written
+  tier wins wherever both apply.
+
+  The derived half exists because the hand-written half had covered 6 of yazi's
+  16 real pairs, and sticky directories — `#c0caf5` on `#7aa2f7`, **1.56:1**,
+  the least readable thing in the repository — were in the other ten. What hid
+  it was agreement: yazi, `lf` and `LS_COLORS` all said the same unreadable
+  thing, so the parity check was satisfied and nothing else had an opinion.
+  Sticky now matches what `setuid`, `setgid` and `sticky+other-writable`
+  already did — `#16161e` on the accent, 7.14:1 — which was the established
+  pattern in this repo for a badge on a coloured fill, applied everywhere
+  except the one place it was needed most.
