@@ -2205,8 +2205,36 @@ def _pairs_tmux(line):
     return pairs
 
 
+# fast-syntax-highlighting writes one role per line, a bare colour for text and
+# `bg:` for a fill. Both are pairs against something implicit -- the page for a
+# foreground, the default text colour for a fill -- which is why a scan looking
+# for two colours on one line found none of its 52 roles.
+FSH_ROLE = re.compile(r"^([\w-]+)\s*=\s*(\S.*)$")
+
+# A rule glyph rather than text: it draws the line between a command and its
+# output, so it is meant to sit just above the page the way a border does, and
+# no tier in this file describes that.
+FSH_NOT_TEXT = {"subtle-separator"}
+
+
+def _pairs_fsh(line):
+    m = FSH_ROLE.match(line.strip())
+    if not m:
+        return []
+    role, value = m.group(1), m.group(2)
+    if role in FSH_NOT_TEXT:
+        return []
+    hexes = HEX.findall(value)
+    if len(hexes) != 1:
+        return []
+    if "bg:" in value:
+        return [("#c0caf5", hexes[0])]   # default text on the fill
+    return [(hexes[0], "#1a1b26")]       # text on the page
+
+
 STATED_PAIRS = [
     (YAZI, _pairs_toml),
+    (FSH_INI, _pairs_fsh),
     ("common/.config/lf/colors", _pairs_sgr),
     (TMUX, _pairs_tmux),
 ]

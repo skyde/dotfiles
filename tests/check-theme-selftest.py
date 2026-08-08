@@ -46,6 +46,7 @@ GIT = "common/.config/git/config"
 TMUX = "common/.tmux.conf"
 RGRC = "common/.ripgreprc"
 BTOP = "common/.config/btop/themes/tokyo-night.theme"
+FSH_INI = "common/.config/fsh/tokyonight.ini"
 LAZYGIT = "common/.config/lazygit/config.yml"
 STARSHIP = "common/.config/starship.toml"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
@@ -324,6 +325,14 @@ MUTATIONS = [
     ("a lazygit theme key lazygit does not have", "parity", LAZYGIT,
      r"    optionsTextColor:", "    optionsTxtColor:",
      "no such key", "lazygit"),
+
+    # fsh writes one role per line -- a bare colour for text, `bg:` for a
+    # fill -- so both are pairs against something implicit, the page or the
+    # default text colour. A scan looking for two colours on one line found
+    # none of its 52 roles, which is why they went unchecked.
+    ("an unreadable command-line role in fsh", "contrast", FSH_INI,
+     r"\nvariable(\s+)= #9d7cd8", "\\nvariable\\1= #3b4261",
+     "below 4.5:1", None),
 
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is

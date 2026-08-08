@@ -527,6 +527,16 @@ quietly approximating it.
   the first foreground with the first background would invent a combination that
   is never drawn.
 
+  `fsh` states one role per line — a bare colour for text, `bg:` for a fill —
+  so both are pairs against something implicit: the page for a foreground, the
+  default text colour for a fill. A scan looking for two colours on one line
+  found none of its 52 roles, which is how the longest colour list in the repo
+  after yazi's went unmeasured. All 47 foregrounds and 5 fills clear their
+  floors; `comment` at 2.76:1 is the muted tier doing its job, and the three
+  `bg:#3d59a1` fills carry default text at 4.14:1, which is the same `ui` pair
+  tmux's copy-mode match already uses. `subtle-separator` is exempt by name:
+  it draws a rule, not text, and no tier here describes a border.
+
   `btop` and `lazygit` state their pairs by *naming* rather than adjacency —
   `theme[selected_fg]` and `theme[selected_bg]` sit a dozen lines apart, and
   `cherryPickedCommitFgColor` has a matching `BgColor`. The shared key stem is
