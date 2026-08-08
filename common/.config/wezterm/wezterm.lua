@@ -49,7 +49,11 @@ config.colors = {
     '#c0caf5', -- bright white
   },
   tab_bar = {
-    background = '#1a1b26',
+    -- `black`, not `bg`: the strip the tabs sit on is a shade darker than the
+    -- terminal body, which is what makes it read as chrome rather than as more
+    -- window. Same value as kitty's tab_bar_background, which is what
+    -- docs/tokyonight.md assigns #15161e to.
+    background = '#15161e',
     active_tab = {
       bg_color = '#7aa2f7',
       fg_color = '#16161e',
@@ -65,8 +69,9 @@ config.colors = {
       fg_color = '#c0caf5',
       italic = true,
     },
+    -- The "+" button sits on the strip, so it takes the strip's background.
     new_tab = {
-      bg_color = '#1a1b26',
+      bg_color = '#15161e',
       fg_color = '#c0caf5',
     },
     new_tab_hover = {

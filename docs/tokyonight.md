@@ -621,7 +621,11 @@ It checks seven things:
    document the registry rather than a description that rots.
 2. **All four terminals agree**, slot for slot: background, foreground,
    cursor, selection and all sixteen ANSI colours, across kitty, wezterm,
-   VS Code's integrated terminal and Neovim's `:terminal`.
+   VS Code's integrated terminal and Neovim's `:terminal`. kitty and wezterm
+   are also compared on the tab bar — the strip and the active and inactive
+   tabs — which is a surface only those two draw, and which had drifted:
+   wezterm's strip was `bg` where kitty's was `black`, so the tabs sat flush
+   with the window in one terminal and on a darker band in the other.
 3. **One file-type table, three dialects.** `LS_COLORS` (asked of a real shell,
    not reparsed), `lf/colors` and yazi's `[filetype]` rules must agree on every
    extension and file kind, colour *and* boldness — including where yazi says

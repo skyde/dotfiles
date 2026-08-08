@@ -299,6 +299,43 @@ def parse_wezterm_colours() -> tuple[dict[str, str], list[str], list[str]]:
     return scalars, indexed("ansi"), indexed("brights")
 
 
+# The tab bar is a shared surface with a direct kitty/wezterm mapping, and it
+# is not covered by TERMINAL_KEYS above — which is how wezterm's strip came to
+# be `bg` #1a1b26 while kitty's was `black` #15161e. Both sit behind the same
+# tabs; a strip that is a shade darker in one terminal and flush with the body
+# in the other is the same window looking like two different applications.
+#
+# The right-hand side is the path through wezterm's nested `tab_bar` table.
+WEZTERM_TAB_KEYS = {
+    "tab_bar_background": ("background",),
+    "active_tab_background": ("active_tab", "bg_color"),
+    "active_tab_foreground": ("active_tab", "fg_color"),
+    "inactive_tab_background": ("inactive_tab", "bg_color"),
+    "inactive_tab_foreground": ("inactive_tab", "fg_color"),
+}
+
+
+def parse_wezterm_tab_bar() -> dict[tuple[str, ...], str]:
+    """The colours inside wezterm's `tab_bar = { ... }` table, by path.
+
+    Keyed by ("background",) for the scalars and ("active_tab", "bg_color")
+    for the ones a level down, which is how WEZTERM_TAB_KEYS names them.
+    """
+    text = re.sub(r"--[^\n]*", "", read("common/.config/wezterm/wezterm.lua"))
+    block = re.search(r"tab_bar\s*=\s*\{(.*?)\n  \},", text, re.S)
+    if not block:
+        return {}
+    body = block.group(1)
+    found: dict[tuple[str, ...], str] = {
+        (key,): norm(colour)
+        for key, colour in re.findall(r"^\s{4}(\w+)\s*=\s*'(#[0-9a-fA-F]{6})'", body, re.M)
+    }
+    for name, inner in re.findall(r"(\w+)\s*=\s*\{([^}]*)\}", body):
+        for key, colour in re.findall(r"(\w+)\s*=\s*'(#[0-9a-fA-F]{6})'", inner):
+            found[(name, key)] = norm(colour)
+    return found
+
+
 def check_terminals(report: Report) -> None:
     kitty = parse_kitty_theme()
     scalars, ansi, brights = parse_wezterm_colours()
@@ -336,6 +373,26 @@ def check_terminals(report: Report) -> None:
                 "terminals",
                 f"{key} is {expected} in kitty but {actual} in wezterm",
             )
+    tabs = parse_wezterm_tab_bar()
+    if not tabs:
+        report.fail("terminals", "could not find wezterm.lua's tab_bar table")
+    else:
+        for kitty_key, path in WEZTERM_TAB_KEYS.items():
+            expected = kitty.get(kitty_key)
+            actual = tabs.get(path)
+            if expected is None:
+                report.fail("terminals", f"kitty theme has no {kitty_key}")
+            elif actual is None:
+                report.fail(
+                    "terminals",
+                    f"wezterm.lua's tab_bar has no {'.'.join(path)} (kitty's {kitty_key})",
+                )
+            elif actual != expected:
+                report.fail(
+                    "terminals",
+                    f"{kitty_key} is {expected} in kitty but tab_bar.{'.'.join(path)} "
+                    f"is {actual} in wezterm",
+                )
     report.ok("kitty and wezterm agree on every shared slot")
 
     vscode = parse_vscode_terminal()
