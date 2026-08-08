@@ -25,11 +25,11 @@ give equality.
 Headline findings:
 
 * Verified for **all connected cubic graphs on at most 22 vertices**
-  (7,876,000 graphs) and **all regular graphs of every degree on at most 13
-  vertices**. No counterexample.
+  (7,875,918 graphs) and **all regular graphs of every degree on at most 14
+  vertices** (72.3 million graphs). No counterexample.
 * Verified for **every cubic graph on at most 30 vertices attaining the minimum
   saturation number** `mu* = 3n/10` — the class where the inequality has the
-  least room.
+  least room. That took 24,431,732,325 pairings and settles `Q(3)`.
 * The inequality is remarkably tight: 5.4% of cubic graphs on 22 vertices
   attain equality, and `max i` and `min mu*` are attained by different graphs,
   so no purely extremal argument can prove it.

@@ -10,3 +10,6 @@ n=14  r=4   graphs=88193        counterexamples=0   max_i=6   min_mu*=4   ties=2
 n=14  r=9   graphs=88193        counterexamples=0   max_i=3   min_mu*=5   ties=0
 n=14  r=5   graphs=3459386      counterexamples=0   max_i=5   min_mu*=4   ties=9
 n=14  r=8   graphs=3459386      counterexamples=0   max_i=4   min_mu*=4   ties=1
+n=14  r=6   graphs=21609301     counterexamples=0   max_i=4   min_mu*=4   ties=0
+n=14  r=7   graphs=21609301     counterexamples=0   max_i=7   min_mu*=4   ties=1
+--- order 14 complete ---

@@ -49,12 +49,19 @@ all edge subsets, sharing no logic with the C code.
 
 ### All regular graphs, every degree
 
-Every connected `r`-regular graph of order `n <= 13`, for every `r`, satisfies
-`i(G) <= mu*(G)`; no counterexample. Full table in `logs/allreg.summary`.
-Order 14 is covered for every degree except `r = 6, 7` in
-`logs/order14.summary` (those two classes have about 21.6 million graphs each);
-the order-14 sweep also includes disconnected regular graphs, which Lemma 1
-does not require but which cost nothing.
+**Every regular graph of order `n <= 14`, of every degree, satisfies
+`i(G) <= mu*(G)`.** No counterexample. That is 409,173 connected regular graphs
+of order at most 13 (`logs/allreg.summary`) plus 71,924,170 regular graphs of
+order 14 (`logs/order14.summary`, all 13 degrees, and here including
+disconnected ones, which Lemma 1 does not require but which cost nothing):
+
+| `r` | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 |
+|-----|--:|--:|--:|--:|--:|--:|--:|--:|--:|---:|---:|---:|---:|
+| graphs of order 14 | 1 | 13 | 540 | 88,193 | 3,459,386 | 21,609,301 | 21,609,301 | 3,459,386 | 88,193 | 540 | 13 | 1 | 1 |
+
+The `r = 6` and `r = 7` classes dominate that total; the 7-regular class is also
+where `max i = 7` (attained by `K_{7,7}`) sits against `min mu* = 4`, another
+reminder that the two extremes never meet in the same graph.
 
 A by-product worth recording: comparing the observed `min mu*` against Lemma 2's
 bound `ceil(nr/(2(2r-1)))` over the 61 `(n, r)` classes swept, the bound is
@@ -178,8 +185,8 @@ check on the lemma.
 * Only the `mu*`-minimal cubic graphs are covered by the structural argument.
   For `r >= 4` the analogous extremal class involves `(r-1)`-uniform
   hypergraphs (`notes.md`, §6) and was not searched.
-* Cubic graphs on 24+ vertices, and non-cubic regular graphs on 14+ vertices,
-  were not searched exhaustively.
+* Cubic graphs on 24+ vertices, and regular graphs on 15+ vertices, were not
+  searched exhaustively.
 
 Random cubic graphs are far from tight (at `n = 50` a random cubic graph
 typically has `i ≈ 14`, `mu* ≈ 16`), so unstructured search is not a promising
