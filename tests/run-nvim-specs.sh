@@ -53,6 +53,19 @@ fi
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
+# `wait -n` — reap whichever finishes first — needs bash 4.3, and macOS still
+# ships 3.2. Probed rather than assumed, because its failure is indistinguishable
+# from a job exiting non-zero: without the probe, the first failing spec would
+# quietly turn the rest of the run serial. Where it is missing, waiting for the
+# whole batch is correct and only a little slower.
+have_wait_n=0
+if (
+  sleep 0 &
+  wait -n
+) 2>/dev/null; then
+  have_wait_n=1
+fi
+
 running=0
 for i in "${!specs[@]}"; do
   (
@@ -61,8 +74,13 @@ for i in "${!specs[@]}"; do
   ) &
   running=$((running + 1))
   if [[ $running -ge $jobs ]]; then
-    wait -n 2>/dev/null || wait
-    running=$((running - 1))
+    if [[ $have_wait_n -eq 1 ]]; then
+      wait -n || true
+      running=$((running - 1))
+    else
+      wait
+      running=0
+    fi
   fi
 done
 wait
