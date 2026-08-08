@@ -84,6 +84,9 @@ check_env FZF_DEFAULT_OPTS "#ff5000" "fzf, including the cursor-orange pointer"
 check_env LESS_TERMCAP_md "" "man page bold"
 check_env GROFF_NO_SGR "1" "without it less never consults termcap"
 check_env RIPGREP_CONFIG_PATH "" "ripgrep's colours and excludes"
+# 38;2;122;162;247 is blue #7aa2f7 again — grep's filename, which has to be the
+# same blue rg paints a path, or the same search reads two ways.
+check_env GREP_COLORS "38;2;122;162;247" "grep, matching ripgrep"
 # glow's style cannot live in glow.yml — the path there is never expanded — so
 # the environment is the only place it can come from. See docs/tokyonight.md.
 check_env GLOW_STYLE "glow" "glow's markdown rendering"

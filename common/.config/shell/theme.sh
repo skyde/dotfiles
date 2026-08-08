@@ -15,6 +15,7 @@ _tn_fg='38;2;192;202;245'      # fg       #c0caf5
 _tn_fg_dark='38;2;169;177;214' # fg_dark  #a9b1d6
 _tn_comment='38;2;86;95;137'   # comment  #565f89
 _tn_dark5='38;2;115;122;162'   # dark5    #737aa2
+_tn_dark3='38;2;84;92;126'     # dark3    #545c7e
 _tn_gutter='38;2;59;66;97'     # fg_gutter #3b4261
 _tn_red='38;2;247;118;142'     # red      #f7768e
 _tn_green='38;2;158;206;106'   # green    #9ece6a
@@ -180,6 +181,41 @@ EZA_COLORS="${EZA_COLORS}:ga=${_tn_teal}:gm=${_tn_yellow}:gd=${_tn_red}:gv=${_tn
 EZA_COLORS="${EZA_COLORS}:gt=${_tn_cyan}:gi=${_tn_comment}:gc=${_tn_orange}"
 export EZA_COLORS
 
+# --- grep ------------------------------------------------------------------
+# `grep` is aliased to --color=auto in both shells, and without this it is the
+# one search tool still wearing its own palette: bold red matches, a magenta
+# filename, a green line number and cyan separators. ripgrep next to it paints
+# a blue path and a dark3 line number, and `git grep` pages through delta,
+# which does the same — so the same question asked three ways came back looking
+# three different ways.
+#
+# The values below are ~/.ripgreprc's, role for role, so `grep foo` and
+# `rg foo` are the same picture. The match is an inverted yellow block rather
+# than recoloured text, for the reason spelled out there and in
+# docs/tokyonight.md: grep output is routinely piped into something that has
+# already coloured the line, and only inverting fg and bg survives that.
+#
+# `se` is grep's own — the `:` between path and line, and the `--` between
+# groups. rg leaves those alone; grep colours them cyan, which is far too loud
+# for punctuation, so they take fg_gutter, the palette's separator colour and
+# the one eza's `xx` already uses. `sl` and `cx` stay unset, so a matching line
+# and a context line keep the terminal foreground, as rg leaves them.
+#
+# bg #1a1b26 on yellow #e0af68, bold — the same block as rg's match
+_tn_grep_match="1;38;2;26;27;38;48;2;224;175;104"
+GREP_COLORS="ms=${_tn_grep_match}:mc=${_tn_grep_match}"
+GREP_COLORS="${GREP_COLORS}:fn=${_tn_blue}:ln=${_tn_dark3}:bn=${_tn_dark3}"
+GREP_COLORS="${GREP_COLORS}:se=${_tn_gutter}"
+export GREP_COLORS
+unset _tn_grep_match
+
+# Deliberately no GREP_COLOR (singular). macOS ships BSD grep, which reads only
+# that one and only for the match — but GNU grep prints
+#   grep: warning: GREP_COLOR=... is deprecated; use GREP_COLORS='mt=...'
+# on *every* invocation when it is set, even alongside a valid GREP_COLORS.
+# One role out of five on one platform is not worth a warning in the stderr of
+# every pipeline everywhere else, and `rg` is the search tool here anyway.
+
 # --- glow ------------------------------------------------------------------
 # Markdown rendered in the terminal. Without this glow paints Charm's house
 # palette — pink headings, a bright blue-cyan for keywords — which is the only
@@ -239,6 +275,6 @@ export LESS_TERMCAP_so LESS_TERMCAP_se
 # it groff emits SGR sequences of its own and less never consults termcap.
 export GROFF_NO_SGR=1
 
-unset _tn_fg _tn_fg_dark _tn_comment _tn_dark5 _tn_gutter
+unset _tn_fg _tn_fg_dark _tn_comment _tn_dark5 _tn_dark3 _tn_gutter
 unset _tn_red _tn_green _tn_yellow _tn_blue _tn_magenta _tn_cyan
 unset _tn_orange _tn_purple _tn_teal _tn_bg_search

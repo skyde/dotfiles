@@ -808,6 +808,42 @@ SHARED_ROLES = [
             ),
         ],
     },
+    {
+        "name": "the block behind a filter match",
+        "hex": "#e0af68",
+        "aliases": (),
+        # The other half of "Two kinds of match": what you typed into a filter,
+        # as an inverted yellow block rather than recoloured text. Every tool
+        # that answers a search says it this way, and the point of the gesture
+        # is that it survives being piped into something that has already
+        # coloured the line — so it only works if the yellow is one yellow.
+        #
+        # fzf's hl+ is the brighter #faba4a on purpose (it sits on bg+ rather
+        # than the terminal background) and so is not listed here; the base hl
+        # is. Each tool inverts in its own dialect: fzf and delta have a
+        # `reverse` attribute, rg has none and swaps fg/bg by hand, grep takes
+        # a raw SGR string, PSReadLine an escape sequence.
+        "settings": [
+            ("common/.config/shell/theme.sh", r"--color=hl:(#[0-9a-fA-F]{6}):bold:reverse"),
+            (
+                "common/.config/shell/theme.sh",
+                r"_tn_grep_match=\"1;38;2;\d+;\d+;\d+;48;2;(\d+;\d+;\d+)\"",
+            ),
+            ("common/.ripgreprc", r"--colors=match:bg:(\d+,\d+,\d+)"),
+            (
+                "common/.config/git/config",
+                r"grep-match-word-style\s*=\s*\"(#[0-9a-fA-F]{6}) bold reverse\"",
+            ),
+            (
+                "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
+                r"--colors 'match:bg:(\d+,\d+,\d+)'",
+            ),
+            (
+                "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
+                r"Emphasis\s*=\s*\"`e\[1;7;38;2;(\d+;\d+;\d+)m\"",
+            ),
+        ],
+    },
 ]
 
 
@@ -824,8 +860,11 @@ def check_shared_roles(report: Report) -> None:
                 )
                 continue
             found = match.group(1)
-            if re.fullmatch(r"\d{1,3};\d{1,3};\d{1,3}", found):
-                found = sgr_to_hex(*found.split(";"))
+            # A capture may be a hex, an SGR triple (`R;G;B`, how theme.sh and
+            # the PowerShell profile spell it) or ripgrep's comma-separated
+            # `R,G,B`. All three mean a colour; normalise to hex.
+            if re.fullmatch(r"\d{1,3}[;,]\d{1,3}[;,]\d{1,3}", found):
+                found = sgr_to_hex(*re.split(r"[;,]", found))
             if norm(found) != expected and found not in role["aliases"]:
                 report.fail(
                     "roles",

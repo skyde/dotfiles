@@ -470,9 +470,24 @@ match, so it gets the first half of that convention and not the second.
 ### Why matches are inverted, not just recoloured
 
 Every search surface paints a match as an inverted yellow block, never as
-recoloured text: fzf's `hl`/`hl+`, delta's `grep-match-word-style`, and
-ripgrep's `match` (which has no `reverse` style, so `.ripgreprc` inverts by
-hand — `bg` as the foreground, `yellow` as the background).
+recoloured text: fzf's `hl`/`hl+`, delta's `grep-match-word-style`, ripgrep's
+`match` (which has no `reverse` style, so `.ripgreprc` inverts by hand — `bg`
+as the foreground, `yellow` as the background), and GNU grep's `ms`/`mc`.
+
+That last one is worth a word, because `grep` is aliased to `--color=auto` in
+both shells and was the search tool still wearing its own palette: bold red
+matches, a magenta filename, a green line number, cyan separators. Asking the
+same question three ways — `grep`, `rg`, `git grep` through delta — came back
+looking three different ways. `GREP_COLORS` in `theme.sh` now says what
+`.ripgreprc` says, role for role. `se` is the one role rg has no knob for: the
+`:` between path and line and the `--` between groups are punctuation, so they
+take `fg_gutter` rather than grep's cyan, the same call as eza's `xx`.
+
+There is deliberately no `GREP_COLOR` (singular). macOS ships BSD grep, which
+reads only that one and only for the match — but GNU grep prints a deprecation
+warning on *every* invocation when it is set, even alongside a valid
+`GREP_COLORS`. One role on one platform is not worth a warning line in the
+stderr of every pipeline everywhere else.
 
 `hl`/`hl+` are `#e0af68`/`#faba4a` with `bold:reverse`, so what you typed shows
 up as a solid yellow block. This is not a style preference, it is the only thing
@@ -557,7 +572,7 @@ it fails the test.
 | lazygit  | `common/.config/lazygit/config.yml` (`gui.theme`)     |
 | delta, git | `common/.config/git/config` (`[delta]`, and git's own `[color "…"]`) |
 | starship | `common/.config/starship.toml` (`[palettes.tokyonight]`) |
-| fzf, ls, man | `common/.config/shell/theme.sh`                   |
+| fzf, ls, grep, man, glow | `common/.config/shell/theme.sh`       |
 | bat      | `common/.config/bat/config` (syntax theme fallback)   |
 | zsh      | `common/.zshrc` (completion menu, command line, suggestions) |
 | ripgrep  | `common/.ripgreprc`                                   |
