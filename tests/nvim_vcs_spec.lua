@@ -975,6 +975,32 @@ if vim.fn.executable("hg") == 1 then
   local conflicted = status_map(cb.changed(croot, "."))
   eq("hg: an unresolved file is marked U", "U", conflicted["a.txt"])
   eq("hg: the merge state file is what gates the extra command", 1, vim.fn.isdirectory(hgc .. "/.hg/merge"))
+
+  -- A file can be both moved and conflicted. The rename pass rewrites the
+  -- status of anything carrying a source, so marking unresolved before it ran
+  -- lost the one thing worth saying about the row.
+  local hgcr = temp .. "/hg-conflicted-rename"
+  vim.fn.mkdir(hgcr, "p")
+  run({ "hg", "init" }, hgcr)
+  write(hgcr .. "/a.txt", "one\ntwo\nthree\n")
+  run({ "hg", "add", "a.txt" }, hgcr)
+  hg_commit(hgcr, "base")
+  run({ "hg", "mv", "a.txt", "b.txt" }, hgcr)
+  write(hgcr .. "/b.txt", "one\nTWO-left\nthree\n")
+  hg_commit(hgcr, "rename and edit")
+  run({ "hg", "update", "-q", "-r", "0" }, hgcr)
+  write(hgcr .. "/a.txt", "one\nTWO-right\nthree\n")
+  hg_commit(hgcr, "edit the other side")
+  vim.system({ "hg", "--config", "ui.merge=internal:merge", "merge", "-r", "1" }, { cwd = hgcr }):wait()
+
+  local rb2, rroot2 = vcs.detect(hgcr)
+  local both = {}
+  for _, f in ipairs(rb2.changed(rroot2, ".")) do
+    both[f.path] = f
+  end
+  eq("hg: a conflicted rename reads as conflicted", "U", both["b.txt"] and both["b.txt"].status)
+  eq("hg: and still carries where it came from", "a.txt", both["b.txt"] and both["b.txt"].orig)
+  eq("hg: the old path is not listed separately", nil, both["a.txt"])
   eq(
     "hg: on trunk itself, branch scope falls back to the working parent",
     bb.rev(broot, "working"),

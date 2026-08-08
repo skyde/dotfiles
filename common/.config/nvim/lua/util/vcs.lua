@@ -876,7 +876,7 @@ function hg.changed(root, rev)
       -- missing file instead of listing it.
       local mapped = status and HG_STATUS[status]
       if mapped then
-        table.insert(out, { path = path, status = unresolved[path] and "U" or mapped })
+        table.insert(out, { path = path, status = mapped })
       else
         local source = record:match("^  (.+)$")
         if source and out[#out] then
@@ -904,6 +904,15 @@ function hg.changed(root, rev)
       end
     end
   end
+  -- Unresolved last, so it wins over the rename and copy pass above rather
+  -- than being overwritten by it: a file can be both moved and conflicted, and
+  -- "needs resolving" is the more useful thing to say about it.
+  for _, f in ipairs(out) do
+    if unresolved[f.path] then
+      f.status = "U"
+    end
+  end
+
   return vim.tbl_filter(function(f)
     return not (f.status == "D" and renamed_from[f.path])
   end, out)
