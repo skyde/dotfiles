@@ -1,0 +1,7 @@
+# regenerable inputs and binaries; results live in logs/*.summary and RESULTS.md
+data/
+logs/*.out
+logs/*.g6
+logs/*.log
+src/search
+src/tight

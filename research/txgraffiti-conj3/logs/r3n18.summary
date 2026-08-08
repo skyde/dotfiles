@@ -1,0 +1,6 @@
+=== r=3 n=18  (4 jobs, 4s) ===
+graphs=41301  counterexamples=0
+max i(G)=6   min mu*(G)=6   ties(i==mu*)=1692
+  gap -2 : 1113
+  gap -1 : 38496
+  gap +0 : 1692
