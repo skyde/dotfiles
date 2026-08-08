@@ -24,7 +24,12 @@ gui:
   nerdFontsVersion: "3"
   showFileIcons: true
   theme:
-    lightTheme: false
+    # No lightTheme key here: it is not in lazygit's ThemeConfig or its JSON
+    # schema any more, and lazygit ignores what it does not recognise, so the
+    # `lightTheme: false` that used to sit here was read by nobody. Nothing
+    # replaces it — every colour below is set explicitly, which is what a light
+    # theme flag would only have been choosing defaults for.
+    #
     # Tokyo Night (night) — palette reference: docs/tokyonight.md
     activeBorderColor: ["#7aa2f7", "bold"]
     inactiveBorderColor: ["#292e42"]
