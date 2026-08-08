@@ -80,6 +80,27 @@ eq("root: found from the root itself", root, chromium.src_root(root))
 eq("root: nil outside a checkout", nil, chromium.src_root(temp))
 eq("root: nil for unrelated paths", nil, chromium.src_root("/"))
 
+-- A buffer name that is not a filesystem path -- `health://` is the one
+-- :checkhealth uses, and it is how the health report reaches this code -- used
+-- to walk down to "." and match the marker relative to the current directory,
+-- handing back "." as the checkout. A relative root compares equal to no
+-- absolute one, so the report accused a correctly-rooted clangd of serving a
+-- different checkout, and the same string would reach clangd's argv.
+do
+  local cwd = vim.uv.cwd()
+  vim.uv.chdir(root)
+  for _, name in ipairs({ "health://", "health://checkhealth", "fugitive://x", "" }) do
+    local got = chromium.src_root(name ~= "" and name or nil)
+    check(
+      ("root: %q resolves to an absolute path"):format(name),
+      got == nil or got:sub(1, 1) == "/",
+      ("got %s"):format(vim.inspect(got))
+    )
+    eq(("root: %q inside a checkout finds the checkout"):format(name), root, got)
+  end
+  vim.uv.chdir(cwd)
+end
+
 --------------------------------------------------------------------------
 -- clangd selection
 --------------------------------------------------------------------------
