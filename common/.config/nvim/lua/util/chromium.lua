@@ -45,10 +45,22 @@ local root_cache = {} ---@type table<string, string|false>
 ---@return string|nil
 function M.src_root(path)
   local dir = vim.fn.fnamemodify(path or assert(vim.uv.cwd()), ":p")
+  -- Anchor anything that is not a filesystem path before walking. Buffer
+  -- names like `health://` (:checkhealth) or a plugin's scratch buffer
+  -- survive fnamemodify as something relative, and :h walks them down to
+  -- ".". The search below would then find the marker *relative to the
+  -- current directory* and hand back "." as the checkout — which compares
+  -- equal to no absolute root, so the health report accuses a perfectly
+  -- correct clangd of being rooted elsewhere, and which would put a relative
+  -- path into clangd's argv, where it stops meaning anything the moment the
+  -- current directory changes.
+  if dir:sub(1, 1) ~= "/" then
+    dir = assert(vim.uv.cwd()) .. "/" .. dir
+  end
   if vim.fn.isdirectory(dir) == 0 then
     dir = vim.fn.fnamemodify(dir, ":h")
   end
-  dir = dir:gsub("/+$", "")
+  dir = vim.fs.normalize(dir):gsub("/+$", "")
   if dir == "" then
     dir = "/"
   end
@@ -876,6 +888,13 @@ function M.diagnose(bufnr)
 
   bufnr = bufnr or 0
   local bufname = vim.api.nvim_buf_get_name(bufnr)
+  -- Only a real file buffer names a location inside a checkout. :checkhealth
+  -- runs this from its own `health://` buffer, so taking that name as a path
+  -- would report on wherever it happened to resolve to instead of on the
+  -- checkout the user is sitting in.
+  if vim.bo[bufnr].buftype ~= "" then
+    bufname = ""
+  end
   local root = M.src_root(bufname ~= "" and bufname or nil)
   if not root then
     add("info", "not inside a Chromium checkout — nothing to check")
