@@ -608,6 +608,88 @@ if vim.fn.executable("hg") == 1 then
   eq("hg: show returns base content", { "one" }, b.show(detected, ".", "a.txt"))
   truthy("hg: raw_diff produces a patch", #b.raw_diff(detected, ".", nil) > 0)
   truthy("hg: log returns revisions", #b.log(detected, "a.txt") >= 1)
+
+  -- Renames and copies. hg reports a rename as an unrelated add plus a delete
+  -- unless asked for the source, which left the added half with no base content
+  -- and diffing as a wholly new file. Reported the way git and jj report it:
+  -- one row on the new path, carrying the old one.
+  local hgr = temp .. "/hg-rename"
+  vim.fn.mkdir(hgr, "p")
+  run({ "hg", "init" }, hgr)
+  write(hgr .. "/orig.txt", "original\n")
+  write(hgr .. "/source.txt", "copy me\n")
+  write(hgr .. "/plain.txt", "untouched by moves\n")
+  -- hg reads a path argument as a pattern, and these prefixes name a pattern
+  -- *type*: `set:notes.txt` resolved to a fileset expression, not a file.
+  write(hgr .. "/set:notes.txt", "prefixed\n")
+  write(hgr .. "/glob:x.txt", "globbed\n")
+  -- A leading space is the one thing that makes hg's status line ambiguous: the
+  -- code and the path are separated by exactly one space, so a greedy match
+  -- swallows the name's own leading spaces and reports a path that is not there.
+  write(hgr .. "/  indented.txt", "spaces in front\n")
+  -- `hg add set:notes.txt` adds nothing at all — it reads as a fileset — which
+  -- is the same trap the backend had to stop falling into.
+  run({
+    "hg",
+    "add",
+    "orig.txt",
+    "source.txt",
+    "plain.txt",
+    "path:set:notes.txt",
+    "path:glob:x.txt",
+    "path:  indented.txt",
+  }, hgr)
+  run({ "hg", "--config", "ui.username=Test <t@example.com>", "commit", "-m", "base" }, hgr)
+  run({ "hg", "mv", "orig.txt", "renamed.txt" }, hgr)
+  run({ "hg", "cp", "source.txt", "duplicate.txt" }, hgr)
+  write(hgr .. "/plain.txt", "untouched by moves\nedited\n")
+  write(hgr .. "/  indented.txt", "spaces in front\nedited\n")
+  write(hgr .. "/two\nlines.txt", "untracked, and awkward about it\n")
+
+  local hb, hroot = vcs.detect(hgr)
+  local hrecords = {}
+  for _, f in ipairs(hb.changed(hroot, hb.rev(hroot, "working"))) do
+    hrecords[f.path] = f
+  end
+  eq("hg: a rename is one row on the new path", "R", hrecords["renamed.txt"] and hrecords["renamed.txt"].status)
+  eq("hg: a rename carries the old path", "orig.txt", hrecords["renamed.txt"] and hrecords["renamed.txt"].orig)
+  eq("hg: the old path is not also listed as deleted", nil, hrecords["orig.txt"])
+  eq("hg: a copy is a copy, not a rename", "C", hrecords["duplicate.txt"] and hrecords["duplicate.txt"].status)
+  eq("hg: a copy carries its source", "source.txt", hrecords["duplicate.txt"] and hrecords["duplicate.txt"].orig)
+  eq("hg: the copy source stays where it is", nil, hrecords["source.txt"])
+  eq("hg: a plain edit is unaffected", "M", hrecords["plain.txt"] and hrecords["plain.txt"].status)
+  eq("hg: a plain edit carries no source", nil, hrecords["plain.txt"] and hrecords["plain.txt"].orig)
+  eq(
+    "hg: a leading space survives the status line",
+    "M",
+    hrecords["  indented.txt"] and hrecords["  indented.txt"].status
+  )
+  -- hg refuses to *track* a newline in a filename but happily reports one as
+  -- untracked, and line-oriented output splits it into two rows naming files
+  -- that do not exist. -0 keeps it one record.
+  eq("hg: a newline in a name stays one row", "?", hrecords["two\nlines.txt"] and hrecords["two\nlines.txt"].status)
+  eq("hg: neither half of it is listed on its own", nil, hrecords["two"])
+  eq("hg: the name is not trimmed to something that does not exist", nil, hrecords["indented.txt"])
+  eq("hg: base content of the renamed file comes from the old path", { "original" }, hb.show(hroot, ".", "orig.txt"))
+
+  for _, name in ipairs({ "set:notes.txt", "glob:x.txt" }) do
+    eq(("hg: show of %q reads the file, not a pattern"):format(name), 1, #(hb.show(hroot, ".", name) or {}))
+    truthy(("hg: log of %q returns a revision"):format(name), #hb.log(hroot, name) >= 1)
+  end
+  write(hgr .. "/set:notes.txt", "prefixed\nedited\n")
+  truthy(
+    "hg: raw_diff scoped to a pattern-prefixed name",
+    hb.raw_diff(hroot, ".", "set:notes.txt"):find("edited", 1, true)
+  )
+  eq(
+    "hg: revert of a pattern-prefixed name succeeds",
+    true,
+    hb.revert(hroot, ".", { path = "set:notes.txt", status = "M" })
+  )
+  eq("hg: the reverted file is back to its base", { "prefixed" }, vim.fn.readfile(hroot .. "/set:notes.txt"))
+
+  hb.revert(hroot, ".", hrecords["renamed.txt"])
+  eq("hg: reverting a rename restores the old path", 1, vim.fn.filereadable(hroot .. "/orig.txt"))
 else
   print("SKIP hg backend (hg not installed)")
 end

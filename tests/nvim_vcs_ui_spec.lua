@@ -1284,6 +1284,12 @@ do
   eq("help: ? opens the cheat sheet", 1, floats())
   local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
   check("help: it mentions the scroll keys", text:find("J / K", 1, true) ~= nil, text)
+  -- The status column is a single letter and this is the only place it is
+  -- spelled out. R in particular is worth stating: it is renamed here, while
+  -- Mercurial's own R means removed.
+  for _, expect in ipairs({ "modified", "added", "deleted", "renamed", "copied", "untracked" }) do
+    check(("help: the legend explains %s"):format(expect), text:find(expect, 1, true) ~= nil, text)
+  end
   feed("q")
   eq("help: q closes it again", 0, floats())
   ui.close()
@@ -1789,6 +1795,65 @@ do
   table.sort(sorted)
   eq("sort: a backend answering out of order still lists in order", sorted, listed)
   check("sort: and there was something to sort", #listed > 2, vim.inspect(listed))
+  ui.close()
+  vcs.clear_cache()
+end
+
+--------------------------------------------------------------------------
+-- a copied file renders as a copy
+--------------------------------------------------------------------------
+
+do
+  -- C reaches the panel from git with diff.renames=copies, from jj's copy
+  -- detection and from `hg status -C` when the source is still on disk. It had
+  -- been rendered as a conflict — a `!` in DiffText — which no backend has ever
+  -- meant by it. Stubbed rather than staged, because whether a given git build
+  -- decides two files are similar enough to call it a copy is not this test's
+  -- business.
+  vim.cmd("cd " .. vim.fn.fnameescape(root))
+  vcs.clear_cache()
+  local backend = vcs.backends.git
+  local real_changed = backend.changed
+  backend.changed = function()
+    return {
+      { path = "a_modified.txt", status = "M" },
+      { path = "copied.txt", status = "C", orig = "a_modified.txt" },
+    }
+  end
+
+  open_settled({ scope = "working" })
+  ui.refresh()
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+
+  local row, lnum
+  for i, line in ipairs(panel_lines()) do
+    if line:find("copied.txt", 1, true) then
+      row, lnum = line, i
+    end
+  end
+  backend.changed = real_changed
+
+  check("copied: the row is listed", row ~= nil, vim.inspect(panel_lines()))
+  check("copied: it is marked C, not !", row and row:sub(1, 3) == " C ", vim.inspect(row))
+  check("copied: it names its source", row and row:find("← a_modified.txt", 1, true) ~= nil, vim.inspect(row))
+
+  local marks = vim.api.nvim_buf_get_extmarks(
+    vim.api.nvim_win_get_buf(layout()[1]),
+    -1,
+    { lnum - 1, 0 },
+    { lnum - 1, -1 },
+    { details = true }
+  )
+  local status_hl
+  for _, mark in ipairs(marks) do
+    if mark[3] == 0 and mark[4] and mark[4].end_col == 3 then
+      status_hl = mark[4].hl_group
+    end
+  end
+  eq("copied: the status column is coloured as an addition, not a conflict", "DiffAdd", status_hl)
+
   ui.close()
   vcs.clear_cache()
 end

@@ -129,7 +129,10 @@ local STATUS = {
   A = { icon = "A", hl = "DiffAdd", label = "added" },
   D = { icon = "D", hl = "DiffDelete", label = "deleted" },
   R = { icon = "R", hl = "DiffChange", label = "renamed" },
-  C = { icon = "!", hl = "DiffText", label = "conflict" },
+  -- C is what every backend emits for a *copy* — git with diff.renames=copies,
+  -- jj's copy detection, hg's `status -C` on a source that is still there. It
+  -- had been labelled "conflict", which no backend has ever reported this way.
+  C = { icon = "C", hl = "DiffAdd", label = "copied" },
   ["?"] = { icon = "?", hl = "Comment", label = "untracked" },
 }
 
@@ -1669,10 +1672,25 @@ local HELP = {
   { "q", "close" },
 }
 
+-- The order the legend lists them in; also the only place every status a row
+-- can carry is written down.
+local STATUS_ORDER = { "M", "A", "D", "R", "C", "?" }
+
 local function show_help()
   local lines = {}
+  local marks = {} ---@type table[] {0-based line, end_col, highlight}
   for _, entry in ipairs(HELP) do
     table.insert(lines, ("  %-12s %s"):format(entry[1], entry[2]))
+    table.insert(marks, { #lines - 1, 14, "Special" })
+  end
+  -- The status column is one letter wide and explained nowhere else, so a
+  -- reader has to guess whether R means renamed or removed — which is exactly
+  -- the thing the backends disagree about.
+  table.insert(lines, "")
+  for _, code in ipairs(STATUS_ORDER) do
+    local meta = STATUS[code]
+    table.insert(lines, ("  %-12s %s"):format(meta.icon, meta.label))
+    table.insert(marks, { #lines - 1, 14, meta.hl })
   end
   local width = 0
   for _, l in ipairs(lines) do
@@ -1682,8 +1700,8 @@ local function show_help()
   vim.bo[buf].bufhidden = "wipe"
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
-  for i = 1, #lines do
-    vim.api.nvim_buf_set_extmark(buf, ns, i - 1, 0, { end_col = 14, hl_group = "Special" })
+  for _, mark in ipairs(marks) do
+    vim.api.nvim_buf_set_extmark(buf, ns, mark[1], 0, { end_col = mark[2], hl_group = mark[3] })
   end
   local win = vim.api.nvim_open_win(buf, true, {
     relative = "editor",

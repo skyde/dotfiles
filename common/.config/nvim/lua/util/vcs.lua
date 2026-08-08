@@ -706,25 +706,70 @@ local HG_STATUS = {
 }
 
 function hg.changed(root, rev)
-  local res = sh({ "hg", "status", "--rev", rev }, root)
+  -- -C prints the source of a copied or renamed file on a continuation line
+  -- under it. Without it a rename arrives as an unrelated add plus a delete, so
+  -- the added half has no base content to diff against and reads as a wholly
+  -- new file. -0 terminates each record with NUL rather than a newline, which
+  -- is what keeps a filename containing one from splitting into two records.
+  local res = sh({ "hg", "status", "-0", "-C", "--rev", rev }, root)
   local out = {}
   if res and res.code == 0 then
-    for _, line in ipairs(lines(res.stdout)) do
+    for _, record in ipairs(nul_fields(res.stdout)) do
+      -- Exactly one space after the code, not %s+: hg separates them with a
+      -- single space, and a greedy match eats the leading spaces of a filename
+      -- that has them.
+      local status, path = record:match("^(%S) (.+)$")
       -- %S, not %a: `?` and `!` are status codes and neither is a letter, so a
       -- letters-only pattern silently dropped every untracked and every
       -- missing file instead of listing it.
-      local status, path = line:match("^(%S)%s+(.+)$")
       local mapped = status and HG_STATUS[status]
       if mapped then
         table.insert(out, { path = path, status = mapped })
+      else
+        local source = record:match("^  (.+)$")
+        if source and out[#out] then
+          out[#out].orig = source
+        end
       end
     end
   end
-  return out
+
+  -- hg reports a rename as both halves; git and jj report it as one row on the
+  -- new path. Match them: a source hg also lists as removed is a rename and the
+  -- removal row goes away, while a source still on disk is a copy.
+  local removed = {}
+  for _, f in ipairs(out) do
+    if f.status == "D" then
+      removed[f.path] = true
+    end
+  end
+  local renamed_from = {}
+  for _, f in ipairs(out) do
+    if f.orig then
+      f.status = removed[f.orig] and "R" or "C"
+      if f.status == "R" then
+        renamed_from[f.orig] = true
+      end
+    end
+  end
+  return vim.tbl_filter(function(f)
+    return not (f.status == "D" and renamed_from[f.path])
+  end, out)
+end
+
+---hg reads a path argument as a *pattern*, and a leading `glob:`, `re:`,
+---`set:`, `listfile:` and friends select the pattern type — so a file actually
+---named `set:notes.txt` resolves to a fileset expression instead. `path:` says
+---"this is a literal path from the repository root", which is what these all
+---have.
+---@param path string repo-relative path
+---@return string pattern
+local function hg_path(path)
+  return "path:" .. path
 end
 
 function hg.show(root, rev, path)
-  local res = sh({ "hg", "cat", "--rev", rev, path }, root)
+  local res = sh({ "hg", "cat", "--rev", rev, hg_path(path) }, root)
   if not res or res.code ~= 0 then
     return nil
   end
@@ -734,15 +779,20 @@ end
 function hg.raw_diff(root, rev, path)
   local cmd = { "hg", "diff", "--rev", rev }
   if path then
-    table.insert(cmd, path)
+    table.insert(cmd, hg_path(path))
   end
   local res = sh(cmd, root)
   return res and res.stdout or ""
 end
 
 function hg.log(root, path)
-  local res =
-    sh({ "hg", "log", "--template", "{node}\\t{date|shortdate}\\t{author|person}\\t{desc|firstline}\\n", path }, root)
+  local res = sh({
+    "hg",
+    "log",
+    "--template",
+    "{node}\\t{date|shortdate}\\t{author|person}\\t{desc|firstline}\\n",
+    hg_path(path),
+  }, root)
   local out = {}
   if res and res.code == 0 then
     for _, line in ipairs(lines(res.stdout)) do
@@ -758,8 +808,13 @@ end
 ---`hg revert` on an added file un-adds it and leaves it untracked, which is
 ---the closest Mercurial gets to discarding an add without deleting data.
 function hg.revert(root, rev, file)
-  local res = sh({ "hg", "revert", "--no-backup", "-r", rev, file.path }, root)
-  return ran(res)
+  local cmd = { "hg", "revert", "--no-backup", "-r", rev, hg_path(file.path) }
+  if file.orig then
+    -- The same pairing git and jj need: undoing a rename has to bring the old
+    -- path back, not merely take the new one away.
+    table.insert(cmd, hg_path(file.orig))
+  end
+  return ran(sh(cmd, root))
 end
 
 --------------------------------------------------------------------------
