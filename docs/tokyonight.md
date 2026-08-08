@@ -467,21 +467,84 @@ prompt; anything else would mean accepting a history entry recoloured it.
 
 | Role                                        | Hex       |
 | ------------------------------------------- | --------- |
-| plain text, redirections, `;` and `\|`       | `#d4d4d4` |
+| plain text, arguments                       | `#d4d4d4` |
 | comments                                    | `#6a9955` |
 | strings                                     | `#ce9178` |
 | commands, functions, aliases, `$(…)`        | `#dcdcaa` |
-| control words, and precommands like `sudo`  | `#c586c0` |
+| subcommands — `git commit`, `docker run`    | `#4ec9b0` |
+| control words, precommands, `[[ ]]` `(( ))` | `#c586c0` |
 | variables, assignments, interpolation       | `#9cdcfe` |
-| type names                                  | `#4ec9b0` |
-| globs, history expansion, escapes           | `#d7ba7d` |
+| globs, case patterns, history expansion     | `#d7ba7d` |
 | options                                     | `#569cd6` |
 | numbers and file descriptors                | `#b5cea8` |
+| redirections, `;` and `\|`                   | `#737aa2` |
+| bracket pairs, by nesting depth             | `#ffd700` `#da70d6` `#179fff` |
 
 Two things stay Tokyo Night, because they are facts about the machine rather
 than about syntax and Dark+ has no vocabulary for either: a word that resolves
 to no command is `red`, and a path that has not resolved to anything yet is
 `comment`. A path that *does* exist gets an underline instead of a hue.
+
+The two *backgrounds* on the line stay Tokyo Night for a different reason:
+Dark+ is a foreground palette and has nothing to say about a fill. The bracket
+pair either side of the cursor takes `fg_gutter`, a neutral no other role
+claims — deliberately not `bg_visual`, which means "this row is selected" in
+five other tools — and the fill behind a correction takes `bg_highlight`.
+`tests/check-theme.py` holds every other colour on the line to the table above,
+so these four are named in it as exceptions rather than left to look like
+drift.
+
+Three of those rows are about keeping the line from going flat. **Subcommands**
+get the type colour because `git commit` and `docker run` are the most-typed
+tokens on the line and had no colour of their own — `fast-syntax-highlighting`
+knows them from its per-command grammars, and left unset they fell through to
+the plugin's raw ANSI `fg=yellow`. **Plumbing** dropped from `#d4d4d4` to dark5
+so that it stops reading level with the words either side of it; that is the
+same move the path separators make, and for the same reason. **Bracket pairs**
+are VS Code's own bracket-pair-colourisation hues, since the prompt is code.
+
+The rest of the shell's grammar — `case` arms, here-strings, `for` headers,
+array subscripts — is named in the table too. Not because each one needs its
+own hue, but because *unset is not neutral*: both highlighters ship defaults
+for these, and those defaults are ANSI-indexed (`fg=green`, `fg=yellow,bold`)
+or outright backgrounds (`bg=blue`, `bg=18`), so anything left out was painted
+from a palette this repo does not otherwise use. `tests/check-theme.py` check 8
+is what keeps a role from silently going back to one.
+
+One role in that table is not a colour at all. `fast-syntax-highlighting`
+keeps a *secondary* style table for anything it treats as an embedded shell —
+most visibly the inside of `$(…)` — and ships `secondary` pointing at a theme
+it downloads from `raw.githubusercontent.com` the first time a shell starts.
+While that switch is armed, the words inside the parentheses are painted from
+the downloaded file instead of from the table above — and that file speaks in
+256-colour indices, so they land outside the palette entirely:
+
+```
+before   x=$(git rev-parse HEAD)     git fg=180 #d7af87 · rev-parse fg=150 #afd787
+after    x=$(git rev-parse HEAD)     git #dcdcaa · rev-parse #4ec9b0 · HEAD #9cdcfe
+```
+
+Emptying `secondary` stops the switch, and a nested command reads exactly like
+a top-level one. `~/.zshrc` also pins `FAST_WORK_DIR` and leaves an empty
+`secondary_theme.zsh` in it, so the download — now never read — is not part of
+opening a shell. On a cold cache the difference is a 3.4 KB fetch from GitHub
+during startup versus none.
+
+> Worth knowing when checking this by hand: if `secondary_theme.zsh` exists but
+> is **empty** — which is exactly what `~/.zshrc` now leaves behind — the
+> switch still happens but finds no `free*` keys, and the body comes out one
+> flat run of `#9cdcfe` rather than in 256-colour indices. Two different wrong
+> answers from the same mechanism, depending on cache state. Delete the whole
+> work dir before measuring, or a warm cache will tell you a different story
+> than a cold one.
+
+One thing the table cannot reach, so as not to go looking for it later: the
+handful of `fast-syntax-highlighting` chromas that highlight an *embedded*
+language — the awk program inside `awk '{print $1}'`, and the perl and ruby
+equivalents. Those build a style by pasting two entries together with a comma
+(`→chroma/-awk.ch`), which yields `fg=#c586c0,fg=#ce9178`, and zsh resolves a
+doubled `fg=` to a colour that is neither. It predates this table and is not
+something a value here can fix; the shell *around* the string is unaffected.
 
 > **Two Dark+ variants are in play, on purpose.** These are bat's built-in
 > `Visual Studio Dark+`. The editor side — Neovim's `lua/util/vscode_syntax.lua`
@@ -490,6 +553,63 @@ to no command is `red`, and a path that has not resolved to anything yet is
 > are `#dfa67c` there, comments `#7a987a`). Each side matches the thing it sits
 > next to: the prompt matches the picker above it, the buffer matches VS Code.
 > See `docs/vscode-syntax-parity.md`.
+
+### Markdown in the terminal: `glow`
+
+`glow` is the one place where the chrome/code split happens *inside a single
+document*, so it is worth being explicit about where the line falls.
+
+Headings, links, block quotes, rules, tables and the inline-code chip are
+chrome, and take Tokyo Night. `h1` is `bg_dark` on `blue`, which is the same
+pair kitty gives its active tab; a link is `green1`, which is kitty's
+`url_color`; the rule is `fg_gutter`, the separator colour.
+
+A fenced block is code, so it takes Dark+ — and specifically **bat's** Dark+,
+not the published values in the command-line table above. `bat README.md`
+highlights the fence contents too, with the syntax it detects from the info
+string, so glow and bat are two ways of looking at the same file in the same
+terminal. That is the "two panes rendering the same file differently" case, and
+it is the one place in the setup where bat's port is the right one to copy.
+
+Two things about the result are worth knowing before you go looking for a bug:
+
+- **Code blocks are 256-colour.** glamour hardcodes
+  `chromaFormatter = "terminal256"` and glow never calls
+  `WithChromaFormatter`, so the chroma table is rounded to the cube on the way
+  out — `#569cd6` renders as `#5fafd7`. Nothing in the config can reach 24-bit
+  there. The markdown chrome around it is true 24-bit. If glamour ever picks
+  the formatter from the colour profile, these values become exact for free.
+- **A few chrome colours come out one unit low.** Sweeping all 256 byte values
+  through glow, 24 of them lose one: `33+4k`, `66+8k` and `132+16k` for
+  `k = 0..7`. So `#7aa2f7` arrives as `#79a2f7` and `#292e42` as `#282e41`.
+  It is a rounding artefact in glow's colour layer, it is invisible, and it is
+  not the config drifting — do not "correct" the style file to chase it.
+
+The style is pointed at by `GLOW_STYLE` in `theme.sh` rather than by `style` in
+`glow.yml`, because a path in the config file does not work. `glow.yml` carries
+the explanation.
+
+Those Dark+ values are bat's, and four of them are not the ones the
+command-line table above carries — that table is VS Code's *published* Dark+,
+and bat's compiled port resolves some roles a few units away. Measured by
+rendering shell, Python, C++ and JSON through
+`bat --theme="Visual Studio Dark+"`, identically on 0.24.0, 0.25.0 and 0.26.1:
+
+| Role                   | bat emits | the command-line table |
+| ---------------------- | --------- | ---------------------- |
+| plain text             | `#dcdcdc` | `#d4d4d4`              |
+| comments               | `#608b4e` | `#6a9955`              |
+| strings                | `#d69d85` | `#ce9178`              |
+| string escapes         | `#e3bbab` | `#d7ba7d`              |
+| commands and functions | `#dcdcaa` | `#dcdcaa`              |
+| control words          | `#c586c0` | `#c586c0`              |
+| variables              | `#9cdcfe` | `#9cdcfe`              |
+| keywords and types     | `#569cd6` | `#569cd6`              |
+| numbers                | `#b5cea8` | `#b5cea8`              |
+
+Each side matches the thing it sits next to: the prompt matches the Ctrl-R
+picker, the fence matches `bat`.
+
 
 ### Gotcha: do not colour git's diff
 
@@ -644,6 +764,7 @@ it fails the test.
 | search pickers | `common/.local/bin/st-rg`, `common/.local/bin/st-zoekt` (the awk prefix) |
 | yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
 | lf       | `common/.config/lf/colors` (file names), `common/.config/lf/lfrc` (the `# Theme` section), `common/.config/lf/icons` (deliberately colourless) |
+| glow     | `common/.config/glow/tokyonight.json`, `common/.config/glow/glow.yml` |
 | btop     | `common/.config/btop/themes/tokyo-night.theme`        |
 | the doctor | `./doctor-theme.sh` (what it expects to find on the machine) |
 

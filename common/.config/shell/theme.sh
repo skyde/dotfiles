@@ -292,6 +292,29 @@ EZA_COLORS="${_eza}"
 export EZA_COLORS
 unset _eza
 
+# --- glow ------------------------------------------------------------------
+# Markdown rendered in the terminal. Without this glow paints Charm's house
+# palette — pink headings, a bright blue-cyan for keywords — which is the only
+# thing left on the machine that is off-palette by accident.
+#
+# The style itself is ~/.config/glow/tokyonight.json: Tokyo Night for the
+# chrome, Visual Studio Dark+ inside fenced code blocks, since `bat README.md`
+# highlights those same fences.
+#
+# It has to be an environment variable rather than the `style` key in
+# ~/.config/glow/glow.yml, which is where it belongs: glow 2.1.2 expands `~`
+# and $VARS when checking that the file exists and then hands glamour the
+# unexpanded string, so a path in the config file passes validation and fails
+# to load. glow reads its settings through viper with the `glow` env prefix, so
+# GLOW_STYLE sets the same key — and here the shell has already expanded $HOME.
+# See the comment in glow.yml.
+#
+# Not guarded on glow being installed, for the same reason as the rest of this
+# file: it costs a few dozen bytes of environment and no processes, and a guard
+# would cost a `command -v` in every shell that starts.
+GLOW_STYLE="$HOME/.config/glow/tokyonight.json"
+export GLOW_STYLE
+
 # --- grep -------------------------------------------------------------------
 # Both shells alias grep to --color=auto, and GNU grep's default match colour
 # is bold red -- which in this palette is the colour of deletions and errors,

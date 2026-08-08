@@ -904,10 +904,20 @@ COMMAND_LINE_ROLES = [
 
 
 CLI_HEADING = "Dark+ on the command line"
-# The doc's own sentence: "a word that resolves to no command is `red`, and a
-# path that has not resolved to anything yet is `comment`". Named by palette
-# role rather than by hex, so they are looked up rather than copied here.
-CLI_TOKYO_EXCEPTIONS = ("red", "comment")
+# Roles on the command line that are deliberately Tokyo Night rather than
+# Dark+, named by palette role rather than by hex so they are looked up here
+# instead of copied.
+#
+# `red` and `comment` are the doc's own sentence: a word that resolves to no
+# command, and a path that has not resolved to anything yet. Both are facts
+# about the machine rather than about syntax, and Dark+ has no vocabulary for
+# either.
+#
+# `fg_gutter` and `bg_highlight` are the two *backgrounds* the line uses -- the
+# bracket pair either side of the cursor, and the subtle fill behind a
+# correction. A background is chrome wherever it appears, and Dark+ is a
+# foreground palette; it has nothing to say about a fill.
+CLI_TOKYO_EXCEPTIONS = ("red", "comment", "fg_gutter", "bg_highlight")
 
 
 TINTS_HEADING = "Diff tints"
@@ -1313,6 +1323,87 @@ def _check_command_line_palette(doc, verbose):
     if verbose and not problems:
         print("  %d command-line colour(s) are all sanctioned by the doc"
               % checked)
+    return problems
+
+
+# Every role either highlighter gives a *coloured* default, taken from
+# fast-syntax-highlighting's `fast-highlight` and zsh-syntax-highlighting's
+# highlighters. Ported from main, where it arrived as check 8; the list is the
+# part that took the work, and it is the part that goes stale, so it is kept
+# verbatim rather than paraphrased. Roles whose default is `none`, `free` or a
+# bare attribute like `standout` are absent on purpose: they introduce no
+# foreign colour, so the table is free to stay quiet about them.
+CLI_ROLES_WITH_COLOURED_DEFAULTS = [
+    "alias", "arg0", "assign-array-bracket", "autodirectory",
+    "back-dollar-quoted-argument", "back-double-quoted-argument",
+    "back-or-dollar-double-quoted-argument", "back-quoted-argument-delimiter",
+    "bracket-error", "bracket-level-1", "bracket-level-2", "bracket-level-3",
+    "bracket-level-4", "bracket-level-5", "builtin", "case-condition",
+    "case-input", "case-parentheses", "command",
+    "command-substitution-delimiter",
+    "comment", "correct-subtle", "dollar-double-quoted-argument",
+    "dollar-quoted-argument", "double-hyphen-option", "double-paren",
+    "double-quoted-argument", "double-sq-bracket", "for-loop-number",
+    "for-loop-operator", "for-loop-separator", "function", "global-alias",
+    "globbing", "globbing-ext", "hashed-command", "here-string-text",
+    "here-string-tri", "here-string-var", "history-expansion",
+    "incorrect-subtle", "matherr", "mathnum", "mathvar", "paired-bracket",
+    "path", "path-to-dir", "precommand", "process-substitution-delimiter",
+    "rc-quote", "redirection", "reserved-word", "single-hyphen-option",
+    "single-quoted-argument", "single-sq-bracket", "subcommand", "subtle-bg",
+    "subtle-separator", "suffix-alias", "unknown-token", "variable",
+]
+
+# `fg=` / `bg=` has to be followed by a hex. Anything else is a palette this
+# repo does not control: a colour name resolves through the terminal's own 16,
+# a bare number through its 256.
+CLI_NON_HEX_COLOUR = re.compile(r"\b(?:fg|bg)=(?!#[0-9a-fA-F]{6}\b)([^,\s']+)")
+
+
+def _check_cli_role_coverage(verbose):
+    """No command-line role is left to the highlighter's own ANSI defaults.
+
+    Both syntax highlighters ship a default for every role they know, and those
+    defaults are ANSI-indexed (`fg=green`, `fg=13`) or outright backgrounds
+    (`bg=blue`, `bg=18`). So a role the table forgets is not neutral -- it is
+    painted out of the terminal's sixteen, in the middle of a line that
+    otherwise comes from Dark+.
+
+    Two failures, and they are different. A role that is *missing* falls back.
+    A role that is *present* but written with a colour name rather than a hex
+    is the same fallback spelled out loud. The first is what happens when a
+    plugin adds a role; the second is what happens when someone reaches for
+    `fg=yellow` because it is shorter.
+    """
+    path = os.path.join(REPO, ZSHRC)
+    if not os.path.isfile(path):
+        return []
+    block = re.search(r"_tn_cli_styles=\((.*?)\n\)",
+                      open(path, encoding="utf-8").read(), re.S)
+    if not block:
+        return ["%s no longer defines _tn_cli_styles, so nothing holds the "
+                "command line to one palette" % ZSHRC]
+    styles = dict(re.findall(r"^\s*([\w-]+)\s+'([^']*)'\s*$",
+                             block.group(1), re.M))
+    if not styles:
+        return ["the _tn_cli_styles table in %s parsed as empty" % ZSHRC]
+
+    problems = []
+    for role, style in sorted(styles.items()):
+        for colour in CLI_NON_HEX_COLOUR.findall(style):
+            problems.append(
+                "the command line paints %s with %r, which is not a palette "
+                "hex -- the whole line has to come from one table"
+                % (role, colour))
+    missing = [r for r in CLI_ROLES_WITH_COLOURED_DEFAULTS if r not in styles]
+    if missing:
+        problems.append(
+            "these command-line roles are left to the highlighter's own ANSI "
+            "defaults: %s" % ", ".join(missing))
+    if verbose and not problems:
+        print("  the command line names all %d role(s) a highlighter would "
+              "otherwise colour itself (%d in the table)"
+              % (len(CLI_ROLES_WITH_COLOURED_DEFAULTS), len(styles)))
     return problems
 
 
@@ -2819,6 +2910,7 @@ def check_parity(doc, verbose):
     problems.extend(run_check(_check_lazygit_theme_keys, verbose))
     problems.extend(run_check(_check_bat_truecolor, verbose))
     problems.extend(run_check(_check_command_lines, verbose))
+    problems.extend(run_check(_check_cli_role_coverage, verbose))
     problems.extend(run_check(_check_command_line_palette, doc, verbose))
     problems.extend(run_check(_check_diff_tints, doc, verbose))
     problems.extend(run_check(_check_palette_variables, doc, verbose))
