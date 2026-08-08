@@ -250,10 +250,24 @@ schema.
 **Renames are the dangerous case**, because nothing about the config looks
 wrong afterwards — the setting is still there, still spelled correctly, and
 has simply stopped being read. yazi v25.12.29 moved `[mgr] hovered` and
-`preview_hovered` into `[indicator]` as `current` and `preview`, and renamed
-`[confirm] content` to `body`; until this was noticed, the hovered row had
-silently gone back to `reversed` and the preview row to `underline` — the two
-defaults those settings exist to override.
+`preview_hovered` into `[indicator]` as `current` and `preview`, renamed
+`[confirm] content` to `body`, and renamed the rule pattern key `name` to
+`url`; until this was noticed, the hovered row had silently gone back to
+`reversed` and the preview row to `underline` — the two defaults those
+settings exist to override.
+
+**And a rename cuts both ways.** These dotfiles land on machines whose yazi
+was installed at different times, and each side of a rename ignores the
+other's spelling: chasing the new names alone broke every machine still on
+an older binary — a url-only filetype table matches nothing there, so the
+whole listing renders in plain foreground. The resolution is to say it both
+ways: every filetype rule carries `url` and `name` with identical globs, the
+hovered row is set in `[mgr]` and in `[indicator]`, and `[confirm]` has both
+`content` and `body`. Whichever spelling a given yazi understands is the one
+it reads; it ignores the other. Verified by running 25.5.31 and 26.5.6
+against the same config and reading the rendered colours back, and
+`tests/check-theme.py` fails if a rule loses a spelling or a pair drifts
+apart.
 
 `tests/check-theme.py` cannot catch that: a colour that is never read is still
 a valid colour. Re-audit by diffing against the version of upstream's preset
