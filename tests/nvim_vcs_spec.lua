@@ -273,6 +273,34 @@ do
   eq("merge: an unmerged file is marked U, not M", "U", during["conflicted.txt"])
   eq("merge: a file the merge did not touch is unaffected", nil, during["clean.txt"])
 
+  -- A rename that also conflicts. git does not pair the halves mid-merge — its
+  -- own changed-file list says delete plus add — so the row that matters is the
+  -- new path, and it has to say conflicted rather than added.
+  do
+    local cr = temp .. "/git-conflicted-rename"
+    vim.fn.mkdir(cr, "p")
+    git(cr, "init", "-q", "-b", "main")
+    write(cr .. "/a.txt", "one\ntwo\nthree\n")
+    git(cr, "add", "-A")
+    git(cr, "commit", "-qm", "base")
+    git(cr, "checkout", "-qb", "side")
+    git(cr, "mv", "a.txt", "b.txt")
+    write(cr .. "/b.txt", "one\nTWO-left\nthree\n")
+    git(cr, "commit", "-qam", "rename and edit")
+    git(cr, "checkout", "-q", "main")
+    write(cr .. "/a.txt", "one\nTWO-right\nthree\n")
+    git(cr, "commit", "-qam", "edit the other side")
+    vim
+      .system({ "git", "-c", "user.email=t@example.com", "-c", "user.name=Test", "merge", "side" }, { cwd = cr })
+      :wait()
+
+    local crb, crroot = vcs.detect(cr)
+    local rows = status_map(crb.changed(crroot, crb.rev(crroot, "working")))
+    eq("conflicted rename: the new path is conflicted, not added", "U", rows["b.txt"])
+    eq("conflicted rename: and the old path reads as the deletion git calls it", "D", rows["a.txt"])
+    vcs.clear_cache()
+  end
+
   -- A linked worktree keeps its git directory somewhere else entirely: `.git`
   -- is a file pointing at it, so the conflict markers are not where the
   -- ordinary check looks and it has to ask git where they are. Its own
