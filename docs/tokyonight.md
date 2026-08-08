@@ -197,6 +197,14 @@ Delta's `blame-code-style` and the rest stay attribute-free for the same
 reason. If a colour has to be muted, mute it here, where every tool can read
 the same answer.
 
+Nothing in this repo emits SGR 2 any more, but plenty of other tools do, and
+the one terminal with a knob for it should still land where the others do.
+kitty's `dim_opacity` is an opacity — one is no dimming, zero is invisible —
+and VS Code's terminal is xterm.js, which applies exactly
+`multiplyOpacity(fg, 0.5)`. `kitty.conf` says `0.5`. It said `0.25` with a
+comment about getting closer to VS Code, which was heavier than kitty's own
+`0.4` default and further away, not closer. wezterm has no equivalent setting.
+
 ### Dark+ on the command line
 
 The zsh line editor is the one piece of chrome that is also *code*, and it is
