@@ -197,14 +197,22 @@ is what keeps a role from silently going back to one.
 
 One role in that table is not a colour at all. `fast-syntax-highlighting`
 keeps a *secondary* style table for anything it treats as an embedded shell —
-most visibly the inside of `$(…)` — and ships it pointing at a theme it
-downloads from GitHub the first time a shell starts. So `date` in
-`echo $(date)` was `fg=180`, a 256-colour tan out of a file fetched off the
-internet, while the same word outside the parentheses was `#dcdcaa`. Setting
-`secondary` to nothing stops the switch, and a nested command now reads
-exactly like a top-level one. `~/.zshrc` also pins `FAST_WORK_DIR` and leaves
-an empty `secondary_theme.zsh` in it, so the download that would now go unread
-is not part of opening a shell.
+most visibly the inside of `$(…)` — and ships `secondary` pointing at a theme
+it downloads from `raw.githubusercontent.com` the first time a shell starts.
+While that switch is armed the highlighter stops parsing inside the
+parentheses and paints the whole body as one run, so `x=$(git rev-parse HEAD)`
+was a single flat stretch of `#9cdcfe` — no command, no subcommand, no
+argument. Emptying `secondary` is what restores it:
+
+```
+before   x=$(git rev-parse HEAD)     git rev-parse HEAD  all #9cdcfe
+after    x=$(git rev-parse HEAD)     git #dcdcaa · rev-parse #4ec9b0 · HEAD #9cdcfe
+```
+
+`~/.zshrc` also pins `FAST_WORK_DIR` and leaves an empty `secondary_theme.zsh`
+in it, so the download — now never read — is not part of opening a shell. On a
+cold cache the difference is a 3.4 KB fetch from GitHub during startup versus
+none.
 
 One thing the table cannot reach, so as not to go looking for it later: the
 handful of `fast-syntax-highlighting` chromas that highlight an *embedded*
