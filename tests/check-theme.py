@@ -207,6 +207,33 @@ def _comment_leads(path):
     return os.path.basename(path) in ("colors", ".ripgreprc")
 
 
+# Checks that need an external binary or a subshell. Skipping them is what
+# makes the comment-decoy probe in the self-test affordable: it runs the
+# checker twice per colour line in the tree, and the oracles are 2.2 of the
+# 2.3 seconds a full run costs. THEME_CHECK_NO_TOOLS=1 turns them off.
+#
+# Not a general-purpose fast mode to reach for casually -- the oracles are the
+# half that catches a key a tool has silently stopped accepting.
+TOOL_CHECKS = {
+    "_check_shell_parity", "_check_delta_options", "_check_ripgrep_config",
+    "_check_yazi_configs", "_check_starship_config", "_check_bat_theme",
+    "_check_kitty_config", "_check_git_colours", "_check_wezterm_config",
+    "_check_git_paints", "_check_tmux_options", "_check_lazygit_theme_keys",
+    "_check_doctor_swatches", "_check_shell_exports",
+}
+
+
+def without_tools():
+    return bool(os.environ.get("THEME_CHECK_NO_TOOLS"))
+
+
+def run_check(fn, *args):
+    """Call a sub-check, unless it needs a tool and tools are switched off."""
+    if without_tools() and fn.__name__ in TOOL_CHECKS:
+        return []
+    return fn(*args)
+
+
 def check_palette(doc, verbose):
     known = documented_colours(doc)
     problems = []
@@ -223,7 +250,7 @@ def check_palette(doc, verbose):
         if verbose:
             print("  %-58s %3d colours" % (rel, seen))
 
-    problems.extend(_check_shell_exports(known, verbose))
+    problems.extend(run_check(_check_shell_exports, known, verbose))
     return problems
 
 
@@ -1736,7 +1763,7 @@ def _check_vscode_theme_chain(verbose):
                 "%s is what provides the %r theme, and it is not in %s"
                 % (extension, theme, VSCODE_EXTENSIONS))
 
-    problems.extend(_check_syntax_doc_table(doc, verbose))
+    problems.extend(run_check(_check_syntax_doc_table, doc, verbose))
 
     if verbose and not problems:
         print("  VS Code runs %r, provided by %s" % (theme, extension))
@@ -2000,7 +2027,11 @@ def check_parity(doc, verbose):
     # those overrides pointing at the same colours the terminals use.
     nvim_theme = os.path.join(REPO, "common/.config/nvim/lua/plugins/tokyonight.lua")
     if os.path.isfile(nvim_theme):
-        src = open(nvim_theme, encoding="utf-8").read()
+        # Comments stripped: a commented-out `c.terminal.black = "#1d202f"`
+        # above a live line setting something else satisfies the pattern, and
+        # the generated probe in the self-test caught exactly that here.
+        src = uncommented(nvim_theme,
+                          open(nvim_theme, encoding="utf-8").read())
         for field, slot, label in [("black", 0, "ANSI 0"),
                                    ("black_bright", 8, "ANSI 8")]:
             m = re.search(r'c\.terminal\.%s\s*=\s*"(#[0-9a-fA-F]{6})"' % field, src)
@@ -2077,28 +2108,28 @@ def check_parity(doc, verbose):
     # startup path of every non-interactive shell -- which only stays honest
     # if something compares the two. Sourcing the file is also the only check
     # that it is still valid shell.
-    problems.extend(_check_ls_colors(lf_entries))
-    problems.extend(_check_shell_parity(verbose))
-    problems.extend(_check_delta_options(verbose))
-    problems.extend(_check_ripgrep_config(verbose))
-    problems.extend(_check_yazi_configs(verbose))
-    problems.extend(_check_starship_config(verbose))
-    problems.extend(_check_bat_theme(verbose))
-    problems.extend(_check_kitty_config(verbose))
-    problems.extend(_check_git_colours(verbose))
-    problems.extend(_check_wezterm_config(verbose))
-    problems.extend(_check_vscode_theme_chain(verbose))
-    problems.extend(_check_nvim_delta_parity(verbose))
-    problems.extend(_check_colour_coverage(doc, verbose))
-    problems.extend(_check_mime_extension_bridge(verbose))
-    problems.extend(_check_git_paints(verbose))
-    problems.extend(_check_tmux_options(verbose))
-    problems.extend(_check_shared_roles(verbose))
-    problems.extend(_check_doctor_swatches(verbose))
-    problems.extend(_check_picker_colours(verbose))
-    problems.extend(_check_lazygit_theme_keys(verbose))
-    problems.extend(_check_bat_truecolor(verbose))
-    problems.extend(_check_command_lines(verbose))
+    problems.extend(run_check(_check_ls_colors, lf_entries))
+    problems.extend(run_check(_check_shell_parity, verbose))
+    problems.extend(run_check(_check_delta_options, verbose))
+    problems.extend(run_check(_check_ripgrep_config, verbose))
+    problems.extend(run_check(_check_yazi_configs, verbose))
+    problems.extend(run_check(_check_starship_config, verbose))
+    problems.extend(run_check(_check_bat_theme, verbose))
+    problems.extend(run_check(_check_kitty_config, verbose))
+    problems.extend(run_check(_check_git_colours, verbose))
+    problems.extend(run_check(_check_wezterm_config, verbose))
+    problems.extend(run_check(_check_vscode_theme_chain, verbose))
+    problems.extend(run_check(_check_nvim_delta_parity, verbose))
+    problems.extend(run_check(_check_colour_coverage, doc, verbose))
+    problems.extend(run_check(_check_mime_extension_bridge, verbose))
+    problems.extend(run_check(_check_git_paints, verbose))
+    problems.extend(run_check(_check_tmux_options, verbose))
+    problems.extend(run_check(_check_shared_roles, verbose))
+    problems.extend(run_check(_check_doctor_swatches, verbose))
+    problems.extend(run_check(_check_picker_colours, verbose))
+    problems.extend(run_check(_check_lazygit_theme_keys, verbose))
+    problems.extend(run_check(_check_bat_truecolor, verbose))
+    problems.extend(run_check(_check_command_lines, verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")
@@ -2551,8 +2582,8 @@ def check_contrast(doc, verbose):
         elif verbose:
             print("  %6.2f:1  fill  %s" % (got, what))
 
-    problems.extend(_check_stated_pairs(verbose))
-    problems.extend(_check_cvd(doc, verbose))
+    problems.extend(run_check(_check_stated_pairs, verbose))
+    problems.extend(run_check(_check_cvd, doc, verbose))
     return problems
 
 

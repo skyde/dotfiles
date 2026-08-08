@@ -414,6 +414,105 @@ MUTATIONS = [
 ]
 
 
+def load_checker():
+    """Import tests/check-theme.py as a module."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "checktheme", os.path.join(REPO, "tests", "check-theme.py"))
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+# --------------------------------------------------------------------------
+# The comment-decoy probe.
+#
+# Four separate readers were found accepting a commented-out copy of the line
+# they look for, while the live line said something else. Each fix was easy;
+# noticing was not, and knowing the failure by name did not stop it being
+# written again three commits later. So it is generated rather than
+# remembered: every colour in every scanned config gets the same two-step
+# treatment, and a reader added next year is probed the day it lands.
+#
+#   1. change the colour to another documented one and run the checker.
+#      Nothing fails -> nothing constrains this colour, move on.
+#   2. make the same change, but leave a commented-out copy of the original
+#      line above it. Something must still fail; if not, the reader is
+#      reading the comment.
+#
+# The replacement is always a documented colour, so the palette check stays
+# quiet and what is left is the readers.
+
+PROBE_SWAP = ("#9ece6a", "#f7768e")
+
+
+def _probe_replacement(colour):
+    return PROBE_SWAP[1] if colour.lower() == PROBE_SWAP[0] else PROBE_SWAP[0]
+
+
+def probe_comments(verbose, sample_per_file=None):
+    """Require every reader to distinguish a live line from a commented one."""
+    module = load_checker()
+    doc = module.read_doc()
+    hexes = re.compile(r"#[0-9a-fA-F]{6}")
+
+    targets = []
+    for path in module.themed_files(doc):
+        rel = os.path.relpath(path, REPO)
+        lines = open(path, encoding="utf-8").read().splitlines()
+        found = []
+        for i, line in enumerate(lines):
+            marker = module.COMMENT_MARKERS.get(
+                os.path.splitext(rel)[1], module.DEFAULT_COMMENT_MARKER)
+            if line.lstrip().startswith(marker):
+                continue
+            m = hexes.search(line)
+            if m:
+                found.append((i, m.group(0), marker))
+        if sample_per_file is not None:
+            found = found[:sample_per_file]
+        targets.extend((rel, i, colour, marker) for i, colour, marker in found)
+
+    fooled, constrained = [], 0
+    for rel, lineno, colour, marker in targets:
+        original = open(os.path.join(REPO, rel), encoding="utf-8").read()
+        lines = original.splitlines(True)
+        live = lines[lineno].replace(colour, _probe_replacement(colour), 1)
+
+        if not _probe_run(rel, lines, lineno, live):
+            continue  # nothing constrains this colour
+        constrained += 1
+        decoy = marker + " " + lines[lineno].rstrip("\n") + "\n" + live
+        if not _probe_run(rel, lines, lineno, decoy):
+            fooled.append("%s:%d — %s survives as a comment"
+                          % (rel, lineno + 1, colour))
+        _write(os.path.join(REPO, rel), original)
+
+    if verbose:
+        for f in fooled:
+            print("  fooled  %s" % f)
+    print("probe: %d colour(s) constrained by some check, %d reader(s) fooled"
+          % (constrained, len(fooled)))
+    return fooled
+
+
+def _write(path, text):
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(text)
+
+
+def _probe_run(rel, lines, lineno, replacement):
+    """Swap one line in, run the checker with tools off, restore, report."""
+    path = os.path.join(REPO, rel)
+    original = "".join(lines)
+    _write(path, "".join(lines[:lineno]) + replacement + "".join(lines[lineno + 1:]))
+    env = dict(os.environ, THEME_CHECK_NO_TOOLS="1")
+    out = subprocess.run([sys.executable, os.path.join(REPO, "tests/check-theme.py")],
+                         capture_output=True, text=True, env=env, cwd=REPO)
+    _write(path, original)
+    return out.returncode != 0
+
+
 def tracked_files():
     out = subprocess.run(["git", "-C", REPO, "ls-files", "-z"],
                          capture_output=True, text=True, check=True)
@@ -481,11 +580,7 @@ def run_mutations(files, verbose):
 def run_units(verbose):
     """Assertions on the parts a config mutation cannot reach."""
     sys.path.insert(0, os.path.join(REPO, "tests"))
-    import importlib.util
-    spec = importlib.util.spec_from_file_location(
-        "checktheme", os.path.join(REPO, "tests", "check-theme.py"))
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)
+    m = load_checker()
 
     failures = []
 
@@ -567,6 +662,15 @@ def main(argv):
     if verbose:
         print("\nunits:")
     failures += run_units(verbose)
+
+    # One colour per file by default, every colour under --probe-comments.
+    # A full sweep is ~776 lines and two checker runs each, which is why the
+    # tools-off mode exists; the sample keeps the default run honest without
+    # making it slow.
+    if verbose:
+        print("\ncomment-decoy probe:")
+    failures += probe_comments(verbose,
+                               None if "--probe-comments" in argv else 1)
 
     for s in skipped:
         print("skip %s" % s)

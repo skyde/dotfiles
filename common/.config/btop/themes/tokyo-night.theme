@@ -83,7 +83,7 @@ theme[used_mid]="#e0af68"
 theme[used_end]="#f7768e"
 
 # Download graph colours
-theme[download_start]="#9ece6a"
+theme[download_start]="#f7768e"
 theme[download_mid]="#73daca"
 theme[download_end]="#7dcfff"
 

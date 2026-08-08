@@ -843,6 +843,19 @@ quietly approximating it.
   stops at the first. `st-rg` carries two awk prefixes and only one was being
   read, so the other could paint search results any colour it liked.
 
+  That audit is no longer done by hand. `tests/check-theme-selftest.py`
+  generates it: for every colour in every scanned config it changes the value
+  and runs the checker, and if anything failed, changes it again with a
+  commented-out copy of the original line above it. Something must still fail.
+  A reader added next year is probed the day it lands, which is the point —
+  four of these were found by hand, and the fifth was found by the generator
+  on its first run, in a file the hand audit had already been through.
+
+  It samples one colour per file by default and sweeps every one under
+  `--probe-comments`. `THEME_CHECK_NO_TOOLS=1` exists for it: the external
+  oracles are 2.2 of the 2.3 seconds a run costs, and the probe needs only the
+  readers.
+
 - **contrast** — every foreground/background pair clears the floor for the job
   it does, and every focused fill stands off the page behind it. The tiers, and
   why they are not simply WCAG AA, are in the script.
