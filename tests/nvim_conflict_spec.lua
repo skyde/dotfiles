@@ -386,9 +386,163 @@ do
   check("highlight: base uses DiffChange", (groups.DiffChange or 0) > 0)
   check("highlight: theirs uses DiffText", (groups.DiffText or 0) > 0)
 
+  -- Which rows, not just which groups. Counting groups cannot tell a correct
+  -- painting from one whose ours region runs on over the base section — all
+  -- three still appear — and in zdiff3, where the base section is usually
+  -- present, that is the boundary most likely to be got wrong.
+  -- Collected as a list per row, not a single value: a section that runs on
+  -- over the next one paints a *second* mark on those rows rather than
+  -- replacing the first, and keeping only the last would hide exactly that.
+  local by_row = {}
+  for _, m in ipairs(marks) do
+    local row = m[2] + 1
+    by_row[row] = by_row[row] or {}
+    table.insert(by_row[row], m[4].line_hl_group)
+  end
+  for row, groups_here in pairs(by_row) do
+    by_row[row] = #groups_here == 1 and groups_here[1] or table.concat(groups_here, "+")
+  end
+  eq("highlight: exactly one group per row, the one its section calls for", {
+    -- 1 "top" is context and stays unpainted
+    [2] = "DiffAdd", -- <<<<<<< HEAD
+    [3] = "DiffAdd", -- ours a
+    [4] = "DiffAdd", -- ours b
+    [5] = "DiffChange", -- ||||||| 1234567
+    [6] = "DiffChange", -- base a
+    [7] = "DiffText", -- =======
+    [8] = "DiffText", -- theirs a
+    [9] = "DiffText", -- >>>>>>> other-branch
+    -- 10 "bottom" is context again
+  }, by_row)
+
   conflict.choose("theirs")
   conflict.highlight(buf)
   eq("highlight: cleared once resolved", 0, #vim.api.nvim_buf_get_extmarks(buf, ns, 0, -1, {}))
+end
+
+--------------------------------------------------------------------------
+-- properties, over randomly generated conflicted files
+--------------------------------------------------------------------------
+
+-- Resolving is destructive and unrecoverable — it rewrites the buffer and there
+-- is no second copy of the discarded side — so the shapes above being right is
+-- not quite enough. These generate conflicted files instead: several conflicts
+-- per file, either merge or zdiff3 style, with sides of any length including
+-- empty, and surrounding context that must survive untouched.
+--
+-- The property is exact: taking one side everywhere has to leave precisely the
+-- file that side describes, and no markers behind. Seed fixed, so a failure is
+-- reproducible.
+do
+  math.randomseed(99)
+
+  local function body(tag, n)
+    local out = {}
+    for i = 1, n do
+      out[i] = ("%s line %d"):format(tag, i)
+    end
+    return out
+  end
+
+  ---A conflicted file with `n` conflicts, and what each choice should leave.
+  local function generate(n, with_base)
+    local lines, ours, theirs, both = {}, {}, {}, {}
+    local function context()
+      for _ = 1, math.random(0, 3) do
+        local line = "context " .. math.random(99)
+        table.insert(lines, line)
+        table.insert(ours, line)
+        table.insert(theirs, line)
+        table.insert(both, line)
+      end
+    end
+    for _ = 1, n do
+      context()
+      local o = body("OURS", math.random(0, 3))
+      local t = body("THEIRS", math.random(0, 3))
+      table.insert(lines, "<<<<<<< HEAD")
+      vim.list_extend(lines, o)
+      if with_base then
+        -- zdiff3, which is what the git config asks for.
+        table.insert(lines, "||||||| base")
+        vim.list_extend(lines, body("BASE", math.random(0, 2)))
+      end
+      table.insert(lines, "=======")
+      vim.list_extend(lines, t)
+      table.insert(lines, ">>>>>>> branch")
+      vim.list_extend(ours, o)
+      vim.list_extend(theirs, t)
+      vim.list_extend(both, o)
+      vim.list_extend(both, t)
+    end
+    context()
+    return lines, { ours = ours, theirs = theirs, both = both, none = vim.deepcopy(ours) }
+  end
+
+  -- "none" keeps the context and drops every side, so rebuild it from context
+  -- alone rather than trying to subtract.
+  local function without_sides(expected)
+    local out = {}
+    for _, line in ipairs(expected.ours) do
+      if not line:match("^OURS ") then
+        table.insert(out, line)
+      end
+    end
+    return out
+  end
+
+  local CASES = 200
+  local wrong_count, wrong_result, markers_left, raised = {}, {}, {}, {}
+  local real_notify = vim.notify
+
+  for case = 1, CASES do
+    local n = math.random(1, 4)
+    local with_base = math.random(2) == 1
+    local lines, expected = generate(n, with_base)
+    expected.none = without_sides(expected)
+
+    for _, which in ipairs({ "ours", "theirs", "both", "none" }) do
+      local buf = vim.api.nvim_create_buf(true, false)
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+      vim.api.nvim_set_current_buf(buf)
+
+      local found = #conflict.list(buf)
+      if found ~= n then
+        table.insert(wrong_count, ("case %d: found %d conflicts, generated %d"):format(case, found, n))
+      end
+
+      vim.notify = function() end
+      local ok, err = pcall(conflict.choose_all, which)
+      vim.notify = real_notify
+      if not ok then
+        table.insert(raised, ("case %d %s: %s"):format(case, which, tostring(err)))
+      else
+        local got = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+        -- Neovim has no zero-line buffer; an empty result reads as { "" }.
+        local want = #expected[which] > 0 and expected[which] or { "" }
+        if not vim.deep_equal(got, want) then
+          table.insert(
+            wrong_result,
+            ("case %d %s: want %s got %s"):format(
+              case,
+              which,
+              vim.inspect(want):gsub("%s+", " "),
+              vim.inspect(got):gsub("%s+", " ")
+            )
+          )
+        end
+        if conflict.has_conflicts(buf) then
+          table.insert(markers_left, ("case %d %s"):format(case, which))
+        end
+      end
+      pcall(vim.api.nvim_buf_delete, buf, { force = true })
+    end
+  end
+
+  check(("properties: every conflict is found (%d files)"):format(CASES), #wrong_count == 0, wrong_count[1])
+  check("properties: resolving never raises", #raised == 0, raised[1])
+  check("properties: each choice leaves exactly that side", #wrong_result == 0, wrong_result[1])
+  check("properties: and never leaves a marker behind", #markers_left == 0, markers_left[1])
 end
 
 --------------------------------------------------------------------------
