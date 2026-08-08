@@ -853,12 +853,14 @@ quietly approximating it.
 
   The same machinery answers a blunter question: how much of the theme is
   actually pinned? `--report-unpinned` changes each colour to another
-  *documented* colour and reports where nothing failed. 256 of 509 do not — which is not all wrong, a
+  *documented* colour and reports where nothing failed. 245 of 509 do not — which is not all wrong, a
   colour with no counterpart in another tool has nothing to be pinned to — but
   it is the honest number, and it is where the next check should come from.
   `.zshrc` was 32 of its 41 until the command line got tied to the table above;
-  it is 1 now. `theme.sh`'s palette was 28 of 28 and is 8; the doctor's swatch
-  block was 13 of 13 and is 1.
+  it is 1 now. `theme.sh`'s palette was 28 of 28 and is 8, the doctor's swatch
+  block 13 of 13 and is 1, starship's `[palettes.tokyonight]` 11 of 16 and is 0.
+  Those three and the shell palette are the same shape — a name the palette
+  already defines, beside a hex — and one check reads all four.
 
   Only colours a tool will actually read are counted. An earlier version of the
   report included hexes sitting in trailing comments — `lf`'s colours file and
