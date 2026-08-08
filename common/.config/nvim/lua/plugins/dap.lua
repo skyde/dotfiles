@@ -176,9 +176,12 @@ return {
         end
       end
 
+      -- Split on runs of whitespace and drop the empties: splitting a blank
+      -- answer on a single space yields { "" }, which launches the program with
+      -- one empty argument rather than none.
       local function get_args()
         local args_str = vim.fn.input("Args: ")
-        return vim.split(vim.fn.expand(args_str), " ")
+        return vim.split(vim.fn.expand(args_str), "%s+", { trimempty = true })
       end
 
       dap.configurations.cpp = {

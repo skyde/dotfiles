@@ -329,7 +329,7 @@ do
         configurations = {},
       },
       ["dap.ext.vscode"] = {
-        load_launchjs = function()
+        getconfigs = function()
           error("Expected value but found invalid token at character 22")
         end,
       },
@@ -353,7 +353,9 @@ do
         configurations = {},
       },
       ["dap.ext.vscode"] = {
-        load_launchjs = function() end,
+        getconfigs = function()
+          return {}
+        end,
       },
     }, function()
       local said = with_notify(function()
@@ -377,7 +379,9 @@ do
         configurations = { cpp = { attach, plain } },
       },
       ["dap.ext.vscode"] = {
-        load_launchjs = function() end,
+        getconfigs = function()
+          return {}
+        end,
       },
       ["dap.utils"] = {
         pick_process = function()
@@ -395,6 +399,57 @@ do
       eq("attach: dap.utils is not touched until the pid is asked for", false, picked)
       eq("attach: and calling it picks a process", 4242, attach.pid and attach.pid())
       eq("attach: a launch config is left alone", nil, plain.pid)
+    end)
+
+    -- The configurations themselves: merged under every filetype the type maps
+    -- to, and no duplicate when the same file is read twice.
+    local providers = {
+      configs = {
+        ["dap.launch.json"] = function()
+          return { { name = "upstream", type = "codelldb" } }
+        end,
+      },
+    }
+    local dap_stub = {
+      session = function()
+        return nil
+      end,
+      adapters = {},
+      configurations = {},
+      providers = providers,
+    }
+    with_modules({
+      dap = dap_stub,
+      ["dap.ext.vscode"] = {
+        getconfigs = function()
+          return {
+            { name = "Launch", type = "codelldb", request = "launch" },
+            { name = "Python", type = "python", request = "launch" },
+          }
+        end,
+      },
+    }, function()
+      local mod = debug_module()
+      mod.load_launch_json()
+      local names = {}
+      for ft, list in pairs(dap_stub.configurations) do
+        names[ft] = vim.tbl_map(function(c)
+          return c.name
+        end, list)
+      end
+      eq("configs: a codelldb type lands on every language it drives", { "Launch" }, names.cpp)
+      eq("configs: including C", { "Launch" }, names.c)
+      eq("configs: and Rust", { "Launch" }, names.rust)
+      eq("configs: an unmapped type lands on its own filetype", { "Python" }, names.python)
+
+      -- Reading the same file again must not stack copies: the panel calls this
+      -- on every debug key.
+      mod.load_launch_json()
+      eq("configs: reading twice does not duplicate", 1, #dap_stub.configurations.cpp)
+
+      -- nvim-dap's own provider reads .vscode in the working directory only.
+      -- Left in place beside this one, every configuration is offered twice.
+      eq("configs: the built-in launch.json provider is superseded", {}, providers.configs["dap.launch.json"]())
     end)
 
     vim.cmd("cd " .. vim.fn.fnameescape(cwd or "."))

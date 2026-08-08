@@ -48,6 +48,47 @@ local function normalize_attach_pids(dap)
   end
 end
 
+---Which filetypes a launch.json `"type"` belongs to. VS Code says `lldb`, and
+---on this setup that is codelldb; both drive the same three languages.
+local TYPE_FILETYPES = {
+  lldb = { "c", "cpp", "rust" },
+  codelldb = { "c", "cpp", "rust" },
+}
+
+---What `dap.ext.vscode.load_launchjs` used to do, minus the deprecation warning
+---it now prints on every call: merge each configuration into
+---`dap.configurations` under every filetype its type maps to, replacing any
+---entry of the same name so re-reading the file does not stack copies.
+local function merge_configs(dap, configs)
+  for _, config in ipairs(configs or {}) do
+    assert(config.type, "a configuration in launch.json has no `type`")
+    assert(config.name, "a configuration in launch.json has no `name`")
+    for _, ft in ipairs(TYPE_FILETYPES[config.type] or { config.type }) do
+      local list = dap.configurations[ft] or {}
+      for i = #list, 1, -1 do
+        if list[i].name == config.name then
+          table.remove(list, i)
+        end
+      end
+      table.insert(list, config)
+      dap.configurations[ft] = list
+    end
+  end
+end
+
+---nvim-dap ships its own launch.json provider, and it reads `.vscode` in the
+---working directory only. This one searches upward, maps types to filetypes and
+---fixes up the attach placeholders, so leaving both in place would offer every
+---configuration twice in the picker — once from each. Superseding it by name is
+---how a provider is meant to be replaced.
+local function supersede_dap_provider(dap)
+  if type(dap.providers) == "table" and type(dap.providers.configs) == "table" then
+    dap.providers.configs["dap.launch.json"] = function()
+      return {}
+    end
+  end
+end
+
 ---@return table|nil dap `nil` when nvim-dap is not installed
 function M.load_launch_json()
   local ok, dap = pcall(require, "dap")
@@ -55,6 +96,7 @@ function M.load_launch_json()
     return nil
   end
   ensure_adapters(dap)
+  supersede_dap_provider(dap)
   local roots = vim.fs.find(".vscode", { upward = true, type = "directory" })
   if roots and roots[1] then
     local f = roots[1] .. "/launch.json"
@@ -63,10 +105,7 @@ function M.load_launch_json()
       -- launch.json makes this throw, and silently continuing means the debug
       -- key does nothing for a reason nothing on screen explains.
       local loaded, err = pcall(function()
-        require("dap.ext.vscode").load_launchjs(f, {
-          lldb = { "c", "cpp", "rust" },
-          codelldb = { "c", "cpp", "rust" },
-        })
+        merge_configs(dap, require("dap.ext.vscode").getconfigs(f))
         normalize_attach_pids(dap)
       end)
       if not loaded then
