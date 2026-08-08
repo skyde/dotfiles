@@ -149,26 +149,43 @@ function M.choose(which)
   vim.notify(("Took %s · %d conflict%s left"):format(which, left, left == 1 and "" or "s"))
 end
 
+---The buffer the whole-file keys act on. Inside the merge view that is always
+---the working pane, whichever of the three panes the cursor happens to be in:
+---the outer two are reconstructions with no markers left in them, so acting on
+---them means doing nothing and reporting it as done.
+local function working_buf()
+  local buf = vim.t.vcs_conflict_buf
+  if type(buf) == "number" and vim.api.nvim_buf_is_valid(buf) then
+    return buf
+  end
+  return vim.api.nvim_get_current_buf()
+end
+
 ---Resolve every conflict in the buffer the same way.
 ---@param which "ours"|"theirs"|"both"|"base"|"none"
 function M.choose_all(which)
-  local buf = vim.api.nvim_get_current_buf()
+  local buf = working_buf()
   local n = 0
-  -- Resolving shifts every line below, so always work on the last conflict
-  -- first and re-list after each edit rather than caching positions.
-  while true do
-    local conflicts = M.list(buf)
-    if #conflicts == 0 then
-      break
+  -- Whole-file, so unlike `choose` it does not depend on where the cursor is —
+  -- which is what makes it safe to redirect at the working pane from a side
+  -- one. nvim_buf_call makes that buffer current for the loop.
+  vim.api.nvim_buf_call(buf, function()
+    -- Resolving shifts every line below, so always work on the last conflict
+    -- first and re-list after each edit rather than caching positions.
+    while true do
+      local conflicts = M.list(buf)
+      if #conflicts == 0 then
+        break
+      end
+      local c = conflicts[#conflicts]
+      vim.api.nvim_win_set_cursor(0, { c.start, 0 })
+      M.choose(which)
+      n = n + 1
+      if n > 1000 then
+        break
+      end
     end
-    local c = conflicts[#conflicts]
-    vim.api.nvim_win_set_cursor(0, { c.start, 0 })
-    M.choose(which)
-    n = n + 1
-    if n > 1000 then
-      break
-    end
-  end
+  end)
   vim.notify(("Took %s for %d conflict%s"):format(which, n, n == 1 and "" or "s"))
 end
 
@@ -270,10 +287,7 @@ function M.finish()
   -- ours and theirs panes are reconstructions with every conflict already taken
   -- one way, so asking them would report the merge finished and close the tab
   -- with the real markers still in the file.
-  local buf = vim.t.vcs_conflict_buf
-  if not (type(buf) == "number" and vim.api.nvim_buf_is_valid(buf)) then
-    buf = vim.api.nvim_get_current_buf()
-  end
+  local buf = working_buf()
   if M.has_conflicts(buf) then
     local left = #M.list(buf)
     vim.notify(("Still %d unresolved conflict%s"):format(left, left == 1 and "" or "s"), vim.log.levels.WARN)

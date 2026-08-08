@@ -389,10 +389,16 @@ do
   eq("side pane: and the file is untouched on disk", multi, vim.fn.readfile(path))
   eq("side pane: the working buffer keeps its conflicts", 3, #conflict.list(working))
 
-  -- Resolve in the working buffer, then finish from the side pane again.
-  vim.api.nvim_buf_call(working, function()
-    conflict.choose_all("ours")
-  end)
+  -- The whole-file keys from the side pane too. They do not depend on where
+  -- the cursor is, so unlike the single-conflict keys there is a right answer:
+  -- resolve the working buffer, not the reconstruction that never had markers.
+  conflict.choose_all("ours")
+  eq("side pane: <leader>cO resolves the working buffer", 0, #conflict.list(working))
+  eq(
+    "side pane: and takes our side, not the pane's content",
+    { "alpha", "one-ours", "beta", "two-ours", "gamma", "three-ours" },
+    vim.api.nvim_buf_get_lines(working, 0, -1, false)
+  )
   vim.api.nvim_set_current_win(left)
   conflict.finish()
   eq("side pane: once resolved, finish closes the tab", tabs, vim.fn.tabpagenr("$"))
