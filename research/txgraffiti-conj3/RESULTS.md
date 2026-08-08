@@ -56,9 +56,14 @@ Order 14 is covered for every degree except `r = 6, 7` in
 the order-14 sweep also includes disconnected regular graphs, which Lemma 1
 does not require but which cost nothing.
 
-A by-product worth recording: in every sweep the observed `min mu*` equals
-`ceil(nr/(2(2r-1)))` exactly whenever that value is attainable, i.e. Lemma 2 is
-tight across the whole range.
+A by-product worth recording: comparing the observed `min mu*` against Lemma 2's
+bound `ceil(nr/(2(2r-1)))` over the 61 `(n, r)` classes swept, the bound is
+attained in 42 of them and has slack in 19. Every slack case is a dense one
+(`n = 6, r = 5` through `n = 14, r = 9..13`), which is what Lemma 2 predicts:
+a dense regular graph cannot carry a dominating *induced* matching, so the
+equality case is unavailable. On the sparse side the bound is attained
+throughout — which is exactly why the cubic extremal family of §4 is the right
+place to hunt.
 
 ### Cubic graphs
 
