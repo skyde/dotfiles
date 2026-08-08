@@ -27,6 +27,7 @@ vim.opt.fileformats = { "unix", "dos" }
 
 local vcs = require("util.vcs")
 local ui = require("util.vcs_ui")
+local inline_diff = require("util.inline_diff")
 
 local passed, failed = 0, 0
 local failures = {}
@@ -223,7 +224,9 @@ for _, inline in ipairs({ true, false }) do
     local pw = panel_win()
     vim.api.nvim_set_current_win(pw)
     vim.api.nvim_win_set_cursor(pw, { row, 0 })
-    local name = vim.trim((panel_lines()[row] or ""):gsub("^ %a  ", ""))
+    -- [MAD?RC], not %a: `?` is a status code and is not a letter, so a
+    -- letters-only pattern leaves it stuck to the front of the filename.
+    local name = vim.trim((panel_lines()[row] or ""):gsub("^ [MAD?RC]  ", ""))
     -- Drive it the way the cursor does, so the debounce and the async base
     -- fetch run exactly as they would for a person holding `j`.
     drain_errors()
@@ -233,8 +236,55 @@ for _, inline in ipairs({ true, false }) do
       settle()
     end)
     local reported = drain_errors()
+
+    -- Two independent checks, on purpose. Watching vim.notify catches a render
+    -- that threw — but only while something is still reporting it, and a change
+    -- that quietly stopped reporting would make every assertion here vacuous.
+    -- So also assert the render actually landed: some pane in the tab must be
+    -- showing *this* file, by name, whether that is the real buffer or the
+    -- vcs:// scratch a deleted file gets.
+    -- "Shows the file" is not enough on its own: render_inline puts the buffer
+    -- in the window before it attaches the overlay, so a pane can carry the
+    -- right file with the diff half-built. Assert the rendering itself — the
+    -- overlay attached inline, two diffed panes side-by-side.
+    local showing, dressed = false, false
+    local diffed = 0
+    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      if w ~= panel_win() then
+        local buf = vim.api.nvim_win_get_buf(w)
+        local pane = vim.api.nvim_buf_get_name(buf)
+        if pane:find(name, 1, true) then
+          showing = true
+          if not inline then
+            dressed = vim.wo[w].diff
+          elseif pane:find("vcs://deleted/", 1, true) then
+            -- Nothing on disk to overlay: the inline rendering of a deleted
+            -- file is its old content, struck through. Correct when the pane
+            -- actually holds that content rather than an empty scratch.
+            dressed = #vim.api.nvim_buf_get_lines(buf, 0, -1, false) > 0
+              and vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] ~= ""
+          else
+            dressed = inline_diff.has(buf)
+          end
+        end
+        if vim.wo[w].diff then
+          diffed = diffed + 1
+        end
+      end
+    end
+    if not inline then
+      -- Both halves, not just the one holding the file.
+      dressed = dressed and diffed == 2
+    end
+
     check(("%s: renders %s"):format(label, name), ok and reported == "", ok and reported or tostring(err))
-    if ok and reported == "" then
+    check(("%s: a pane actually shows %s"):format(label, name), showing, "panes did not name it")
+    check(
+      ("%s: %s is really diffed, not just displayed"):format(label, name),
+      dressed,
+      inline and "no inline overlay attached" or ("diffed panes: " .. diffed)
+    )
+    if ok and reported == "" and showing and dressed then
       rendered = rendered + 1
     end
     check(

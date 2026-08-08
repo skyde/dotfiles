@@ -514,7 +514,15 @@ function M.attach(buf, base)
   setup_highlights()
   M.detach(buf)
   states[buf] = { base = base, base_text = #base > 0 and (table.concat(base, "\n") .. "\n") or "" }
-  M.render(buf)
+  -- The first render is what fills in `hunks`. If it throws, the buffer must
+  -- not be left half-attached: has() would answer yes, and everything that
+  -- walks the hunks — ]c, the revert, the change counter — would then index a
+  -- nil. Fail attached-to-nothing instead, and let the caller report it.
+  local ok, err = pcall(M.render, buf)
+  if not ok then
+    M.detach(buf)
+    error(err, 0)
+  end
   vim.api.nvim_create_autocmd({ "TextChanged", "InsertLeave" }, {
     group = vim.api.nvim_create_augroup("vcs_inline_diff_" .. buf, { clear = true }),
     buffer = buf,
