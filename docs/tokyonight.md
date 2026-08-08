@@ -851,6 +851,14 @@ quietly approximating it.
   four of these were found by hand, and the fifth was found by the generator
   on its first run, in a file the hand audit had already been through.
 
+  The same machinery answers a blunter question: how much of the theme is
+  actually pinned? Change a colour to another *documented* colour and see
+  whether anything fails. 304 of 546 still do not — which is not all wrong, a
+  colour with no counterpart in another tool has nothing to be pinned to — but
+  it is the honest number, and it is where the next check should come from.
+  `.zshrc` was 32 of its 41 until the command line got tied to the table above;
+  it is 1 now.
+
   It samples one colour per file by default and sweeps every one under
   `--probe-comments` — worth running after adding a check, because the sample
   found one fooled reader and the full sweep found five more in a single file.

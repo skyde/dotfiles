@@ -47,6 +47,7 @@ TMUX = "common/.tmux.conf"
 RGRC = "common/.ripgreprc"
 BTOP = "common/.config/btop/themes/tokyo-night.theme"
 DOCTOR = "doctor-theme.sh"
+ZSHRC = "common/.zshrc"
 PREVIEW_SH = "common/.config/lf/preview.sh"
 BATPREVIEW = "common/.config/yazi/plugins/bat-preview.yazi/main.lua"
 STZOEKT = "common/.local/bin/st-zoekt"
@@ -401,6 +402,15 @@ MUTATIONS = [
      r"(GIT_GREP_AWK_SCRIPT='BEGIN\{[\s\S]*?mag=\")\\033\[38;2;122;162;247m",
      r"\1\\033[38;2;158;206;106m",
      "two colours", None),
+
+    # The command line is Dark+, and the roles the two shells share are
+    # compared with each other -- which covered 9 of zsh's 41 colours. The
+    # other 32 could be any documented colour at all until the doc's table
+    # became the thing they answer to.
+    ("a command-line role painted off the Dark+ table", "parity", ZSHRC,
+     r"globbing                      'fg=#d7ba7d'",
+     "globbing                      'fg=#9ece6a'",
+     "does not list", None),
 
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is

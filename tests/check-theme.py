@@ -716,6 +716,81 @@ COMMAND_LINE_ROLES = [
 ]
 
 
+CLI_HEADING = "Dark+ on the command line"
+# The doc's own sentence: "a word that resolves to no command is `red`, and a
+# path that has not resolved to anything yet is `comment`". Named by palette
+# role rather than by hex, so they are looked up rather than copied here.
+CLI_TOKYO_EXCEPTIONS = ("red", "comment")
+
+
+def _check_command_line_palette(doc, verbose):
+    """Every colour on either command line is one the Dark+ table sanctions.
+
+    The roles the two shells share are compared with each other elsewhere, but
+    that covered 9 of the 41 colours zsh sets: the rest could be changed to any
+    documented colour and nothing would notice, because nothing tied them to
+    the table the doc writes them down in.
+
+    Two are deliberately not Dark+ at all, and the doc says so in a sentence
+    rather than a row -- they are named by palette role, so they are resolved
+    through the palette instead of being restated here.
+    """
+    section = doc.split(CLI_HEADING, 1)
+    if len(section) != 2:
+        return ["docs/tokyonight.md no longer has a %r section, so the "
+                "command line has nothing to be checked against" % CLI_HEADING]
+    table = set()
+    for line in section[1].splitlines():
+        if line.startswith("### ") or line.startswith("## "):
+            break
+        cells = [c.strip() for c in line.split("|")]
+        if len(cells) >= 3:
+            table.update(norm(h) for cell in cells for h in HEX.findall(cell))
+    if not table:
+        return ["the %r table lists no colours" % CLI_HEADING]
+
+    known = documented_colours(doc)
+    allowed = set(table)
+    for colour, names in known.items():
+        if names & set(CLI_TOKYO_EXCEPTIONS):
+            allowed.add(colour)
+
+    problems, checked = [], 0
+    zsh = os.path.join(REPO, ZSHRC)
+    if os.path.isfile(zsh):
+        block = re.search(r"_tn_cli_styles=\((.*?)\n\)",
+                          uncommented(zsh, open(zsh, encoding="utf-8").read()),
+                          re.S)
+        if block:
+            for key, value in re.findall(r"^\s*([\w-]+)\s+'([^']+)'",
+                                         block.group(1), re.M):
+                for found in HEX.findall(value):
+                    checked += 1
+                    if norm(found) not in allowed:
+                        problems.append(
+                            "%s paints %s %s, which the %r table does not list"
+                            % (ZSHRC, key, norm(found), CLI_HEADING))
+
+    ps = os.path.join(REPO, PSPROFILE)
+    if os.path.isfile(ps):
+        body = uncommented(ps, open(ps, encoding="utf-8").read())
+        block = re.search(r"Set-PSReadLineOption -Colors @\{(.*?)\n\}",
+                          body, re.S)
+        if block:
+            for key, found in re.findall(
+                    r"^\s*(\w+)\s*=\s*'(#[0-9a-fA-F]{6})'",
+                    block.group(1), re.M):
+                checked += 1
+                if norm(found) not in allowed:
+                    problems.append(
+                        "%s paints %s %s, which the %r table does not list"
+                        % (PSPROFILE, key, norm(found), CLI_HEADING))
+    if verbose and not problems:
+        print("  %d command-line colour(s) are all sanctioned by the doc"
+              % checked)
+    return problems
+
+
 def _check_command_lines(verbose):
     """The zsh and PowerShell command lines are the same table.
 
@@ -2132,6 +2207,7 @@ def check_parity(doc, verbose):
     problems.extend(run_check(_check_lazygit_theme_keys, verbose))
     problems.extend(run_check(_check_bat_truecolor, verbose))
     problems.extend(run_check(_check_command_lines, verbose))
+    problems.extend(run_check(_check_command_line_palette, doc, verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")
