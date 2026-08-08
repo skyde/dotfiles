@@ -359,6 +359,14 @@ system clipboard; each builds what it needs in a tempdir:
   behind `<leader>st`, including its alias table against a real `rg`.
 * `nvim_clipboard_spec.lua` — yank and paste round-trips through a fake tmux
   and the OSC 52 helpers.
+* `nvim_vcs_pathological_spec.lua` — the diff UI against what a real checkout is
+  full of: binaries, a quarter-megabyte line, CRLF from a Windows branch, no
+  trailing newline, a deleted file, paths with spaces and non-ASCII characters.
+  Also the "leaves no trace" promise — at most one looked-at file loaded at a
+  time — and the view driven at random without letting its async work finish.
+* `nvim_config_spec.lua` — the two modules under `lua/config/` that are logic
+  rather than wiring: how a key press is reported, and the stop chain (debug
+  session, then the CMake build, then an Overseer task, then say so).
 
 ```bash
 tests/check-nvim-keymaps.sh      # needs the plugins installed
