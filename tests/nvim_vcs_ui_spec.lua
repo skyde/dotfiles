@@ -1883,6 +1883,107 @@ do
 end
 
 --------------------------------------------------------------------------
+-- the whole-patch view (<leader>gp / <leader>gA)
+--------------------------------------------------------------------------
+
+do
+  vim.cmd("cd " .. vim.fn.fnameescape(root))
+  vcs.clear_cache()
+  ui.close()
+
+  -- Without delta the patch is a plain scratch buffer; with it, delta's output
+  -- is replayed into a terminal buffer for the colours. Which one runs is a
+  -- property of the machine, so drive both rather than whichever this one has.
+  local real_executable = vim.fn.executable
+  local real_system = vim.system
+
+  local function with_delta(present, fn)
+    vim.fn.executable = function(bin)
+      if bin == "delta" then
+        return present and 1 or 0
+      end
+      return real_executable(bin)
+    end
+    if present then
+      -- Stand in for delta: echo the patch back with an ANSI colour on it, so
+      -- the terminal path is exercised without needing delta installed.
+      vim.system = function(cmd, opts, ...)
+        if cmd[1] == "delta" then
+          return {
+            wait = function()
+              return { code = 0, stdout = "\27[32m" .. (opts and opts.stdin or "") .. "\27[0m" }
+            end,
+          }
+        end
+        return real_system(cmd, opts, ...)
+      end
+    end
+    local ok, err = pcall(fn)
+    vim.fn.executable = real_executable
+    vim.system = real_system
+    assert(ok, err)
+  end
+
+  local tabs_before = #vim.api.nvim_list_tabpages()
+  local unnamed_before = unnamed_buffers()
+
+  with_delta(false, function()
+    ui.patch("working")
+    eq("patch: opens a tab", tabs_before + 1, #vim.api.nvim_list_tabpages())
+    local buf = vim.api.nvim_get_current_buf()
+    eq("patch: without delta it is a diff-filetype scratch", "diff", vim.bo[buf].filetype)
+    local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+    check("patch: holds a unified diff", text:find("diff --git", 1, true) ~= nil, text:sub(1, 120))
+    check("patch: covers the modified file", text:find("a_modified.txt", 1, true) ~= nil, text:sub(1, 200))
+    check("patch: q is mapped to close it", vim.fn.maparg("q", "n", false, true).buffer == 1)
+    eq("patch: leaves no new [No Name] buffer", unnamed_before, unnamed_buffers())
+
+    -- `q` is the documented way out, and it must land back where it started.
+    feed("q")
+    eq("patch: q closes the tab again", tabs_before, #vim.api.nvim_list_tabpages())
+  end)
+
+  with_delta(true, function()
+    ui.patch("working")
+    eq("patch: still one tab with delta", tabs_before + 1, #vim.api.nvim_list_tabpages())
+    local buf = vim.api.nvim_get_current_buf()
+    -- The colours arrive as a terminal buffer, not as diff-filetype text.
+    eq("patch: with delta it is a terminal buffer", "terminal", vim.bo[buf].buftype)
+    check("patch: q is mapped there too", vim.fn.maparg("q", "n", false, true).buffer == 1)
+    feed("q")
+    eq("patch: and closes", tabs_before, #vim.api.nvim_list_tabpages())
+  end)
+
+  -- Nothing to show is not an error, and must not leave an empty tab behind.
+  do
+    local clean = temp .. "/patchclean"
+    vim.fn.mkdir(clean, "p")
+    clean = vim.fn.resolve(clean)
+    git(clean, "init", "-q", "-b", "main")
+    write(clean .. "/only.txt", "content\n")
+    git(clean, "add", "-A")
+    git(clean, "commit", "-qm", "initial")
+    vim.cmd("cd " .. vim.fn.fnameescape(clean))
+    vcs.clear_cache()
+
+    local said
+    local real_notify = vim.notify
+    vim.notify = function(msg)
+      said = tostring(msg)
+    end
+    local tabs = #vim.api.nvim_list_tabpages()
+    local ok = pcall(ui.patch, "working")
+    vim.notify = real_notify
+    check("patch: an empty patch does not raise", ok)
+    eq("patch: and opens no tab", tabs, #vim.api.nvim_list_tabpages())
+    check("patch: it says there are no changes", said and said:find("No changes", 1, true) ~= nil, tostring(said))
+
+    vim.cmd("cd " .. vim.fn.fnameescape(root))
+    vcs.clear_cache()
+  end
+end
+
+--------------------------------------------------------------------------
 -- degenerate cases
 --------------------------------------------------------------------------
 
