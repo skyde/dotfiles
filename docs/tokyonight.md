@@ -474,7 +474,12 @@ quietly approximating it.
   the first foreground with the first background would invent a combination that
   is never drawn.
 
-  A fourth source has no file to read: `LS_COLORS`, `EZA_COLORS` and
+  `btop` and `lazygit` state their pairs by *naming* rather than adjacency —
+  `theme[selected_fg]` and `theme[selected_bg]` sit a dozen lines apart, and
+  `cherryPickedCommitFgColor` has a matching `BgColor`. The shared key stem is
+  what joins them, so a line-based reader saw none of those six.
+
+  A further source has no file to read at all: `LS_COLORS`, `EZA_COLORS` and
   `GREP_COLORS` are assembled from palette variables, so a pair in them only
   exists once `theme.sh` has been sourced. Most of what is there is mirrored in
   `lf`'s colours file and kept honest by the parity check — which is why the

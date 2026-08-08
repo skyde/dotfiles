@@ -46,6 +46,7 @@ GIT = "common/.config/git/config"
 TMUX = "common/.tmux.conf"
 RGRC = "common/.ripgreprc"
 BTOP = "common/.config/btop/themes/tokyo-night.theme"
+LAZYGIT = "common/.config/lazygit/config.yml"
 STARSHIP = "common/.config/starship.toml"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
 NVIM_THEME = "common/.config/nvim/lua/plugins/tokyonight.lua"
@@ -251,6 +252,18 @@ MUTATIONS = [
     ("an unreadable pair only the shell exports state", "contrast", THEME_SH,
      r'tx=38;2;\$\{_tn_green\}"',
      'tx=38;2;${_tn_green}:xx=38;2;${_tn_comment};48;2;${_tn_bg_high}"',
+     "below 4.5:1", None),
+
+    # btop and lazygit join a foreground to a background by key stem, not by
+    # adjacency -- theme[selected_fg] and theme[selected_bg] sit a dozen lines
+    # apart. A line-based reader saw none of these six pairs.
+    ("a name-paired btop fg/bg gone unreadable", "contrast", BTOP,
+     r'theme\[selected_fg\]="#c0caf5"', 'theme[selected_fg]="#3b4261"',
+     "below 4.5:1", None),
+
+    ("a name-paired lazygit fg/bg gone unreadable", "contrast", LAZYGIT,
+     r'markedBaseCommitBgColor: \["#ff9e64"\]',
+     'markedBaseCommitBgColor: ["#3b4261"]',
      "below 4.5:1", None),
 
     # btop's selection, which appears exactly once in its file. The tmux

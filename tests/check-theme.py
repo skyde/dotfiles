@@ -1788,6 +1788,15 @@ def _check_stated_pairs(verbose):
                     problems.append(
                         "%s:%d: %s on %s is %.2f:1, below %.1f:1 -- %s"
                         % (rel, lineno, f, b, got, floor, line.strip()[:60]))
+    for rel, stem, f, b in _name_paired():
+        checked += 1
+        got = ratio(f, b)
+        floor = tiered.get((f, b), STATED_FLOOR)
+        if got < floor:
+            problems.append(
+                "%s: %s is %s on %s, %.2f:1, below %.1f:1"
+                % (rel, stem, f, b, got, floor))
+
     exported, extra = _exported_pairs()
     problems.extend(extra)
     for name, entry, f, b in exported:
@@ -1818,6 +1827,37 @@ def _check_stated_pairs(verbose):
 SGR_PAIR_EITHER = re.compile(
     r"(?:38;2;(\d+);(\d+);(\d+);48;2;(\d+);(\d+);(\d+))"
     r"|(?:48;2;(\d+);(\d+);(\d+);38;2;(\d+);(\d+);(\d+))")
+
+
+# Two more configs pair a foreground with a background, but by *naming* rather
+# than by adjacency: btop writes theme[selected_fg] and theme[selected_bg] a
+# dozen lines apart, lazygit writes cherryPickedCommitFgColor beside its
+# BgColor. Nothing reads them as pairs unless the shared stem is what joins
+# them, which is why a line-based reader saw none of these six.
+NAME_PAIRED = [
+    ("common/.config/btop/themes/tokyo-night.theme",
+     r'theme\[([a-z_]+)\]="(#[0-9a-fA-F]{6})"', "_fg", "_bg"),
+    ("common/.config/lazygit/config.yml",
+     r'(\w+Color):\s*\["(#[0-9a-fA-F]{6})"', "FgColor", "BgColor"),
+]
+
+
+def _name_paired():
+    """Foregrounds and backgrounds joined by a shared key stem."""
+    found = []
+    for rel, key_re, fg_suffix, bg_suffix in NAME_PAIRED:
+        path = os.path.join(REPO, rel)
+        if not os.path.isfile(path):
+            continue
+        keys = dict((k, norm(v)) for k, v in
+                    re.findall(key_re, open(path, encoding="utf-8").read()))
+        for key, fg in sorted(keys.items()):
+            if not key.endswith(fg_suffix):
+                continue
+            bg = keys.get(key[:-len(fg_suffix)] + bg_suffix)
+            if bg and bg != fg:
+                found.append((rel, key[:-len(fg_suffix)], fg, bg))
+    return found
 
 
 def _exported_pairs():
