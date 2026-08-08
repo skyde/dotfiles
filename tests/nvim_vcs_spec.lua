@@ -343,6 +343,103 @@ if vim.fn.executable("jj") == 1 then
   eq("colocated: vim.g.vcs_backend forces git", "git", (select(1, vcs.detect(colo)) or {}).name)
   vim.g.vcs_backend = nil
   vcs.clear_cache()
+
+  -- Renames. `jj diff --summary` fuses the pair into one `{old => new}` string;
+  -- an earlier version took that whole string as the path, so a renamed file
+  -- named nothing on disk, could not be opened, and had no old path to read
+  -- base content from. Every shape jj compacts is covered here, including the
+  -- one the brace form cannot represent unambiguously.
+  local ren = temp .. "/jj-rename"
+  vim.fn.mkdir(ren, "p")
+  run({ "jj", "git", "init", "--quiet" }, ren)
+  write(ren .. "/src/alpha.txt", "same dir\n")
+  write(ren .. "/deep/a/file.txt", "shared suffix\n")
+  write(ren .. "/at-root.txt", "nothing in common\n")
+  write(ren .. "/w{x => y}.txt", "pathological\n")
+  run({ "jj", "--quiet", "describe", "-m", "base" }, ren)
+  run({ "jj", "--quiet", "new", "-m", "wip" }, ren)
+  vim.fn.rename(ren .. "/src/alpha.txt", ren .. "/src/beta.txt")
+  vim.fn.mkdir(ren .. "/deep/b", "p")
+  vim.fn.rename(ren .. "/deep/a/file.txt", ren .. "/deep/b/file.txt")
+  vim.fn.mkdir(ren .. "/moved", "p")
+  vim.fn.rename(ren .. "/at-root.txt", ren .. "/moved/elsewhere.md")
+  vim.fn.rename(ren .. "/w{x => y}.txt", ren .. "/w{p => q}.txt")
+
+  local rb, rroot = vcs.detect(ren)
+  local renamed = {}
+  for _, f in ipairs(rb.changed(rroot, "@-")) do
+    renamed[f.path] = f
+  end
+  local pairs_expected = {
+    ["src/beta.txt"] = "src/alpha.txt", -- shared prefix: src/{alpha.txt => beta.txt}
+    ["deep/b/file.txt"] = "deep/a/file.txt", -- shared suffix: deep/{a => b}/file.txt
+    ["moved/elsewhere.md"] = "at-root.txt", -- nothing shared
+    ["w{p => q}.txt"] = "w{x => y}.txt", -- braces the summary form cannot escape
+  }
+  for path, orig in pairs(pairs_expected) do
+    eq(("jj: rename %q names the real path"):format(path), 1, vim.fn.filereadable(rroot .. "/" .. path))
+    eq(("jj: rename %q is status R"):format(path), "R", renamed[path] and renamed[path].status)
+    eq(("jj: rename %q carries the old path"):format(path), orig, renamed[path] and renamed[path].orig)
+    -- Base content is fetched under the old name; the new one does not exist there.
+    truthy(("jj: base content readable at %q"):format(orig), rb.show(rroot, "@-", orig))
+  end
+  eq("jj: the brace form is not left in the listing", nil, renamed["{at-root.txt => moved/elsewhere.md}"])
+
+  write(ren .. "/src/beta.txt", "same dir\nedited\n")
+  local edited = {}
+  for _, f in ipairs(rb.changed(rroot, "@-")) do
+    edited[f.path] = f
+  end
+  eq("jj: an edited rename is still a rename", "R", edited["src/beta.txt"] and edited["src/beta.txt"].status)
+  truthy(
+    "jj: raw_diff of a rename reports the pair",
+    rb.raw_diff(rroot, "@-", "src/beta.txt", "src/alpha.txt"):find("rename from src/alpha.txt", 1, true)
+  )
+
+  -- Reverting a rename has to put both halves back: dropping only the new path
+  -- leaves the old one deleted, which is a second unwanted change, not a revert.
+  rb.revert(rroot, "@-", renamed["src/beta.txt"])
+  eq("jj: reverting a rename restores the old path", 1, vim.fn.filereadable(rroot .. "/src/alpha.txt"))
+  eq("jj: reverting a rename removes the new path", 0, vim.fn.filereadable(rroot .. "/src/beta.txt"))
+  eq("jj: reverting a rename leaves the other renames alone", 1, vim.fn.filereadable(rroot .. "/deep/b/file.txt"))
+
+  -- jj takes path arguments as fileset expressions, so these characters are
+  -- syntax unless the path is passed as a quoted literal. `report (1).pdf` is
+  -- an ordinary name a browser produces, and it used to be a parse error.
+  local fs = temp .. "/jj-fileset"
+  vim.fn.mkdir(fs, "p")
+  run({ "jj", "git", "init", "--quiet" }, fs)
+  local awkward = {
+    "report (1).pdf",
+    "colon:name.txt",
+    "brace{x}.txt",
+    'quo"te.txt',
+    "back\\slash.txt",
+    "sp ace.txt",
+  }
+  for i, name in ipairs(awkward) do
+    write(fs .. "/" .. name, "base " .. i .. "\n")
+  end
+  run({ "jj", "--quiet", "describe", "-m", "base" }, fs)
+  run({ "jj", "--quiet", "new", "-m", "wip" }, fs)
+  local fsb, fsroot = vcs.detect(fs)
+  for i, name in ipairs(awkward) do
+    write(fs .. "/" .. name, "base " .. i .. "\nedited\n")
+    eq(("jj: show of %q returns base content"):format(name), { "base " .. i }, fsb.show(fsroot, "@-", name))
+    truthy(
+      ("jj: raw_diff scoped to %q"):format(name),
+      fsb.raw_diff(fsroot, "@-", name):find("edited", 1, true),
+      fsb.raw_diff(fsroot, "@-", name)
+    )
+    truthy(("jj: log of %q returns a revision"):format(name), #fsb.log(fsroot, name) >= 1)
+  end
+  eq(
+    "jj: revert of an awkward name restores the base",
+    true,
+    fsb.revert(fsroot, "@-", { path = awkward[1], status = "M" })
+  )
+  eq("jj: reverted content is the base content", { "base 1" }, vim.fn.readfile(fsroot .. "/" .. awkward[1]))
+  vcs.clear_cache()
 else
   print("SKIP jj backend (jj not installed)")
 end
@@ -542,6 +639,57 @@ do
     status_map(async_files or {})
   )
   eq("async: show() answers the same as the blocking path", backend.show(git_root, rev, "src/main.c"), async_base)
+end
+
+--------------------------------------------------------------------------
+-- jj too old for `jj diff -T`, against a stub binary
+--------------------------------------------------------------------------
+
+-- Must stay last in the file: the backend remembers that templates are
+-- unavailable, so anything real running after this would take the fallback.
+do
+  local bin = temp .. "/oldjj"
+  vim.fn.mkdir(bin, "p")
+  write(
+    bin .. "/jj",
+    [==[#!/usr/bin/env bash
+for a in "$@"; do
+  if [[ "$a" == "-T" ]]; then
+    echo "Error: unexpected argument '-T' found" >&2
+    exit 2
+  fi
+done
+cat <<'OUT'
+M plain.txt
+A added.txt
+R src/{alpha.txt => beta.txt}
+R deep/{a => b}/file.txt
+R {at-root.txt => moved/elsewhere.md}
+OUT
+]==]
+  )
+  vim.fn.setfperm(bin .. "/jj", "rwx------")
+  vim.env.PATH = bin .. ":" .. vim.env.PATH
+  vcs.clear_cache()
+
+  local records = {}
+  for _, f in ipairs(vcs.backends.jj.changed(temp, "@-")) do
+    records[f.path] = f
+  end
+  eq("old jj: falls back to --summary", "M", records["plain.txt"] and records["plain.txt"].status)
+  eq("old jj: a plain entry has no old path", nil, records["added.txt"] and records["added.txt"].orig)
+  eq("old jj: shared-prefix rename splits", "src/alpha.txt", records["src/beta.txt"] and records["src/beta.txt"].orig)
+  eq(
+    "old jj: shared-suffix rename splits",
+    "deep/a/file.txt",
+    records["deep/b/file.txt"] and records["deep/b/file.txt"].orig
+  )
+  eq(
+    "old jj: rename with nothing in common splits",
+    "at-root.txt",
+    records["moved/elsewhere.md"] and records["moved/elsewhere.md"].orig
+  )
+  eq("old jj: no brace form survives", nil, records["src/{alpha.txt => beta.txt}"])
 end
 
 --------------------------------------------------------------------------

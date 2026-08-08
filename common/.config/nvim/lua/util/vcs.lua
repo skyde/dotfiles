@@ -391,22 +391,93 @@ function jj.rev(root, scope)
   return one(sh(jj_read("log", "--no-graph", "-r", ref, "-T", "commit_id"), root)) or ref
 end
 
+local JJ_STATUS = {
+  modified = "M",
+  added = "A",
+  removed = "D",
+  copied = "C",
+  renamed = "R",
+}
+
+---One entry per changed file as three NUL-separated fields: status, the path
+---before the change, the path after it.
+local JJ_DIFF_TEMPLATE = 'status ++ "\\0" ++ source.path() ++ "\\0" ++ path ++ "\\0"'
+
+---Whether the installed jj understands `jj diff -T`. Probed once, and only
+---turned off when the template call fails where `--summary` succeeds — a
+---failure both ways is the revision's fault, not the template's.
+local jj_templates = true
+
+---Undo jj's compacted rename rendering: `--summary` prints the pair as
+---`deep/{a => b}/file.txt`, sharing whatever prefix and suffix the two paths
+---have in common.
+---@param s string
+---@return string|nil orig, string path
+local function jj_unbrace(s)
+  local pre, old, new, post = s:match("^(.-){(.-) => (.-)}(.*)$")
+  if not pre then
+    return nil, s
+  end
+  return pre .. old .. post, pre .. new .. post
+end
+
 function jj.changed(root, rev)
-  local res = sh(jj_cmd("diff", "--summary", "--from", rev, "--to", "@"), root)
   local out = {}
+  local seen = {}
+  ---@param path string
+  ---@param status string
+  ---@param orig string|nil
+  local function add(path, status, orig)
+    if path ~= "" and not seen[path] then
+      seen[path] = true
+      table.insert(out, { path = path, status = status, orig = orig })
+    end
+  end
+
+  -- The template, not `--summary`, because a rename has to come back as two
+  -- separate paths: the old one is what the base content is read from, and
+  -- `--summary` fuses the pair into a single `{old => new}` string that no
+  -- filename containing `{` or ` => ` can be recovered from.
+  if jj_templates then
+    local res = sh(jj_cmd("diff", "--from", rev, "--to", "@", "-T", JJ_DIFF_TEMPLATE), root)
+    if res and res.code == 0 then
+      local fields = nul_fields(res.stdout)
+      for i = 1, #fields - 2, 3 do
+        local status, source, path = fields[i], fields[i + 1], fields[i + 2]
+        -- jj repeats the path in both slots unless the file moved, so a
+        -- differing source *is* the pre-rename path.
+        add(path, JJ_STATUS[status] or status:sub(1, 1):upper(), source ~= path and source or nil)
+      end
+      return out
+    end
+  end
+
+  local res = sh(jj_cmd("diff", "--summary", "--from", rev, "--to", "@"), root)
   if res and res.code == 0 then
+    jj_templates = false
     for _, line in ipairs(lines(res.stdout)) do
-      local status, path = line:match("^(%a)%s+(.+)$")
+      local status, rest = line:match("^(%a)%s+(.+)$")
       if status then
-        table.insert(out, { path = path, status = status:upper() })
+        local orig, path = jj_unbrace(rest)
+        add(path, status:upper(), orig)
       end
     end
   end
   return out
 end
 
+---jj reads every path argument as a fileset *expression*, so `(`, `)`, `:`,
+---`{`, `}` and `"` are syntax there rather than filename characters: a file
+---called `report (1).pdf` is a parse error, not a path. The quoted `root:`
+---literal form takes the path exactly as written, relative to the repo root.
+---@param path string repo-relative path
+---@return string fileset
+local function jj_path(path)
+  return 'root:"' .. path:gsub("\\", "\\\\"):gsub('"', '\\"') .. '"'
+end
+
 function jj.show(root, rev, path)
-  local res = sh(jj_read("file", "show", "-r", rev, path), root)
+  local res = sh(jj_read("file", "show", "-r", rev, jj_path(path)), root)
   if not res or res.code ~= 0 then
     return nil
   end
@@ -416,7 +487,9 @@ end
 function jj.raw_diff(root, rev, path)
   local cmd = jj_cmd("diff", "--git", "--from", rev, "--to", "@")
   if path then
-    table.insert(cmd, path)
+    -- No need to name the pre-rename path as git does: jj tracks the move
+    -- itself, so scoping to the new path still yields the rename pair.
+    table.insert(cmd, jj_path(path))
   end
   local res = sh(cmd, root)
   return res and res.stdout or ""
@@ -428,7 +501,7 @@ function jj.log(root, path)
       "log",
       "--no-graph",
       "-r",
-      "::@ & files(" .. string.format("%q", path) .. ")",
+      "::@ & files(" .. jj_path(path) .. ")",
       "-T",
       'commit_id ++ "\t" ++ committer.timestamp().format("%Y-%m-%d") ++ "\t" ++ author.name() ++ "\t" ++ description.first_line() ++ "\n"'
     ),
@@ -449,7 +522,13 @@ end
 ---One command covers every status: restoring from a revision that lacks the
 ---file deletes it, which is exactly what reverting an add should do.
 function jj.revert(root, rev, file)
-  return ran(sh(jj_cmd("restore", "--from", rev, file.path), root))
+  local cmd = jj_cmd("restore", "--from", rev, jj_path(file.path))
+  if file.orig then
+    -- Naming only the new path leaves the rename half-undone: the new path
+    -- goes away and the old one stays deleted. Naming both restores the pair.
+    table.insert(cmd, jj_path(file.orig))
+  end
+  return ran(sh(cmd, root))
 end
 
 --------------------------------------------------------------------------
