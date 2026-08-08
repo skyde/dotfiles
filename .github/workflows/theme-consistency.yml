@@ -103,6 +103,18 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends tmux
           || echo "tmux unavailable; its option check will skip"
 
+      # lazygit names its own gui.theme keys via --config, which is the one
+      # part of its config where the dump is complete. No network needed.
+      - name: Install lazygit
+        run: |
+          url=https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_Linux_x86_64.tar.gz
+          if curl -fsSL "$url" | tar -xz -C /tmp lazygit; then
+            sudo install -m755 /tmp/lazygit /usr/local/bin/lazygit
+            lazygit --version
+          else
+            echo "lazygit unavailable; its theme-key check will skip"
+          fi
+
       - name: Install kitty
         run: sudo apt-get install -y --no-install-recommends kitty
           || echo "kitty unavailable; its config check will skip"

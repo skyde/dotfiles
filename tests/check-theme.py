@@ -697,6 +697,76 @@ GIT_SECTION_COMMANDS = {
 GIT_SENTINEL = "#010203"
 
 
+def _check_lazygit_theme_keys(verbose):
+    """lazygit's own defaults are the list of theme keys it knows.
+
+    This file has said for a while that lazygit cannot be an oracle, because
+    `lazygit --config` prints the *default* config and omits every field whose
+    default is empty, so a key missing from that output proves nothing.
+
+    That is true of the config as a whole and false of `gui.theme`, which is
+    the only part of it that carries colour: all twelve of its fields have
+    non-empty defaults, so for that block the dump is a complete list of
+    valid names. Three keys in this section were dead once -- lightTheme,
+    promptToOpenMergeTool, and scrollOffBehavior in the wrong place -- and
+    they were found by hand against a schema fetched over the network.
+    """
+    import shutil
+    import subprocess
+
+    if not shutil.which("lazygit"):
+        return []
+    cfg = os.path.join(REPO, LAZYGIT)
+    if not os.path.isfile(cfg):
+        return []
+    try:
+        import yaml
+    except ImportError:
+        return []
+
+    class Loader(yaml.SafeLoader):
+        pass
+
+    # lazygit's dump contains a bare `=` key, which is YAML's "default value"
+    # tag and has no Python constructor by default.
+    Loader.add_constructor("tag:yaml.org,2002:value",
+                           lambda l, n: l.construct_scalar(n))
+
+    def theme_keys(text, what):
+        try:
+            data = yaml.load(text, Loader) or {}
+        except yaml.YAMLError as exc:
+            return None, "could not parse %s: %s" % (what, exc)
+        return set(((data.get("gui") or {}).get("theme") or {})), None
+
+    try:
+        dump = subprocess.run(["lazygit", "--config"], capture_output=True,
+                              text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return ["could not ask lazygit for its defaults: %s" % exc]
+    if dump.returncode != 0:
+        return []
+
+    known, err = theme_keys(dump.stdout, "lazygit --config")
+    if err:
+        return [err]
+    mine, err = theme_keys(open(cfg, encoding="utf-8").read(), LAZYGIT)
+    if err:
+        return [err]
+    if not known:
+        return ["lazygit --config no longer lists gui.theme, so its keys "
+                "cannot be checked against it"]
+
+    problems = [
+        "%s sets gui.theme.%s and lazygit has no such key -- it reads "
+        "correctly and does nothing" % (LAZYGIT, key)
+        for key in sorted(mine - known)
+    ]
+    if verbose and not problems:
+        print("  lazygit knows all %d of its theme keys" % len(mine))
+    return problems
+
+
 def _check_tmux_options(verbose):
     """tmux holds every colour the config sets, under the name it was set by.
 
@@ -1649,6 +1719,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_mime_extension_bridge(verbose))
     problems.extend(_check_git_paints(verbose))
     problems.extend(_check_tmux_options(verbose))
+    problems.extend(_check_lazygit_theme_keys(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))
 

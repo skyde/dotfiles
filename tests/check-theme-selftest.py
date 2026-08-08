@@ -317,6 +317,14 @@ MUTATIONS = [
      r"set -g menu-selected-style", "set -g menu-selcted-style",
      "does not hold it", "tmux"),
 
+    # lazygit accepts an unknown key without a word -- three in this section
+    # were dead at once, found by hand against a schema fetched over the
+    # network. Its own --config dump lists every gui.theme key, because all
+    # twelve have non-empty defaults, so it can name them itself.
+    ("a lazygit theme key lazygit does not have", "parity", LAZYGIT,
+     r"    optionsTextColor:", "    optionsTxtColor:",
+     "no such key", "lazygit"),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be

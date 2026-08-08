@@ -40,13 +40,16 @@ gui:
     # `lightTheme` used to be the first key here and is not one of lazygit's:
     # ThemeConfig has exactly twelve, all of them below. It was inert.
     #
-    # Checking that is not as easy as it sounds, and the note further up about
-    # verifying against `lazygit --config` is only half the story: that output
-    # omits every field with an empty default, so the whole `os:` section is
-    # missing from it and looks equally "unknown". The complete list is the
-    # schema:
+    # `lazygit --config` omits every field with an empty default, so the whole
+    # `os:` section is missing from it and looks equally "unknown". That is why
+    # the list was originally taken from the schema:
     #
     #   curl -s https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json
+    #
+    # It does not apply to this block. All twelve ThemeConfig fields have
+    # non-empty defaults, so for `gui.theme` -- the only part of this file that
+    # carries colour -- the dump is a complete list of valid names, and
+    # tests/check-theme.py now checks these keys against it with no network.
     #
     # Tokyo Night (night) — palette reference: docs/tokyonight.md
     activeBorderColor: ["#7aa2f7", "bold"]
