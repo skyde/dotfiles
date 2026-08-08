@@ -246,8 +246,15 @@ _source_zsh_plugin "zsh-autosuggestions" "zsh-autosuggestions.zsh"
 # ~/.zshenv or the environment still wins — the point here is to have *a* known
 # directory before the plugin loads, not to insist on this one.
 typeset -g FAST_WORK_DIR="${FAST_WORK_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/fast-syntax-highlighting}"
-[[ -e $FAST_WORK_DIR/secondary_theme.zsh ]] ||
+# ...and only pre-create when the value is a plain path. fast-syntax-highlighting
+# accepts XDG:/LOCAL:/HOME:/OPT: prefixes and expands them itself, later; taking
+# `mkdir -p` to one of those would create a literal directory named `HOME:` in
+# whatever the shell's cwd happens to be at startup. Someone using the prefix
+# vocabulary has chosen their own work dir anyway, so the download-suppression
+# is simply skipped for them.
+if [[ $FAST_WORK_DIR != (XDG|LOCAL|HOME|OPT):* && ! -e $FAST_WORK_DIR/secondary_theme.zsh ]]; then
   { mkdir -p -- "$FAST_WORK_DIR" && : >| "$FAST_WORK_DIR/secondary_theme.zsh" } 2>/dev/null
+fi
 
 # Prefer fast-syntax-highlighting (usually installs to zsh-fast-syntax-highlighting)
 # but some package managers might use fast-syntax-highlighting
@@ -303,6 +310,14 @@ typeset -gA _tn_cli_styles=(
   # A substitution runs a command, so its wrapper — `$(`, `)`, the backticks,
   # the `<(` of a process substitution — is marked as one rather than left to
   # read as punctuation.
+  #
+  # Only zsh-syntax-highlighting has these three keys, so this is the fallback
+  # highlighter's rendering. fast-syntax-highlighting has no delimiter roles at
+  # all: it hands the parentheses to the bracket-matcher, so under it `$(` and
+  # `)` come out in the depth-1 gold below. Both readings are defensible — one
+  # says "this is a command", the other "this is a nesting level" — and neither
+  # plugin can be made to say the other, so the keys are set for the one that
+  # reads them and the difference is written down here.
   back-quoted-argument          'fg=#dcdcaa'
   back-quoted-argument-delimiter 'fg=#dcdcaa'
   command-substitution-delimiter 'fg=#dcdcaa'
@@ -390,7 +405,14 @@ typeset -gA _tn_cli_styles=(
   # A here-string is a string; the `<<<` that introduces it is plumbing.
   here-string-text              'fg=#ce9178'
   here-string-var               'fg=#9cdcfe'
-  back-or-dollar-double-quoted-argument 'fg=#d7ba7d'
+  # fast-syntax-highlighting's one key for two things: a backslash escape and a
+  # `$var` interpolation, both inside double quotes. It was grouped with the
+  # escapes on the strength of the plugin's own default pairing it with
+  # `back-dollar-quoted-argument` — but measuring it says the interpolation is
+  # what actually reaches it (`echo "$HOME/x"` painted `$HOME`, while the `\t`
+  # in `echo "a\tb"` was never marked at all). Interpolation is also the far
+  # more common case and the one the docs promise in blue, so blue it is.
+  back-or-dollar-double-quoted-argument 'fg=#9cdcfe'
   # Bracket pairs, in VS Code's own bracket-pair-colourisation colours — the
   # command line is code, and this is what the editor does with nesting.
   # zsh-syntax-highlighting cycles through as many levels as are defined and

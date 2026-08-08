@@ -152,7 +152,8 @@ two muted foregrounds for ghosted text and line numbers. Those live in
 The zsh line editor is the one piece of chrome that is also *code*, and it is
 coloured as code — from `BAT_THEME`'s Visual Studio Dark+, set on
 `FAST_HIGHLIGHT_STYLES` / `ZSH_HIGHLIGHT_STYLES` in `~/.zshrc`. PSReadLine
-gets the same table on Windows, so a pipeline reads the same on both.
+gets the same table on Windows, so a pipeline reads the same on both — with
+one row that deliberately does not match, noted at the end of this section.
 
 The reason is Ctrl-R. That picker pipes history through `bat`, so the same
 command is already being painted in Dark+ one keystroke before it lands on the
@@ -223,12 +224,36 @@ during startup versus none.
 > than a cold one.
 
 One thing the table cannot reach, so as not to go looking for it later: the
-handful of `fast-syntax-highlighting` chromas that highlight an *embedded*
-language — the awk program inside `awk '{print $1}'`, and the perl and ruby
-equivalents. Those build a style by pasting two entries together with a comma
-(`→chroma/-awk.ch`), which yields `fg=#c586c0,fg=#ce9178`, and zsh resolves a
-doubled `fg=` to a colour that is neither. It predates this table and is not
-something a value here can fix; the shell *around* the string is unaffected.
+awk program inside `awk '{print $1}'`. `→chroma/-awk.ch` is the only chroma
+that builds a style by pasting two table entries together with a comma — it
+joins `reserved-word` (or `mathnum`, for a number) to a second style chosen by
+whether the program parses. Which of the two it picks decides whether the
+result is legal:
+
+- **program accepts** → the second style is `subtle-bg`, so `print` in
+  `awk '{print 1}'` is asked for `fg=#c586c0,bg=#292e42`. A foreground and a
+  background: perfectly valid, and it renders as intended, the program sitting
+  on a slightly raised ground.
+- **program rejects** → the second style is `incorrect-subtle`, so the same
+  word is asked for `fg=#c586c0,fg=#f7768e`. Two foregrounds, and zsh resolves
+  a doubled `fg=` to a colour that is neither — it lands near `#f7f6ce`.
+
+**The row that does not cross to Windows.** Redirections and separators drop
+to dark5 in zsh, and the obvious mirror in PSReadLine is `Operator` — but
+PSReadLine spends `Operator` only on tokens the PowerShell parser flags as
+unary, binary or assignment operators, and `|` and `>` are neither
+(`TokenKind.Pipe`, `TokenKind.Redirection`); both fall to `Default`. Moving
+`Operator` would therefore recolour `-eq`, `=` and `+` — which zsh paints from
+other roles — without touching a pipeline at all. So it stays `#d4d4d4`, and
+the Windows prompt keeps its joints level with its words until someone can
+check the mapping against a real PSReadLine.
+
+The catch with awk is what does the accepting: the chroma shells out to **`gawk`**
+specifically. On a machine with only `mawk` or BSD awk the test can never
+succeed, so *every* awk program takes the reject branch and the whole program
+is painted as though it were malformed. That is the usual reason this looks
+broken. Installing `gawk` is the actual fix; no value in this table reaches
+it, and the shell *around* the string is unaffected either way.
 
 > **Two Dark+ variants are in play, on purpose.** These are bat's built-in
 > `Visual Studio Dark+`. The editor side — Neovim's `lua/util/vscode_syntax.lua`
@@ -513,7 +538,7 @@ tests/check-theme.py            # report drift, exit non-zero
 tests/check-theme.py --verbose  # and list what passed
 ```
 
-It checks seven things:
+It checks eight things:
 
 1. **Every colour is documented here.** Any hex or `38;2;R;G;B` triple in a
    themed config has to appear somewhere in this file. That is what makes this
@@ -538,6 +563,12 @@ It checks seven things:
    current match (2) are each compared across every tool that sets them.
 7. **This file's table above points at files that exist**, and lists every
    file the test checks.
+8. **The command line names every role a highlighter would otherwise colour
+   itself.** `_tn_cli_styles` in `~/.zshrc` is compared against the list of
+   roles that `fast-syntax-highlighting` and `zsh-syntax-highlighting` give a
+   *coloured* default, and the check fails if the table stops naming one or
+   names one with anything that is not a palette hex. Roles whose default is
+   `none` are deliberately out of scope: they introduce no foreign colour.
 
 The checks are only as good as their scope: `CHROME_FILES` at the top of the
 script is the list of files that get checked. Theme something new, add it
