@@ -824,7 +824,7 @@ def _check_doctor_swatches(verbose):
         return ["theme.sh failed to source: %s" % stderr.strip()]
     live = dict(zip(wanted, stdout.split("\n")))
 
-    body = open(doc_path, encoding="utf-8").read()
+    body = uncommented(doc_path, open(doc_path, encoding="utf-8").read())
     problems, checked = [], 0
     for pattern, var, key, what in DOCTOR_SWATCHES:
         m = re.search(pattern, body, re.S)
@@ -891,20 +891,27 @@ def _check_picker_colours(verbose):
             # st-rg embeds its awk in a single-quoted string and st-zoekt
             # nests it one layer deeper, so the quotes and the escape arrive
             # with one or two backslashes depending on which file this is.
-            found = re.search(r'%s=\\?"\\+033\[([0-9;]+)m' % var,
-                              open(path, encoding="utf-8").read())
+            #
+            # Every occurrence, not the first: st-rg carries two awk prefixes
+            # and only one of them was being read, so the other could paint
+            # results any colour it liked. And comments are stripped first,
+            # because the first match in a file where the old value has been
+            # commented out above the new one is the comment.
+            body = uncommented(path, open(path, encoding="utf-8").read())
+            found = re.findall(r'%s=\\?"\\+033\[([0-9;]+)m' % var, body)
             if not found:
                 problems.append(
                     "%s no longer sets %s where this looks for it" % (rel, var))
                 continue
-            trip = DECIMAL_TRIPLE.search(found.group(1))
-            got = ("#%02x%02x%02x" % tuple(int(x) for x in trip.groups())
-                   if trip else found.group(1))
-            checked += 1
-            if got != want:
-                problems.append(
-                    "%s paints %s %s and %s says %s -- the same result, two "
-                    "colours" % (rel, what, got, RGRC, want))
+            for raw in found:
+                trip = DECIMAL_TRIPLE.search(raw)
+                got = ("#%02x%02x%02x" % tuple(int(x) for x in trip.groups())
+                       if trip else raw)
+                checked += 1
+                if got != want:
+                    problems.append(
+                        "%s paints %s %s and %s says %s -- the same result, "
+                        "two colours" % (rel, what, got, RGRC, want))
     if verbose and not problems:
         print("  %d picker colour(s) agree with ripgrep's own" % checked)
     return problems
@@ -1110,7 +1117,12 @@ def _check_shared_roles(verbose):
             path = os.path.join(REPO, rel)
             if not os.path.isfile(path):
                 continue
-            m = re.search(pattern, open(path, encoding="utf-8").read(), re.M)
+            # Comments stripped first: a commented-out copy of the old line
+            # is what a change to one of these leaves behind, and it satisfies
+            # the pattern perfectly while the live line says something else.
+            m = re.search(pattern,
+                          uncommented(path, open(path, encoding="utf-8").read()),
+                          re.M)
             if not m:
                 problems.append(
                     "%s no longer sets %s where this looks for it (%s)"

@@ -826,15 +826,22 @@ quietly approximating it.
   through the standard library's extension-to-mime table, which is the one
   mapping here that is not itself part of the theme.
 
-  A note on how these read their configs. A check that asks "is this colour
-  still in that file?" has to ask it of the lines the tool will read, not of
-  the file as text — because every config here explains its choices in
-  comments, and changing a colour is exactly what leaves a comment naming the
-  old one behind. Two checks were satisfied that way before it was noticed: the
-  COLORTERM guard accepted the paragraph explaining an export as the export,
-  and the stale-pair guard accepted a comment as proof a colour was still being
-  painted. Whole-line comments are stripped first now, by the marker the file's
-  syntax uses.
+  A note on how these read their configs, because it went wrong four times.
+  A check that asks "is this colour still in that file?" has to ask it of the
+  lines the tool will read, not of the file as text — every config here
+  explains its choices in comments, and changing a colour is exactly what
+  leaves a commented-out copy of the old line behind. That copy satisfies the
+  pattern perfectly while the live line says something else.
+
+  Caught this way: the COLORTERM guard (which accepted the paragraph explaining
+  an export as the export), the stale-pair guard, the shared-role check, and
+  the doctor swatches. Whole-line comments are stripped first now, by the
+  marker the file's syntax uses — `--` for Lua, `//` for JSON, `#` for the
+  rest — and each has a mutation of its own.
+
+  A related one, same audit: a reader that takes the *first* match in a file
+  stops at the first. `st-rg` carries two awk prefixes and only one was being
+  read, so the other could paint search results any colour it liked.
 
 - **contrast** — every foreground/background pair clears the floor for the job
   it does, and every focused fill stands off the page behind it. The tiers, and

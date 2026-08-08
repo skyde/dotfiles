@@ -50,6 +50,7 @@ DOCTOR = "doctor-theme.sh"
 PREVIEW_SH = "common/.config/lf/preview.sh"
 BATPREVIEW = "common/.config/yazi/plugins/bat-preview.yazi/main.lua"
 STZOEKT = "common/.local/bin/st-zoekt"
+STRG = "common/.local/bin/st-rg"
 LAZYGIT = "common/.config/lazygit/config.yml"
 STARSHIP = "common/.config/starship.toml"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
@@ -377,6 +378,29 @@ MUTATIONS = [
      r'theme\[inactive_fg\]="#565f89"',
      '# inactive_fg was #565f89 until this line\ntheme[inactive_fg]="#414868"',
      "no longer appears in", None),
+
+    # Four readers searched raw file text for a line that proves a colour is
+    # right. A change to that colour is exactly what leaves a commented-out
+    # copy of the old line behind, which satisfies the pattern perfectly while
+    # the live line says something else. One mutation each, because each reads
+    # a different syntax and the comment marker differs.
+    ("a shared role whose old value survives as a comment", "parity", WEZTERM,
+     r"  cursor_bg = '#FF5000',",
+     "  -- cursor_bg = '#FF5000',\n  cursor_bg = '#7aa2f7',",
+     "the cursor", None),
+
+    ("a doctor swatch whose old value survives as a comment", "parity", DOCTOR,
+     r"printf 'a directory:      %s\[1;38;2;122;162;247msrc/",
+     "# printf 'a directory: %s[1;38;2;122;162;247msrc/'\n"
+     "printf 'a directory:      %s[1;38;2;158;206;106msrc/",
+     "theme.sh exports", None),
+
+    # st-rg carries two awk prefixes and only the first was ever read, so the
+    # second could paint results any colour it liked.
+    ("a second awk prefix nothing was reading", "parity", STRG,
+     r"(GIT_GREP_AWK_SCRIPT='BEGIN\{[\s\S]*?mag=\")\\033\[38;2;122;162;247m",
+     r"\1\\033[38;2;158;206;106m",
+     "two colours", None),
 
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
