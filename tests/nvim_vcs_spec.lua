@@ -978,6 +978,59 @@ do
 end
 
 --------------------------------------------------------------------------
+-- a repository whose client is not installed
+--------------------------------------------------------------------------
+
+do
+  -- Detection needs the client, not just the marker, so a checkout with no
+  -- client on PATH fails exactly the way a directory with no repository does.
+  -- Telling someone standing in one that there is "no version control
+  -- detected" sends them looking for the wrong problem.
+  local orphan = temp .. "/orphaned"
+  vim.fn.mkdir(orphan .. "/.hg", "p")
+  vim.fn.mkdir(orphan .. "/nested", "p")
+
+  local said = {}
+  local real_notify = vim.notify
+  vim.notify = function(msg, level)
+    table.insert(said, { msg = tostring(msg), level = level })
+  end
+  -- hg because that is the client being taken away, and p4/g4 because the
+  -- Perforce stub earlier in this file is still on PATH and those two are the
+  -- backends detection tries without a marker to gate them.
+  local gone = { hg = true, p4 = true, g4 = true }
+  local real_executable = vim.fn.executable
+  ---@diagnostic disable-next-line: duplicate-set-field
+  vim.fn.executable = function(bin)
+    if gone[bin] then
+      return 0
+    end
+    return real_executable(bin)
+  end
+  vcs.clear_cache()
+
+  local backend = vcs.require(orphan .. "/nested")
+
+  vim.fn.executable = real_executable
+  vim.notify = real_notify
+  vcs.clear_cache()
+
+  eq("orphaned: nothing is detected", nil, backend)
+  local warned = said[1]
+  check("orphaned: it says something", warned ~= nil, vim.inspect(said))
+  check(
+    "orphaned: and names the missing client rather than shrugging",
+    warned and warned.msg:find("hg is not on PATH", 1, true) ~= nil,
+    warned and warned.msg
+  )
+  check(
+    "orphaned: not the message for a directory with no repository",
+    warned and warned.msg:find("No version control detected", 1, true) == nil,
+    warned and warned.msg
+  )
+end
+
+--------------------------------------------------------------------------
 -- jj too old for `jj diff -T`, against a stub binary
 --------------------------------------------------------------------------
 

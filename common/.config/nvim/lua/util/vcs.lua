@@ -1041,6 +1041,15 @@ end
 function M.require(dir)
   local backend, root = M.detect(dir)
   if not backend then
+    -- A repository whose client is missing fails detection exactly the way no
+    -- repository does, and "no version control detected" is the wrong thing to
+    -- tell someone standing in a checkout. Same markers and order as detect().
+    for _, pair in ipairs({ { ".jj", "jj" }, { ".git", "git" }, { ".hg", "hg" } }) do
+      if find_up(dir or vim.fn.getcwd(), { pair[1] }) and vim.fn.executable(pair[2]) ~= 1 then
+        vim.notify(("This is a %s repository but %s is not on PATH"):format(pair[2], pair[2]), vim.log.levels.WARN)
+        return nil, nil
+      end
+    end
     vim.notify("No version control detected (tried jj, git, hg, g4, p4)", vim.log.levels.WARN)
     return nil, nil
   end
