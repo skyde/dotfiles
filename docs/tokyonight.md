@@ -513,31 +513,46 @@ ignore a key they do not recognise without a word. That failure looks like
 nothing at all: the setting is there, spelled correctly, and simply does not
 happen any more.
 
-It is worth re-running this audit when a tool is upgraded. Each of the three
-below turned up something real:
+That audit is `tests/audit-theme-keys.py`. It asks each tool's upstream what
+keys it actually reads — yazi's preset, delta's clap options, btop's
+`Default_theme` map, lazygit's published JSON schema — and diffs ours against
+the answer:
 
 ```bash
-# yazi — diff our sections and keys against upstream's preset
-curl -fsSL https://raw.githubusercontent.com/sxyazi/yazi/main/yazi-config/preset/theme-dark.toml
-
-# delta — every *-style key it actually defines
-curl -fsSL https://raw.githubusercontent.com/dandavison/delta/main/src/cli.rs \
-  | grep -oE 'long = "[a-z-]+"' | sort -u
-
-# btop — the key list is its Default_theme map
-curl -fsSL https://raw.githubusercontent.com/aristocratos/btop/main/src/btop_theme.cpp \
-  | sed -n '/Default_theme/,/};/p' | grep -oE '"\w+"' | sort -u
-
-# lazygit — its published JSON schema is the list
-curl -fsSL https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json
+tests/audit-theme-keys.py            # report dead keys, exit non-zero
+tests/audit-theme-keys.py --verbose  # and list keys upstream has that we do not set
 ```
 
-What they found: yazi had moved two keys out from under us (see the gotcha
-above), delta has no `blame-timestamp-style` and never did, btop left six
-process-state colours at hardcoded off-palette fallbacks, and lazygit's
-`lightTheme` is gone from both its config struct and its schema. Compare
-against the CHANGELOG of the release you are running, not just `main` — an
-upstream preset includes renames that have not shipped yet.
+It needs the network, which is why it is not part of `check-theme.py` and not
+one of the checks to run on every change. Run it when a tool is upgraded.
+
+It reports two things, and the difference between them is the whole reason it
+fetches two refs:
+
+- **DEAD** — the *release you run* does not read this key. The setting is doing
+  nothing right now.
+- **AHEAD** — the release still reads it, but upstream's default branch has
+  renamed or dropped it. Not broken yet; it breaks on the next upgrade.
+
+Diffing against `main` alone would cry wolf, because an upstream preset carries
+renames that have not shipped; diffing against the release alone would give no
+warning before an upgrade lands. yazi's `[help]` keys are the standing example
+and are listed in the script's `ACCEPTED_AHEAD`, which is where a deliberate
+"yes, we know, staying put until it ships" belongs.
+
+What earlier runs of this found, by hand: yazi had moved two keys out from
+under us (see the gotcha above), delta has no `blame-timestamp-style` and never
+did, btop left six process-state colours at hardcoded off-palette fallbacks,
+and lazygit's `lightTheme` is gone from both its config struct and its schema.
+
+One kind of dead key the script cannot find by diffing names: an option
+upstream advertises and then never applies. delta's `grep-header-file-style` is
+one — it is in `--help`, delta parses it into an internal
+`ripgrep-header-file-style`, and nothing ever reads that value; the file
+heading in ripgrep-format output takes `grep-file-style`, the same key as the
+classic format. Setting it would look correct and do nothing. Those live in the
+script's `INERT` table, each with the probe that established it, so the next
+person to notice the gap in the option list does not "fix" it.
 
 ### The other half: `./doctor-theme.sh`
 
