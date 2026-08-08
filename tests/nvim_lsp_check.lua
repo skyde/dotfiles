@@ -84,24 +84,41 @@ local argv = require("util.chromium").clangd_cmd(plain)
 check("argv keeps header insertion off", vim.tbl_contains(argv, "--header-insertion=never"))
 check("argv uncaps find-references", vim.tbl_contains(argv, "--limit-references=0"))
 
--- Let the initial parse settle before asking questions about the code.
-vim.wait(4000)
-
 --------------------------------------------------------------------------
 -- the navigation the bindings are for
 --------------------------------------------------------------------------
 
+-- clangd answers an unparsed file with an empty result rather than blocking,
+-- so a fixed sleep here is a flaky test on a loaded machine. Ask until there
+-- is an answer, or until it is fair to call it a failure.
+local function ask_until(method, params, ok_enough, tries)
+  local result
+  for _ = 1, tries or 20 do
+    result = request(client, method, params)
+    if ok_enough(result) then
+      return result
+    end
+    vim.wait(500)
+  end
+  return result
+end
+
 vim.cmd("edit " .. vim.fn.fnameescape(plain .. "/main.cc"))
-vim.wait(2000)
-local defs = request(client, "textDocument/definition", position_params(client, 3, 12))
+vim.wait(500)
+local defs = ask_until("textDocument/definition", position_params(client, 3, 12), function(r)
+  return type(r) == "table" and #r > 0
+end)
 local def = defs and (defs[1] or defs)
 eq("goto-definition crosses files", vim.uri_from_fname(plain .. "/lib.cc"), def and (def.uri or def.targetUri))
 
-local refs = request(
-  client,
-  "textDocument/references",
-  vim.tbl_extend("force", position_params(client, 3, 12), { context = { includeDeclaration = true } })
-)
+-- Three usages: the declaration in lib.h, the definition in lib.cc, and the
+-- two calls in main.cc. clangd only sees the cross-file ones once its
+-- background index has caught up, which is the thing --limit-references=0
+-- and the index are for.
+local ref_params = vim.tbl_extend("force", position_params(client, 3, 12), { context = { includeDeclaration = true } })
+local refs = ask_until("textDocument/references", ref_params, function(r)
+  return type(r) == "table" and #r >= 3
+end)
 check("find-references sees every usage", type(refs) == "table" and #refs >= 3, "got " .. vim.inspect(refs and #refs))
 
 -- switch header/source, through the helper both `gh` and `<A-o>` call. The
