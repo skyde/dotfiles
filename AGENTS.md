@@ -40,6 +40,13 @@ rest need the tool named, and each skips cleanly when it is missing.
   through a real terminal into a real Neovim. Needs the plugins: the keys are
   registered on VeryLazy.
 
+## Benchmarks
+
+- `./tests/bench-nvim-vcs.sh [files]` — what the changed-files view costs on a
+  big listing: time to first paint, time until every background pass has
+  finished, and forty files of scrubbing. Informational, never a gate; CI prints
+  it beside the startup cost.
+
 ## Optional checks
 
 - Run ShellCheck on modified shell scripts if available: `shellcheck <changed .sh files>`

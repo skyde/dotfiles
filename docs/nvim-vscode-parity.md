@@ -393,6 +393,19 @@ strictest level it has; CI pins the version it installs.
 `check-footpedal-keys.py` drives Shift+Fn through a real terminal into a real
 Neovim.
 
+```bash
+tests/bench-nvim-vcs.sh [files]
+```
+
+Not a check: what the changed-files view costs on a listing the size a rebase
+or a generated-code change produces. Three numbers — time to first paint, time
+until the background base prefetch has finished, and forty files of scrubbing —
+because only the first is time anyone waits. On a 3000-file listing the list is
+readable in a couple of hundred milliseconds and scrubbing stays in single-digit
+milliseconds while the prefetch is still running behind it. CI prints this
+beside the startup cost and never gates on it; a shared runner cannot be
+budgeted against.
+
 ## Backend notes
 
 * **git** — the "fork point" base is the merge base with `@{upstream}`, then

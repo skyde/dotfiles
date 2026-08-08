@@ -243,6 +243,13 @@ jobs:
       - name: Check footpedal key transport
         run: python3 tests/check-footpedal-keys.py
 
+      # Same idea as the startup cost below, for the view this config is
+      # actually about: how long a big listing takes to appear, and how it
+      # scrubs once it is up. Informational — a shared runner cannot be
+      # budgeted against — but a regression shows up here.
+      - name: Report changed-files view cost
+        run: ./tests/bench-nvim-vcs.sh 3000
+
       - name: Report startup cost
         run: |
           # Informational, not a gate: a shared CI runner is far too noisy to
