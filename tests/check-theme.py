@@ -1541,6 +1541,33 @@ SHARED_ROLES = [
             ),
         ],
     },
+    {
+        "name": "the border of the thing you are in",
+        "hex": "#7aa2f7",
+        "aliases": (),
+        # A focused pane, an open popup or menu, a modal, the active panel:
+        # every tool here marks "this one" with the accent blue.
+        "settings": [
+            ("common/.tmux.conf", r"pane-active-border-style\s+'fg=(#[0-9a-fA-F]{6})"),
+            ("common/.tmux.conf", r"popup-border-style\s+'fg=(#[0-9a-fA-F]{6})"),
+            ("common/.tmux.conf", r"menu-border-style\s+'fg=(#[0-9a-fA-F]{6})"),
+            ("common/.config/lazygit/config.yml", r'^\s*activeBorderColor:\s*\["(#[0-9a-fA-F]{6})"'),
+            ("common/.config/yazi/theme.toml", r'^border = \{ fg = "(#[0-9a-fA-F]{6})" \}'),
+        ],
+    },
+    {
+        "name": "the border of everything else",
+        "hex": "#292e42",
+        "aliases": (),
+        # The quiet counterpart: an unfocused pane, a panel you are not in,
+        # the frame around a listing.
+        "settings": [
+            ("common/.tmux.conf", r"pane-border-style\s+'fg=(#[0-9a-fA-F]{6})"),
+            ("common/.config/lazygit/config.yml", r'^\s*inactiveBorderColor:\s*\["(#[0-9a-fA-F]{6})"'),
+            ("common/.config/yazi/theme.toml", r'border_style = \{ fg = "(#[0-9a-fA-F]{6})" \}'),
+            ("common/.config/shell/theme.sh", r"border:(#[0-9a-fA-F]{6})"),
+        ],
+    },
 ]
 
 
@@ -1566,22 +1593,28 @@ def _check_shared_roles(verbose):
             # Comments stripped first: a commented-out copy of the old line
             # is what a change to one of these leaves behind, and it satisfies
             # the pattern perfectly while the live line says something else.
-            m = re.search(pattern,
-                          uncommented(path, open(path, encoding="utf-8").read()),
-                          re.M)
-            if not m:
+            matches = list(re.finditer(
+                pattern, uncommented(path, open(path, encoding="utf-8").read()),
+                re.M))
+            if not matches:
                 problems.append(
                     "%s no longer sets %s where this looks for it (%s)"
                     % (rel, role["name"], pattern))
                 continue
-            found = m.group(1)
-            if re.fullmatch(r"\d{1,3};\d{1,3};\d{1,3}", found):
-                found = "#%02x%02x%02x" % tuple(int(x) for x in found.split(";"))
-            checked += 1
-            if norm(found) != norm(role["hex"]) and found not in role["aliases"]:
-                problems.append(
-                    "%s sets %s to %s, not %s"
-                    % (rel, role["name"], norm(found), role["hex"]))
+            # Every match, not the first: yazi draws three borders with the
+            # same line, and a reader that stops at one leaves the others free
+            # to say anything.
+            for m in matches:
+                found = m.group(1)
+                if re.fullmatch(r"\d{1,3};\d{1,3};\d{1,3}", found):
+                    found = "#%02x%02x%02x" % tuple(
+                        int(x) for x in found.split(";"))
+                checked += 1
+                if (norm(found) != norm(role["hex"])
+                        and found not in role["aliases"]):
+                    problems.append(
+                        "%s sets %s to %s, not %s"
+                        % (rel, role["name"], norm(found), role["hex"]))
     if verbose and not problems:
         print("  %d shared-role setting(s) hold one colour each" % checked)
     return problems

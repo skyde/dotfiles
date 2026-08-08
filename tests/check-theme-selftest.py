@@ -473,6 +473,20 @@ MUTATIONS = [
      'InlineDiffMovedFromSubtle2 = { bg = "#352337", fg = "#565f89" }',
      "one colour, so they read as one thing", None),
 
+    # Blue marks the thing you are in -- a focused pane, an open popup, the
+    # active panel -- and #292e42 marks everything else. Both were held only
+    # by each tool agreeing with itself.
+    ("a focused border that is not the accent blue", "parity", TMUX,
+     r"set -g popup-border-style 'fg=#7aa2f7", "set -g popup-border-style 'fg=#9ece6a",
+     "the border of the thing you are in", "tmux"),
+
+    # yazi draws three borders with the same line, and the reader used to stop
+    # at the first -- so the other two could say anything.
+    ("the second of yazi's three identical borders", "parity", YAZI,
+     r'(\n\[input\]\n[^\[]*?border = \{ fg = ")#7aa2f7',
+     r"\g<1>#9ece6a",
+     "the border of the thing you are in", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be
