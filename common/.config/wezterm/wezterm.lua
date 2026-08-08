@@ -22,6 +22,10 @@ config.colors = {
   selection_fg = '#c0caf5',
   scrollbar_thumb = '#292e42',
   split = '#292e42',
+  -- The bell. See config.visual_bell below for why this is here at all; the
+  -- value is kitty's visual_bell_color, bg_highlight, so the two terminals
+  -- flash the same tint.
+  visual_bell = '#292e42',
   ansi = {
     '#1d202f', -- black
     '#f7768e', -- red
@@ -95,6 +99,23 @@ config.default_cursor_style = 'SteadyBlock'
 
 -- QoL
 config.audible_bell = 'Disabled'
+
+-- ...which, on its own, made a bell nothing at all here. kitty answers a bell
+-- by tinting the window border with bell_border_color and marking the tab;
+-- wezterm has neither, so with the sound off a bell in wezterm was completely
+-- undetectable. Its only visual answer is this fade, so this is it.
+--
+-- The tint is bg_highlight #292e42, the colour kitty's theme already carries
+-- as visual_bell_color — subtle against #1a1b26 by design, a darkening rather
+-- than a flash — over the same ~80ms kitty is now set to. kitty needed a
+-- visual_bell_duration to go with it: its default is 0.0, so that colour had
+-- been set and never read, which is the dead-key failure the theme docs warn
+-- about, sitting inside the theme file itself.
+config.visual_bell = {
+  fade_in_duration_ms = 40,
+  fade_out_duration_ms = 40,
+  target = 'BackgroundColor',
+}
 config.scrollback_lines = 1000000
 
 return config

@@ -447,6 +447,25 @@ the exception until it was overridden — the theme blends a shade of its own fo
 `PmenuSel` — which mattered because blink.cmp is disabled here, so that native
 menu is the one on screen.
 
+### The bell
+
+Both terminals silence the audible bell, so whatever a bell does here it does
+with colour. kitty tints the window border with `bell_border_color` `#e0af68`
+and marks the tab; tmux turns the window's status entry `red` via
+`window-status-bell-style`.
+
+wezterm had neither, and no sound, so a bell there was undetectable. Its only
+visual answer is a background fade, so it has one now — `#292e42`, over ~80ms.
+
+`#292e42` is the colour kitty's theme was already carrying as
+`visual_bell_color`, and that is the interesting part: kitty's
+`visual_bell_duration` defaults to `0.0`, so the visual bell never fired and
+that colour had been set and never read. `bg_highlight` is a good choice for
+it, being a darkening rather than a flash, and `kitty.conf` now gives it a
+duration so it happens. If a flashing pane turns out to be worse than a missed
+bell, the two settings to remove are `visual_bell_duration` in `kitty.conf` and
+`config.visual_bell` in `wezterm.lua`.
+
 ### Two kinds of match
 
 Highlighted matches come in two flavours here, and they deliberately look
@@ -675,8 +694,17 @@ under us (see the gotcha above), delta has no `blame-timestamp-style` and never
 did, btop left six process-state colours at hardcoded off-palette fallbacks,
 and lazygit's `lightTheme` is gone from both its config struct and its schema.
 
-One kind of dead key the script cannot find by diffing names: an option
-upstream advertises and then never applies. delta's `grep-header-file-style` is
+Two kinds of dead key the script cannot find by diffing names.
+
+The first is a key that is read, by a code path nothing ever reaches. kitty's
+`visual_bell_color` was one: a real key, correctly spelled, holding a
+deliberately chosen `#292e42` — and `visual_bell_duration` defaults to `0.0`,
+so the visual bell never fired and the colour never rendered. Nothing about the
+theme file looks wrong, and no diff against upstream's key list would say
+otherwise, because the key is upstream's. Only asking "when does this actually
+get drawn?" finds it. See "The bell" above.
+
+The second is an option upstream advertises and then never applies. delta's `grep-header-file-style` is
 one — it is in `--help`, delta parses it into an internal
 `ripgrep-header-file-style`, and nothing ever reads that value; the file
 heading in ripgrep-format output takes `grep-file-style`, the same key as the
