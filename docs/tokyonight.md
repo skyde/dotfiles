@@ -219,15 +219,21 @@ which defeats delta's parser completely: the diff comes through raw, `diff
 --git`, `---`, `+++`, `@@` and all, with no colour. No delta setting changes
 this. Use `--graph` for topology and `git log -p` (no graph) to read patches.
 
-### Gotcha: delta cannot render a merge commit
+### Gotcha: combined diffs keep their markers
 
-`git show <merge>` gives git's combined `--cc` diff, whose two-column `- `,
-` -` and `++` markers delta does not interpret — they arrive as literal text
-and the lines get no add/remove colour at all. `git showm` (aliased to
-`show --remerge-diff`) asks for an ordinary two-way diff against a fresh
-re-merge of the parents instead: it shows exactly what the merge resolved by
-hand, and delta paints it normally. `log.diffMerges` does not reach
-`git show`, which is why this is an alias rather than a default.
+`git show <merge>` gives git's combined `--cc` diff. Delta paints the body of
+one properly — add/remove backgrounds, within-line emphasis and syntax
+highlighting all survive — but it does not interpret the two-column `- `, ` -`
+and `++` prefixes, which come through as literal text inside the coloured line
+and shove the code two columns right.
+
+`git showm` (aliased to `show --remerge-diff`) is the better view, mostly for
+what it shows rather than how it looks: `--cc` answers "how does the result
+differ from each parent", while `--remerge-diff` answers "what did the merge
+decide that a mechanical re-merge would not have", so a hand-resolved conflict
+appears as the conflict markers being replaced by the resolution. It is also an
+ordinary two-way diff, so none of the marker text leaks. `log.diffMerges` does
+not reach `git show`, which is why this is an alias rather than a default.
 
 ### Local deviation: the cursor
 

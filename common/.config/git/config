@@ -382,14 +382,22 @@
 	# left line-number column comes back for the occasion: the left panel is the
 	# old file, and the global "" format would leave it unnumbered.
 	sbs = -c delta.side-by-side=true -c "delta.line-numbers-left-format={nm:>4} " diff
-	# `git show <merge>` is the one diff delta cannot really render. Git emits a
-	# combined --cc diff there, whose two-column "- ", " -" and "++" markers
-	# delta does not interpret: they arrive as literal text and the lines get no
-	# add/remove colour at all. --remerge-diff asks git for an ordinary two-way
-	# diff between the merge result and a fresh re-merge of the parents, which
-	# is both the more useful thing to review (it shows exactly what the merge
-	# resolved by hand) and something delta paints normally. Safe on ordinary
-	# commits — it degrades to a plain diff — and silent on octopus merges,
-	# which git cannot re-merge. Not made the default: log.diffMerges does not
-	# reach `git show`, so this has to be asked for.
+	# A different view of a merge commit. `git show <merge>` gives git's
+	# combined --cc diff, which answers "how does the result differ from each
+	# parent"; --remerge-diff answers "what did the merge decide that a
+	# mechanical re-merge would not have", so a hand-resolved conflict shows up
+	# as the conflict markers being replaced by the resolution. That is usually
+	# the question worth asking of a merge.
+	#
+	# It renders slightly better too, though not for the reason it first
+	# appears: delta paints --cc bodies properly — add/remove backgrounds,
+	# within-line emphasis and syntax highlighting all survive. What it does
+	# not do is interpret the two-column "- ", " -" and "++" prefixes, which
+	# come through as literal text inside the coloured line and shove the code
+	# two columns right. --remerge-diff is an ordinary two-way diff with none
+	# of that.
+	#
+	# Safe on ordinary commits — it degrades to a plain diff — and silent on
+	# octopus merges, which git cannot re-merge. Not made the default:
+	# log.diffMerges does not reach `git show`, so this has to be asked for.
 	showm = show --remerge-diff
