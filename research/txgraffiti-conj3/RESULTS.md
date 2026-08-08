@@ -50,7 +50,15 @@ all edge subsets, sharing no logic with the C code.
 ### All regular graphs, every degree
 
 Every connected `r`-regular graph of order `n <= 13`, for every `r`, satisfies
-`i(G) <= mu*(G)`. Full table in `logs/allreg.summary`. No counterexample.
+`i(G) <= mu*(G)`; no counterexample. Full table in `logs/allreg.summary`.
+Order 14 is covered for every degree except `r = 6, 7` in
+`logs/order14.summary` (those two classes have about 21.6 million graphs each);
+the order-14 sweep also includes disconnected regular graphs, which Lemma 1
+does not require but which cost nothing.
+
+A by-product worth recording: in every sweep the observed `min mu*` equals
+`ceil(nr/(2(2r-1)))` exactly whenever that value is attainable, i.e. Lemma 2 is
+tight across the whole range.
 
 ### Cubic graphs
 
@@ -61,8 +69,9 @@ Every connected `r`-regular graph of order `n <= 13`, for every `r`, satisfies
 | 20  | 510,489     | 0 | 7 | 6 | 17,781 |
 | 22  | 7,319,447   | 0 | 8 | 7 | 395,378 |
 
-Together with the smaller orders: **the conjecture holds for every connected
-cubic graph on at most 22 vertices** — 7,876,000 graphs in total.
+Together with the smaller orders (1, 2, 5, 19, 85, 509 for `n = 4, ..., 14`):
+**the conjecture holds for every connected cubic graph on at most 22
+vertices** — 7,875,918 graphs in total.
 
 Two things stand out. First, the inequality is *extremely* tight: at `n = 22`,
 395,378 cubic graphs (5.4%) attain equality, and the gap `i - mu*` never exceeds
@@ -112,6 +121,7 @@ covering transversals, `Q(t)` asks whether `N > 0` always.
 | 2 | 20 | **exhaustive** — all 32 multigraphs `D`, all pairings | 332,640 | none | **4** |
 | 3 | 30 | **exhaustive** — all 709 multigraphs `D`, all pairings | 24,431,732,325 | none | **4** |
 | 4 | 40 | local search over pairings, 1,200 sampled `D` | 2.4 x 10^8 | none | <= 42 |
+| 5 | 50 | local search over pairings, 301 sampled `D` | 1.1 x 10^7 | none | <= 49 |
 
 So `Q(2)` and `Q(3)` both hold, the second after testing all 24.4 billion
 pairings. Consequently:
@@ -120,9 +130,9 @@ pairings. Consequently:
 the minimum possible saturation number `mu* = 3n/10`** (i.e. for `n = 10, 20,
 30`; `n = 10` also follows from Proposition 6 without any computation).
 
-(The `t = 4` figure is only an upper bound on the true minimum: hill-climbing
-on `N` stalls in local minima well above the floor, so it says nothing except
-that `N = 0` was never reached.)
+(The `t = 4` and `t = 5` figures are only upper bounds on the true minimum:
+hill-climbing on `N` stalls in local minima well above the floor, so they say
+nothing beyond the fact that `N = 0` was never reached.)
 
 Two quantitative surprises. First, `min N = 4` at both `t = 2` and `t = 3` — the
 floor does not drop as `t` grows, even though the counting bound of §5 gives the
