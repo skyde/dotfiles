@@ -325,7 +325,11 @@ these are the same commands under the same keys. `<C-w>h` and friends still work
 
 Everything below runs in CI on every push that touches the config
 (`.github/workflows/neovim.yml`), on Linux and macOS against the current Neovim
-release, plus an advisory run against nightly.
+release, on Linux against 0.10.4 and 0.11.5 as well, plus an advisory run
+against nightly. The four are not arbitrary: 0.10 is the floor
+`:checkhealth dotfiles` claims, and the compatibility shims in `util.text` and
+`util.vcs_ui` switch behaviour at 0.10, 0.12 and 0.13, so each of those
+boundaries has a run either side of it.
 
 ```bash
 tests/run-nvim-specs.sh

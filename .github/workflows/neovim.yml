@@ -37,6 +37,11 @@ jobs:
           # working this far back. Bump both together or neither.
           - os: ubuntu-latest
             nvim: v0.10.4
+          # And the release between the floor and stable. The shims switch
+          # behaviour at 0.10, 0.12 and 0.13, so the version in the middle is
+          # the one nothing else would exercise.
+          - os: ubuntu-latest
+            nvim: v0.11.5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
