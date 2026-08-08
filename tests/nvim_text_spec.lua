@@ -56,9 +56,24 @@ do
   eq("hunks: everything added", { { 0, 0, 1, 2 } }, text.hunks("", "a\nb\n"))
   eq("hunks: everything deleted", { { 1, 2, 0, 0 } }, text.hunks("a\nb\n", ""))
 
-  -- The callers pass algorithm/linematch through; the wrapper must not eat them.
-  local opts_hunks = text.hunks("a\nb\nc\n", "a\nB\nc\n", { algorithm = "histogram", indent_heuristic = true })
-  eq("hunks: passes options through", { { 2, 1, 2, 1 } }, opts_hunks)
+  -- The callers pass algorithm/linematch through, and inline_diff.render's
+  -- linematch is load-bearing: it is what pairs each old line with the new one
+  -- it resembles, which is what puts the char-level emphasis on the right
+  -- partner. So this has to be an input where the option visibly changes the
+  -- answer — most do not, and an assertion that cannot tell the two apart would
+  -- pass just as happily with the options thrown away.
+  local uneven_a, uneven_b = "s\nAAA\nBBB\nCCC\ne\n", "s\nAAAx\nCCCx\ne\n"
+  eq("hunks: without linematch an uneven edit is one hunk", { { 2, 3, 2, 2 } }, text.hunks(uneven_a, uneven_b))
+  eq(
+    "hunks: linematch reaches the diff and splits it",
+    { { 2, 1, 2, 1 }, { 3, 1, 2, 0 }, { 4, 1, 3, 1 } },
+    text.hunks(uneven_a, uneven_b, { linematch = 60 })
+  )
+  eq(
+    "hunks: algorithm reaches the diff too",
+    { { 2, 1, 2, 1 } },
+    text.hunks("a\nb\nc\n", "a\nB\nc\n", { algorithm = "histogram", indent_heuristic = true })
+  )
 
   -- result_type is the wrapper's own; a caller must not be able to ask for the
   -- unified-text form and get a shape the hunk loops cannot walk.

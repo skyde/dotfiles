@@ -651,7 +651,6 @@ end
 local function diff_pane(w)
   reset_cursorline(w)
   no_dim(w)
-  wo_local(w, "foldlevel", collapsing() and 0 or 99)
   -- The overlay's fold text works for any fold; using it here too means a
   -- collapsed gap reads the same in both renderings.
   wo_local(w, "foldtext", "v:lua.require'util.inline_diff'.foldtext()")
@@ -663,6 +662,11 @@ local function diff_pane(w)
   vim.api.nvim_win_call(w, function()
     vim.cmd("diffthis")
   end)
+  -- After diffthis, never before: entering diff mode sets foldmethod=diff and
+  -- resets 'foldlevel' to 0 itself, so a value set ahead of it is thrown away.
+  -- That is why the collapse toggle appeared to do nothing to a side-by-side
+  -- diff — the panes were always folded, whatever the setting said.
+  wo_local(w, "foldlevel", collapsing() and 0 or 99)
 end
 
 ---Put the cursor on the first change, the way the VS Code diff editor opens

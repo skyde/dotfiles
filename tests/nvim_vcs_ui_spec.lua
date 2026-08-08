@@ -1739,6 +1739,99 @@ do
 end
 
 --------------------------------------------------------------------------
+-- the listing is sorted, whatever order the backend answered in
+--------------------------------------------------------------------------
+
+do
+  -- git happens to print `diff --name-status` in path order, so the sort in
+  -- open() is invisible when the fixtures are git — and every other backend is
+  -- under no such obligation. p4 returns files in changelist order and jj in
+  -- whatever order its diff produced, so removing the sort would scramble the
+  -- panel for them and pass every test here. Shuffle git's answer to stand in
+  -- for that.
+  vim.cmd("cd " .. vim.fn.fnameescape(root))
+  vcs.clear_cache()
+  local backend = vcs.backends.git
+  local real_changed = backend.changed
+  backend.changed = function(...)
+    local files = real_changed(...)
+    -- Reverse: the worst case for a stable sort, and deterministic.
+    local flipped = {}
+    for i = #files, 1, -1 do
+      table.insert(flipped, files[i])
+    end
+    return flipped
+  end
+
+  -- Open first, then refresh: open() paints from the listing cache when it has
+  -- one, and would never reach the stub. refresh() is the path that distrusts
+  -- everything remembered and re-asks the backend.
+  open_settled({ scope = "working" })
+  ui.refresh()
+  vim.wait(3000, function()
+    return not ui.busy()
+  end)
+
+  -- Only the root-level rows. The panel is a tree — directories first, each
+  -- indented two spaces per level — so the listing order shows up *within* a
+  -- level, not down the whole panel. A non-space straight after the status
+  -- column is what makes a row depth 0.
+  local listed = {}
+  for _, line in ipairs(panel_lines()) do
+    local name = line:match("^ [MAD?RC]  (%S.*)$")
+    if name then
+      table.insert(listed, vim.trim(name))
+    end
+  end
+  backend.changed = real_changed
+
+  local sorted = vim.deepcopy(listed)
+  table.sort(sorted)
+  eq("sort: a backend answering out of order still lists in order", sorted, listed)
+  check("sort: and there was something to sort", #listed > 2, vim.inspect(listed))
+  ui.close()
+  vcs.clear_cache()
+end
+
+--------------------------------------------------------------------------
+-- collapsing unchanged regions
+--------------------------------------------------------------------------
+
+do
+  -- VS Code's hideUnchangedRegions, and on by default: a review reads hunk to
+  -- hunk. Side-by-side gets it from diff mode's own folds, so the setting only
+  -- shows up as the panes' foldlevel — which means nothing else in this spec
+  -- would notice the toggle being ignored.
+  vim.cmd("cd " .. vim.fn.fnameescape(root))
+  vcs.clear_cache()
+  open_settled({ scope = "working" })
+  ui.toggle_inline() -- to side-by-side, where the folds are diff mode's
+  settle_nav()
+
+  local function diff_foldlevels()
+    local out = {}
+    for _, w in ipairs(layout()) do
+      if vim.wo[w].diff then
+        table.insert(out, vim.wo[w].foldlevel)
+      end
+    end
+    return out
+  end
+
+  eq("collapse: on by default, so the diff panes start folded", { 0, 0 }, diff_foldlevels())
+  ui.toggle_collapse()
+  settle_nav()
+  eq("collapse: toggled off, the panes open up", { 99, 99 }, diff_foldlevels())
+  ui.toggle_collapse()
+  settle_nav()
+  eq("collapse: and back on again", { 0, 0 }, diff_foldlevels())
+
+  ui.toggle_inline() -- back to the remembered inline rendering
+  ui.close()
+  vcs.clear_cache()
+end
+
+--------------------------------------------------------------------------
 -- an edited preview earns its place in the buffer list
 --------------------------------------------------------------------------
 
