@@ -421,8 +421,12 @@ budgeted against.
 ## Backend notes
 
 * **git** — the "fork point" base is the merge base with `@{upstream}`, then
-  `origin/HEAD`, then `origin/main` / `origin/master` / `main` / `master`,
-  matching what `common/.local/bin/git-diff-from-last-branch` does in the shell.
+  `origin/HEAD`, then `origin/main` / `origin/master` / `main` / `master`, in
+  the spirit of `common/.local/bin/git-diff-from-last-branch` in the shell. An
+  upstream that is *this same branch pushed* is skipped: right after a push it
+  equals HEAD, so "everything since the fork point" came out empty on a branch
+  full of work. An upstream naming a different branch — a stacked branch
+  tracking its parent — is a real base and is still preferred.
   The changed-file list is read `-z`, so a filename containing a tab, a quote,
   a backslash or a newline arrives as itself rather than C-quoted. Paths are
   handed to git as `:(literal)` pathspecs: without that, `*`, `?`, `[` and a

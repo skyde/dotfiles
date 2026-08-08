@@ -273,6 +273,65 @@ do
   eq("merge: an unmerged file is marked U, not M", "U", during["conflicted.txt"])
   eq("merge: a file the merge did not touch is unaffected", nil, during["clean.txt"])
 
+  -- A branch that has been pushed. Its upstream is itself on the remote, so
+  -- right after a push `merge-base @{upstream} HEAD` is HEAD — and "everything
+  -- since the fork point" came out empty on a branch full of work, which is the
+  -- state a feature branch spends most of its life in.
+  --
+  -- Built against a real bare remote and a real push, not hand-made refs: what
+  -- `--fork-point` answers depends on the remote-tracking ref's reflog, and only
+  -- a genuine fetch writes the reflog that reproduces this.
+  do
+    local remote = temp .. "/git-remote.git"
+    run({ "git", "init", "-q", "--bare", "-b", "main", remote }, temp)
+
+    local pu = temp .. "/git-pushed"
+    vim.fn.mkdir(pu, "p")
+    git(pu, "init", "-q", "-b", "main")
+    git(pu, "remote", "add", "origin", remote)
+    write(pu .. "/trunk.txt", "trunk\n")
+    git(pu, "add", "-A")
+    git(pu, "commit", "-qm", "trunk")
+    git(pu, "push", "-q", "-u", "origin", "main")
+    local trunk_tip = vim.trim(git(pu, "rev-parse", "HEAD"))
+
+    git(pu, "checkout", "-qb", "feature")
+    write(pu .. "/on-the-branch.txt", "branch work\n")
+    git(pu, "add", "-A")
+    git(pu, "commit", "-qm", "branch work")
+    git(pu, "push", "-q", "-u", "origin", "feature")
+    eq(
+      "pushed branch: the upstream really is its own remote copy",
+      "origin/feature",
+      vim.trim(git(pu, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"))
+    )
+
+    local pb, proot2 = vcs.detect(pu)
+    eq("pushed branch: the fork point is trunk, not the branch's own remote copy", trunk_tip, pb.rev(proot2, "branch"))
+    eq(
+      "pushed branch: so its committed work is still listed",
+      "A",
+      status_map(pb.changed(proot2, pb.rev(proot2, "branch")))["on-the-branch.txt"]
+    )
+
+    -- An upstream naming some *other* branch — a stacked branch tracking its
+    -- parent — is a real base and stays in the candidate list.
+    git(pu, "checkout", "-qb", "stacked")
+    write(pu .. "/stacked.txt", "stacked work\n")
+    git(pu, "add", "-A")
+    git(pu, "commit", "-qm", "stacked work")
+    git(pu, "config", "branch.stacked.remote", "origin")
+    git(pu, "config", "branch.stacked.merge", "refs/heads/feature")
+    local feature_tip = vim.trim(git(pu, "rev-parse", "origin/feature"))
+    vcs.clear_cache()
+    local sb, sroot = vcs.detect(pu)
+    eq("stacked branch: the fork point is the branch it tracks", feature_tip, sb.rev(sroot, "branch"))
+    local stacked_files = status_map(sb.changed(sroot, sb.rev(sroot, "branch")))
+    eq("stacked branch: its own work is listed", "A", stacked_files["stacked.txt"])
+    eq("stacked branch: and the parent's is not", nil, stacked_files["on-the-branch.txt"])
+    vcs.clear_cache()
+  end
+
   -- A rename that also conflicts. git does not pair the halves mid-merge — its
   -- own changed-file list says delete plus add — so the row that matters is the
   -- new path, and it has to say conflicted rather than added.

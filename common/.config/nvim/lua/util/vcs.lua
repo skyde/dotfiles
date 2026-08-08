@@ -172,8 +172,15 @@ end
 ---answer when it does not (it returns nothing rather than erroring).
 local function git_fork_point(root)
   local candidates = {}
+  local current = one(sh({ "git", "branch", "--show-current" }, root))
   local upstream = one(sh({ "git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}" }, root))
-  if upstream then
+  -- An upstream that is this same branch pushed — `origin/<current>` — is not
+  -- a fork point at all: right after a push it *is* HEAD, so "everything since
+  -- the fork point" comes out empty. That is the state a feature branch spends
+  -- most of its life in, and it made <leader>gD report no changes on a branch
+  -- full of them. An upstream pointing at some *other* branch is a real base
+  -- (a stacked branch tracking its parent) and is still preferred.
+  if upstream and (not current or upstream:gsub("^[^/]+/", "") ~= current) then
     table.insert(candidates, upstream)
   end
   local head = one(sh({ "git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD" }, root))
@@ -182,7 +189,6 @@ local function git_fork_point(root)
   end
   vim.list_extend(candidates, { "origin/main", "origin/master", "main", "master" })
 
-  local current = one(sh({ "git", "branch", "--show-current" }, root))
   for _, ref in ipairs(candidates) do
     if ref ~= current and one(sh({ "git", "rev-parse", "--verify", "--quiet", ref .. "^{commit}" }, root)) then
       local base = one(sh({ "git", "merge-base", "--fork-point", ref, "HEAD" }, root))
