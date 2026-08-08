@@ -349,15 +349,26 @@ accent chosen to be instantly findable against the blue-violet palette. Keep it.
 `tests/check-theme.py` reads this table to decide what to scan, so a tool is
 covered from the moment its row lands here.
 
-**VS Code is the one exception**, and deliberately so. Its chrome lives in
-`workbench.colorCustomizations` in `common/.config/Code/User/settings.json` and
-follows this palette, but the same file also carries the Dark+ token colours,
-the debug inline-value colours and a handful of long-standing personal choices
-that are not Tokyo Night — the orange-brown active tab border, the inlay hint
-greys. Scanning it whole would report all of those forever, so it is not in the
-table. What *must* agree is checked directly instead: the 16 ANSI slots of its
-integrated terminal, and its title bar, are compared against kitty and wezterm
-by `tests/check-theme.py parity`.
+### Carries colour, deliberately not palette-checked
+
+Some files hold colours and are still kept out of the table above. Each has a
+reason, and each is checked by something other than the palette scan — but
+"not in the table" is invisible on its own, so they are named here and the
+parity check requires this list to stay exactly true. A tracked file that grows
+a colour without either a table row above or a row here is a failure; so is a
+row here for a file that no longer carries colour. There is no third state in
+which a colour goes unlooked-at.
+
+| File | Why it is out | What checks it instead |
+| --- | --- | --- |
+| `common/.config/Code/User/settings.json` | `workbench.colorCustomizations` does follow this palette, but the same file carries the Dark+ token colours, the debug inline-value colours and some long-standing personal choices that are not Tokyo Night — the orange-brown active tab border, the inlay hint greys. Scanning it whole would report those forever. | the 16 ANSI slots of its integrated terminal and its title bar, compared against kitty and wezterm |
+| `common/.config/nvim/lua/util/inline_diff.lua` | Its backgrounds are blends, not palette entries: each is a diff hue carried part-way toward `#1a1b26` so a dimmed or moved line can sit a step below a real add or delete. Naming ten intermediate steps in the palette would make the palette mean something else. | every highlight it defines is compared against the `[delta]` styles in `common/.config/git/config`, so Neovim's inline diff and delta cannot disagree |
+| `common/.config/nvim/lua/util/vscode_syntax.lua` | Deliberately not this palette. Every hex in it is what VS Code resolves for a construct, so that a buffer reads the same in both editors — see the syntax-parity doc next to this one. | the tables in that doc are read back and must match what the file maps, and the theme it resolves against must still be the one `settings.json` selects |
+| `common/.config/kitty/kitty.conf` | Carries no live colour at all: the one hex in it is a commented-out `background` example left as a note. kitty's actual theme is the `themes/` file in the table above. | nothing, and nothing is needed — kitty rejects an unknown option, so the file is parsed by kitty itself in the parity check |
+
+Documentation, the checkers themselves, and the per-platform symlinks into
+`common/` are not tracked here — the first two only quote colours, and the
+third is the same file seen twice.
 
 ## Checking it
 

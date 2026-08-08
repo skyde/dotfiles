@@ -56,6 +56,7 @@ PSPROFILE = "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
 ZSHENV = "common/.zshenv"
 BASHRC = "common/.bashrc-custom"
 NVIM_SYNTAX = "common/.config/nvim/lua/util/vscode_syntax.lua"
+TOKYODOC = "docs/tokyonight.md"
 
 # (name, check to run, file, pattern, replacement, expected words, tool needed)
 #
@@ -195,6 +196,17 @@ MUTATIONS = [
      r'blame-separator-style = "#3b4261"',
      'blame-separator-style = "#3b4261"\n    blame-timestamp-style = "#737aa2"',
      "delta has no", "delta"),
+
+    # Coverage is the check that stops a config carrying colours nobody looks
+    # at. Both directions matter: a file that falls out of every list, and a
+    # list entry for a file that no longer has a colour in it.
+    ("a colour-bearing file that fell off every list", "parity", TOKYODOC,
+     r"\n\| `common/\.config/kitty/kitty\.conf` \|[^\n]*", "",
+     "nothing checks it", None),
+
+    ("an exemption for a file with no colours left", "parity", TOKYODOC,
+     r"`common/\.config/kitty/kitty\.conf`", "`common/.config/kitty/gone.conf`",
+     "stale", None),
 
     # The parity doc is where the VS Code resolution work is written down and
     # the lua file is where it is acted on, so the two can disagree silently:

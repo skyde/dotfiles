@@ -113,9 +113,28 @@ def themed_files(doc):
 
     Only rows whose path exists are returned: the table also documents files
     for tools that a given checkout may not carry.
+
+    Scoped to that one table, and not to every table in the doc, because the
+    doc has other tables -- the exemption list right below it names files
+    precisely in order to say they are *not* scanned, and reading it as an
+    enrolment list turned each of those into a scan target. So the table is
+    the run of rows that follows the heading, and it ends where the rows do.
     """
+    lines = doc.splitlines()
+    start = next((i for i, line in enumerate(lines)
+                  if line.startswith("## ") and "Where the theme lives" in line),
+                 None)
+    if start is None:
+        return []
+    table = []
+    for line in lines[start + 1:]:
+        if line.lstrip().startswith("|"):
+            table.append(line)
+        elif table:
+            break  # the run of rows has ended
+
     files = []
-    for line in doc.splitlines():
+    for line in table:
         cells = [c.strip() for c in line.split("|")]
         if len(cells) < 3:
             continue
@@ -1058,6 +1077,110 @@ def _check_syntax_doc_table(doc, verbose):
     return problems
 
 
+EXEMPT_HEADING = "Carries colour, deliberately not palette-checked"
+
+
+def _check_colour_coverage(doc, verbose):
+    """No tracked file carries a colour that nothing looks at.
+
+    The palette scan covers what the "Where the theme lives" table lists, which
+    means a config can carry colours and simply not be in it -- and being
+    absent from a table looks like nothing at all. Two files are legitimately
+    out (VS Code's settings.json, Neovim's inline diff), and both were out
+    silently until this check existed.
+
+    So the exemptions are a list in the doc rather than a fact about the
+    checker, and the list has to be exactly right in both directions: a file
+    that grows a colour without a row anywhere fails, and a row for a file that
+    no longer carries one fails too. Docs and the checkers only quote colours,
+    and the per-platform paths are symlinks onto the same file, so neither is
+    a place a colour can hide.
+    """
+    import subprocess
+
+    section = doc.split(EXEMPT_HEADING, 1)
+    if len(section) != 2:
+        return ["docs/tokyonight.md no longer has a %r section, so nothing "
+                "records which colour-bearing files are out of scope"
+                % EXEMPT_HEADING]
+    exempt = set()
+    for line in section[1].splitlines():
+        if line.startswith("## "):
+            break
+        cells = [c.strip() for c in line.split("|")]
+        if len(cells) >= 3:
+            for path in re.findall(r"`([^`]+)`", cells[1]):
+                if "/" in path:
+                    exempt.add(path)
+
+    scanned = {os.path.relpath(p, REPO) for p in themed_files(doc)}
+
+    # git ls-files is the better list -- it excludes build output and anything
+    # a developer happens to have lying around -- but it is not the only way to
+    # get one, and an earlier version of this returned an empty list when the
+    # command failed. That made the whole check vanish wherever the tree is not
+    # a checkout, including the self-test's sandbox, where it duly passed two
+    # mutations aimed straight at it. Falling back to a walk means the answer
+    # can get noisier, never absent.
+    try:
+        listing = subprocess.run(["git", "-C", REPO, "ls-files", "-z"],
+                                 capture_output=True, text=True,
+                                 check=True).stdout.split("\0")
+    except (OSError, subprocess.SubprocessError):
+        listing = []
+        for root, dirs, names in os.walk(REPO):
+            dirs[:] = [d for d in dirs
+                       if d not in (".git", "node_modules", "__pycache__")]
+            for name in names:
+                listing.append(os.path.relpath(os.path.join(root, name), REPO))
+
+    carriers, problems = set(), []
+    for rel in listing:
+        if not rel:
+            continue
+        full = os.path.join(REPO, rel)
+        if not os.path.isfile(full):
+            continue
+        if rel.startswith(("docs/", "tests/")) or rel == "README.md":
+            continue
+        try:
+            body = open(full, encoding="utf-8", errors="ignore").read()
+        except OSError:
+            continue
+        if HEX.search(body) or DECIMAL_TRIPLE.search(body):
+            carriers.add(rel)
+
+    # mac/ and windows/ reach into common/ by symlink, so the same file arrives
+    # here under three names. Identity is decided by content rather than by
+    # os.path.islink: a copy that still matches byte for byte is the same file
+    # however the tree was produced, and one that has drifted is a second copy
+    # worth reporting -- which is the answer islink cannot give.
+    accounted = {}
+    for rel in sorted(scanned | exempt):
+        full = os.path.join(REPO, rel)
+        if os.path.isfile(full):
+            accounted[open(full, "rb").read()] = rel
+    for rel in sorted(carriers - scanned - exempt):
+        body = open(os.path.join(REPO, rel), "rb").read()
+        if body in accounted:
+            carriers.discard(rel)
+
+    for rel in sorted(carriers - scanned - exempt):
+        problems.append(
+            "%s carries a colour and is in neither the \"Where the theme "
+            "lives\" table nor the %r list, so nothing checks it"
+            % (rel, EXEMPT_HEADING))
+    for rel in sorted(exempt - carriers):
+        problems.append(
+            "docs/tokyonight.md exempts %s from the palette scan and it no "
+            "longer carries a colour, so the exemption is stale" % rel)
+
+    if verbose and not problems:
+        print("  %d colour-bearing file(s) scanned, %d exempted by name"
+              % (len(carriers & scanned), len(exempt)))
+    return problems
+
+
 def _check_ripgrep_config(verbose):
     """Let ripgrep parse its own config, since it is strict about colours.
 
@@ -1241,6 +1364,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_wezterm_config(verbose))
     problems.extend(_check_vscode_theme_chain(verbose))
     problems.extend(_check_nvim_delta_parity(verbose))
+    problems.extend(_check_colour_coverage(doc, verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))
 
