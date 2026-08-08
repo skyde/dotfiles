@@ -1,0 +1,31 @@
+# glow's configuration. Palette reference: docs/tokyonight.md.
+#
+# The style deliberately is NOT set here. It is `GLOW_STYLE` in
+# ~/.config/shell/theme.sh instead, and that is not a preference — a path in
+# this file does not work.
+#
+# glow 2.1.2 validates `style` through utils.ExpandPath, which expands both `~`
+# and $VARS, and then hands glamour the *unexpanded* string (validateStyle
+# takes its argument by value, so the expansion never leaves the function).
+# So `style: "~/.config/glow/tokyonight.json"` passes the "does this file
+# exist" check and then fails to load, with
+#
+#     Error: unable to create renderer: glamour: error reading file:
+#     open ~/.config/glow/tokyonight.json: no such file or directory
+#
+# `$HOME/...` fails the same way. Only an absolute path works, and an absolute
+# path is exactly what a dotfiles repo cannot write down — /home/you on Linux,
+# /Users/you on a Mac, /root under a container.
+#
+# glow reads its settings through viper with the `glow` env prefix, so
+# GLOW_STYLE sets the same key, and the shell expands $HOME before glow ever
+# sees it. That is where it lives.
+#
+# If a later glow expands the config value too, the path can move back here and
+# the setting can leave the environment. Everything below is glow's own default,
+# written out because `glow config` regenerates this file with every key
+# present and a one-line file would read as an accident.
+mouse: false
+pager: false
+width: 80
+all: false

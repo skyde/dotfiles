@@ -72,11 +72,11 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 
 ## Theme
 
-Every one of those tools — plus tmux, yazi, btop, the three terminals, the zsh
-and PowerShell command lines, `ls`, man pages and git's own output — is themed
-**Tokyo Night (night)**, from one palette. Syntax highlighting is deliberately
-*not* Tokyo Night: code is Visual Studio Dark+ everywhere it appears, so the
-chrome and the code stay two separate decisions.
+Every one of those tools — plus tmux, yazi, btop, `glow`, the three terminals,
+the zsh and PowerShell command lines, `ls`, man pages and git's own output — is
+themed **Tokyo Night (night)**, from one palette. Syntax highlighting is
+deliberately *not* Tokyo Night: code is Visual Studio Dark+ everywhere it
+appears, so the chrome and the code stay two separate decisions.
 
 [`docs/tokyonight.md`](docs/tokyonight.md) is the source of truth for the
 palette and the reasoning — including the parts that are not obvious, like why
