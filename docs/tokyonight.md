@@ -852,13 +852,20 @@ quietly approximating it.
   on its first run, in a file the hand audit had already been through.
 
   The same machinery answers a blunter question: how much of the theme is
-  actually pinned? Change a colour to another *documented* colour and see
-  whether anything fails. 304 of 546 still do not — which is not all wrong, a
+  actually pinned? `--report-unpinned` changes each colour to another
+  *documented* colour and reports where nothing failed. 256 of 509 do not — which is not all wrong, a
   colour with no counterpart in another tool has nothing to be pinned to — but
   it is the honest number, and it is where the next check should come from.
   `.zshrc` was 32 of its 41 until the command line got tied to the table above;
-  it is 1 now. `theme.sh`'s palette was 28 of 28 and is 9; the doctor's swatch
+  it is 1 now. `theme.sh`'s palette was 28 of 28 and is 8; the doctor's swatch
   block was 13 of 13 and is 1.
+
+  Only colours a tool will actually read are counted. An earlier version of the
+  report included hexes sitting in trailing comments — `lf`'s colours file and
+  both search pickers write their real values as decimal SGR and name the hex
+  only in the comment beside it — which inflated both halves of the fraction by
+  37. The probe and the report share one enumeration now, so they cannot
+  disagree about what counts.
 
   The number does not always move when a check lands, and that is worth
   knowing before chasing it. Binding delta's diff tints to the tint tables

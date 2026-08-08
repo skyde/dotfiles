@@ -2756,6 +2756,23 @@ COMMENT_MARKERS = {
 DEFAULT_COMMENT_MARKER = "#"
 
 
+def comment_start(marker, line):
+    """Where a trailing comment begins on this line, or -1.
+
+    For `#` files this cannot be "the first #": a hex *is* a `#`. So a marker
+    counts only where it is not the start of a colour -- which is also what
+    makes it safe to ask whether a given hex sits inside a comment.
+    """
+    at = 0
+    while True:
+        at = line.find(marker, at)
+        if at < 0:
+            return -1
+        if marker != "#" or not HEX.match(line[at:]):
+            return at
+        at += 1
+
+
 def uncommented(path, text):
     """`text` with whole-line comments removed.
 

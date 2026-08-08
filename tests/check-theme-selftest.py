@@ -488,6 +488,63 @@ def _probe_replacement(colour):
     return PROBE_SWAP[1] if colour.lower() == PROBE_SWAP[0] else PROBE_SWAP[0]
 
 
+def probe_targets(module, sample_per_file=None):
+    """Every colour a tool will actually read, as (file, line, colour, marker).
+
+    Shared by the probe and the unpinned report: two implementations of "which
+    colours count" would disagree eventually, and the first version of the
+    report did -- it counted hexes in trailing comments, which nothing can
+    constrain, and overstated how much of the theme was loose.
+    """
+    hexes = re.compile(r"#[0-9a-fA-F]{6}")
+    targets = []
+    for path in module.themed_files(module.read_doc()):
+        rel = os.path.relpath(path, REPO)
+        marker = module.COMMENT_MARKERS.get(
+            os.path.splitext(rel)[1], module.DEFAULT_COMMENT_MARKER)
+        found = []
+        for i, line in enumerate(open(path, encoding="utf-8").read().splitlines()):
+            if line.lstrip().startswith(marker):
+                continue
+            cut = module.comment_start(marker, line)
+            m = hexes.search(line if cut < 0 else line[:cut])
+            if m:
+                found.append((i, m.group(0)))
+        if sample_per_file is not None:
+            found = found[:sample_per_file]
+        targets.extend((rel, i, colour, marker) for i, colour in found)
+    return targets
+
+
+def report_unpinned(files):
+    """How much of the theme is held in place, per file.
+
+    Change a colour to another *documented* colour and see whether anything
+    fails. If nothing does, that colour is pinned by nothing -- which is not
+    automatically wrong (a colour with no counterpart in another tool has
+    nothing to be pinned to) but is the honest measure, and the ranked list is
+    a better way to choose the next check than deciding which surface feels
+    unexamined.
+    """
+    module = load_checker()
+    free, total = {}, {}
+    with tempfile.TemporaryDirectory() as tmp:
+        make_copy(files, tmp)
+        for rel, lineno, colour, _marker in probe_targets(module):
+            total[rel] = total.get(rel, 0) + 1
+            path = os.path.join(tmp, rel)
+            original = open(path, encoding="utf-8").read()
+            lines = original.splitlines(True)
+            swapped = lines[lineno].replace(colour, _probe_replacement(colour), 1)
+            if not _probe_run(tmp, path, lines, lineno, swapped, original):
+                free[rel] = free.get(rel, 0) + 1
+    print("%-52s %6s %6s" % ("file", "unpinned", "all"))
+    for rel in sorted(total, key=lambda r: -free.get(r, 0)):
+        print("  %-50s %6d %6d" % (rel, free.get(rel, 0), total[rel]))
+    print("  %-50s %6d %6d" % ("TOTAL", sum(free.values()), sum(total.values())))
+    return []
+
+
 def probe_comments(verbose, files, sample_per_file=None):
     """Require every reader to distinguish a live line from a commented one.
 
@@ -499,25 +556,7 @@ def probe_comments(verbose, files, sample_per_file=None):
     exactly this reason.
     """
     module = load_checker()
-    doc = module.read_doc()
-    hexes = re.compile(r"#[0-9a-fA-F]{6}")
-
-    targets = []
-    for path in module.themed_files(doc):
-        rel = os.path.relpath(path, REPO)
-        marker = module.COMMENT_MARKERS.get(
-            os.path.splitext(rel)[1], module.DEFAULT_COMMENT_MARKER)
-        found = []
-        for i, line in enumerate(open(path, encoding="utf-8").read().splitlines()):
-            if line.lstrip().startswith(marker):
-                continue
-            m = hexes.search(line)
-            if m:
-                found.append((i, m.group(0)))
-        if sample_per_file is not None:
-            found = found[:sample_per_file]
-        targets.extend((rel, i, colour, marker) for i, colour in found)
-
+    targets = probe_targets(module, sample_per_file)
     fooled, constrained = [], 0
     with tempfile.TemporaryDirectory() as tmp:
         make_copy(files, tmp)
@@ -711,6 +750,9 @@ def main(argv):
     # A full sweep is ~776 lines and two checker runs each, which is why the
     # tools-off mode exists; the sample keeps the default run honest without
     # making it slow.
+    if "--report-unpinned" in argv:
+        return 0 if not report_unpinned(files) else 1
+
     if verbose:
         print("\ncomment-decoy probe:")
     failures += probe_comments(
