@@ -852,7 +852,9 @@ quietly approximating it.
   on its first run, in a file the hand audit had already been through.
 
   It samples one colour per file by default and sweeps every one under
-  `--probe-comments`. `THEME_CHECK_NO_TOOLS=1` exists for it: the external
+  `--probe-comments` — worth running after adding a check, because the sample
+  found one fooled reader and the full sweep found five more in a single file.
+  It works on a copy of the tree, never the tree itself. `THEME_CHECK_NO_TOOLS=1` exists for it: the external
   oracles are 2.2 of the 2.3 seconds a run costs, and the probe needs only the
   readers.
 

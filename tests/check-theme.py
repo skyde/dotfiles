@@ -1363,7 +1363,9 @@ def _check_mime_extension_bridge(verbose):
     lf_path = os.path.join(REPO, "common/.config/lf/colors")
     if not (os.path.isfile(yazi_path) and os.path.isfile(lf_path)):
         return []
-    body = open(yazi_path, encoding="utf-8").read()
+    # Comments stripped: yazi's theme explains several of its mime rules in a
+    # comment directly above them, so a commented-out rule reads as a rule.
+    body = uncommented(yazi_path, open(yazi_path, encoding="utf-8").read())
 
     mime_rules = [(pat, norm(col)) for pat, col in re.findall(
         r'\{\s*mime\s*=\s*"([^"]+)"\s*,\s*fg\s*=\s*"(#[0-9a-fA-F]{6})"', body)]

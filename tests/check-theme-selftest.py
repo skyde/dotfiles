@@ -450,8 +450,16 @@ def _probe_replacement(colour):
     return PROBE_SWAP[1] if colour.lower() == PROBE_SWAP[0] else PROBE_SWAP[0]
 
 
-def probe_comments(verbose, sample_per_file=None):
-    """Require every reader to distinguish a live line from a commented one."""
+def probe_comments(verbose, files, sample_per_file=None):
+    """Require every reader to distinguish a live line from a commented one.
+
+    Runs against a copy of the working tree, never the tree itself. The first
+    version edited the real files in place and restored them afterwards, which
+    worked right up until something else touched the repo mid-run and left a
+    mutated colour sitting in it. A test that can leave the repository dirty is
+    not one to keep -- and the mutation framework above already copies for
+    exactly this reason.
+    """
     module = load_checker()
     doc = module.read_doc()
     hexes = re.compile(r"#[0-9a-fA-F]{6}")
@@ -459,57 +467,55 @@ def probe_comments(verbose, sample_per_file=None):
     targets = []
     for path in module.themed_files(doc):
         rel = os.path.relpath(path, REPO)
-        lines = open(path, encoding="utf-8").read().splitlines()
+        marker = module.COMMENT_MARKERS.get(
+            os.path.splitext(rel)[1], module.DEFAULT_COMMENT_MARKER)
         found = []
-        for i, line in enumerate(lines):
-            marker = module.COMMENT_MARKERS.get(
-                os.path.splitext(rel)[1], module.DEFAULT_COMMENT_MARKER)
+        for i, line in enumerate(open(path, encoding="utf-8").read().splitlines()):
             if line.lstrip().startswith(marker):
                 continue
             m = hexes.search(line)
             if m:
-                found.append((i, m.group(0), marker))
+                found.append((i, m.group(0)))
         if sample_per_file is not None:
             found = found[:sample_per_file]
-        targets.extend((rel, i, colour, marker) for i, colour, marker in found)
+        targets.extend((rel, i, colour, marker) for i, colour in found)
 
     fooled, constrained = [], 0
-    for rel, lineno, colour, marker in targets:
-        original = open(os.path.join(REPO, rel), encoding="utf-8").read()
-        lines = original.splitlines(True)
-        live = lines[lineno].replace(colour, _probe_replacement(colour), 1)
+    with tempfile.TemporaryDirectory() as tmp:
+        make_copy(files, tmp)
+        for rel, lineno, colour, marker in targets:
+            path = os.path.join(tmp, rel)
+            original = open(path, encoding="utf-8").read()
+            lines = original.splitlines(True)
+            live = lines[lineno].replace(colour, _probe_replacement(colour), 1)
 
-        if not _probe_run(rel, lines, lineno, live):
-            continue  # nothing constrains this colour
-        constrained += 1
-        decoy = marker + " " + lines[lineno].rstrip("\n") + "\n" + live
-        if not _probe_run(rel, lines, lineno, decoy):
-            fooled.append("%s:%d — %s survives as a comment"
-                          % (rel, lineno + 1, colour))
-        _write(os.path.join(REPO, rel), original)
+            if not _probe_run(tmp, path, lines, lineno, live, original):
+                continue  # nothing constrains this colour
+            constrained += 1
+            decoy = marker + " " + lines[lineno].rstrip("\n") + "\n" + live
+            if not _probe_run(tmp, path, lines, lineno, decoy, original):
+                fooled.append("%s:%d — %s survives as a comment"
+                              % (rel, lineno + 1, colour))
 
     if verbose:
         for f in fooled:
             print("  fooled  %s" % f)
-    print("probe: %d colour(s) constrained by some check, %d reader(s) fooled"
-          % (constrained, len(fooled)))
+        print("  probe: %d colour(s) constrained, %d fooled"
+              % (constrained, len(fooled)))
     return fooled
 
 
-def _write(path, text):
+def _probe_run(root, path, lines, lineno, replacement, original):
+    """Swap one line into the copy, run the checker there, put it back."""
     with open(path, "w", encoding="utf-8") as fh:
-        fh.write(text)
-
-
-def _probe_run(rel, lines, lineno, replacement):
-    """Swap one line in, run the checker with tools off, restore, report."""
-    path = os.path.join(REPO, rel)
-    original = "".join(lines)
-    _write(path, "".join(lines[:lineno]) + replacement + "".join(lines[lineno + 1:]))
+        fh.write("".join(lines[:lineno]) + replacement
+                 + "".join(lines[lineno + 1:]))
     env = dict(os.environ, THEME_CHECK_NO_TOOLS="1")
-    out = subprocess.run([sys.executable, os.path.join(REPO, "tests/check-theme.py")],
-                         capture_output=True, text=True, env=env, cwd=REPO)
-    _write(path, original)
+    out = subprocess.run(
+        [sys.executable, os.path.join(root, "tests", "check-theme.py")],
+        capture_output=True, text=True, env=env, timeout=180)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(original)
     return out.returncode != 0
 
 
@@ -669,8 +675,8 @@ def main(argv):
     # making it slow.
     if verbose:
         print("\ncomment-decoy probe:")
-    failures += probe_comments(verbose,
-                               None if "--probe-comments" in argv else 1)
+    failures += probe_comments(
+        verbose, files, None if "--probe-comments" in argv else 1)
 
     for s in skipped:
         print("skip %s" % s)
