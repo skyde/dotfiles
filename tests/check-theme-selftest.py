@@ -50,6 +50,7 @@ STARSHIP = "common/.config/starship.toml"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
 NVIM_THEME = "common/.config/nvim/lua/plugins/tokyonight.lua"
 WEZTERM = "common/.config/wezterm/wezterm.lua"
+VSCODE_EXTS = "vscode_extensions.txt"
 FF = "common/.local/bin/ff"
 PSPROFILE = "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
 ZSHENV = "common/.zshenv"
@@ -96,6 +97,14 @@ MUTATIONS = [
     ("a wezterm colour wezterm cannot parse", "parity", WEZTERM,
      r"inactive_tab_edge = '#16161e'", "inactive_tab_edge = '#zzzzzz'",
      "failed to parse", "wezterm"),
+
+    # Neovim's syntax colours are resolved against one specific VS Code theme.
+    # Drop the extension providing it and nothing breaks loudly: VS Code falls
+    # back to another dark theme and Neovim keeps painting colours resolved
+    # against one that is no longer installed.
+    ("the VS Code theme extension going missing", "parity", VSCODE_EXTS,
+     r"ms-vscode\.cpptools-themes\n", "",
+     "not in vscode_extensions.txt", None),
 
     ("a titlebar that disagrees between terminals", "parity", KITTY,
      r"macos_titlebar_color #16161e", "macos_titlebar_color #1a1b26",

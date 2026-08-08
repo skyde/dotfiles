@@ -31,7 +31,11 @@ The reference is the exact pair the VS Code config is running:
   `common/.config/Code/User/settings.json`, which overrides most of it.
 
 Every hex in `vscode-syntax.lua` is the value VS Code *resolves* for a
-construct once those two are combined, not a colour picked by eye. Resolution
+construct once those two are combined, not a colour picked by eye. That makes
+this file's accuracy conditional on VS Code actually running that theme, which
+`tests/check-theme.py parity` now verifies: the name above must be what
+`settings.json` selects, and the extension above must be one
+`vscode_extensions.txt` installs. Resolution
 follows VS Code's own rules: the theme's rules and the user's rules go into one
 trie, more specific selectors beat less specific ones, ties go to whichever was
 declared later (so the user's rules win), and a scope stack is walked from the

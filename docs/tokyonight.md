@@ -405,6 +405,15 @@ quietly approximating it.
   and compared byte for byte — `$var:s` is a history modifier in zsh, so text
   that is unremarkable to bash can be a parse error there.
 
+  It also checks the chain the *syntax* colours rest on. Neovim's hexes in
+  `lua/util/vscode_syntax.lua` are the values VS Code resolves once a specific
+  theme extension and the user's `textMateRules` combine, so three files have
+  to agree and none of them mentions the others: `docs/vscode-syntax-parity.md`
+  names the theme and its extension, `settings.json` selects the theme by name,
+  and `vscode_extensions.txt` decides whether the extension is installed. Drop
+  the extension and nothing breaks loudly — VS Code falls back to another dark
+  theme, and Neovim keeps painting colours resolved against one that is gone.
+
   It also checks that Neovim's inline diff and delta paint the same diff:
   `lua/util/inline_diff.lua` maps each of its highlights to a delta style in
   its own header comment, and this is what holds the two files to it.

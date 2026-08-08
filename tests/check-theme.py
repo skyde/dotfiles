@@ -941,6 +941,67 @@ def _check_wezterm_config(verbose):
     return problems
 
 
+SYNTAX_DOC = "docs/vscode-syntax-parity.md"
+VSCODE_SETTINGS = "common/.config/Code/User/settings.json"
+VSCODE_EXTENSIONS = "vscode_extensions.txt"
+
+
+def _check_vscode_theme_chain(verbose):
+    """The base theme Neovim's syntax colours are resolved against still exists.
+
+    docs/vscode-syntax-parity.md is explicit that every hex in
+    lua/util/vscode_syntax.lua is the value VS Code *resolves* for a construct
+    once two things combine: a specific theme extension, and the user's
+    textMateRules. Those hexes are therefore only correct while VS Code is
+    actually running that theme.
+
+    Three files have to agree for that to hold, and none of them mentions the
+    others: the doc names the theme and the extension that provides it,
+    settings.json selects the theme by name, and vscode_extensions.txt decides
+    whether the extension is installed at all. Change the theme or drop the
+    extension and nothing breaks loudly -- VS Code falls back to another dark
+    theme, and Neovim keeps painting colours resolved against a theme that is
+    no longer there.
+    """
+    doc_path = os.path.join(REPO, SYNTAX_DOC)
+    if not os.path.isfile(doc_path):
+        return []
+    doc = open(doc_path, encoding="utf-8").read()
+    m = re.search(r"\*\*([^*]+)\*\* theme \(`([\w.-]+)`", doc)
+    if not m:
+        return ["%s no longer names the theme and the extension providing it, "
+                "so nothing can check them" % SYNTAX_DOC]
+    theme, extension = m.group(1).strip(), m.group(2).strip()
+
+    problems = []
+    settings = os.path.join(REPO, VSCODE_SETTINGS)
+    if os.path.isfile(settings):
+        sm = re.search(r'"workbench\.colorTheme"\s*:\s*"([^"]+)"',
+                       open(settings, encoding="utf-8").read())
+        if not sm:
+            problems.append("settings.json sets no workbench.colorTheme, so the "
+                            "syntax colours resolve against an unknown theme")
+        elif sm.group(1) != theme:
+            problems.append(
+                "VS Code is set to the %r theme but %s resolves Neovim's "
+                "syntax colours against %r"
+                % (sm.group(1), SYNTAX_DOC, theme))
+
+    exts = os.path.join(REPO, VSCODE_EXTENSIONS)
+    if os.path.isfile(exts):
+        installed = {line.strip().lower()
+                     for line in open(exts, encoding="utf-8")
+                     if line.strip() and not line.startswith("#")}
+        if extension.lower() not in installed:
+            problems.append(
+                "%s is what provides the %r theme, and it is not in %s"
+                % (extension, theme, VSCODE_EXTENSIONS))
+
+    if verbose and not problems:
+        print("  VS Code runs %r, provided by %s" % (theme, extension))
+    return problems
+
+
 def _check_ripgrep_config(verbose):
     """Let ripgrep parse its own config, since it is strict about colours.
 
@@ -1122,6 +1183,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_kitty_config(verbose))
     problems.extend(_check_git_colours(verbose))
     problems.extend(_check_wezterm_config(verbose))
+    problems.extend(_check_vscode_theme_chain(verbose))
     problems.extend(_check_nvim_delta_parity(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))
