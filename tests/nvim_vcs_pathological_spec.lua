@@ -99,6 +99,14 @@ write_bytes(root .. "/many.txt", table.concat(MANY, "\n") .. "\n")
 write_bytes(root .. "/empty.txt", "")
 write_bytes(root .. "/deleted.txt", "here for now\n")
 write_bytes(root .. "/a file with spaces ünïcode.txt", "one\ntwo\n")
+-- Names that are pattern syntax to one backend or another: `*`, `?` and `[` are
+-- glob characters in a git pathspec, a leading `:` introduces pathspec magic,
+-- `(` and `)` are operators in a jj fileset, and `{` is where jj compacts a
+-- rename. Every one of them is an ordinary filename that a real tree has.
+write_bytes(root .. "/star*.txt", "one\ntwo\n")
+write_bytes(root .. "/:colon.txt", "one\ntwo\n")
+write_bytes(root .. "/report (1).txt", "one\ntwo\n")
+write_bytes(root .. "/brace{x}.txt", "one\ntwo\n")
 git(root, "add", "-A")
 git(root, "commit", "-qm", "initial")
 
@@ -112,6 +120,9 @@ write_bytes(root .. "/many.txt", table.concat(MANY, "\n") .. "\n")
 write_bytes(root .. "/empty.txt", "no longer empty\n")
 assert(os.remove(root .. "/deleted.txt"))
 write_bytes(root .. "/a file with spaces ünïcode.txt", "one\nTWO\n")
+for _, name in ipairs({ "star*.txt", ":colon.txt", "report (1).txt", "brace{x}.txt" }) do
+  write_bytes(root .. "/" .. name, "one\nTWO\n")
+end
 -- And one file that never existed at the base revision.
 write_bytes(root .. "/untracked binary.bin", "\0\1\2\3\255\254\n")
 
@@ -158,14 +169,18 @@ end
 --------------------------------------------------------------------------
 
 local EXPECTED = {
+  ":colon.txt",
   "a file with spaces ünïcode.txt",
   "blob.png",
+  "brace{x}.txt",
   "crlf.txt",
   "deleted.txt",
   "empty.txt",
   "long.txt",
   "many.txt",
   "nonl.txt",
+  "report (1).txt",
+  "star*.txt",
   "untracked binary.bin",
 }
 
@@ -185,7 +200,7 @@ do
   check("open: does not raise on a listing full of them", ok, tostring(err))
   settle()
   local lines = panel_lines()
-  check("open: the panel header counts them all", lines[2] and lines[2]:find("of 9", 1, true) ~= nil, lines[2])
+  check("open: the panel header counts them all", lines[2] and lines[2]:find("of 13", 1, true) ~= nil, lines[2])
 end
 
 --------------------------------------------------------------------------
@@ -217,7 +232,7 @@ for _, inline in ipairs({ true, false }) do
   end
 
   local rows = file_rows()
-  eq(("%s: all nine files have a row"):format(label), 9, #rows)
+  eq(("%s: every file has a row"):format(label), #EXPECTED, #rows)
 
   local rendered = 0
   for _, row in ipairs(rows) do
@@ -293,7 +308,7 @@ for _, inline in ipairs({ true, false }) do
       "windows: " .. #vim.api.nvim_tabpage_list_wins(0)
     )
   end
-  eq(("%s: rendered every file"):format(label), 9, rendered)
+  eq(("%s: rendered every file"):format(label), #EXPECTED, rendered)
 end
 
 --------------------------------------------------------------------------
@@ -450,7 +465,7 @@ do
   vcs.clear_cache()
   ui.open({ scope = "working" })
   settle()
-  check("random driving: the view still opens afterwards", #file_rows() == 9, vim.inspect(panel_lines()))
+  check("random driving: the view still opens afterwards", #file_rows() == #EXPECTED, vim.inspect(panel_lines()))
   ui.close()
 end
 
@@ -470,6 +485,92 @@ do
   vim.cmd("edit " .. vim.fn.fnameescape(root .. "/crlf.txt"))
   eq("crlf: the buffer agrees too", "dos", vim.bo.fileformat)
   eq("crlf: and holds the same lines", { "alpha", "BETA", "gamma" }, vim.api.nvim_buf_get_lines(0, 0, -1, false))
+end
+
+--------------------------------------------------------------------------
+-- `y` on a name that is pattern syntax
+--------------------------------------------------------------------------
+
+-- Last, and in its own repository: it commits, which would change the working
+-- set every block above reads.
+do
+  -- The panel's copy key goes through raw_diff, which hands the path to git as
+  -- a pathspec. Unescaped, `star*.txt` is a glob, and the copied patch would
+  -- carry whatever else the glob matched — silently, into a review comment.
+  local glob_root = vim.fn.resolve(temp .. "/globby")
+  vim.fn.mkdir(glob_root, "p")
+  git(glob_root, "init", "-q", "-b", "main")
+  write_bytes(glob_root .. "/star*.txt", "one\ntwo\n")
+  write_bytes(glob_root .. "/stars.txt", "one\ntwo\n")
+  git(glob_root, "add", "-A")
+  git(glob_root, "commit", "-qm", "two names, one of which globs the other")
+  write_bytes(glob_root .. "/star*.txt", "one\nSTAR\n")
+  write_bytes(glob_root .. "/stars.txt", "one\nSTARS\n")
+
+  -- An in-memory provider, so the + register round-trips without a desktop.
+  local copied = { "" }
+  local real_clipboard = vim.g.clipboard
+  vim.g.clipboard = {
+    name = "spec",
+    copy = {
+      ["+"] = function(lines)
+        copied = lines
+      end,
+      ["*"] = function(lines)
+        copied = lines
+      end,
+    },
+    paste = {
+      ["+"] = function()
+        return copied
+      end,
+      ["*"] = function()
+        return copied
+      end,
+    },
+    cache_enabled = 0,
+  }
+
+  ui.close()
+  -- Both the working directory and the current buffer: the view detects the
+  -- backend from the buffer it was opened over, so a leftover buffer from the
+  -- fixture above would quietly point it back at that repository.
+  vim.cmd("cd " .. vim.fn.fnameescape(glob_root))
+  vim.cmd("edit " .. vim.fn.fnameescape(glob_root .. "/stars.txt"))
+  vcs.clear_cache()
+  ui.open({ scope = "working" })
+  settle()
+
+  local target
+  for _, row in ipairs(file_rows()) do
+    if (panel_lines()[row] or ""):find("star*.txt", 1, true) then
+      target = row
+    end
+  end
+  check("copy: the glob-ish file has a row", target ~= nil, vim.inspect(panel_lines()))
+
+  local pw = panel_win()
+  vim.api.nvim_set_current_win(pw)
+  vim.api.nvim_win_set_cursor(pw, { target or 1, 0 })
+  vim.api.nvim_feedkeys("y", "x", false)
+  vim.wait(3000, function()
+    return #copied > 1
+  end)
+  settle()
+
+  local patch = table.concat(copied, "\n")
+  check("copy: something was copied", #patch > 0, "the register stayed empty")
+  check("copy: the patch names the file asked for", patch:find("star*.txt", 1, true) ~= nil, patch:sub(1, 300))
+  check(
+    "copy: and nothing the glob would have swept up with it",
+    patch:find("stars.txt", 1, true) == nil,
+    patch:sub(1, 400)
+  )
+
+  vim.g.clipboard = real_clipboard
+  ui.close()
+  vcs.clear_cache()
+  vim.cmd("cd " .. vim.fn.fnameescape(root))
 end
 
 --------------------------------------------------------------------------
