@@ -222,6 +222,20 @@ MUTATIONS = [
      r"theme\[inactive_fg\]", "theme[proc_pause_bg]",
      "btop does not have", "btop"),
 
+    # Ported from main as check 8: both highlighters ship a coloured default
+    # for every role they know, so a role the table omits is not neutral --
+    # it is painted out of the terminal's sixteen. Two mutations, because the
+    # two failures are different: a role that is gone falls back silently, and
+    # a role written `fg=yellow` is that same fallback spelled out loud.
+    ("a command-line role left to the highlighter's defaults", "parity", ZSHRC,
+     r"\n  reserved-word\s+'fg=#c586c0'", "",
+     "left to the highlighter", None),
+
+    ("a command-line role written in a colour name", "parity", ZSHRC,
+     r"  globbing                      'fg=#d7ba7d'",
+     "  globbing                      'fg=yellow'",
+     "not a palette hex", None),
+
     # A key assigned twice is inert config that reads as live config, and none
     # of these formats says so: git merges repeated sections and takes the last
     # value, kitty takes the last line. Both shapes, because the git one is
