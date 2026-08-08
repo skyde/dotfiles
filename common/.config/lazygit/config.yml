@@ -81,11 +81,12 @@ gui:
     markedBaseCommitFgColor: ["#16161e"]
     unstagedChangesColor: ["#f7768e"]
 
-  # Icons for the file types lazygit has no entry for. Checked against the
-  # Files panel: BUILD.gn, DEPS, OWNERS, *.gni, *.mojom and *.grd all fall back
-  # to the generic file glyph (U+F15B), so a Chromium tree renders as one
-  # repeated icon. These are Font Awesome codepoints, which Nerd Fonts v3 keeps
-  # where v2 had them.
+  # Icons for the file types lazygit has no entry for. Its own table covers the
+  # source files (.cc, .h, .py, .json, .md all have their own glyph and colour)
+  # but none of the build and metadata layer: checked against the Files panel,
+  # BUILD.gn, DEPS, OWNERS, *.gni, *.mojom and *.grd all fall back to the
+  # generic file glyph (U+F15B) in grey. These are Font Awesome codepoints,
+  # which Nerd Fonts v3 keeps where v2 had them.
   customIcons:
     filenames:
       "OWNERS": { icon: "\uf0c0", color: "#e0af68" } # users
@@ -249,7 +250,14 @@ customCommands:
   - key: "<c-n>"
     context: "files"
     description: "Conventional commit"
-    command: 'git commit -m "{{.Form.Type}}{{if .Form.Scope}}({{.Form.Scope}}){{end}}{{if eq .Form.Breaking "yes"}}!{{end}}: {{.Form.Subject}}"'
+    # The subject and scope are free text, so they are passed as arguments and
+    # assembled by the shell, never interpolated into the command line.
+    # lazygit hands the resolved string to `$SHELL -c`, so a subject built into
+    # it directly would be re-parsed: `cost is $5` commits as `cost is `, a
+    # backtick runs a command, and an odd quote aborts the commit. `quote` (the
+    # only defence lazygit offers) has to wrap the whole value — putting it
+    # inside hand-written quotes just splits the message into three arguments.
+    command: 'sh -c ''bang=""; [ "$3" = yes ] && bang="!"; git commit -m "$1${2:+($2)}$bang: $4"'' -- {{.Form.Type}} {{.Form.Scope | quote}} {{.Form.Breaking}} {{.Form.Subject | quote}}'
     loadingText: "Committing"
     prompts:
       - type: "menu"
@@ -355,9 +363,15 @@ customCommands:
       - key: "D"
         context: "localBranches"
         description: "Delete local branches already merged into the base branch"
-        # --merged only lists branches whose tip is reachable from the base, so
-        # this cannot drop unmerged work; `git branch -d` refuses anyway.
-        command: "sh -c 'git branch --merged {{.Form.Base}} --format=\"%(refname:short)\" | grep -vxE \"{{.Form.Base}}|main|master|develop\" | xargs -r git branch -d'"
+        # `--merged <base>` lists only branches whose tip is reachable from the
+        # base, so nothing unmerged can be in the list — which is the whole
+        # safety argument, and it has to be, because `git branch -d` measures
+        # "merged" against HEAD rather than against the base you asked about.
+        # From a feature branch that means -d refuses every one of them and the
+        # command deletes nothing; -D deletes exactly the list `--merged` just
+        # vouched for. The current branch and the trunks are held back, and the
+        # hand-typed base goes in as an argument rather than as command text.
+        command: 'sh -c ''current=$(git branch --show-current); git branch --merged "$1" --format="%(refname:short)" | grep -vxE "$1|${current:-@}|main|master|develop" | xargs -r git branch -D'' -- {{.Form.Base | quote}}'
         output: popup
         outputTitle: "Deleted merged branches"
         prompts:

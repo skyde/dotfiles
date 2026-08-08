@@ -831,6 +831,8 @@ def check_semantics(config: dict, defaults: dict | None) -> tuple[list[str], lis
                 if field and MODELS[obj] and field not in MODELS[obj]:
                     errors.append(f"custom command {label!r}: {obj} has no field {field!r}")
 
+            errors.extend(check_quoting(command_text, command, label))
+
             for prompt in command.get("prompts") or []:
                 if not prompt.get("key"):
                     errors.append(f"custom command {label!r}: a prompt has no key")
@@ -858,6 +860,63 @@ def check_semantics(config: dict, defaults: dict | None) -> tuple[list[str], lis
     warnings += check_programs(config)
     return errors, warnings
 
+
+
+# Placeholders whose value cannot carry shell metacharacters, so interpolating
+# them directly is safe. Everything else — file names, branch names, and every
+# value a prompt collects — has to go through `quote`.
+SAFE_PLACEHOLDERS = {
+    "SelectedCommit.Hash",
+    "SelectedCommit.Sha",
+    "SelectedCommitRange.From",
+    "SelectedCommitRange.To",
+    "SelectedLocalBranch.CommitHash",
+    "CheckedOutBranch.CommitHash",
+    "SelectedStashEntry.Index",
+}
+
+# `{{ ... }}` with the pipeline captured, so we can ask whether it ends in quote.
+EXPRESSION_RE = re.compile(r"\{\{(?P<body>.*?)\}\}", re.DOTALL)
+REFERENCE_RE = re.compile(r"\.(?P<path>(Form|Selected\w+|CheckedOutBranch)(?:\.\w+)*)")
+
+
+def check_quoting(command_text: str, command: dict, label: str) -> list[str]:
+    """Every free-text value must reach the shell as an argument, not as source.
+
+    lazygit resolves the template and hands the result to `$SHELL -c`, so a
+    value spliced in unquoted is re-parsed as shell: `cost is $5` loses the
+    `$5`, a backtick runs a command, and an odd quote aborts the command. The
+    only tool lazygit gives you is `quote`, and it has to wrap the whole value
+    — inside hand-written quotes it splits the argument instead of protecting
+    it, which is worse than leaving it out.
+    """
+    errors = []
+    prompt_types = {
+        p.get("key"): p.get("type") for p in (command.get("prompts") or []) if isinstance(p, dict)
+    }
+    for expression in EXPRESSION_RE.finditer(command_text):
+        body = expression.group("body")
+        quoted = re.search(r"\|\s*quote\b", body)
+        for reference in REFERENCE_RE.finditer(body):
+            path = reference.group("path")
+            if path in SAFE_PLACEHOLDERS:
+                continue
+            if path.startswith("Form."):
+                name = path.split(".", 1)[1]
+                # Menu answers are values this file itself lists, so they are
+                # as fixed as the command text around them.
+                if prompt_types.get(name) == "menu":
+                    continue
+            elif path.split(".", 1)[0] not in ("Form",) and "." not in path:
+                # A bare model reference (e.g. inside an `if`) is a truth test,
+                # not an interpolation.
+                continue
+            if not quoted:
+                errors.append(
+                    f"custom command {label!r}: {{{{{body.strip()}}}}} reaches the shell unquoted; "
+                    "pipe the whole value through `quote`, or pass it as an argument to `sh -c`"
+                )
+    return errors
 
 # Keys lazygit renames on load, from computeMigratedConfig in
 # pkg/config/app_config.go. These are NOT ignored — lazygit migrates them and
@@ -1077,6 +1136,23 @@ SELFTEST_CASES = [
         "ignored alongside",
     ),
     ({"customCommands": [{"key": "a", "context": "files"}]}, "has no command"),
+    (
+        {
+            "customCommands": [
+                {
+                    "key": "a",
+                    "context": "files",
+                    "command": 'git commit -m "{{.Form.Subject}}"',
+                    "prompts": [{"type": "input", "key": "Subject"}],
+                }
+            ]
+        },
+        "reaches the shell unquoted",
+    ),
+    (
+        {"customCommands": [{"key": "a", "context": "files", "command": "git add {{.SelectedFile.Name}}"}]},
+        "reaches the shell unquoted",
+    ),
 ]
 
 
