@@ -177,6 +177,26 @@ two muted foregrounds for ghosted text and line numbers. Those live in
 | moved-added line number       | `#5a7f9c` |
 | whitespace error              | `#db4b4b` |
 
+> **Never `dim` in a diff gutter.** `#6f9157` is shared with delta's
+> `line-numbers-plus-style`, and it is a hex on both sides on purpose. Those
+> two keys used to read `"#9ece6a dim"`, and `dim` is SGR 2 — what SGR 2 looks
+> like is the terminal's decision, not the config's. kitty blends toward the
+> background by `dim_opacity`, `0.25` here, which turned the added line number
+> into `#3b4837`: darker than `fg_gutter`, the shade this document calls not a
+> text colour because you cannot read it. wezterm and VS Code's terminal each
+> pick their own factor, so one diff had three gutters, none of them the
+> `#6f9157` Neovim was showing beside them — a colour picked, by the comment
+> in `inline_diff.lua`, as "delta's green, pre-dimmed" because a highlight
+> group has no dim attribute to reach for.
+>
+> Naming the colour on both sides is what lets `check-theme.py` compare them,
+> and it now also fails if `dim` comes back. The removed line number takes
+> git's own `delete` `#914c54`, already in the palette for exactly that.
+
+Delta's `blame-code-style` and the rest stay attribute-free for the same
+reason. If a colour has to be muted, mute it here, where every tool can read
+the same answer.
+
 ### Dark+ on the command line
 
 The zsh line editor is the one piece of chrome that is also *code*, and it is

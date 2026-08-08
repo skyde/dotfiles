@@ -167,8 +167,25 @@
     line-numbers-left-style = "#545c7e"
     line-numbers-right-style = "#545c7e"
     line-numbers-zero-style = "#545c7e"
-    line-numbers-plus-style = "#9ece6a dim"   # additions → Tokyo Night green, dimmed
-    line-numbers-minus-style = "#f7768e dim"  # deletions → Tokyo Night red, dimmed
+    # Additions and deletions, muted so the numbers stay context rather than
+    # competing with the code beside them — but muted to a *colour*, not with
+    # the `dim` attribute these used to carry.
+    #
+    # `dim` is SGR 2, and what SGR 2 looks like is the terminal's decision, not
+    # this file's. kitty blends toward the background by `dim_opacity`, which
+    # is 0.25 here, so the green arrived a shade darker than fg_gutter — which
+    # docs/tokyonight.md calls not a text colour, because you cannot read it.
+    # wezterm and VS Code's terminal each pick their own factor, so the same
+    # diff had three different gutters.
+    #
+    # #6f9157 is Neovim's InlineDiffAddNr, which was hand-picked as "delta's
+    # green, pre-dimmed" precisely because a highlight group has no dim
+    # attribute. That subsystem exists to look like delta, so this is the pair
+    # agreeing on a value instead of each guessing at the other's. The minus
+    # takes git's own `delete` #914c54, already in the palette for exactly this
+    # — a red muted enough to be context.
+    line-numbers-plus-style = "#6f9157"
+    line-numbers-minus-style = "#914c54"
     line-numbers-left-format = ""
     line-numbers-right-format = "{np:<4}"
 

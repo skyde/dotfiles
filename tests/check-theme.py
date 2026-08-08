@@ -678,6 +678,17 @@ def inline_diff_groups() -> dict[str, str]:
     }
 
 
+def inline_diff_foregrounds() -> dict[str, str]:
+    """The fg-only groups, which the bg pattern above cannot see."""
+    text = read("common/.config/nvim/lua/util/inline_diff.lua")
+    return {
+        name: norm(colour)
+        for name, colour in re.findall(
+            r"(InlineDiff\w+)\s*=\s*\{\s*fg\s*=\s*\"(#[0-9a-fA-F]{6})\"\s*\}", text
+        )
+    }
+
+
 def check_diff_tints(report: Report) -> None:
     styles = delta_styles()
     groups = inline_diff_groups()
@@ -698,6 +709,31 @@ def check_diff_tints(report: Report) -> None:
             report.fail(
                 "diff",
                 f"delta's {delta_key} is {expected} but {group} is {actual}",
+            )
+
+    # The gutter, which is a foreground rather than a tint. These used to carry
+    # delta's `dim` attribute, and what SGR 2 renders as is the terminal's
+    # decision — kitty blended it to #3b4837 at this dim_opacity, darker than
+    # the colour the docs call unreadable, while Neovim showed the hand-picked
+    # #6f9157 for the same line of the same diff. Both name the colour now, so
+    # they can be compared.
+    foregrounds = inline_diff_foregrounds()
+    for delta_key, group in (("line-numbers-plus-style", "InlineDiffAddNr"),):
+        raw = styles.get(delta_key, "")
+        match = HEX_RE.search(raw)
+        if not match:
+            report.fail("diff", f"delta's {delta_key} ({raw!r}) names no colour")
+        elif "dim" in raw.split():
+            report.fail(
+                "diff",
+                f"delta's {delta_key} still carries `dim`, so what it renders as "
+                f"is the terminal's choice and {group} cannot match it",
+            )
+        elif foregrounds.get(group) != norm(match.group(0)):
+            report.fail(
+                "diff",
+                f"delta's {delta_key} is {norm(match.group(0))} but {group} is "
+                f"{foregrounds.get(group)}",
             )
 
     # The move colours come from delta's map-styles, which is one string.
