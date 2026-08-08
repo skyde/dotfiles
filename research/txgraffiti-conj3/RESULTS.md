@@ -111,7 +111,7 @@ covering transversals, `Q(t)` asks whether `N > 0` always.
 |-----|-----------|-------|----------------:|--------------:|--------:|
 | 2 | 20 | **exhaustive** — all 32 multigraphs `D`, all pairings | 332,640 | none | **4** |
 | 3 | 30 | **exhaustive** — all 709 multigraphs `D`, all pairings | 24,431,732,325 | none | **4** |
-| 4 | 40 | local search over pairings, 1,200 sampled `D` | — | none | 46 |
+| 4 | 40 | local search over pairings, 1,200 sampled `D` | 2.4 x 10^8 | none | <= 42 |
 
 So `Q(2)` and `Q(3)` both hold, the second after testing all 24.4 billion
 pairings. Consequently:
@@ -120,6 +120,10 @@ pairings. Consequently:
 the minimum possible saturation number `mu* = 3n/10`** (i.e. for `n = 10, 20,
 30`; `n = 10` also follows from Proposition 6 without any computation).
 
+(The `t = 4` figure is only an upper bound on the true minimum: hill-climbing
+on `N` stalls in local minima well above the floor, so it says nothing except
+that `N = 0` was never reached.)
+
 Two quantitative surprises. First, `min N = 4` at both `t = 2` and `t = 3` — the
 floor does not drop as `t` grows, even though the counting bound of §5 gives the
 adversary steadily more room. That suggests the stronger statement `N >= 4` for
@@ -127,7 +131,31 @@ all `t >= 2`, which would imply `Q(t)`. Second, no pairing anywhere in the
 exhaustive range came even close to failing: `N = 0` never occurred, and
 `N = 4` was already the worst case at `t = 2`.
 
-## 5. What was not done
+## 5. Named and structured families
+
+Exhaustive search only reaches small orders, so 1,001 highly structured regular
+graphs on up to 64 vertices were tested separately — the sort of graph that is
+usually extremal for domination and matching parameters:
+
+* generalized Petersen graphs `GP(n,k)`, `n <= 32` (240 graphs)
+* circulants `C_n(S)` for a range of connection sets (617)
+* flower snarks `J_5, J_7, ..., J_15`, Möbius ladders, hypercubes `Q_2..Q_6`
+* Kneser graphs `K(n,k)` with at most 64 vertices (20)
+* complete graphs and complete bipartite graphs `K_{r,r}`
+
+**979 decided, no counterexample.** The 22 undecided cases are all `K_{r,r}`
+with `r >= 11`, where the branch and bound stalls because the minimum maximal
+matching is a perfect matching — and those are settled in closed form instead
+(`notes.md`, Proposition 7): `i(K_{r,r}) = mu*(K_{r,r}) = r`, equality.
+
+Lemma 2's bound `mu*(G) >= ceil(nr/(2(2r-1)))` is also used as a fast path in
+`search.c`: if an independent dominating set of that size exists, the
+conjecture holds for `G` without touching the matching side at all. That one
+test takes the 64-vertex circulants from "no answer in 25 s" to instant. and across every sweep the observed `min mu*` equals
+that bound exactly wherever the bound is achievable, which is an independent
+check on the lemma.
+
+## 6. What was not done
 
 * The conjecture remains **open**. Nothing here proves it in general, and no
   counterexample was found.
@@ -142,7 +170,7 @@ Random cubic graphs are far from tight (at `n = 50` a random cubic graph
 typically has `i ≈ 14`, `mu* ≈ 16`), so unstructured search is not a promising
 route; the extremal family really is the place to look.
 
-## 6. Reproducing
+## 7. Reproducing
 
 ```sh
 apt-get install -y nauty
@@ -154,9 +182,12 @@ for n in 4 5 6 7 8; do nauty-geng -qc $n; done > /tmp/g.g6
 diff <(./src/search --any --invariants < /tmp/g.g6 | sort) \
      <(python3 src/verify.py          < /tmp/g.g6 | sort) && echo AGREE
 
-./src/allreg.sh 4 13          # all regular graphs, orders 4..13
-./src/sweep.sh 3 22 4         # all connected cubic graphs on 22 vertices
-./src/tightsweep.sh 12 4 --mincount   # extremal family, n = 30
+./src/allreg.sh 4 13                  # all regular graphs, orders 4..13
+./src/order14.sh                      # every degree at order 14
+./src/sweep.sh 3 22 4                 # all connected cubic graphs on 22 vertices
+./src/tightsweep.sh 12 4 --mincount   # extremal family, n = 30 (24.4e9 pairings)
+(cd src && python3 structured.py) > data/structured.tsv
+./src/structsweep.sh                  # named families up to 64 vertices
 ```
 
 ## References

@@ -167,7 +167,23 @@ room, which suggests:
 An affirmative answer to `Q'` implies `Q`, hence the conjecture for all
 `mu*`-minimal cubic graphs.
 
-## 6. General `r`
+## 6. The sharpness example, in closed form
+
+**Proposition 7.** `i(K_{r,r}) = mu*(K_{r,r}) = r` for every `r >= 1`.
+
+*Proof.* Let the sides be `X` and `Y`. An independent set is contained in one
+side; a nonempty `S ⊆ X` dominates all of `Y`, but the vertices of `X ∖ S` are
+not adjacent to anything in `S`, so a maximal independent set is exactly `X` or
+exactly `Y`. Hence `i = r`. For the matching, if `M` is a matching with
+`|M| = k < r` then at least one vertex of `X` and one of `Y` are unsaturated,
+and they are adjacent, so `M` is not maximal. Hence every maximal matching is
+perfect and `mu* = r`. ∎
+
+This is why brute force stalls on `K_{r,r}` for large `r` — the minimum maximal
+matching is a perfect matching, the worst case for the branch and bound — and
+why it does not matter: the family is settled in closed form, with equality.
+
+## 7. General `r`
 
 Lemma 2 holds for all `r`.  In the extremal case `mu* = nr/(2(2r-1))` the same
 argument gives `|A| = nr/(2r-1)`, `|B| = n(r-1)/(2r-1)`, with `B` independent,

@@ -263,6 +263,15 @@ int main(int argc, char **argv)
             continue;
         }
 
+        /* Lemma 2: for r-regular G, mu*(G) >= ceil(nr / (2(2r-1))).  So if an
+         * independent dominating set of that size exists we are done without
+         * touching the matching side at all, which is the expensive one. */
+        if (regular && r >= 1) {
+            int den = 2 * (2 * r - 1);
+            int lb  = (n * r + den - 1) / den;
+            if (has_ids(lb)) continue;     /* i(G) <= lb <= mu*(G) */
+        }
+
         int s  = greedy_ids();             /* i(G) <= s */
         int mu = mu_star_capped(s);        /* mu >= s, or mu == mu*(G) < s */
         if (mu >= s) continue;             /* i(G) <= s <= mu*(G): holds */

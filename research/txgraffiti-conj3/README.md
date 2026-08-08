@@ -43,7 +43,9 @@ Headline findings:
     src/sweep.sh       parallel exhaustive sweep of r-regular graphs of order n
     src/allreg.sh      sweep over every degree for a range of orders
     src/tightsweep.sh  parallel driver for the extremal-family search
+    src/structured.py  named regular families (snarks, GP, Kneser, circulants)
+    src/structsweep.sh tests those one at a time with a per-graph time limit
     logs/*.summary     results
 
 Requires `nauty` (`apt-get install nauty`) and a C compiler. See
-[`RESULTS.md`](RESULTS.md) §6 for exact reproduction commands.
+[`RESULTS.md`](RESULTS.md) §7 for exact reproduction commands.
