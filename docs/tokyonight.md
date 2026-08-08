@@ -170,6 +170,7 @@ prompt; anything else would mean accepting a history entry recoloured it.
 | variables, assignments, interpolation       | `#9cdcfe` |
 | globs, case patterns, history expansion     | `#d7ba7d` |
 | options                                     | `#569cd6` |
+| option values — `--jobs=8`, `-m "msg"`      | string / number colour |
 | numbers and file descriptors                | `#b5cea8` |
 | redirections, `;` and `\|`                   | `#737aa2` |
 | bracket pairs, by nesting depth             | `#ffd700` `#da70d6` `#179fff` |
@@ -183,7 +184,18 @@ Three of those rows are about keeping the line from going flat. **Subcommands**
 get the type colour because `git commit` and `docker run` are the most-typed
 tokens on the line and had no colour of their own — `fast-syntax-highlighting`
 knows them from its per-command grammars, and left unset they fell through to
-the plugin's raw ANSI `fg=yellow`. **Plumbing** dropped from `#d4d4d4` to dark5
+the plugin's raw ANSI `fg=yellow`. The plugin's built-in grammar list froze
+around 2019, so `~/.zshrc` also registers its generic subcommand grammar for
+the tools that arrived since (`cargo`, `kubectl`, `gh`, `uv`, the Chromium
+checkout's `gn` and `gclient`, …) — one hash entry each, pointing at the same
+chroma the built-ins use. **Option values** are the long tail of a long
+command — `--target=x86_64-…`, `--jobs=8`, the message after `git commit -m` —
+and their two style keys (`optarg-string`, `optarg-number`) are defined by
+neither the plugin's defaults nor its default theme, so every one of them
+rendered in the terminal's raw foreground. They are literals, and take the
+string orange or, when the whole value is digits, the number green. The `=`
+form is styled for every command; the free-standing value after an option
+only where a grammar declares which options take one. **Plumbing** dropped from `#d4d4d4` to dark5
 so that it stops reading level with the words either side of it; that is the
 same move the path separators make, and for the same reason. **Bracket pairs**
 are VS Code's own bracket-pair-colourisation hues, since the prompt is code.

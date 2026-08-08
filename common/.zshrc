@@ -348,10 +348,27 @@ typeset -gA _tn_cli_styles=(
   # declaration, and take the blue Dark+ gives those.
   single-hyphen-option          'fg=#569cd6'
   double-hyphen-option          'fg=#569cd6'
-  # Numbers.
+  # The value an option carries. fast-syntax-highlighting marks the part
+  # after `=` in `--opt=value` with these two keys everywhere, and marks the
+  # free-standing value after an option for commands whose grammar declares
+  # which options take one (git, and the subcommand tools registered below).
+  # Both keys were unset, and unset is not "left alone" here: neither the
+  # plugin's embedded defaults nor its default theme define them, so the
+  # region got an empty style — `--exclude=node_modules` painted the option
+  # blue and dropped the value in the terminal's raw foreground, from
+  # neither palette. A value is a literal, so it reads as one: string orange,
+  # or number green when the whole value is digits (measured: `--jobs=8`
+  # lands on optarg-number, `--target=x86_64-…` on optarg-string).
+  optarg-string                 'fg=#ce9178'
+  optarg-number                 'fg=#b5cea8'
+  # Numbers. named-fd/numeric-fd are zsh-syntax-highlighting's keys for the
+  # descriptor in `exec {fd}<file`; exec-descriptor is
+  # fast-syntax-highlighting's name for the same role, and was the one of the
+  # three left unset.
   mathnum                       'fg=#b5cea8'
   named-fd                      'fg=#b5cea8'
   numeric-fd                    'fg=#b5cea8'
+  exec-descriptor               'fg=#b5cea8'
   matherr                       'fg=#f7768e'
   # Plumbing is structure, not content — so it recedes rather than taking a
   # hue of its own. Previously it was #d4d4d4, the same as an ordinary
@@ -443,6 +460,13 @@ typeset -gA _tn_cli_styles=(
   # outside the parentheses was #dcdcaa. Emptied, the highlighter never
   # switches, and a nested command reads exactly like a top-level one.
   secondary                     ''
+  # The base coat fast-syntax-highlighting lays under a string it re-enters
+  # as code — the quoted body of `eval "…"` or `zsh -c "…"` — before painting
+  # the real styles on top. Unset it was another no-style hole: the quotes
+  # and the gaps between repainted words fell back to the terminal's raw
+  # foreground. Same value as `default` above, which is the `secondary ''`
+  # decision again: code inside a string reads exactly like code outside it.
+  recursive-base                'fg=#d4d4d4'
 )
 
 if (( ${+FAST_HIGHLIGHT_STYLES} )); then
@@ -456,6 +480,23 @@ if (( ${+ZSH_HIGHLIGHT_STYLES} )); then
   done
 fi
 unset _tn_k _tn_v _tn_cli_styles
+
+# The subcommand teal above only fires for commands the highlighter has a
+# grammar for, and its built-in list froze around 2019: brew, apt, pip, npm
+# and tmux are in it, while the tools that arrived since are not — so
+# `cargo build` or `kubectl get pods` painted the verb as a plain argument
+# and a long invocation lost its main anchor. The generic subcommand grammar
+# is data, not code: registering a command is one hash entry pointing at the
+# chroma the built-in list already uses for npm and friends. gn and gclient
+# are the Chromium checkout's tools (docs/chromium-clangd.md).
+if (( ${+FAST_HIGHLIGHT} )); then
+  for _tn_c in cargo rustup go kubectl helm terraform gh docker-compose \
+               pnpm bun deno uv poetry pipx conda just mise dotnet az \
+               gcloud flutter gn gclient; do
+    FAST_HIGHLIGHT[chroma-$_tn_c]='→chroma/-subcommand.ch'
+  done
+  unset _tn_c
+fi
 
 # -------- machine-specific overrides
 # shellcheck disable=SC1090
