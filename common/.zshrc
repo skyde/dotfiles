@@ -242,7 +242,10 @@ _source_zsh_plugin "zsh-autosuggestions" "zsh-autosuggestions.zsh"
 # The table below switches the secondary theme off, so the download would only
 # ever be fetched to sit unread; pinning the directory and leaving the file in
 # place is what stops a network round trip from being part of opening a shell.
-typeset -g FAST_WORK_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/fast-syntax-highlighting"
+# Defaulted rather than assigned, so a FAST_WORK_DIR already exported from
+# ~/.zshenv or the environment still wins — the point here is to have *a* known
+# directory before the plugin loads, not to insist on this one.
+typeset -g FAST_WORK_DIR="${FAST_WORK_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/fast-syntax-highlighting}"
 [[ -e $FAST_WORK_DIR/secondary_theme.zsh ]] ||
   { mkdir -p -- "$FAST_WORK_DIR" && : >| "$FAST_WORK_DIR/secondary_theme.zsh" } 2>/dev/null
 
