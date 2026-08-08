@@ -303,6 +303,52 @@ eq("config: loading catches up already-open C++ buffers", 5, #generate_log())
 check("config: the compdb exists afterwards", vim.uv.fs_stat(root .. "/compile_commands.json") ~= nil)
 
 --------------------------------------------------------------------------
+-- no python at all
+--------------------------------------------------------------------------
+
+-- vim.system raises rather than reporting when the binary is missing, and the
+-- throw used to happen after the in-flight flag was set — so one missing
+-- interpreter left the flag stuck on and every later attempt returned early,
+-- silently, for the rest of the session.
+do
+  local said = {}
+  local real_notify, real_exepath = vim.notify, vim.fn.exepath
+  vim.notify = function(msg, level)
+    table.insert(said, { msg = tostring(msg), level = level })
+  end
+  ---@diagnostic disable-next-line: duplicate-set-field
+  vim.fn.exepath = function(bin)
+    if bin == "python3" or bin == "python" then
+      return ""
+    end
+    return real_exepath(bin)
+  end
+
+  vim.fn.delete(root .. "/compile_commands.json")
+  local runs_before = #generate_log()
+  local ok = pcall(chromium.generate, { root = root, force = true })
+
+  vim.fn.exepath, vim.notify = real_exepath, real_notify
+
+  check("no python: it does not raise", ok, "it raised")
+  eq("no python: and nothing was run", runs_before, #generate_log())
+  local err
+  for _, entry in ipairs(said) do
+    if entry.msg:find("python3 is not on PATH", 1, true) then
+      err = entry
+    end
+  end
+  check("no python: it says so", err ~= nil, vim.inspect(said))
+  eq("no python: as an error", vim.log.levels.ERROR, err and err.level)
+  check("no python: nothing is left in flight", not chromium.busy(), "still busy")
+
+  -- And with python back, the very next attempt works: the flag did not stick.
+  chromium.generate({ root = root, force = true, silent = true })
+  settle()
+  eq("no python: the next attempt runs normally", runs_before + 1, #generate_log())
+end
+
+--------------------------------------------------------------------------
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 if failed > 0 then

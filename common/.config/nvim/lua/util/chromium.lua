@@ -254,13 +254,25 @@ function M.generate(opts)
     return
   end
 
+  -- Resolved before anything is marked in flight. vim.system raises rather
+  -- than reporting when the binary is missing, and the throw would leave
+  -- `inflight[root]` set forever — every later attempt then returns early and
+  -- silently, so one missing interpreter disabled the command for the session.
+  local python = vim.fn.exepath("python3")
+  if python == "" then
+    python = vim.fn.exepath("python")
+  end
+  if python == "" then
+    vim.notify("python3 is not on PATH; generate_compdb.py cannot run", vim.log.levels.ERROR)
+    return
+  end
+
   inflight[root] = true
   if not opts.silent then
     vim.notify(("Regenerating compile_commands.json against %s…"):format(out), vim.log.levels.INFO)
   end
-  local python = vim.fn.exepath("python3")
-  local cmd = { python ~= "" and python or "python", MARKER, "-p", out, "-o", "compile_commands.json" }
-  vim.system(cmd, { cwd = root }, function(res)
+  local cmd = { python, MARKER, "-p", out, "-o", "compile_commands.json" }
+  local spawned = pcall(vim.system, cmd, { cwd = root }, function(res)
     vim.schedule(function()
       inflight[root] = nil
       if res.code == 0 then
@@ -275,6 +287,14 @@ function M.generate(opts)
       flush_idle()
     end)
   end)
+  if not spawned then
+    -- Belt and braces for anything else that keeps the process from starting.
+    -- The flag has to come back off either way, or nothing can be regenerated
+    -- again for the rest of the session.
+    inflight[root] = nil
+    vim.notify(("Could not run %s"):format(MARKER), vim.log.levels.ERROR)
+    flush_idle()
+  end
 end
 
 ---True while a generation is running; `fn` fires once after the next one
