@@ -5,11 +5,24 @@
 -- set of queries cannot quietly leave Python looking different from C++.
 --
 -- Writes a report to $NVIM_SYNTAX_REPORT and exits non-zero on a mismatch.
+--
+-- Skipping is a real outcome here -- the parsers are a separate install and a
+-- developer without them should not get a red build. But a skip that exits 0
+-- looks exactly like a pass, and there are three quite different ways to reach
+-- one: the parsers are missing, the plugins never loaded, or this repository's
+-- config is not the config Neovim started with. The third is the dangerous
+-- one, because it also means the roles being compared are not the roles in
+-- this checkout, and it used to be reported as "parser not installed".
+--
+-- So the reason is named, and $NVIM_SYNTAX_STRICT=1 turns any skip into a
+-- failure -- for CI, where a silent skip is the whole risk.
 
 local report = {}
 local function say(fmt, ...)
   report[#report + 1] = select("#", ...) > 0 and string.format(fmt, ...) or fmt
 end
+
+local strict = (vim.env.NVIM_SYNTAX_STRICT or "") ~= ""
 
 local samples = {
   cpp = [[
@@ -112,9 +125,33 @@ for lang, text in pairs(samples) do
   end
 end
 
+-- Name the reason rather than blaming the parsers for all three. `@variable`
+-- carrying the VS Code blue is the cheapest proof that this checkout's
+-- on_highlights hook actually ran: nothing else in Neovim paints it #9CDCFE.
+local function skip_reason()
+  if not pcall(require, "lazy") then
+    return "Neovim started with no plugin manager, so this checkout's "
+      .. "config was never loaded (try: tests/check-nvim-syntax-roles.sh .)"
+  end
+  local hl = vim.api.nvim_get_hl(0, { name = "@variable", link = false })
+  if not hl or hl.fg ~= tonumber("9CDCFE", 16) then
+    return "the VS Code palette is not applied -- @variable is not #9CDCFE, "
+      .. "so the colours here would not be this repository's"
+  end
+  return string.format("no tree-sitter highlighting for %s (parser not installed)",
+    table.concat(missing, ", "))
+end
+
 local status = 0
 if #missing > 0 then
-  say("SKIP: no tree-sitter highlighting for %s (parser not installed)", table.concat(missing, ", "))
+  local why = skip_reason()
+  if strict then
+    say("FAIL: %s", why)
+    say("(NVIM_SYNTAX_STRICT is set, so a skip counts as a failure)")
+    status = 2
+  else
+    say("SKIP: %s", why)
+  end
 else
   local bad = 0
   say("%-22s %-10s %-10s", "role", "C++", "Python")

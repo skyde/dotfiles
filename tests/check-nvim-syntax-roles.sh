@@ -5,13 +5,27 @@
 #
 #   tests/check-nvim-syntax-roles.sh            # against the installed config
 #   tests/check-nvim-syntax-roles.sh /path/dir  # against a checkout's common/.config
+#   tests/check-nvim-syntax-roles.sh --strict . # a skip is a failure
+#
+# --strict is for anywhere the run is unattended. Without it a skip exits 0,
+# which is correct for a developer who has not installed the parsers and wrong
+# for CI, where "nothing ran" and "everything passed" then look identical.
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
 here="$PWD"
 
+if [[ ${1-} == --strict ]]; then
+  export NVIM_SYNTAX_STRICT=1
+  shift
+fi
+
 if [[ $# -ge 1 ]]; then
-  export XDG_CONFIG_HOME="$1/common/.config"
+  case "$1" in
+    -*) echo "usage: $0 [--strict] [path/to/checkout]" >&2; exit 2 ;;
+  esac
+  XDG_CONFIG_HOME="$(cd "$1" && pwd)/common/.config"
+  export XDG_CONFIG_HOME
 fi
 
 if ! command -v nvim >/dev/null 2>&1; then

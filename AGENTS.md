@@ -24,6 +24,11 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 - Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`
   (self-contained, no plugins required), and `./tests/check-nvim-keymaps.sh` to
   invoke every binding against the real config.
+- If you touched syntax colours, `./tests/check-nvim-syntax-roles.sh .` compares
+  the 21 C++/Python roles in a real Neovim. It skips when the tree-sitter
+  parsers are missing, and prints which of the three setup problems it hit —
+  read that line, because a skip exits 0. Add `--strict` before the path to make
+  a skip a failure.
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines
