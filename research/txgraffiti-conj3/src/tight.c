@@ -451,13 +451,14 @@ static long minimize_over_pairings(long long steps, long long restarts)
 
 int main(int argc, char **argv)
 {
-    long long samples = 0, mini_steps = 0, mini_restarts = 1;
+    long long samples = 0, mini_steps = 0, mini_restarts = 1, skip_first = 0;
     for (int a = 1; a < argc; a++) {
         if (!strcmp(argv[a], "-s") && a + 1 < argc) samples = atoll(argv[++a]);
         else if (!strcmp(argv[a], "--dump")) dump = 1;
         else if (!strcmp(argv[a], "--nofilter")) nofilter = 1;
         else if (!strcmp(argv[a], "--slowsat")) force_slow = 1;
         else if (!strcmp(argv[a], "--mincount")) track_min = 1;
+        else if (!strcmp(argv[a], "--skip") && a + 1 < argc) skip_first = atoll(argv[++a]);
         else if (!strcmp(argv[a], "--minimize") && a + 1 < argc) mini_steps = atoll(argv[++a]);
         else if (!strcmp(argv[a], "--restarts") && a + 1 < argc) mini_restarts = atoll(argv[++a]);
         else if (!strcmp(argv[a], "--seed") && a + 1 < argc)
@@ -474,6 +475,7 @@ int main(int argc, char **argv)
                                                     : read_graph6_D(line);
         if (!ok) continue;
         nD++;
+        if ((long long)nD <= skip_first) continue;   /* resume support */
         build_base();
         build_varmasks();
         if (mini_steps) {
@@ -482,6 +484,10 @@ int main(int argc, char **argv)
         }
         else if (samples) sample_pairings(samples);
         else              enum_pairings(0);
+        /* progress line: lets an interrupted run be resumed with --skip */
+        fprintf(stderr, "progress base=%llu tested=%llu min=%ld ce=%llu\n",
+                nD, tried, min_count, found);
+        fflush(stderr);
     }
     fprintf(stderr, "base_graphs=%llu pairings_tested=%llu counterexamples=%llu no_transversal_cover=%llu\n",
             nD, tried, found, unsat);

@@ -109,14 +109,23 @@ covering transversals, `Q(t)` asks whether `N > 0` always.
 
 | `t` | `n = 10t` | scope | pairings tested | `N = 0` found | `min N` |
 |-----|-----------|-------|----------------:|--------------:|--------:|
-| 2 | 20 | **exhaustive** (all 32 multigraphs `D`, all pairings) | 332,640 | none | 4 |
-| 3 | 30 | **exhaustive** (all 709 multigraphs `D`, all pairings) | *see below* | *see below* | *see below* |
-| 4 | 40 | local search over pairings, 400 sampled `D` | — | none | 46 |
+| 2 | 20 | **exhaustive** — all 32 multigraphs `D`, all pairings | 332,640 | none | **4** |
+| 3 | 30 | **exhaustive** — all 709 multigraphs `D`, all pairings | 24,431,732,325 | none | **4** |
+| 4 | 40 | local search over pairings, 1,200 sampled `D` | — | none | 46 |
 
-`min N` never approaches `0`. Consequently:
+So `Q(2)` and `Q(3)` both hold, the second after testing all 24.4 billion
+pairings. Consequently:
 
 **The conjecture holds for every cubic graph on at most 30 vertices that attains
-the minimum possible saturation number `mu* = 3n/10`.**
+the minimum possible saturation number `mu* = 3n/10`** (i.e. for `n = 10, 20,
+30`; `n = 10` also follows from Proposition 6 without any computation).
+
+Two quantitative surprises. First, `min N = 4` at both `t = 2` and `t = 3` — the
+floor does not drop as `t` grows, even though the counting bound of §5 gives the
+adversary steadily more room. That suggests the stronger statement `N >= 4` for
+all `t >= 2`, which would imply `Q(t)`. Second, no pairing anywhere in the
+exhaustive range came even close to failing: `N = 0` never occurred, and
+`N = 4` was already the worst case at `t = 2`.
 
 ## 5. What was not done
 

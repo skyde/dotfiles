@@ -1,0 +1,4 @@
+=== extremal cubic family, n=30  (D = loopless cubic multigraphs on 12 vertices)
+    base graphs=709   elapsed=1790s
+    pairings tested=24431732325   counterexamples=0   pairings with no covering transversal=0
+    min number of covering transversals over all pairings = 4

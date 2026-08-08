@@ -152,10 +152,20 @@ exhaustive computation (see `RESULTS.md`).
 
 A sharper quantity than "is there one?" is *how many* transversals work.  Let
 `N(D, π)` be the number of covering transversals, so `Q(t)` asks whether
-`N > 0` always.  Exhaustively, `min N = 4` over every pairing of every cubic
-multigraph on `8` vertices.  The minimum stays comfortably positive as `t`
-grows, which is the strongest evidence available here that `Q(t)` never
-fails.
+`N > 0` always.  Exhaustively,
+
+        min N = 4   over all pairings of all cubic multigraphs on  8 vertices (t = 2)
+        min N = 4   over all pairings of all cubic multigraphs on 12 vertices (t = 3)
+
+the second over all 24,431,732,325 pairings.  The floor does not fall as `t`
+grows, even though the counting bound above gives the adversary steadily more
+room, which suggests:
+
+> **Question Q'(t).** Is `N(D, π) >= 4` for every loopless cubic multigraph `D`
+> on `4t` vertices with `t >= 2` and every pairing `π`?
+
+An affirmative answer to `Q'` implies `Q`, hence the conjecture for all
+`mu*`-minimal cubic graphs.
 
 ## 6. General `r`
 
