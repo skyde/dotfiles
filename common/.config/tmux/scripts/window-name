@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pane_id="${1:-}"
+if [[ -z "${pane_id}" ]]; then
+  exit 0
+fi
+
+pane_path=$(tmux display-message -p -t "${pane_id}" '#{pane_current_path}' 2>/dev/null || true)
+pane_command=$(tmux display-message -p -t "${pane_id}" '#{pane_current_command}' 2>/dev/null || true)
+pane_title=$(tmux display-message -p -t "${pane_id}" '#{pane_title}' 2>/dev/null || true)
+pane_start_command=$(tmux display-message -p -t "${pane_id}" '#{pane_start_command}' 2>/dev/null || true)
+
+trim() {
+  local value="${1:-}"
+  # shellcheck disable=SC2001
+  printf '%s\n' "${value}" | sed -e 's/^[[:space:]]\+//' -e 's/[[:space:]]\+$//'
+}
+
+pane_path=$(trim "${pane_path}")
+pane_command=$(trim "${pane_command}")
+pane_title=$(trim "${pane_title}")
+pane_start_command=$(trim "${pane_start_command}")
+
+shell_commands=(bash zsh fish sh nu yash)
+
+is_shell=false
+for shell_cmd in "${shell_commands[@]}"; do
+  if [[ "${pane_command}" == "${shell_cmd}" ]]; then
+    is_shell=true
+    break
+  fi
+done
+
+name=""
+
+resolved_path="${pane_path}"
+display_path="${pane_path}"
+
+if [[ -n "${display_path}" && -n "${HOME:-}" ]]; then
+  case "${display_path}" in
+    "${HOME}"*)
+      display_path="~${display_path#${HOME}}"
+      ;;
+  esac
+fi
+
+maybe_git_name=""
+if [[ -n "${resolved_path}" ]] && command -v git >/dev/null 2>&1; then
+  if repo_root=$(git -C "${resolved_path}" rev-parse --show-toplevel 2>/dev/null); then
+    repo_name=$(basename "${repo_root}")
+    branch=$(git -C "${repo_root}" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+    if [[ "${branch}" == "HEAD" || -z "${branch}" ]]; then
+      branch=$(git -C "${repo_root}" rev-parse --short HEAD 2>/dev/null || true)
+    fi
+    maybe_git_name="${repo_name}"
+    if [[ -n "${branch}" ]]; then
+      maybe_git_name+=":${branch}"
+    fi
+  fi
+fi
+
+if [[ -n "${maybe_git_name}" ]]; then
+  name="${maybe_git_name}"
+elif [[ -n "${display_path}" ]]; then
+  name=$(basename "${display_path}")
+fi
+
+if [[ -z "${name}" && -n "${pane_title}" ]]; then
+  name="${pane_title}"
+fi
+
+if [[ -z "${name}" && -n "${pane_command}" ]]; then
+  name="${pane_command}"
+fi
+
+if [[ -z "${name}" ]]; then
+  name="tmux"
+fi
+
+command_display=""
+if [[ "${is_shell}" == false ]]; then
+  if [[ -n "${pane_start_command}" ]]; then
+    command_display="${pane_start_command}"
+  elif [[ -n "${pane_command}" ]]; then
+    command_display="${pane_command}"
+  fi
+fi
+
+if [[ -n "${command_display}" ]]; then
+  if [[ ${#command_display} -gt 40 ]]; then
+    command_display="${command_display:0:37}…"
+  fi
+  if [[ "${name}" == "tmux" || "${name}" == "${command_display}" ]]; then
+    name="${command_display}"
+  elif [[ "${name}" != "${command_display}" ]]; then
+    name+=" · ${command_display}"
+  fi
+fi
+
+printf '%s\n' "${name}"
