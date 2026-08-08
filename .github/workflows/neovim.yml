@@ -83,7 +83,7 @@ jobs:
       # out loud.
       - name: Run the Neovim specs
         env:
-          NVIM_SPECS_NO_SKIP: "1"
+          NVIM_CHECKS_NO_SKIP: "1"
         run: ./tests/run-nvim-specs.sh
 
   # Its own job rather than a matrix leg, so continue-on-error can be a plain
@@ -121,7 +121,7 @@ jobs:
 
       - name: Run the Neovim specs
         env:
-          NVIM_SPECS_NO_SKIP: "1"
+          NVIM_CHECKS_NO_SKIP: "1"
         run: ./tests/run-nvim-specs.sh
 
   lint:
@@ -144,12 +144,18 @@ jobs:
           version: latest
           args: --check --config-path common/.config/nvim/stylua.toml common/.config/nvim tests
 
+      # Pinned, not "latest". Asking the API for the latest tag is an
+      # unauthenticated call that gets rate-limited on shared runners — it
+      # returned 403, the version came out empty and the download 404'd, which
+      # is a red branch caused by nothing in the branch. A pin also stops a new
+      # release inventing diagnostics overnight. Bump it deliberately: install
+      # the new version locally, run this script, then change the number.
       - name: Install lua-language-server
+        env:
+          LLS_VERSION: 3.19.0
         run: |
-          version="$(curl -fsSL https://api.github.com/repos/LuaLS/lua-language-server/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')"
-          echo "Installing lua-language-server $version"
           curl -fsSL -o lls.tar.gz \
-            "https://github.com/LuaLS/lua-language-server/releases/download/${version}/lua-language-server-${version}-linux-x64.tar.gz"
+            "https://github.com/LuaLS/lua-language-server/releases/download/${LLS_VERSION}/lua-language-server-${LLS_VERSION}-linux-x64.tar.gz"
           mkdir -p "$HOME/lls"
           tar xzf lls.tar.gz -C "$HOME/lls"
           echo "$HOME/lls/bin" >> "$GITHUB_PATH"
@@ -158,6 +164,8 @@ jobs:
       # nil check, and anything Neovim has deprecated — the class of mistake a
       # spec only finds if it happens to take that branch.
       - name: Type-check the Lua
+        env:
+          NVIM_CHECKS_NO_SKIP: "1"
         run: ./tests/check-nvim-types.sh
 
   integration:

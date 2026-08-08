@@ -4,7 +4,7 @@
 #   tests/run-nvim-specs.sh            # all specs
 #   tests/run-nvim-specs.sh vcs        # only specs whose name matches "vcs"
 #
-# NVIM_SPECS_NO_SKIP=1 turns a skipped block into a failure. CI sets it: it
+# NVIM_CHECKS_NO_SKIP=1 turns a skipped block into a failure. CI sets it: it
 # installs every tool the specs reach for, so a skip there means the tool went
 # missing from the runner image and a whole backend stopped being covered —
 # which is silent, and looks exactly like passing.
@@ -32,8 +32,8 @@ for spec in tests/*_spec.lua; do
   if [[ $rc -ne 0 ]]; then
     printf '%s: FAILED\n' "$name" >&2
     status=1
-  elif [[ "${NVIM_SPECS_NO_SKIP:-}" == "1" ]] && grep -q '^SKIP ' <<<"$out"; then
-    printf '%s: FAILED (skipped a block with NVIM_SPECS_NO_SKIP=1)\n' "$name" >&2
+  elif [[ "${NVIM_CHECKS_NO_SKIP:-}" == "1" ]] && grep -q '^SKIP ' <<<"$out"; then
+    printf '%s: FAILED (skipped a block with NVIM_CHECKS_NO_SKIP=1)\n' "$name" >&2
     grep '^SKIP ' <<<"$out" >&2
     status=1
   else

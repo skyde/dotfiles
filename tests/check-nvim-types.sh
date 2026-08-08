@@ -11,6 +11,10 @@
 # Needs `lua-language-server` on PATH; skips cleanly when it is missing, so this
 # stays usable on a machine that has not installed it. Release binaries:
 # https://github.com/LuaLS/lua-language-server/releases
+#
+# NVIM_CHECKS_NO_SKIP=1 turns those skips into failures. CI sets it: it installs
+# both tools, so a skip there means an install step quietly stopped working and
+# the whole type check evaporated while the job still reported success.
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
@@ -27,14 +31,21 @@ for arg in "$@"; do
   esac
 done
 
-if ! command -v lua-language-server >/dev/null 2>&1; then
-  echo "SKIP: lua-language-server not found"
+skip() {
+  if [[ "${NVIM_CHECKS_NO_SKIP:-}" == "1" ]]; then
+    echo "FAIL: $1 (NVIM_CHECKS_NO_SKIP=1)" >&2
+    exit 1
+  fi
+  echo "SKIP: $1"
   exit 0
+}
+
+if ! command -v lua-language-server >/dev/null 2>&1; then
+  skip "lua-language-server not found"
 fi
 
 if ! command -v nvim >/dev/null 2>&1; then
-  echo "SKIP: nvim not found (its runtime is the type library)"
-  exit 0
+  skip "nvim not found (its runtime is the type library)"
 fi
 
 # The Neovim runtime's own Lua is the library every `vim.*` annotation comes

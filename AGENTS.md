@@ -21,14 +21,16 @@ rest need the tool named, and each skips cleanly when it is missing.
   network, no system clipboard, everything built in a tempdir. Run these on any
   change to `common/.config/nvim/lua`. The jj, Mercurial and ripgrep blocks skip
   when the tool is missing; CI installs all three and sets
-  `NVIM_SPECS_NO_SKIP=1`, which turns a skip into a failure so a backend cannot
+  `NVIM_CHECKS_NO_SKIP=1`, which turns a skip into a failure so a backend cannot
   quietly stop being covered. Install jj locally before touching `util.vcs` —
   jj is first in the detection order.
 - `stylua --check --config-path common/.config/nvim/stylua.toml common/.config/nvim tests`
   — formatting. Drop `--check` to apply it.
 - `./tests/check-nvim-types.sh` — lua-language-server over the config: undefined
   globals and fields, wrong arity, unchecked nils, deprecated Neovim APIs. Must
-  report zero problems.
+  report zero problems. Skips without the binary, and honours
+  `NVIM_CHECKS_NO_SKIP=1` the same way. CI pins the version it installs; bump it
+  by installing the new one locally, running this, then editing the workflow.
 - `./tests/check-nvim-keymaps.sh` — invokes every parity binding against the
   real config. Needs the plugins installed.
 - `./tests/check-nvim-syntax-roles.sh` — C++ and Python colour the same
