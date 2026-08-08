@@ -280,6 +280,16 @@ do
   local after = status_map(mb.changed(mroot, mb.rev(mroot, "working")))
   eq("merge: once committed there is nothing unmerged left", nil, after["conflicted.txt"])
 
+  -- Whether a revision the user typed names anything. Without it a typo at the
+  -- "compare against revision" prompt produces an empty listing, which reads as
+  -- "this base matches your tree" rather than "no such revision".
+  truthy("git: resolve accepts HEAD", b.resolve(root, "HEAD"))
+  truthy("git: resolve accepts a branch name", b.resolve(root, "main"))
+  truthy("git: resolve accepts a relative revision", b.resolve(root, "HEAD~1"))
+  eq("git: resolve rejects a name it does not know", nil, b.resolve(root, "no-such-revision-xyz"))
+  eq("git: resolve rejects the empty string", nil, b.resolve(root, ""))
+  eq("git: resolve answers a full hash", vim.trim(git(git_root, "rev-parse", "HEAD")), b.resolve(root, "HEAD"))
+
   eq("git: unmodified file absent", nil, working["deep/a/b/c/nested.txt"])
   eq("git: working scope excludes the branch commit", nil, working["src/main.c"])
 
@@ -394,6 +404,10 @@ if vim.fn.executable("jj") == 1 then
   -- With no trunk configured, trunk() degrades to the root commit; falling back
   -- to @- is what keeps `branch` scope from reporting the whole repo as added.
   eq("jj: rev(branch) falls back to the working base without a trunk", wrev, b.rev(detected_root, "branch"))
+
+  truthy("jj: resolve accepts @", b.resolve(detected_root, "@"))
+  truthy("jj: resolve accepts @-", b.resolve(detected_root, "@-"))
+  eq("jj: resolve rejects a name it does not know", nil, b.resolve(detected_root, "no-such-revision-xyz"))
 
   local files = status_map(b.changed(detected_root, "@-"))
   eq("jj: modified", "M", files["keep.txt"])
@@ -775,6 +789,10 @@ if vim.fn.executable("hg") == 1 then
   eq("hg: untracked", "?", map["b.txt"])
   eq("hg: removed reads as a deletion, not a rename", "D", map["removed.txt"])
   eq("hg: a file deleted behind hg's back reads as a deletion", "D", map["missing.txt"])
+  truthy("hg: resolve accepts .", b.resolve(detected, "."))
+  truthy("hg: resolve accepts a revision number", b.resolve(detected, "0"))
+  eq("hg: resolve rejects a name it does not know", nil, b.resolve(detected, "no-such-revision-xyz"))
+
   eq("hg: show returns base content", { "one" }, b.show(detected, ".", "a.txt"))
   truthy("hg: raw_diff produces a patch", #b.raw_diff(detected, ".", nil) > 0)
   truthy("hg: log returns revisions", #b.log(detected, "a.txt") >= 1)

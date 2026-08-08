@@ -45,6 +45,7 @@ local M = {}
 ---@field staged fun(root: string, path: string, orig: string|nil): boolean|nil
 ---@field stage fun(root: string, path: string, orig: string|nil): boolean|nil
 ---@field unstage fun(root: string, path: string, orig: string|nil): boolean|nil
+---@field resolve fun(root: string, rev: string): string|nil  optional: the canonical id for a revision the user typed, nil when it names nothing
 
 --------------------------------------------------------------------------
 -- helpers
@@ -205,6 +206,13 @@ function git.rev(root, scope)
   -- this string, and "HEAD" would keep meaning the old content after a
   -- commit, amend or rebase moved it.
   return one(sh({ "git", "rev-parse", "--verify", "--quiet", ref }, root)) or ref
+end
+
+---Does this repository know a revision by that name? Answering `nil` is what
+---lets a typo at the "compare against revision" prompt be reported as a typo
+---rather than as a repository with no changes in it.
+function git.resolve(root, rev)
+  return one(sh({ "git", "rev-parse", "--verify", "--quiet", rev .. "^{commit}" }, root))
 end
 
 ---Split NUL-separated output into fields, dropping the trailing empty one.
@@ -487,6 +495,10 @@ local function jj_unbrace(s)
     return nil, s
   end
   return pre .. old .. post, pre .. new .. post
+end
+
+function jj.resolve(root, rev)
+  return one(sh(jj_read("log", "--no-graph", "-r", rev, "-T", "commit_id"), root))
 end
 
 function jj.changed(root, rev)
@@ -837,6 +849,10 @@ local function hg_unresolved(root)
     end
   end
   return out
+end
+
+function hg.resolve(root, rev)
+  return hg_node(root, rev)
 end
 
 function hg.changed(root, rev)

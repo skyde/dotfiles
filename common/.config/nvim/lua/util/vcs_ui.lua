@@ -55,6 +55,7 @@ local ns = vim.api.nvim_create_namespace("vcs_ui")
 ---@field root string
 ---@field scope string
 ---@field rev string
+---@field custom_rev string|nil  the base the user typed at the prompt, when they picked one
 ---@field files VcsFile[]
 ---@field rows PanelRow[]  files grouped into a directory tree, one entry per panel line
 ---@field first_line integer
@@ -458,7 +459,8 @@ end
 
 local function render_panel()
   local buf = state.panel_buf
-  local scope_label = ({ working = "uncommitted", branch = "since fork point", head = "last commit" })[state.scope]
+  local scope_label = state.custom_rev
+    or ({ working = "uncommitted", branch = "since fork point", head = "last commit" })[state.scope]
     or state.scope
   local header = {
     ("%s · %s"):format(state.backend.name, scope_label),
@@ -2115,6 +2117,14 @@ function M.open(opts)
   -- caches rather than polluting them.
   local cached = not opts.rev and listing_cache[listing_key(root, scope)] or nil
 
+  if opts.rev and backend.resolve and not backend.resolve(root, opts.rev) then
+    -- A revision the backend does not know produces an empty changed-file list,
+    -- which the panel would have drawn as "(no changes)" — indistinguishable
+    -- from a base that genuinely matches the tree. A typo deserves better.
+    vim.notify(("%s does not know a revision %q"):format(backend.name, opts.rev), vim.log.levels.WARN)
+    return
+  end
+
   local rev = opts.rev or (cached and cached.rev)
   if not rev then
     rev = backend.rev(root, scope)
@@ -2127,6 +2137,9 @@ function M.open(opts)
   cancel_scrub()
   ensure_tab()
   state.backend, state.root, state.scope, state.rev = backend, root, scope, rev
+  -- What the user typed, when they picked the base themselves. The header says
+  -- so rather than claiming the scope it happens to have inherited.
+  state.custom_rev = opts.rev
   state.refreshing = nil
   if cached then
     state.files = cached.files

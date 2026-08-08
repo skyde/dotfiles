@@ -1800,6 +1800,55 @@ do
 end
 
 --------------------------------------------------------------------------
+-- a base revision the repository does not have
+--------------------------------------------------------------------------
+
+do
+  -- `<leader>gb` asks for a revision and hands it straight to the backend. A
+  -- typo produces an empty changed-file list, which the panel drew as "(no
+  -- changes)" — the same thing it draws when the base genuinely matches the
+  -- tree, so the prompt looked like it had worked.
+  vim.cmd("cd " .. vim.fn.fnameescape(root))
+  vcs.clear_cache()
+  ui.close()
+
+  local said = {}
+  local real_notify = vim.notify
+  vim.notify = function(msg, level)
+    table.insert(said, { msg = tostring(msg), level = level })
+  end
+  local tabs_before = vim.fn.tabpagenr("$")
+  ui.open({ rev = "no-such-revision-xyz" })
+  vim.notify = real_notify
+
+  local warned
+  for _, entry in ipairs(said) do
+    if entry.msg:find("no-such-revision-xyz", 1, true) then
+      warned = entry
+    end
+  end
+  check("bad base: it says the revision is unknown", warned ~= nil, vim.inspect(said))
+  eq("bad base: as a warning, not a passing remark", vim.log.levels.WARN, warned and warned.level)
+  eq("bad base: and no view is opened on nothing", tabs_before, vim.fn.tabpagenr("$"))
+
+  -- A real one still opens, and says which base it is against rather than
+  -- inheriting whatever scope the view last had.
+  ui.open({ rev = "HEAD" })
+  vim.wait(5000, function()
+    return not ui.busy()
+  end)
+  local header = panel_lines()[1]
+  check("chosen base: the header names it", header and header:find("HEAD", 1, true) ~= nil, tostring(header))
+  check(
+    "chosen base: and does not claim a scope it was not given",
+    header and header:find("uncommitted", 1, true) == nil,
+    tostring(header)
+  )
+  ui.close()
+  vcs.clear_cache()
+end
+
+--------------------------------------------------------------------------
 -- a copied file renders as a copy
 --------------------------------------------------------------------------
 
