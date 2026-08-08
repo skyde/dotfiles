@@ -94,6 +94,15 @@ eq("clangd: PATH fallback outside a checkout", "clangd", chromium.clangd_path(ni
 local cmd = chromium.clangd_cmd(root .. "/base/logging.cc")
 eq("clangd: cmd uses the bundled binary", bundled, cmd[1])
 check("clangd: cmd keeps header insertion off", vim.tbl_contains(cmd, "--header-insertion=never"))
+check("clangd: cmd uncaps find-references", vim.tbl_contains(cmd, "--limit-references=0"))
+check("clangd: cmd keeps the log quiet", vim.tbl_contains(cmd, "--log=error"))
+check("clangd: cmd pins the database dir", vim.tbl_contains(cmd, "--compile-commands-dir=" .. root))
+local outside_cmd = chromium.clangd_cmd(temp)
+local pinned = false
+for _, arg in ipairs(outside_cmd) do
+  pinned = pinned or arg:find("--compile-commands-dir", 1, true) ~= nil
+end
+check("clangd: no database pin outside a checkout", not pinned)
 
 --------------------------------------------------------------------------
 -- build-dir resolution
@@ -133,6 +142,27 @@ assert(vim.uv.fs_utime(root .. "/compile_commands.json", now + 100, now + 100))
 check("stale: fresh compdb is not stale", not chromium.stale(root))
 assert(vim.uv.fs_utime(root .. "/compile_commands.json", now - 300, now - 300))
 check("stale: compdb older than build.ninja is stale", chromium.stale(root))
+
+--------------------------------------------------------------------------
+-- the scanner behind the membership probe
+--------------------------------------------------------------------------
+
+local hay = temp .. "/haystack.txt"
+write(hay, string.rep("x", 64) .. "NEEDLE_ABC" .. string.rep("y", 64))
+local function scan(path, needle, opts)
+  local got, done = nil, false
+  chromium.file_contains(path, needle, function(f)
+    got, done = f, true
+  end, opts)
+  vim.wait(2000, function()
+    return done
+  end)
+  return got
+end
+eq("scan: present string found", true, scan(hay, "NEEDLE_ABC"))
+eq("scan: found across chunk boundaries", true, scan(hay, "NEEDLE_ABC", { chunk = 7 }))
+eq("scan: absent string is false", false, scan(hay, "NOT_THERE"))
+eq("scan: unreadable file is nil", nil, scan(temp .. "/no-such-file", "x"))
 
 --------------------------------------------------------------------------
 -- generation
@@ -301,6 +331,114 @@ require("config.chromium")
 settle()
 eq("config: loading catches up already-open C++ buffers", 5, #generate_log())
 check("config: the compdb exists afterwards", vim.uv.fs_stat(root .. "/compile_commands.json") ~= nil)
+
+--------------------------------------------------------------------------
+-- freshness after load: probed and re-stat'd, not checked once per session
+--------------------------------------------------------------------------
+
+-- The stub compdb ("[]") does not contain logging.cc: re-entering the
+-- buffer notices via the membership probe and regenerates once.
+local curbuf = vim.api.nvim_get_current_buf()
+vim.api.nvim_exec_autocmds("BufEnter", { buffer = curbuf })
+vim.wait(5000, function()
+  return #generate_log() >= 6
+end)
+settle()
+eq("probe: a file missing from the compdb regenerates once", 6, #generate_log())
+
+-- Probed once per file per session: entering again does not loop.
+vim.api.nvim_exec_autocmds("BufEnter", { buffer = curbuf })
+vim.wait(300)
+settle()
+eq("probe: the same file is not probed twice", 6, #generate_log())
+
+-- Files under out/ and outside the checkout are never probed.
+chromium.compdb_probe(root, root .. "/out/Default/gen/foo.cc")
+chromium.compdb_probe(root, temp .. "/elsewhere.cc")
+vim.wait(300)
+settle()
+eq("probe: generated and foreign files are skipped", 6, #generate_log())
+
+-- Headers are never compdb entries (`ninja -t compdb` lists translation
+-- units only); probing one would regenerate on every header opened.
+write(root .. "/base/logging.h", "// header\n")
+chromium.compdb_probe(root, root .. "/base/logging.h")
+chromium.compdb_probe(root, "")
+vim.wait(300)
+settle()
+eq("probe: headers and nameless buffers are skipped", 6, #generate_log())
+
+-- A build.ninja that moved regenerates on re-entry, mid-session — the old
+-- behavior checked once per session and went quietly stale.
+vim.wait(2100) -- clear the refresh throttle
+local later = os.time() + 200
+assert(vim.uv.fs_utime(root .. "/out/Debug/build.ninja", later, later))
+vim.api.nvim_exec_autocmds("BufEnter", { buffer = curbuf })
+vim.wait(5000, function()
+  return #generate_log() >= 7
+end)
+settle()
+eq("refresh: a stale compdb regenerates on re-entry", 7, #generate_log())
+
+--------------------------------------------------------------------------
+-- the plugin spec: one clangd per checkout
+--------------------------------------------------------------------------
+
+local plug = dofile(repo .. "/common/.config/nvim/lua/plugins/chromium-clangd.lua")
+local popts = { servers = {} }
+plug[1].opts(nil, popts)
+local clangd_opts = popts.servers.clangd
+check("plugin: cmd is a per-client function", type(clangd_opts.cmd) == "function")
+eq("spawn: argv follows the client's root", chromium.clangd_cmd(root), chromium.spawn_cmd({ root_dir = root }))
+eq("spawn: rootless argv is the stock one", chromium.clangd_cmd(nil), chromium.spawn_cmd({}))
+local called, got_root = false, nil
+clangd_opts.root_dir(vim.api.nvim_get_current_buf(), function(r)
+  called, got_root = true, r
+end)
+check("plugin: root_dir answers inside a checkout", called)
+eq("plugin: pinned to the checkout root", root, got_root)
+
+vim.cmd("edit " .. vim.fn.fnameescape(temp .. "/outside.cc"))
+called, got_root = false, nil
+clangd_opts.root_dir(vim.api.nvim_get_current_buf(), function(r)
+  called, got_root = true, r
+end)
+check("plugin: root_dir answers outside a checkout", called)
+eq("plugin: no pin outside a checkout (stock markers apply)", nil, got_root)
+
+--------------------------------------------------------------------------
+-- diagnosis
+--------------------------------------------------------------------------
+
+local okh, health = pcall(require, "chromium.health")
+check("health: module loads", okh and type(health.check) == "function")
+
+-- Freshen the compdb so the report describes a healthy checkout, then
+-- diagnose from the logging.cc buffer.
+local fresh = later + 100
+assert(vim.uv.fs_utime(root .. "/compile_commands.json", fresh, fresh))
+vim.cmd("edit " .. vim.fn.fnameescape(root .. "/base/logging.cc"))
+vim.bo.filetype = "cpp"
+settle()
+local findings = chromium.diagnose(vim.api.nvim_get_current_buf())
+local function finding(pattern)
+  for _, f in ipairs(findings) do
+    if f.msg:find(pattern, 1, true) then
+      return f
+    end
+  end
+end
+check("diagnose: reports the checkout", finding("checkout: " .. root) ~= nil)
+local bin = finding("bundled")
+check("diagnose: sees the bundled clangd", bin ~= nil and bin.status == "ok")
+check("diagnose: compdb reported current", finding("compile_commands.json:") ~= nil)
+local member = finding("is not in compile_commands.json")
+check("diagnose: flags a buffer missing from the compdb", member ~= nil and member.status == "warn")
+
+-- Outside a checkout the report is a single line.
+vim.cmd("edit " .. vim.fn.fnameescape(temp .. "/outside.cc"))
+local outside_findings = chromium.diagnose(vim.api.nvim_get_current_buf())
+eq("diagnose: one line outside a checkout", 1, #outside_findings)
 
 --------------------------------------------------------------------------
 -- no python at all

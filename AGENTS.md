@@ -59,6 +59,11 @@ missing:
 ## Optional checks
 
 - Run ShellCheck on modified shell scripts if available: `shellcheck <changed .sh files>`
+- If you touched a colour anywhere, run `./tests/check-theme.py` (needs only
+  python3 and a POSIX shell). The theme is spread across a dozen tools that
+  each want it in a different dialect; the test is what keeps them agreeing.
+  `./doctor-theme.sh` is the runtime companion, for when the theme looks wrong
+  on one machine rather than wrong in the repo. See `docs/tokyonight.md`.
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines

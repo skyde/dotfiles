@@ -39,7 +39,9 @@ rows=$(
   done <<<"$candidates"
 )
 
-chosen=$(printf '%s\n' "$rows" | fzf --tmux center,80%,40% --exit-0 --no-preview --no-sort --layout=reverse --delimiter=$'\t' --with-nth=1 --nth=2 --prompt="Download> " || true)
+# border-native: see the note in tmux-fzf-url.sh — tmux draws the popup
+# border from popup-border-style instead of the picker having none.
+chosen=$(printf '%s\n' "$rows" | fzf --tmux center,80%,40%,border-native --exit-0 --no-preview --no-sort --layout=reverse --delimiter=$'\t' --with-nth=1 --nth=2 --prompt="Download> " || true)
 
 if [[ -z "$chosen" ]]; then
   exit 0

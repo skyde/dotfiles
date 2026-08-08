@@ -289,53 +289,34 @@ local function check_cpp()
   health.start("C++ / Chromium")
 
   local chromium = require("util.chromium")
-  local root = chromium.src_root(vim.fn.getcwd())
-  if not root then
+  if not chromium.src_root(vim.fn.getcwd()) then
+    -- Outside a Chromium tree there is still a question worth answering: this
+    -- config is used for ordinary C++ too, and diagnose() has nothing to say
+    -- about that case beyond "not a checkout".
     if has("clangd") then
       health.ok(("%s on PATH"):format(version_of("clangd")))
     else
       health.info("clangd not found; C and C++ get no language features")
     end
-    health.info("not inside a Chromium checkout — nothing else to check here")
+    health.info("not inside a Chromium checkout — `:checkhealth chromium` reports in full when you are")
     return
   end
 
-  health.ok(("Chromium checkout: %s"):format(root))
-
-  -- clangd_path answers "clangd" when the checkout has no bundled one, which is
-  -- exactly the case worth reporting.
-  if chromium.clangd_path(root) ~= "clangd" then
-    health.ok("using the checkout's bundled clangd, version-matched to the build")
-  elseif has("clangd") then
-    health.warn("using clangd from PATH, not the checkout's bundled one", {
-      ':ChromiumClangd adds "checkout_clangd": True to .gclient and syncs it.',
-    })
-  else
-    health.error("no clangd at all; C++ has no language features in this checkout", {
-      ":ChromiumClangd installs the bundled one.",
-    })
-  end
-
-  local out_dir = chromium.out_dir(root)
-  if out_dir then
-    health.ok(("build dir: %s"):format(out_dir))
-  else
-    health.warn("no build dir found under out/", { ":ChromiumOutDir picks one." })
-  end
-
-  local compdb = root .. "/compile_commands.json"
-  if vim.uv.fs_stat(compdb) then
-    if chromium.stale(root) then
-      health.warn("compile_commands.json is older than build.ninja", {
-        ":ChromiumCompdb regenerates it (opening a C++ buffer does this once per session).",
-      })
+  -- Inside one, the whole answer already exists: util.chromium.diagnose is what
+  -- `:checkhealth chromium` renders, and it goes further than this section ever
+  -- did — the running client's argv, the background index, whether the current
+  -- buffer is in the database at all. Rendered rather than re-derived, because
+  -- two reports drifting apart about the same checkout is worse than one.
+  for _, finding in ipairs(chromium.diagnose()) do
+    if finding.status == "ok" then
+      health.ok(finding.msg)
+    elseif finding.status == "warn" then
+      health.warn(finding.msg, finding.advice)
+    elseif finding.status == "error" then
+      health.error(finding.msg, finding.advice)
     else
-      health.ok("compile_commands.json is current")
+      health.info(finding.msg)
     end
-  else
-    health.warn("no compile_commands.json; clangd will guess at flags", {
-      ":ChromiumCompdb generates it.",
-    })
   end
 end
 

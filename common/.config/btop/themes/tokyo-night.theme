@@ -96,3 +96,17 @@ theme[upload_end]="#f7768e"
 theme[process_start]="#7aa2f7"
 theme[process_mid]="#bb9af7"
 theme[process_end]="#f7768e"
+
+# The states a process can be put into from the process list. btop's fallbacks
+# for these are hardcoded and off-palette — a dull blue for following, a dull
+# red for paused, a dull purple behind the banner — which is exactly the sort
+# of thing that only shows up once you press the key and then looks wrong.
+#
+# A followed process takes blue0, the same background that marks a highlighted
+# row elsewhere; a paused one takes red1, the palette's hard-stop red.
+theme[proc_follow_bg]="#3d59a1"
+theme[followed_bg]="#3d59a1"
+theme[followed_fg]="#c0caf5"
+theme[proc_pause_bg]="#db4b4b"
+theme[proc_banner_bg]="#9d7cd8"
+theme[proc_banner_fg]="#16161e"

@@ -91,13 +91,48 @@ end
 ---@return string[]
 function M.clangd_cmd(path)
   local root = M.src_root(path)
-  return {
+  local cmd = {
     M.clangd_path(root),
     "--background-index",
     -- Chromium's docs: automatic include insertion picks wrong headers for
     -- anything that involves generated files.
     "--header-insertion=never",
+    -- clangd caps find-references at 1000 by default and truncates
+    -- *silently*; plenty of Chromium symbols have more usages than that.
+    -- 0 removes the cap — "find usages" must mean all of them.
+    "--limit-references=0",
+    -- At the default log level a Chromium session grows lsp.log by the
+    -- gigabyte; errors are the part worth keeping.
+    "--log=error",
   }
+  if root then
+    -- Pin database discovery instead of letting clangd walk up from each
+    -- file: a buffer under out/ (generated sources reached via gd) would
+    -- otherwise bind to whatever partial compile_commands.json sits inside
+    -- the build dir rather than the real one at the src root.
+    table.insert(cmd, "--compile-commands-dir=" .. root)
+  end
+  return cmd
+end
+
+-- What each clangd was actually spawned with, by workspace root ("" when
+-- rootless). vim.lsp.config holds one cmd for every clangd client, so a
+-- static argv would leak one checkout's --compile-commands-dir (and
+-- binary) into other projects and other checkouts in the same session.
+-- Instead the plugin registers cmd as a *function*: Neovim resolves
+-- root_dir first and hands the config to it, so every client computes its
+-- own argv at spawn time — and records it here, which is how ensure_clangd
+-- can later tell a running client no longer matches what its root wants.
+local spawned = {} ---@type table<string, string[]>
+
+---argv for a client about to spawn, derived from its resolved root.
+---@param config? { root_dir?: string }
+---@return string[]
+function M.spawn_cmd(config)
+  local root_dir = config and config.root_dir or nil
+  local cmd = M.clangd_cmd(root_dir)
+  spawned[root_dir or ""] = cmd
+  return cmd
 end
 
 --------------------------------------------------------------------------
@@ -213,6 +248,57 @@ function M.stale(root)
   return ninja ~= nil and ninja.mtime.sec > compdb.mtime.sec
 end
 
+-- Staleness by mtime misses one important case: files that appeared since
+-- the database was written (a git pull, a new branch, a freshly created
+-- file). build.ninja does not move for those until the next gn run, yet
+-- clangd is left flag-guessing for them — which is exactly the silent
+-- "gd sometimes works" degradation this module exists to prevent. So the
+-- checks are layered: M.refresh re-runs the mtime comparison whenever a C++
+-- buffer is (re)entered or the editor regains focus, and M.compdb_probe
+-- checks once per file per session that the buffer's file is actually *in*
+-- the database, regenerating when it is not.
+
+---Scan a (possibly huge) file for a plain byte string without loading it
+---whole or blocking the UI: chunked reads on the uv loop, overlapping by
+---#needle-1 bytes so a match spanning a chunk boundary is still found.
+---`cb` runs in a fast-event context — vim.schedule before touching the API.
+---@param path string
+---@param needle string
+---@param cb fun(found: boolean|nil)  nil = file unreadable
+---@param opts? { chunk?: integer }  test hook: tiny chunks exercise the overlap
+function M.file_contains(path, needle, cb, opts)
+  local chunk = opts and opts.chunk or 4 * 1024 * 1024
+  local overlap = math.max(#needle - 1, 0)
+  vim.uv.fs_open(path, "r", 292, function(oerr, fd)
+    if oerr or not fd then
+      return cb(nil)
+    end
+    local tail = ""
+    local offset = 0
+    local function step()
+      vim.uv.fs_read(fd, chunk, offset, function(rerr, data)
+        if rerr then
+          vim.uv.fs_close(fd, function() end)
+          return cb(nil)
+        end
+        if not data or #data == 0 then
+          vim.uv.fs_close(fd, function() end)
+          return cb(false)
+        end
+        offset = offset + #data
+        local hay = tail .. data
+        if hay:find(needle, 1, true) then
+          vim.uv.fs_close(fd, function() end)
+          return cb(true)
+        end
+        tail = overlap > 0 and hay:sub(-overlap) or ""
+        step()
+      end)
+    end
+    step()
+  end)
+end
+
 local inflight = {} ---@type table<string, true>
 local on_idle = {} ---@type fun()[]  test hook: callbacks when a run finishes
 
@@ -272,7 +358,9 @@ function M.generate(opts)
     vim.notify(("Regenerating compile_commands.json against %s…"):format(out), vim.log.levels.INFO)
   end
   local cmd = { python, MARKER, "-p", out, "-o", "compile_commands.json" }
-  local spawned = pcall(vim.system, cmd, { cwd = root }, function(res)
+  -- Not `spawned`: that name is taken at module scope for the per-root clangd
+  -- argv, and shadowing it here is how the two quietly become one bug later.
+  local started = pcall(vim.system, cmd, { cwd = root }, function(res)
     vim.schedule(function()
       inflight[root] = nil
       if res.code == 0 then
@@ -287,7 +375,7 @@ function M.generate(opts)
       flush_idle()
     end)
   end)
-  if not spawned then
+  if not started then
     -- Belt and braces for anything else that keeps the process from starting.
     -- The flag has to come back off either way, or nothing can be regenerated
     -- again for the rest of the session.
@@ -305,6 +393,99 @@ function M.busy(fn)
     table.insert(on_idle, fn)
   end
   return next(inflight) ~= nil
+end
+
+-- Buffer switches come in bursts and the staleness check is two stats;
+-- throttle it rather than gate it once per session (the once-per-session
+-- gate is how a compdb went quietly stale mid-session before).
+local REFRESH_THROTTLE_MS = 2000
+local last_refresh = {} ---@type table<string, integer>
+
+---Regenerate the compdb if it has gone stale — safe to call from every
+---BufEnter/FocusGained; throttled, deduped, loud only when something is
+---actually regenerated.
+---@param root string
+function M.refresh(root)
+  local now = vim.uv.now()
+  local before = last_refresh[root]
+  if before and now - before < REFRESH_THROTTLE_MS then
+    return
+  end
+  last_refresh[root] = now
+  if M.stale(root) then
+    M.generate({ root = root, force = true })
+  end
+end
+
+local probed = {} ---@type table<string, true>
+local probing = {} ---@type table<string, true>
+
+-- Only translation units appear in the database — `ninja -t compdb` emits
+-- one entry per *compiled* file. Headers never show up, so probing one
+-- would read a "miss" every time and regenerate for nothing.
+local TU_EXTENSIONS = { c = true, cc = true, cpp = true, cxx = true, m = true, mm = true }
+
+---Once per file per session: is this buffer's file actually *in* the
+---database? A file the compdb does not mention gets heuristic flags and
+---silently degraded navigation — the fate of every file added since the
+---last regeneration. A miss forces one regeneration; if the file still is
+---not there afterwards it is genuinely not built in this config (a
+---platform-excluded source, say), and nothing retries.
+---@param root string
+---@param file string  absolute path of the buffer's file
+function M.compdb_probe(root, file)
+  if vim.fn.has("win32") == 1 then
+    return -- compdb entries use forward slashes; this probe would only mis-miss
+  end
+  local ext = file:match("%.(%a+)$")
+  if not ext or not TU_EXTENSIONS[ext:lower()] then
+    return -- headers (and nameless buffers) are never compdb entries
+  end
+  file = vim.fn.fnamemodify(file, ":p"):gsub("/+$", "")
+  if file:sub(1, #root + 1) ~= root .. "/" then
+    return
+  end
+  local rel = file:sub(#root + 2)
+  if rel == "" or rel:sub(1, 4) == "out/" then
+    return -- generated files are named relative to the build dir, not src
+  end
+  local key = root .. "\0" .. rel
+  -- One scan per root at a time: the database is hundreds of MB, and a
+  -- burst of new buffers must not stack whole-file reads on the uv
+  -- threadpool. A file skipped here stays unmarked and is retried by a
+  -- later BufEnter.
+  if probed[key] or probing[root] or inflight[root] or M.stale(root) then
+    return
+  end
+  local db = root .. "/compile_commands.json"
+  local before = vim.uv.fs_stat(db)
+  if not before then
+    return
+  end
+  probing[root] = true
+  probed[key] = true
+  -- Entries look like "file": "../../base/logging.cc" — match the
+  -- src-relative path with its closing quote, plain-text.
+  M.file_contains(db, "/" .. rel .. '"', function(found)
+    vim.schedule(function()
+      probing[root] = nil
+      if found ~= false then
+        return
+      end
+      -- The database can be rewritten in place *under* the scan (a gn
+      -- debounce, a regeneration from VS Code or a terminal): a truncated
+      -- read then reports a false miss. Only trust a miss against the
+      -- same bytes the scan started on; otherwise forget the probe so a
+      -- later event retries against the new database.
+      local after = vim.uv.fs_stat(db)
+      if not after or after.mtime.sec ~= before.mtime.sec or after.size ~= before.size or inflight[root] then
+        probed[key] = nil
+        return
+      end
+      vim.notify(("%s is not in compile_commands.json; regenerating"):format(rel), vim.log.levels.INFO)
+      M.generate({ root = root, force = true, silent = true })
+    end)
+  end)
 end
 
 ---Restart clangd so it re-reads the compilation database — ChromiumIDE's
@@ -498,11 +679,39 @@ function M.gn_changed(root)
   )
 end
 
--- clangd is configured once per session (the plugin spec computes the cmd
--- from the cwd). When the first Chromium buffer shows up somewhere else —
--- nvim started at ~, then :e into a checkout — reconfigure and restart so
--- the bundled binary and fresh flags actually apply.
+-- Because the plugin registers cmd as a function of the resolved root, a
+-- client's very first spawn already carries the right binary and flags —
+-- there is nothing to reconfigure when a Chromium buffer first appears.
+-- What can still drift is a *running* client: the bundled clangd landing
+-- mid-session (gclient sync) changes what its root wants. ensure_clangd
+-- notices that drift and restarts. One wrinkle: vim.lsp.get_clients hides
+-- clients that have not finished the initialize handshake, so a restart
+-- issued the instant after a spawn silently restarts nothing — hence the
+-- bounded retry until the client is visible.
 local tuned = {} ---@type table<string, true>
+
+---@param root string
+---@param tries integer
+local function restart_when_visible(root, tries)
+  if not spawned[root] then
+    return -- nothing has spawned for this root; its first spawn will be right
+  end
+  local want = M.clangd_cmd(root)
+  if vim.deep_equal(spawned[root], want) then
+    return -- what runs is already right
+  end
+  if #vim.lsp.get_clients({ name = "clangd" }) > 0 then
+    M.restart_clangd()
+    return
+  end
+  if tries > 0 then
+    -- Spawned with a stale command but not yet visible: try again once
+    -- the handshake finishes.
+    vim.defer_fn(function()
+      restart_when_visible(root, tries - 1)
+    end, 500)
+  end
+end
 
 ---@param root string
 function M.ensure_clangd(root)
@@ -510,16 +719,7 @@ function M.ensure_clangd(root)
     return
   end
   tuned[root] = true
-  if not vim.lsp.config then
-    return
-  end
-  local want = M.clangd_cmd(root)
-  local have = (vim.lsp.config.clangd or {}).cmd
-  if type(have) == "table" and have[1] == want[1] then
-    return
-  end
-  vim.lsp.config("clangd", { cmd = want })
-  M.restart_clangd()
+  restart_when_visible(root, 10)
 end
 
 ---Forget the per-root tuning and re-run ensure_clangd — used when the
@@ -528,6 +728,194 @@ end
 function M.refit_clangd(root)
   tuned[root] = nil
   M.ensure_clangd(root)
+end
+
+--------------------------------------------------------------------------
+-- diagnosis
+--------------------------------------------------------------------------
+-- "gd is flaky" always decomposes into one of a handful of checkable facts.
+-- Check them all, as data; lua/chromium/health.lua renders this for
+-- :checkhealth chromium.
+
+---@class chromium.Finding
+---@field status "ok"|"warn"|"error"|"info"
+---@field msg string
+---@field advice? string
+
+---@param bufnr? integer  buffer to diagnose from; defaults to the current one
+---@return chromium.Finding[]
+function M.diagnose(bufnr)
+  local out = {} ---@type chromium.Finding[]
+  local function add(status, msg, advice)
+    table.insert(out, { status = status, msg = msg, advice = advice })
+  end
+
+  bufnr = bufnr or 0
+  local bufname = vim.api.nvim_buf_get_name(bufnr)
+  local root = M.src_root(bufname ~= "" and bufname or nil)
+  if not root then
+    add("info", "not inside a Chromium checkout — nothing to check")
+    return out
+  end
+  add("ok", "checkout: " .. root)
+
+  -- The binary.
+  local clangd = M.clangd_path(root)
+  if clangd ~= "clangd" then
+    add("ok", "clangd: bundled (" .. clangd .. ")")
+  elseif vim.fn.executable("clangd") == 1 then
+    add(
+      "warn",
+      "bundled clangd missing; using PATH clangd ("
+        .. vim.fn.exepath("clangd")
+        .. "), which can misparse tip-of-tree flags",
+      ":ChromiumClangd installs the bundled one"
+    )
+  else
+    add(
+      "error",
+      "no clangd anywhere: the bundled one is missing and PATH has none",
+      ":ChromiumClangd, or install clangd"
+    )
+  end
+
+  -- The build dir.
+  local out_dir = M.out_dir(root)
+  if not out_dir then
+    add(
+      "error",
+      "no generated build dir under out/ — no compile commands can exist",
+      "gn gen out/Default, or :ChromiumOutDir"
+    )
+  elseif out_dir == CURRENT_LINK then
+    add("ok", "build dir: out/current_link -> " .. (vim.uv.fs_readlink(root .. "/" .. CURRENT_LINK) or "?"))
+  else
+    add("ok", "build dir: " .. out_dir .. " (newest build.ninja; :ChromiumOutDir pins one)")
+  end
+
+  -- The database.
+  local db_stat = vim.uv.fs_stat(root .. "/compile_commands.json")
+  if not db_stat then
+    add("error", "compile_commands.json is missing — clangd is guessing every file's flags", ":ChromiumCompdb")
+  elseif M.stale(root) then
+    add(
+      "warn",
+      "compile_commands.json predates the build dir's build.ninja",
+      ":ChromiumCompdb (also runs on the next C++ buffer)"
+    )
+  else
+    add("ok", ("compile_commands.json: %.1f MB, current"):format(db_stat.size / 2 ^ 20))
+  end
+
+  -- The running client. :ChromiumCompdb is the advice because it both
+  -- regenerates and restarts — and unlike :LspRestart it always exists
+  -- (nvim 0.12's native :lsp command makes nvim-lspconfig skip defining
+  -- its Lsp* commands entirely).
+  local clients = vim.lsp.get_clients({ name = "clangd" })
+  if #clients == 0 then
+    add("info", "clangd is not running yet (it starts with the first C++ buffer)")
+  else
+    if #clients > 1 then
+      add(
+        "warn",
+        #clients .. " clangd instances are running; one per checkout is intended",
+        "duplicate instances double memory and race the index — :ChromiumCompdb restarts clangd"
+      )
+    end
+    local client = clients[1]
+    local running = spawned[root]
+    if running and not vim.deep_equal(running, M.clangd_cmd(root)) then
+      add(
+        "warn",
+        "the running clangd was spawned with a different command than its root now wants",
+        ":ChromiumCompdb restarts clangd onto the new command"
+      )
+    else
+      add("ok", ("clangd running, %d buffers attached"):format(#vim.tbl_keys(client.attached_buffers or {})))
+    end
+    local croot = client.config and client.config.root_dir
+    if croot and croot ~= root then
+      add(
+        "warn",
+        "clangd's workspace root is " .. croot .. ", not the checkout root",
+        ":ChromiumCompdb restarts clangd"
+      )
+    end
+  end
+
+  -- The background index. Count only — stat'ing 100k shards would hang
+  -- the report on exactly the checkouts it exists for.
+  local shards = 0
+  local index_dir = root .. "/.cache/clangd/index"
+  if vim.fn.isdirectory(index_dir) == 1 then
+    for _ in vim.fs.dir(index_dir) do
+      shards = shards + 1
+      if shards >= 200000 then
+        break
+      end
+    end
+  end
+  if shards == 0 then
+    add(
+      "info",
+      "background index is empty — the first index of Chromium takes hours, and find-references is incomplete until it finishes"
+    )
+  else
+    add("ok", ("background index: %d shards (still grows while clangd is indexing)"):format(shards))
+  end
+
+  -- The tools regeneration needs. generate_compdb.py prefers the
+  -- checkout's own third_party/ninja/ninja and only falls back to PATH.
+  local own_ninja = root .. "/third_party/ninja/ninja"
+  if vim.fn.executable(own_ninja) == 0 and vim.fn.executable("ninja") == 0 then
+    add(
+      "error",
+      "no ninja: neither " .. own_ninja .. " nor PATH has one — `ninja -t compdb` (regeneration) will fail",
+      "gclient sync fetches the bundled ninja, or put depot_tools on PATH"
+    )
+  end
+  if vim.fn.executable("python3") == 0 and vim.fn.executable("python") == 0 then
+    add("error", "no python on PATH — generate_compdb.py cannot run")
+  end
+  if vim.fn.executable("gclient") == 0 then
+    add("info", "gclient is not on PATH (only needed to install the bundled clangd)")
+  end
+
+  -- This buffer.
+  local ft = vim.bo[bufnr].filetype
+  if (ft == "c" or ft == "cpp" or ft == "objc" or ft == "objcpp") and db_stat and not M.stale(root) then
+    local rel = bufname:sub(#root + 2)
+    local ext = bufname:match("%.(%a+)$")
+    local is_tu = ext ~= nil and TU_EXTENSIONS[ext:lower()] ~= nil
+    if is_tu and rel ~= "" and rel:sub(1, 4) ~= "out/" and vim.fn.has("win32") == 0 then
+      local found ---@type boolean|nil
+      local done = false
+      M.file_contains(root .. "/compile_commands.json", "/" .. rel .. '"', function(f)
+        found, done = f, true
+      end)
+      vim.wait(5000, function()
+        return done
+      end)
+      if found == true then
+        add("ok", rel .. " is in the database")
+      elseif found == false then
+        add(
+          "warn",
+          rel .. " is not in compile_commands.json — clangd is guessing its flags",
+          "new file: build once / :ChromiumCompdb; otherwise it is not built in this config"
+        )
+      else
+        add("info", "membership scan of compile_commands.json did not finish in 5s; skipped")
+      end
+    elseif not is_tu then
+      add(
+        "info",
+        "headers are never compile_commands.json entries; clangd infers their flags from a source file that includes them"
+      )
+    end
+  end
+
+  return out
 end
 
 return M

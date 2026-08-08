@@ -70,6 +70,25 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 - `lazygit` for a simple git TUI
 - `starship` for a customizable cross-shell prompt
 
+## Theme
+
+Every one of those tools — plus tmux, yazi, btop, the three terminals, the zsh
+and PowerShell command lines, `ls`, man pages and git's own output — is themed
+**Tokyo Night (night)**, from one palette. Syntax highlighting is deliberately
+*not* Tokyo Night: code is Visual Studio Dark+ everywhere it appears, so the
+chrome and the code stay two separate decisions.
+
+[`docs/tokyonight.md`](docs/tokyonight.md) is the source of truth for the
+palette and the reasoning — including the parts that are not obvious, like why
+a search match is blue in some tools and an inverted yellow block in others.
+
+Two things keep it honest:
+
+```bash
+tests/check-theme.py   # do the configs agree with each other and the docs?
+./doctor-theme.sh      # did they reach this machine, and can it render them?
+```
+
 ## Neovim
 
 LazyVim, configured to match the VS Code setup key-for-key — see

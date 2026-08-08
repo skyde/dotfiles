@@ -150,8 +150,17 @@ map({ "n", "i" }, "<D-s>", "<cmd>w<CR>", { desc = "Save file" })
 -- Same action via Shift+F5 (sent by kitty Cmd+S)
 map_shift_f(5, "<cmd>w<CR>", { mode = { "n", "i" }, desc = "Save file" })
 
--- Toggle between source and header files (requires clangd)
-map("n", "<A-o>", "<cmd>ClangdSwitchSourceHeader<CR>", { desc = "Switch header/source" })
+-- Toggle between source and header files (requires clangd). nvim-lspconfig
+-- renamed its buffer-local command ClangdSwitchSourceHeader ->
+-- LspClangdSwitchSourceHeader; accept either so the binding survives both.
+map("n", "<A-o>", function()
+  for _, cmd in ipairs({ "LspClangdSwitchSourceHeader", "ClangdSwitchSourceHeader" }) do
+    if vim.fn.exists(":" .. cmd) == 2 then
+      return vim.cmd(cmd)
+    end
+  end
+  vim.notify("clangd is not attached; switch header/source needs it", vim.log.levels.WARN)
+end, { desc = "Switch header/source" })
 
 -- Navigate jump list with Alt+Left/Right
 map("n", "<D-Left>", "<C-o>", { desc = "Jump backward" })
