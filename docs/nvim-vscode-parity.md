@@ -38,10 +38,11 @@ Commands do the same without leader keys: `:VcsChanges [working|branch|head]`,
 The list is a tree, VS Code explorer style: directories first, chains of
 single-child directories compacted onto one line (`a/b/c/`), and every
 filename shown whole instead of a full path truncated against the panel
-edge. Status letters (`M` `A` `D` `R` `?` `!`) sit in the left column,
-filetype icons follow when mini.icons is around, renamed files read
-`new ← old`, and the header tracks the selection as `file 3 of 12` plus the
-listing's total churn (`+125 -40`). The right edge of each row carries the
+edge. Status letters sit in the left column — `M` modified, `A` added, `D`
+deleted, `R` renamed, `C` copied, `?` untracked, all of them listed again in
+the `?` cheat sheet — filetype icons follow when mini.icons is around,
+renamed files read `new ← old`, and the header tracks the selection as
+`file 3 of 12` plus the listing's total churn (`+125 -40`). The right edge of each row carries the
 review state: the file's own `+n -n` (computed in the background off the
 cached bases, never a subprocess) and a `✓` once the file has been looked
 at — GitHub's per-file "viewed" checks, kept per listing until its base
@@ -63,7 +64,7 @@ revision moves.
 | `m` | open the three-way merge view for a conflicted file; `<leader>cq` there drops back into this view |
 | `r` | hard refresh: re-ask the backend for everything |
 | `q` | close — also from a scratch diff pane |
-| `?` | cheat sheet of these keys |
+| `?` | cheat sheet of these keys, and what each status letter means |
 
 The listing also revalidates itself in the background whenever you come back
 to the tab (or to Neovim), so a commit made in a terminal does not leave the
@@ -331,7 +332,10 @@ tests/run-nvim-specs.sh
 ```
 
 The specs. Plugin-free and hermetic — no network, no `~/.local/share/nvim`, no
-system clipboard; each builds what it needs in a tempdir:
+system clipboard; each builds what it needs in a tempdir. Blocks that need jj,
+Mercurial or ripgrep skip when the tool is missing, which is right on a laptop
+and wrong in CI: CI installs all three and sets `NVIM_CHECKS_NO_SKIP=1`, which
+turns a skip into a failure so a backend cannot quietly stop being covered.
 
 * `nvim_vcs_spec.lua` — the backends, against throwaway git, jj and Mercurial
   repositories: renames, paths with spaces and non-ASCII characters, deleted and
@@ -364,9 +368,11 @@ system clipboard; each builds what it needs in a tempdir:
   trailing newline, a deleted file, paths with spaces and non-ASCII characters.
   Also the "leaves no trace" promise — at most one looked-at file loaded at a
   time — and the view driven at random without letting its async work finish.
-* `nvim_config_spec.lua` — the two modules under `lua/config/` that are logic
-  rather than wiring: how a key press is reported, and the stop chain (debug
-  session, then the CMake build, then an Overseer task, then say so).
+* `nvim_config_spec.lua` — the parts of `lua/config/` that are logic rather
+  than wiring: how a key press is reported; the stop chain (debug session, then
+  a running Overseer task, then the CMake build, then say so); reading
+  `.vscode/launch.json`, including one that does not parse; and the argv
+  "reveal in file manager" builds on each platform.
 
 ```bash
 tests/check-nvim-keymaps.sh      # needs the plugins installed
@@ -382,7 +388,8 @@ degrading with a message is fine and throwing is not — and asserts that every
 `<leader>` key in the tables above is really mapped, so this document cannot
 promise a binding that does not exist. `check-nvim-syntax-roles.sh` checks C++
 and Python colour the same construct the same way. `check-nvim-types.sh` runs
-lua-language-server over the config and must report zero problems.
+lua-language-server over the config and must report zero problems at Hint, the
+strictest level it has; CI pins the version it installs.
 `check-footpedal-keys.py` drives Shift+Fn through a real terminal into a real
 Neovim.
 
@@ -391,6 +398,12 @@ Neovim.
 * **git** — the "fork point" base is the merge base with `@{upstream}`, then
   `origin/HEAD`, then `origin/main` / `origin/master` / `main` / `master`,
   matching what `common/.local/bin/git-diff-from-last-branch` does in the shell.
+  The changed-file list is read `-z`, so a filename containing a tab, a quote,
+  a backslash or a newline arrives as itself rather than C-quoted. Paths are
+  handed to git as `:(literal)` pathspecs: without that, `*`, `?`, `[` and a
+  leading `:` are pattern syntax, so staging `star*.txt` would stage every file
+  the glob matched and `:notes.txt` could not be named at all. A rename is one
+  row carrying its old path, and staging or reverting it names both halves.
 * **jj** — calls that ask what the working copy looks like *now* (`diff`,
   `log`) let jj snapshot, because in jj the working copy is a commit and
   `jj status` snapshots as a matter of course. Suppressing it with
@@ -400,14 +413,28 @@ Neovim.
   read committed history (`root`, `show`, trunk resolution) still skip the
   snapshot, which keeps scrubbing cheap. The fork-point base is
   `latest(::@ & trunk())`, falling back to `@-` when the repo has no trunk or
-  when trunk degrades to the root commit.
+  when trunk degrades to the root commit. The changed-file list comes from
+  `jj diff -T`, whose template prints the source and target paths verbatim;
+  `--summary` compacts a rename into a single `src/{a.txt => b.txt}` string that
+  no filename containing `{` or ` => ` can be recovered from, and that form is
+  only used as a fallback for a jj too old to know the template. Path arguments
+  are quoted `root:` filesets, since jj parses them as fileset *expressions* —
+  `report (1).pdf` is otherwise a syntax error rather than a path.
 * **Perforce** — `p4` and `g4` are the same code path; `g4` is tried first. The
   root comes from `$P4CONFIG` if set, otherwise `p4 info`'s client root. Every
   scope compares against each file's synced (`#have`) revision, since Perforce
   has no fork-point notion. `p4 where` is asked once for the whole changelist,
   not once per file, which on a real changelist is the difference between one
-  round trip and hundreds. **This backend has no live server to test against**,
-  so the spec drives it through a stub that speaks the documented `-ztag`
-  protocol; the git and jj paths are tested against real repositories.
-* **Mercurial** — included because it was nearly free once the interface
-  existed.
+  round trip and hundreds. A `p4 move` opens the pair as `move/add` and
+  `move/delete`, which map to renamed and deleted. **This backend has no live
+  server to test against**, so the spec drives it through a stub that speaks the
+  documented `-ztag` protocol; git, jj and Mercurial are tested against real
+  repositories, and CI installs all three so those blocks cannot silently skip.
+* **Mercurial** — `hg status -C` is what makes a rename arrive as one row
+  carrying its old path rather than an unrelated add plus a delete, and `-0`
+  keeps a filename containing a newline from splitting into two rows. Path
+  arguments go through `path:`, since hg reads them as patterns and a leading
+  `glob:` / `re:` / `set:` selects the pattern *type*. The fork-point base is
+  `ancestor(., default)`, falling back to `main` and `master` for repositories
+  driven by bookmarks, and to the working parent when trunk is what is checked
+  out.

@@ -44,7 +44,10 @@ The middle pane is the real buffer. Resolve there with the keys above, or pull
 a hunk across from a side pane with `dp`, or from the middle with `do`. `]c` /
 `[c` move between hunks. `<leader>cc` jumps to the other side.
 
-`<leader>cq` saves and closes the view.
+`<leader>cq` saves and closes the view. It asks the middle pane, not whichever
+one the cursor is in — the side panes have no markers left in them by
+construction, so from either of them the answer would always be "nothing left to
+resolve".
 
 ## Reviewing before you commit
 
