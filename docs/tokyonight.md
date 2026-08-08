@@ -477,15 +477,31 @@ quietly approximating it.
 
   Each of these was added because the one before it found something real.
 
-  Three tools are deliberately absent, so nobody repeats the experiment. **btop**
-  loads a theme containing an unknown key without a word — it is not an oracle,
-  and the only way to check its theme is to diff the keys against
-  `Default_theme` in its `src/btop_theme.cpp`. **lazygit** looks like one
-  because it prints `--config`, but that output omits every field with an empty
-  default, so real keys appear missing; its schema is the reference, and the
-  command for it is in a comment beside the theme block in its config. **eza**
-  discards a malformed `EZA_COLORS` code without a word; its key names were
-  checked against `man eza_colors` instead.
+  Two tools are still absent, and the reason is now measured rather than
+  asserted — this paragraph used to name three, and the third turned out to be
+  wrong. None of them validates its config, but all three *render*, and
+  rendered output is an oracle of a different kind: set one key to a colour
+  nothing else uses and see whether it reaches the screen. That works. It just
+  does not reach far enough.
+
+  **btop** loads an unknown theme key without a word, and its debug log says
+  nothing beyond "Loading theme file". Its output does carry 41 of the 48
+  theme colours, but the seven it misses are the load- and state-dependent ones
+  — gradient endpoints that only paint under load, process states that need a
+  selection — so a check built on it would fail on a quiet machine and pass on
+  a busy one. Rejected for flakiness, not for impossibility.
+
+  **eza** discards a malformed `EZA_COLORS` code without a word. A per-key
+  sentinel does work, and an unknown key correctly fails to reach the output,
+  but only 18 of its 60 keys paint in a basic listing — and a much richer
+  fixture (a git repo with staged, modified and untracked files, symlinks, hard
+  links, extended attributes, `--git --extended --octal-permissions
+  --total-size`) moved that to 20. Guarding 20 keys at the price of a 40-entry
+  list of unreachable ones, which would itself go stale, is not worth it. Key
+  names were checked against `man eza_colors` instead.
+
+  Measured with eza 0.18.2 and btop 1.3.0. Both are worth re-testing when
+  either gains a way to dump what it parsed.
   Media files are the case where the two tools genuinely describe the same
   thing in different languages: yazi matches images, video, audio and PDFs by
   mime (`**/image/*`), while `lf` and `LS_COLORS` have no notion of mime and
