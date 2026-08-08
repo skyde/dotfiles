@@ -615,9 +615,19 @@ It checks seven things:
 6. **The roles that only work if they are one colour.** Some colours earn
    their keep by being identical everywhere: "you are here" is worthless if it
    is orange in one pane and white in the next, and a selected row that shifts
-   shade between panes reads as two different kinds of selection. The cursor
-   (11 settings), the selected row (7), an in-buffer search match (4) and the
-   current match (2) are each compared across every tool that sets them.
+   shade between panes reads as two different kinds of selection. Seven roles
+   are compared across every tool that sets them — the cursor (11 settings),
+   the selected row (7), an in-buffer search match (4), the current match (2),
+   and the three that make a search result one picture wherever you ask it:
+   the file path (6), the line number (7) and the yellow block behind a match
+   (6).
+
+   Those last three are the ones the repo had been asserting in comments and
+   checking nowhere, which is exactly how `grep` came to be answering in
+   magenta and green while `rg`, `git grep` and the `st` pickers agreed. Each
+   tool spells a colour in its own dialect — a hex, an SGR triple, ripgrep's
+   commas, a `${_tn_blue}` the shell will expand — and the check normalises all
+   four.
 7. **This file's table above points at files that exist**, and lists every
    file the test checks.
 

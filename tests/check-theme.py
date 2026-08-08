@@ -809,6 +809,57 @@ SHARED_ROLES = [
         ],
     },
     {
+        "name": "a file path in search output",
+        "hex": "#7aa2f7",
+        # theme.sh builds GREP_COLORS out of the palette variables it defined
+        # at the top of the file rather than repeating the triple.
+        "aliases": ("${_tn_blue}",),
+        # Every tool that answers "where is this string" names the file, and
+        # they are routinely read one after another — `rg` in a pane, `git grep`
+        # through delta in another, the same search in st-rg's picker. The path
+        # is the column your eye tracks down, so it is the one that must not
+        # change colour between them. The comments in .ripgreprc, st-rg and the
+        # PowerShell profile all promise this; nothing checked it, which is how
+        # grep sat on magenta.
+        "settings": [
+            ("common/.ripgreprc", r"--colors=path:fg:(\d+,\d+,\d+)"),
+            ("common/.config/shell/theme.sh", r"GREP_COLORS\}:fn=([\w${}]+):"),
+            ("common/.config/git/config", r"grep-file-style\s*=\s*\"(#[0-9a-fA-F]{6})\""),
+            ("common/.local/bin/st-rg", r'mag="\\033\[38;2;(\d+;\d+;\d+)m"'),
+            ("common/.local/bin/st-zoekt", r'mag=\\"\\\\033\[38;2;(\d+;\d+;\d+)m\\"'),
+            (
+                "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
+                r"--colors 'path:fg:(\d+,\d+,\d+)'",
+            ),
+        ],
+    },
+    {
+        "name": "a line number in search output",
+        "hex": "#545c7e",
+        "aliases": ("${_tn_dark3}",),
+        # dark3, not fg_gutter: this is a number you read, and the note under
+        # the backgrounds table says anything you actually read takes a text
+        # colour. Neovim's LineNr and delta's line numbers are the same shade
+        # for the same reason.
+        "settings": [
+            ("common/.ripgreprc", r"--colors=line:fg:(\d+,\d+,\d+)"),
+            ("common/.ripgreprc", r"--colors=column:fg:(\d+,\d+,\d+)"),
+            # Anchored on the GREP_COLORS assignment: `ln` is also LS_COLORS'
+            # key for a symlink, a few dozen lines up, and that one is cyan.
+            ("common/.config/shell/theme.sh", r"GREP_COLORS\}:fn=[\w${}]+:ln=([\w${}]+):"),
+            (
+                "common/.config/git/config",
+                r"grep-line-number-style\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+            ),
+            ("common/.local/bin/st-rg", r'gre="\\033\[38;2;(\d+;\d+;\d+)m"'),
+            ("common/.local/bin/st-zoekt", r'gre=\\"\\\\033\[38;2;(\d+;\d+;\d+)m\\"'),
+            (
+                "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
+                r"--colors 'line:fg:(\d+,\d+,\d+)'",
+            ),
+        ],
+    },
+    {
         "name": "the block behind a filter match",
         "hex": "#e0af68",
         "aliases": (),
