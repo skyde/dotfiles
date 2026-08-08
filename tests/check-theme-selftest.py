@@ -427,6 +427,19 @@ MUTATIONS = [
      "bold cyan => syntax #15423d",
      "Diff tints", None),
 
+    # theme.sh's palette states each colour three ways on one line -- the
+    # decimals the shell emits, the hex in the comment, the palette's name for
+    # it -- and every LS_COLORS, EZA_COLORS and GREP_COLORS entry is built from
+    # those decimals. Nothing held the three together.
+    ("a palette variable that drifts from its own comment", "parity", THEME_SH,
+     r"_tn_blue='122;162;247'", "_tn_blue='158;206;106'",
+     "the comment beside it says", None),
+
+    # The doctor paints the same palette as swatches, in the same three parts.
+    ("a doctor swatch labelled as the wrong palette entry", "parity", DOCTOR,
+     r'block "247;118;142" "red', 'block "158;206;106" "red',
+     "is labelled", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be

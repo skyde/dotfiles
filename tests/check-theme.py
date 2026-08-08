@@ -732,6 +732,88 @@ TINT_COLUMNS = {"non-emph": "%s-non-emph-style", "body": "%s-style",
 TINT_ROWS = {"added": "plus", "removed": "minus"}
 
 
+# The doc's name for a variable whose shell name is shorter.
+PALETTE_VAR_ALIASES = {"bg_high": "bg_highlight", "gutter": "fg_gutter"}
+PALETTE_VAR = re.compile(
+    r"^_tn_(\w+)='(\d{1,3};\d{1,3};\d{1,3})'\s*#\s*(#[0-9a-fA-F]{6})?")
+
+
+def _check_palette_variables(doc, verbose):
+    """theme.sh's palette says the same thing three times; all three agree.
+
+    Each line is a decimal triple (what the shell actually emits), a hex in the
+    comment beside it, and a name that is the palette's name for that colour.
+    Nothing held any of them together: every one of these 19 lines could be
+    changed to another documented colour with nothing failing, and every
+    LS_COLORS, EZA_COLORS and GREP_COLORS entry is built from them.
+
+    The comment is the strict half -- two statements of one colour on one line,
+    either able to drift. The doc lookup is opportunistic, because two of these
+    are spelled shorter here than in the palette table.
+    """
+    path = os.path.join(REPO, "common/.config/shell/theme.sh")
+    if not os.path.isfile(path):
+        return []
+    known = documented_colours(doc)
+    by_name = {}
+    for colour, names in known.items():
+        for name in names:
+            by_name.setdefault(name.lower(), colour)
+
+    problems, checked = [], 0
+    for line in uncommented(path, open(path, encoding="utf-8").read()).splitlines():
+        m = PALETTE_VAR.match(line)
+        if not m:
+            continue
+        name, decimals, stated = m.group(1), m.group(2), m.group(3)
+        actual = "#%02x%02x%02x" % tuple(int(x) for x in decimals.split(";"))
+        checked += 1
+        if stated and norm(stated) != actual:
+            problems.append(
+                "theme.sh: _tn_%s emits %s and the comment beside it says %s"
+                % (name, actual, norm(stated)))
+        if actual not in known:
+            problems.append(
+                "theme.sh: _tn_%s emits %s, which docs/tokyonight.md does not "
+                "name%s" % (name, actual, _nearest(actual, known)))
+            continue
+        wanted = by_name.get(PALETTE_VAR_ALIASES.get(name, name).lower())
+        if wanted and norm(wanted) != actual:
+            problems.append(
+                "theme.sh: _tn_%s emits %s and the palette's %s is %s"
+                % (name, actual, PALETTE_VAR_ALIASES.get(name, name),
+                   norm(wanted)))
+    # doctor-theme.sh paints the same palette as swatches, in the same
+    # three-part form: the decimals it emits, the palette's name for them, and
+    # the hex. Nothing held those together either, so the tool you run when the
+    # theme looks wrong could have been demonstrating the wrong palette.
+    doctor = os.path.join(REPO, DOCTOR)
+    if os.path.isfile(doctor):
+        for line in uncommented(doctor,
+                                open(doctor, encoding="utf-8").read()).splitlines():
+            m = re.match(r'\s*block\s+"(\d{1,3};\d{1,3};\d{1,3})"\s+"(\S+)\s+(#[0-9a-fA-F]{6})"',
+                         line)
+            if not m:
+                continue
+            decimals, name, stated = m.group(1), m.group(2), m.group(3)
+            actual = "#%02x%02x%02x" % tuple(int(x) for x in decimals.split(";"))
+            checked += 1
+            if norm(stated) != actual:
+                problems.append(
+                    "%s: the %s swatch paints %s and is labelled %s"
+                    % (DOCTOR, name, actual, norm(stated)))
+            wanted = by_name.get(name.lower())
+            if wanted and norm(wanted) != actual:
+                problems.append(
+                    "%s: the %s swatch paints %s and the palette's %s is %s"
+                    % (DOCTOR, name, actual, name, norm(wanted)))
+
+    if verbose and not problems:
+        print("  %d palette statement(s) agree with their label and the doc"
+              % checked)
+    return problems
+
+
 def _check_diff_tints(doc, verbose):
     """delta paints a diff in the colours the doc's tint tables name.
 
@@ -2296,6 +2378,7 @@ def check_parity(doc, verbose):
     problems.extend(run_check(_check_command_lines, verbose))
     problems.extend(run_check(_check_command_line_palette, doc, verbose))
     problems.extend(run_check(_check_diff_tints, doc, verbose))
+    problems.extend(run_check(_check_palette_variables, doc, verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")

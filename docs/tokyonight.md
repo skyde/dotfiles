@@ -857,7 +857,8 @@ quietly approximating it.
   colour with no counterpart in another tool has nothing to be pinned to — but
   it is the honest number, and it is where the next check should come from.
   `.zshrc` was 32 of its 41 until the command line got tied to the table above;
-  it is 1 now.
+  it is 1 now. `theme.sh`'s palette was 28 of 28 and is 9; the doctor's swatch
+  block was 13 of 13 and is 1.
 
   The number does not always move when a check lands, and that is worth
   knowing before chasing it. Binding delta's diff tints to the tint tables
