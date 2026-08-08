@@ -206,13 +206,82 @@ than about syntax and Dark+ has no vocabulary for either: a word that resolves
 to no command is `red`, and a path that has not resolved to anything yet is
 `comment`. A path that *does* exist gets an underline instead of a hue.
 
-> **Two Dark+ variants are in play, on purpose.** These are bat's built-in
-> `Visual Studio Dark+`. The editor side — Neovim's `lua/util/vscode_syntax.lua`
-> — mirrors `Visual Studio Dark - C++` plus the token overrides in the VS Code
-> settings, which resolves some of the same roles to different hexes (strings
-> are `#dfa67c` there, comments `#7a987a`). Each side matches the thing it sits
-> next to: the prompt matches the picker above it, the buffer matches VS Code.
-> See `docs/vscode-syntax-parity.md`.
+> **Three Dark+ ports are in play, and this table is one of them.** The hexes
+> above are VS Code's *published* Dark+ token colours. The editor side —
+> Neovim's `lua/util/vscode_syntax.lua` — mirrors `Visual Studio Dark - C++`
+> plus the token overrides in the VS Code settings, which resolves some of the
+> same roles to different hexes (strings are `#dfa67c` there, comments
+> `#7a987a`). Each side matches the thing it sits next to: the buffer matches
+> VS Code, the prompt matches the picker above it. See
+> `docs/vscode-syntax-parity.md`.
+
+The third port is the one bat compiles in, and it is worth knowing it is not
+quite this table. Rendering shell, Python, C++ and JSON through
+`bat --theme="Visual Studio Dark+"` — identically on 0.24.0, 0.25.0 and 0.26.1
+— gives ten colours, and five of them are the five above:
+
+| Role                    | This table | What bat emits |
+| ----------------------- | ---------- | -------------- |
+| plain text              | `#d4d4d4`  | `#dcdcdc`      |
+| comments                | `#6a9955`  | `#608b4e`      |
+| strings                 | `#ce9178`  | `#d69d85`      |
+| escapes                 | `#d7ba7d`  | `#e3bbab`      |
+| type names              | `#4ec9b0`  | — (bat gives types the variable blue) |
+| commands and functions  | `#dcdcaa`  | `#dcdcaa`      |
+| control words           | `#c586c0`  | `#c586c0`      |
+| variables               | `#9cdcfe`  | `#9cdcfe`      |
+| options and keywords    | `#569cd6`  | `#569cd6`      |
+| numbers                 | `#b5cea8`  | `#b5cea8`      |
+
+So a history entry containing a quoted string does shift a little on its way
+from the Ctrl-R picker to the prompt. That is accepted rather than chased,
+because an exact match was never available: bat and zsh's highlighter divide a
+command line into different tokens in the first place. bat's Bash grammar
+paints `grep` as a variable and `echo` as plain text, scopes `;` and `|` as
+control words, and has no notion at all of "this word resolves to no command" —
+the distinctions the prompt exists to draw. Aligning the palette to bat's port
+would move three shades and fix none of that.
+
+What the table buys is the part that does survive: the same *roles* in the same
+*family of colours*, so nothing changes category on the way down. Reach for
+these values, not bat's, when adding a surface here.
+
+### Why `jq` is not themed
+
+`jq` is in `packages.txt` and prints JSON to the same terminal as everything
+else, so it looks like an obvious gap. It is a gap, and it has to stay one.
+
+By the rule above it is code, not chrome — `jq . x.json` and `bat x.json` are
+the same bytes — so it should take bat's Dark+: `#dcdcdc` for the punctuation,
+`#d69d85` for strings and object keys, `#b5cea8` for numbers, `#569cd6` for
+`true`/`false`/`null`. That is what bat renders a `.json` file as, measured the
+same way as the table above.
+
+`JQ_COLORS` cannot say it. Before 1.8, jq parses each field into a fixed
+`char[16]`, which leaves twelve characters for the escape body — enough for
+`38;5;NNN`, four short of the fifteen `38;2;R;G;B` needs. And it is not a
+per-field fallback: one over-long field and `jq_set_colors` returns 0, jq keeps
+its own defaults, and it prints `Failed to set $JQ_COLORS` **on every
+invocation**, including plain `jq -r .name` with no colour involved. Setting
+truecolor here would put a warning line in the stderr of every script on the
+box that pipes through jq, in exchange for no colour at all on any machine
+running the jq Debian and Ubuntu ship (1.7.1).
+
+The two things that do fit are both worse than nothing:
+
+- **256-colour.** The cube's nearest entries miss `#d69d85` by 18 and `#569cd6`
+  by 19 in a channel — the salmon goes tan, the blue goes cyan. That is the
+  failure mode `doctor-theme.sh`'s first check exists to catch, chosen on
+  purpose rather than suffered by accident.
+- **ANSI 16.** Works everywhere, and lands on Tokyo Night by way of the
+  terminal palette — which is the wrong palette. It would make jq the one
+  surface in the setup rendering code in the chrome colours.
+
+jq's own defaults are ANSI-indexed too, so today's output is already Tokyo
+Night with the roles muddled (strings green, keys bold blue, `null` bright
+black). Revisit when jq 1.8 is what these machines actually install: 1.8
+allocates the colour buffer instead, and the truecolor values above become
+sayable.
 
 ### One file-type table, four listings
 
