@@ -284,6 +284,26 @@ eq("a header and a generated file regenerate nothing", quiet_before, db_mtime())
 
 vim.cmd("edit " .. vim.fn.fnameescape(src .. "/main.cc"))
 vim.wait(1000)
+
+-- The commands, as a user reaches them. :ChromiumCompdb is the one every
+-- piece of advice in the health report points at, so it has to both
+-- regenerate and leave clangd running.
+for _, cmd in ipairs({ "ChromiumCompdb", "ChromiumOutDir", "ChromiumClangd", "ChromiumHealth" }) do
+  eq("command exists: :" .. cmd, 2, vim.fn.exists(":" .. cmd))
+end
+local before_cmd = db_mtime()
+local client_before_cmd = clangd_for(src)[1]
+vim.cmd("ChromiumCompdb")
+vim.wait(20000, function()
+  return not chromium.busy() and db_mtime() ~= before_cmd
+end, 200)
+check(":ChromiumCompdb regenerates the database", db_mtime() ~= before_cmd)
+local cmd_back = vim.wait(25000, function()
+  local now = clangd_for(src)[1]
+  return now ~= nil and (not client_before_cmd or now.id ~= client_before_cmd.id)
+end, 200)
+check(":ChromiumCompdb leaves clangd running", cmd_back)
+
 local findings = chromium.diagnose(vim.api.nvim_get_current_buf())
 local function finding(pattern)
   for _, f in ipairs(findings) do

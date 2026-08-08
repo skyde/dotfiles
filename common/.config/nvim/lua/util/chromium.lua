@@ -531,17 +531,39 @@ local function restart_client(client)
   local bufs = vim.tbl_keys(client.attached_buffers or {})
   local config = client.config
   client:stop()
-  -- Attaching before the old process is gone would find the stopping client
-  -- and reuse it, so wait for the exit rather than guessing at a delay.
+  -- Attaching before the old process is gone would find the stopping client,
+  -- reuse it, and leave those buffers serverless the moment it exits — so
+  -- wait for the exit rather than guess at a delay. A clangd flushing a
+  -- Chromium-sized index does not always take the hint; after two seconds it
+  -- is killed, and if even that does not land, say so instead of attaching
+  -- buffers to a corpse.
   local waited = 0
   local function reattach()
-    if not client:is_stopped() and waited < 5000 then
+    if not client:is_stopped() then
       waited = waited + 100
-      return vim.defer_fn(reattach, 100)
+      if waited == 2000 then
+        client:stop(true)
+      end
+      if waited < 10000 then
+        return vim.defer_fn(reattach, 100)
+      end
+      vim.notify("clangd did not exit; not restarting it (:ChromiumCompdb to retry)", vim.log.levels.ERROR)
+      return
     end
     for _, buf in ipairs(bufs) do
       if vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_is_loaded(buf) then
-        pcall(vim.lsp.start, config, { bufnr = buf })
+        -- A restart that fails halfway is the silent degradation this module
+        -- exists to prevent; it does not get to fail quietly.
+        local ok, err = pcall(vim.lsp.start, config, { bufnr = buf })
+        if not ok then
+          vim.notify(
+            ("could not reattach clangd to %s: %s"):format(
+              vim.fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ":t"),
+              err
+            ),
+            vim.log.levels.ERROR
+          )
+        end
       end
     end
   end
