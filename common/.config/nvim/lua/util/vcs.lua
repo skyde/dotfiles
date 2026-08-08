@@ -687,10 +687,38 @@ function hg.root(dir)
   return one(sh({ "hg", "root" }, dir))
 end
 
+---@param root string
+---@param revset string
+---@return string|nil
+local function hg_node(root, revset)
+  return one(sh({ "hg", "log", "-r", revset, "--template", "{node}" }, root))
+end
+
+---Where this line of work forked from trunk. hg's own notion is the named
+---branch, but plenty of repositories drive bookmarks instead, so try the usual
+---names in turn. An unknown name makes hg abort, which reads as nil here.
+local function hg_fork_point(root)
+  local current = hg_node(root, ".")
+  for _, ref in ipairs({ "default", "main", "master" }) do
+    local base = hg_node(root, ("ancestor(., %s)"):format(ref))
+    -- Equal to `.` means trunk *is* what is checked out, and comparing against
+    -- it would report no changes rather than the branch's work.
+    if base and base ~= current then
+      return base
+    end
+  end
+  return nil
+end
+
 function hg.rev(root, scope)
+  if scope == "branch" then
+    -- Without this, branch scope silently answered the same as uncommitted:
+    -- cycling to it in the panel looked like the branch had no committed work.
+    return hg_fork_point(root) or hg_node(root, ".") or "."
+  end
   local ref = scope == "head" and ".^" or "."
   -- Resolved to the node for the same reason git resolves "HEAD".
-  return one(sh({ "hg", "log", "-r", ref, "--template", "{node}" }, root)) or ref
+  return hg_node(root, ref) or ref
 end
 
 ---Mercurial's status letters are not this interface's. `R` means removed, not

@@ -690,6 +690,48 @@ if vim.fn.executable("hg") == 1 then
 
   hb.revert(hroot, ".", hrecords["renamed.txt"])
   eq("hg: reverting a rename restores the old path", 1, vim.fn.filereadable(hroot .. "/orig.txt"))
+
+  -- Branch scope. It used to resolve to `.`, the same as uncommitted, so
+  -- cycling to it in the panel showed none of the branch's committed work.
+  local hgb = temp .. "/hg-branch"
+  vim.fn.mkdir(hgb, "p")
+  run({ "hg", "init" }, hgb)
+  local function hg_commit(dir, message)
+    run({ "hg", "--config", "ui.username=Test <t@example.com>", "commit", "-m", message }, dir)
+  end
+  write(hgb .. "/f.txt", "trunk one\n")
+  run({ "hg", "add", "f.txt" }, hgb)
+  hg_commit(hgb, "trunk one")
+  write(hgb .. "/f.txt", "trunk two\n")
+  hg_commit(hgb, "trunk two")
+  local fork = vim.trim(run({ "hg", "log", "-r", ".", "--template", "{node}" }, hgb))
+  run({ "hg", "branch", "-q", "feature" }, hgb)
+  write(hgb .. "/f.txt", "on the branch\n")
+  hg_commit(hgb, "branch work")
+  write(hgb .. "/f.txt", "on the branch\nand uncommitted\n")
+
+  local bb, broot = vcs.detect(hgb)
+  eq("hg: rev(branch) is the fork point, not the working parent", fork, bb.rev(broot, "branch"))
+  truthy("hg: rev(working) is a node", (bb.rev(broot, "working") or ""):match("^%x+$"))
+  check("hg: rev(branch) is not rev(working)", bb.rev(broot, "branch") ~= bb.rev(broot, "working"))
+  eq(
+    "hg: branch scope sees the committed branch work",
+    "M",
+    status_map(bb.changed(broot, bb.rev(broot, "branch")))["f.txt"]
+  )
+  eq(
+    "hg: base content at the fork point is trunk's, not the branch's",
+    { "trunk two" },
+    bb.show(broot, bb.rev(broot, "branch"), "f.txt")
+  )
+  -- -C, or hg tries to merge the uncommitted edit into trunk and drops into an
+  -- interactive merge tool, which in a headless spec means hanging forever.
+  run({ "hg", "update", "-q", "-C", "default" }, hgb)
+  eq(
+    "hg: on trunk itself, branch scope falls back to the working parent",
+    bb.rev(broot, "working"),
+    bb.rev(broot, "branch")
+  )
 else
   print("SKIP hg backend (hg not installed)")
 end
