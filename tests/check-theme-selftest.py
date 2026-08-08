@@ -243,6 +243,16 @@ MUTATIONS = [
      "set -g menu-style          'bg=#16161e,fg=#565f89'",
      "below 4.5:1", None),
 
+    # The exports are the fourth place a pair can be stated and the only one
+    # with no file to read -- theme.sh builds them from palette variables, so
+    # the pair exists only once it has been sourced. eza has keys lf has no
+    # equivalent for, so a pair written under one of those has nothing to
+    # disagree with and the parity check cannot see it either.
+    ("an unreadable pair only the shell exports state", "contrast", THEME_SH,
+     r'tx=38;2;\$\{_tn_green\}"',
+     'tx=38;2;${_tn_green}:xx=38;2;${_tn_comment};48;2;${_tn_bg_high}"',
+     "below 4.5:1", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be

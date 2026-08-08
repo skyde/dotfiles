@@ -468,11 +468,19 @@ quietly approximating it.
   so all 44 of those pairs are read off the files and held to 4.5:1 without
   anyone listing them. The hand-written tier wins wherever both apply.
 
-  Each of the three needs its own reader — a TOML table, a raw SGR sequence,
-  tmux style segments — and tmux has to be read per segment rather than per
-  line, because `window-status-current-format` sets three `#[...]` blocks in a
-  row and pairing the first foreground with the first background would invent a
-  combination that is never drawn.
+  Each needs its own reader — a TOML table, a raw SGR sequence, tmux style
+  segments — and tmux has to be read per segment rather than per line, because
+  `window-status-current-format` sets three `#[...]` blocks in a row and pairing
+  the first foreground with the first background would invent a combination that
+  is never drawn.
+
+  A fourth source has no file to read: `LS_COLORS`, `EZA_COLORS` and
+  `GREP_COLORS` are assembled from palette variables, so a pair in them only
+  exists once `theme.sh` has been sourced. Most of what is there is mirrored in
+  `lf`'s colours file and kept honest by the parity check — which is why the
+  sticky bug could not have hidden in the exports alone — but eza has keys `lf`
+  has no equivalent for, and a pair written under one of those has nothing to
+  disagree with. Those are sourced and measured too.
 
   The derived half exists because the hand-written half had covered 6 of yazi's
   16 real pairs, and sticky directories — `#c0caf5` on `#7aa2f7`, **1.56:1**,

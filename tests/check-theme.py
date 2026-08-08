@@ -1788,10 +1788,67 @@ def _check_stated_pairs(verbose):
                     problems.append(
                         "%s:%d: %s on %s is %.2f:1, below %.1f:1 -- %s"
                         % (rel, lineno, f, b, got, floor, line.strip()[:60]))
+    exported, extra = _exported_pairs()
+    problems.extend(extra)
+    for name, entry, f, b in exported:
+        checked += 1
+        got = ratio(f, b)
+        floor = tiered.get((f, b), STATED_FLOOR)
+        if got < floor:
+            problems.append(
+                "$%s: %s on %s is %.2f:1, below %.1f:1 -- %s"
+                % (name, f, b, got, floor, entry))
+
     if verbose and not problems:
         print("  %6s   %d stated fg/bg pairs, all at or above %.1f:1"
               % ("", checked, STATED_FLOOR))
     return problems
+
+
+# The shell exports are the fourth place a pair can be stated, and the one with
+# no file to read: theme.sh builds them from palette variables, so the pair only
+# exists once the file has been sourced.
+#
+# Most of what is in here is mirrored in lf's colours file and kept honest by
+# the parity check, which is why the sticky bug could not have hidden here
+# alone. But eza has keys lf has no equivalent for, and a pair written only
+# under one of those has nothing to disagree with -- an eza-only foreground on
+# an eza-only background at 2.76:1 passed palette, parity and contrast alike
+# before this existed.
+SGR_PAIR_EITHER = re.compile(
+    r"(?:38;2;(\d+);(\d+);(\d+);48;2;(\d+);(\d+);(\d+))"
+    r"|(?:48;2;(\d+);(\d+);(\d+);38;2;(\d+);(\d+);(\d+))")
+
+
+def _exported_pairs():
+    import subprocess
+
+    path = os.path.join(REPO, "common/.config/shell/theme.sh")
+    names = ["LS_COLORS", "EZA_COLORS", "GREP_COLORS"]
+    script = '. "$1"; for v in %s; do eval "printf \'%%s\\n\' \\"\\$$v\\""; done' \
+        % " ".join(names)
+    try:
+        code, stdout, stderr = source_theme("bash", path, script)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return [], ["could not source theme.sh for its stated pairs: %s" % exc]
+    if code != 0:
+        return [], ["theme.sh failed to source: %s" % stderr.strip()]
+
+    found = []
+    for name, value in zip(names, stdout.split("\n")):
+        for entry in value.split(":"):
+            m = SGR_PAIR_EITHER.search(entry)
+            if not m:
+                continue
+            nums = [n for n in m.groups() if n is not None]
+            fg, bg = nums[:3], nums[3:]
+            if m.group(7) is not None:  # the background came first
+                fg, bg = bg, fg
+            f = "#%02x%02x%02x" % tuple(int(n) for n in fg)
+            b = "#%02x%02x%02x" % tuple(int(n) for n in bg)
+            if f != b:
+                found.append((name, entry, f, b))
+    return found, []
 
 
 # --------------------------------------------------------------------------
