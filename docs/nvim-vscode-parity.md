@@ -340,7 +340,10 @@ tests/run-nvim-specs.sh
 ```
 
 The specs. Plugin-free and hermetic — no network, no `~/.local/share/nvim`, no
-system clipboard; each builds what it needs in a tempdir. Blocks that need jj,
+system clipboard; each builds what it needs in a tempdir, which is also why
+they can run several at a time — the whole suite in about a third of the wall
+clock, with output still printed in file order (`NVIM_SPECS_JOBS=1` for
+serial). Blocks that need jj,
 Mercurial or ripgrep skip when the tool is missing, which is right on a laptop
 and wrong in CI: CI installs all three and sets `NVIM_CHECKS_NO_SKIP=1`, which
 turns a skip into a failure so a backend cannot quietly stop being covered.

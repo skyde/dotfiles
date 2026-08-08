@@ -27,7 +27,8 @@ missing:
 
 - `./tests/run-nvim-specs.sh` — the specs. Self-contained: no plugins, no
   network, no system clipboard, everything built in a tempdir. Run these on any
-  change to `common/.config/nvim/lua`. The jj, Mercurial and ripgrep blocks skip
+  change to `common/.config/nvim/lua`. They run several at a time; set
+  `NVIM_SPECS_JOBS=1` when debugging one. The jj, Mercurial and ripgrep blocks skip
   when the tool is missing; CI installs all three and sets
   `NVIM_CHECKS_NO_SKIP=1`, which turns a skip into a failure so a backend cannot
   quietly stop being covered. Install jj locally before touching `util.vcs` —
