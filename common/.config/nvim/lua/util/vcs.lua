@@ -465,9 +465,11 @@ local JJ_STATUS = {
   renamed = "R",
 }
 
----One entry per changed file as three NUL-separated fields: status, the path
----before the change, the path after it.
-local JJ_DIFF_TEMPLATE = 'status ++ "\\0" ++ source.path() ++ "\\0" ++ path ++ "\\0"'
+---One entry per changed file as four NUL-separated fields: status, the path
+---before the change, the path after it, and whether the result is a conflict.
+---The last costs nothing here — jj already knows, and asking separately would
+---mean another snapshotting command on every refresh.
+local JJ_DIFF_TEMPLATE = 'status ++ "\\0" ++ source.path() ++ "\\0" ++ path ++ "\\0" ++ target.conflict() ++ "\\0"'
 
 ---Whether the installed jj understands `jj diff -T`. Probed once, and only
 ---turned off when the template call fails where `--summary` succeeds — a
@@ -508,11 +510,12 @@ function jj.changed(root, rev)
     local res = sh(jj_cmd("diff", "--from", rev, "--to", "@", "-T", JJ_DIFF_TEMPLATE), root)
     if res and res.code == 0 then
       local fields = nul_fields(res.stdout)
-      for i = 1, #fields - 2, 3 do
-        local status, source, path = fields[i], fields[i + 1], fields[i + 2]
+      for i = 1, #fields - 3, 4 do
+        local status, source, path, conflict = fields[i], fields[i + 1], fields[i + 2], fields[i + 3]
         -- jj repeats the path in both slots unless the file moved, so a
         -- differing source *is* the pre-rename path.
-        add(path, JJ_STATUS[status] or status:sub(1, 1):upper(), source ~= path and source or nil)
+        local mapped = conflict == "true" and "U" or JJ_STATUS[status] or status:sub(1, 1):upper()
+        add(path, mapped, source ~= path and source or nil)
       end
       return out
     end
@@ -814,12 +817,35 @@ local HG_STATUS = {
   ["?"] = "?",
 }
 
+---Paths hg still calls unresolved, while an uncommitted merge is in progress.
+---`hg status` reports a conflicted file as an ordinary modification, so without
+---this the file that needs resolving looks like every other one. Gated on the
+---merge state directory existing, so the extra command is paid during a merge
+---and not on every refresh.
+local function hg_unresolved(root)
+  if not vim.uv.fs_stat(root .. "/.hg/merge") then
+    return {}
+  end
+  local out = {}
+  local res = sh({ "hg", "resolve", "--list" }, root)
+  if res and res.code == 0 then
+    for _, line in ipairs(lines(res.stdout)) do
+      local path = line:match("^U (.+)$")
+      if path then
+        out[path] = true
+      end
+    end
+  end
+  return out
+end
+
 function hg.changed(root, rev)
   -- -C prints the source of a copied or renamed file on a continuation line
   -- under it. Without it a rename arrives as an unrelated add plus a delete, so
   -- the added half has no base content to diff against and reads as a wholly
   -- new file. -0 terminates each record with NUL rather than a newline, which
   -- is what keeps a filename containing one from splitting into two records.
+  local unresolved = hg_unresolved(root)
   local res = sh({ "hg", "status", "-0", "-C", "--rev", rev }, root)
   local out = {}
   if res and res.code == 0 then
@@ -833,7 +859,7 @@ function hg.changed(root, rev)
       -- missing file instead of listing it.
       local mapped = status and HG_STATUS[status]
       if mapped then
-        table.insert(out, { path = path, status = mapped })
+        table.insert(out, { path = path, status = unresolved[path] and "U" or mapped })
       else
         local source = record:match("^  (.+)$")
         if source and out[#out] then

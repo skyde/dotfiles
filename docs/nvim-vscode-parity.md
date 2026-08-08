@@ -437,14 +437,18 @@ budgeted against.
   no filename containing `{` or ` => ` can be recovered from, and that form is
   only used as a fallback for a jj too old to know the template. Path arguments
   are quoted `root:` filesets, since jj parses them as fileset *expressions* —
-  `report (1).pdf` is otherwise a syntax error rather than a path.
+  `report (1).pdf` is otherwise a syntax error rather than a path. A conflicted
+  file is marked `!` from the same template, which already knows: in jj a
+  conflict lives in the commit rather than in the working copy.
 * **Perforce** — `p4` and `g4` are the same code path; `g4` is tried first. The
   root comes from `$P4CONFIG` if set, otherwise `p4 info`'s client root. Every
   scope compares against each file's synced (`#have`) revision, since Perforce
   has no fork-point notion. `p4 where` is asked once for the whole changelist,
   not once per file, which on a real changelist is the difference between one
   round trip and hundreds. A `p4 move` opens the pair as `move/add` and
-  `move/delete`, which map to renamed and deleted. **This backend has no live
+  `move/delete`, which map to renamed and deleted. It is the one backend that
+  does not mark conflicts: `p4 resolve -n` is a server round trip, and unlike
+  the other three there is no local marker to gate it behind. **This backend has no live
   server to test against**, so the spec drives it through a stub that speaks the
   documented `-ztag` protocol; git, jj and Mercurial are tested against real
   repositories, and CI installs all three so those blocks cannot silently skip.
@@ -455,4 +459,5 @@ budgeted against.
   `glob:` / `re:` / `set:` selects the pattern *type*. The fork-point base is
   `ancestor(., default)`, falling back to `main` and `master` for repositories
   driven by bookmarks, and to the working parent when trunk is what is checked
-  out.
+  out. Unresolved paths are marked `!`, asked for with `hg resolve --list` only
+  when `.hg/merge` says a merge is in progress.

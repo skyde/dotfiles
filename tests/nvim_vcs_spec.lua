@@ -499,6 +499,37 @@ if vim.fn.executable("jj") == 1 then
   eq("jj: reverting a rename removes the new path", 0, vim.fn.filereadable(rroot .. "/src/beta.txt"))
   eq("jj: reverting a rename leaves the other renames alone", 1, vim.fn.filereadable(rroot .. "/deep/b/file.txt"))
 
+  -- Conflicts. jj keeps them in the commit rather than in the working copy, and
+  -- the diff template already knows, so this costs no extra command.
+  local jc = temp .. "/jj-conflict"
+  vim.fn.mkdir(jc, "p")
+  run({ "jj", "git", "init", "--quiet" }, jc)
+  ---The commit id of the working copy, so the revisions below are named
+  ---exactly rather than through a revset that has to match a description.
+  local function jj_at(dir)
+    return vim.trim(run({ "jj", "--quiet", "log", "--no-graph", "-r", "@", "-T", "commit_id" }, dir))
+  end
+  write(jc .. "/a.txt", "base\n")
+  write(jc .. "/b.txt", "base\n")
+  run({ "jj", "--quiet", "describe", "-m", "base" }, jc)
+  local jbase = jj_at(jc)
+  run({ "jj", "--quiet", "new" }, jc)
+  write(jc .. "/a.txt", "left\n")
+  local jleft = jj_at(jc)
+  run({ "jj", "--quiet", "new", jbase }, jc)
+  write(jc .. "/a.txt", "right\n")
+  write(jc .. "/b.txt", "right, and nobody else touched it\n")
+  local jright = jj_at(jc)
+  -- A merge of the two sides: in jj the conflict lives in the commit, not in
+  -- the working copy, and nothing needs to fail for it to exist.
+  run({ "jj", "--quiet", "new", jleft, jright }, jc)
+
+  local cb, croot = vcs.detect(jc)
+  local conflicted = status_map(cb.changed(croot, jbase))
+  eq("jj: a conflicted file is marked U, not M", "U", conflicted["a.txt"])
+  eq("jj: a file only one side touched is not", "M", conflicted["b.txt"])
+  vcs.clear_cache()
+
   -- jj takes path arguments as fileset expressions, so these characters are
   -- syntax unless the path is passed as a quoted literal. `report (1).pdf` is
   -- an ordinary name a browser produces, and it used to be a parse error.
@@ -866,6 +897,30 @@ if vim.fn.executable("hg") == 1 then
   -- -C, or hg tries to merge the uncommitted edit into trunk and drops into an
   -- interactive merge tool, which in a headless spec means hanging forever.
   run({ "hg", "update", "-q", "-C", "default" }, hgb)
+
+  -- Conflicts. `hg status` calls an unresolved file an ordinary modification,
+  -- so the file that needs attention read like every other one.
+  local hgc = temp .. "/hg-conflict"
+  vim.fn.mkdir(hgc, "p")
+  run({ "hg", "init" }, hgc)
+  write(hgc .. "/a.txt", "base\n")
+  write(hgc .. "/b.txt", "base\n")
+  run({ "hg", "add", "a.txt", "b.txt" }, hgc)
+  hg_commit(hgc, "base")
+  write(hgc .. "/a.txt", "left\n")
+  hg_commit(hgc, "left")
+  run({ "hg", "update", "-q", "-r", "0" }, hgc)
+  write(hgc .. "/a.txt", "right\n")
+  write(hgc .. "/b.txt", "right, and nobody else touched it\n")
+  hg_commit(hgc, "right")
+  -- The merge is meant to fail, so it cannot go through run(); internal:merge
+  -- keeps hg from reaching for an interactive tool in a headless spec.
+  vim.system({ "hg", "--config", "ui.merge=internal:merge", "merge", "-r", "1" }, { cwd = hgc }):wait()
+
+  local cb, croot = vcs.detect(hgc)
+  local conflicted = status_map(cb.changed(croot, "."))
+  eq("hg: an unresolved file is marked U", "U", conflicted["a.txt"])
+  eq("hg: the merge state file is what gates the extra command", 1, vim.fn.isdirectory(hgc .. "/.hg/merge"))
   eq(
     "hg: on trunk itself, branch scope falls back to the working parent",
     bb.rev(broot, "working"),
