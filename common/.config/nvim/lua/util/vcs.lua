@@ -594,6 +594,22 @@ local function perforce(bin)
     return scope == "head" and "#head" or "#have"
   end
 
+  ---`p4 opened` spells a rename `move/add` and `move/delete`, with a slash.
+  ---This table had `move_add` in it, which matches nothing p4 has ever printed,
+  ---so both halves of every `p4 move` fell through to "modified" — including
+  ---the half that is no longer on disk, which then cannot be opened at all.
+  local P4_STATUS = {
+    edit = "M",
+    add = "A",
+    delete = "D",
+    integrate = "M",
+    branch = "A",
+    ["move/add"] = "R",
+    ["move/delete"] = "D",
+    purge = "D",
+    archive = "D",
+  }
+
   function p4.changed(root, _)
     local opened = ztag({ "opened" }, root)
     local depots = {}
@@ -625,8 +641,7 @@ local function perforce(bin)
         if local_path:sub(1, #prefix) == prefix then
           rel = local_path:sub(#prefix + 1)
         end
-        local action = rec.action or "edit"
-        local status = ({ edit = "M", add = "A", delete = "D", integrate = "M", branch = "A", move_add = "R" })[action]
+        local status = P4_STATUS[rec.action or "edit"]
         -- The synced revision per file: "#have" as a base-cache key would keep
         -- meaning the old content after a sync, "#12" cannot.
         local rev = rec.haveRev and rec.haveRev ~= "none" and ("#" .. rec.haveRev) or nil

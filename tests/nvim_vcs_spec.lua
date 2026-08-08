@@ -471,17 +471,44 @@ case "${1:-}" in
     echo "... clientName test-client"
     ;;
   opened)
+    # rev and haveRev are different fields and p4 prints both: rev is the
+    # revision the file was opened at, haveRev the one synced into the
+    # workspace. Base content has to come from haveRev, so they differ here.
     echo "... depotFile //depot/sub/edited.c"
-    echo "... rev 7"
+    echo "... rev 8"
+    echo "... haveRev 7"
     echo "... action edit"
     echo ""
     echo "... depotFile //depot/added.c"
     echo "... rev 1"
+    echo "... haveRev none"
     echo "... action add"
     echo ""
     echo "... depotFile //depot/removed.c"
     echo "... rev 3"
+    echo "... haveRev 3"
     echo "... action delete"
+    echo ""
+    # `p4 move` opens the pair as move/add and move/delete, with a slash.
+    echo "... depotFile //depot/moved-to.c"
+    echo "... rev 1"
+    echo "... haveRev none"
+    echo "... action move/add"
+    echo ""
+    echo "... depotFile //depot/moved-from.c"
+    echo "... rev 5"
+    echo "... haveRev 5"
+    echo "... action move/delete"
+    echo ""
+    echo "... depotFile //depot/branched.c"
+    echo "... rev 1"
+    echo "... haveRev none"
+    echo "... action branch"
+    echo ""
+    echo "... depotFile //depot/integrated.c"
+    echo "... rev 2"
+    echo "... haveRev 2"
+    echo "... action integrate"
     ;;
   where)
     shift
@@ -543,8 +570,24 @@ esac
   eq("p4: edit maps to modified", "M", map["sub/edited.c"])
   eq("p4: add maps to added", "A", map["added.c"])
   eq("p4: delete maps to deleted", "D", map["removed.c"])
-  eq("p4: paths are repo-relative", 3, #files)
+  -- The map used to spell these `move_add`, which p4 never prints, so both
+  -- halves of a move arrived as "modified" — including the half that is not on
+  -- disk any more and therefore cannot be opened.
+  eq("p4: move/add maps to renamed", "R", map["moved-to.c"])
+  eq("p4: move/delete maps to deleted", "D", map["moved-from.c"])
+  eq("p4: branch maps to added", "A", map["branched.c"])
+  eq("p4: integrate maps to modified", "M", map["integrated.c"])
+  eq("p4: paths are repo-relative", 7, #files)
   eq("p4: depot path carried through", "//depot/sub/edited.c", files[1] and files[1].depot)
+  -- haveRev, not rev: base content has to come from what is synced into the
+  -- workspace, and "#have" as a cache key would keep meaning the old content
+  -- after a sync moved it.
+  eq("p4: the per-file revision is the synced one", "#7", files[1] and files[1].rev)
+  local by_path = {}
+  for _, f in ipairs(files) do
+    by_path[f.path] = f
+  end
+  eq("p4: a file with nothing synced carries no revision", nil, by_path["added.c"] and by_path["added.c"].rev)
 
   eq(
     "p4: show asks for the synced revision",
