@@ -1,4 +1,45 @@
 -- Tokyo Night (night). Palette reference: docs/tokyonight.md
+
+-- The sixteen ANSI slots a `:terminal` buffer hands to whatever runs inside
+-- it. These are kitty's, verbatim -- see
+-- common/.config/kitty/themes/tokyonight_night.conf.
+--
+-- Neovim's `:terminal` is the fourth terminal in this setup, not a Neovim
+-- feature that happens to look terminal-ish: `<leader>ft`, the lazygit and
+-- yazi windows and the vcs diff view all run real programs in one, and those
+-- programs pick their colours out of these sixteen slots exactly as they would
+-- under kitty. So it takes the same two local deviations as the other three
+-- (docs/tokyonight.md, "Note on ANSI 8"): slot 0 is `terminal_bg` #1d202f
+-- rather than `black`, and slot 8 is lightened to #85899c, because #414868 is
+-- near-unreadable for the de-emphasised output CLI tools reach for bright
+-- black to print.
+--
+-- Spelled out rather than left to the theme for the same reason btop's theme
+-- is vendored instead of trusted from the package: the plugin derives slots
+-- 9-14 by running `Util.brighten()` over the accents, and the vendored kitty
+-- file that has to match them is a static copy of one past result. Written
+-- here, tests/check-theme.py can compare all sixteen against kitty the way it
+-- already does for wezterm and VS Code; left implicit, an upstream change to
+-- `brighten` would move Neovim's terminal alone and nothing would notice.
+local terminal_ansi = {
+  black = "#1d202f", -- 0
+  red = "#f7768e", -- 1
+  green = "#9ece6a", -- 2
+  yellow = "#e0af68", -- 3
+  blue = "#7aa2f7", -- 4
+  magenta = "#bb9af7", -- 5
+  cyan = "#7dcfff", -- 6
+  white = "#a9b1d6", -- 7
+  black_bright = "#85899c", -- 8
+  red_bright = "#ff899d", -- 9
+  green_bright = "#9fe044", -- 10
+  yellow_bright = "#faba4a", -- 11
+  blue_bright = "#8db0ff", -- 12
+  magenta_bright = "#c7a9ff", -- 13
+  cyan_bright = "#a4daff", -- 14
+  white_bright = "#c0caf5", -- 15
+}
+
 return {
   {
     "folke/tokyonight.nvim",
@@ -7,10 +48,23 @@ return {
     opts = {
       style = "night",
 
-      -- Push the theme's own palette out to the terminal's 16 ANSI slots, so a
-      -- :terminal buffer matches kitty/wezterm instead of inheriting whatever
-      -- the parent shell had.
+      -- Push a palette out to the terminal's 16 ANSI slots, so a :terminal
+      -- buffer matches kitty/wezterm instead of inheriting whatever the parent
+      -- shell had. Which palette is decided by on_colors below.
       terminal_colors = true,
+
+      -- The colour table, before any highlight group is built from it. The
+      -- theme fills in `c.terminal` from its own palette and then reads it
+      -- back when `terminal_colors` is on, so replacing the table here is what
+      -- gets kitty's sixteen into a :terminal buffer.
+      --
+      -- Only `c.terminal` is touched: the rest of `c` is what every highlight
+      -- group in the editor is derived from, and #85899c is a colour for
+      -- reading text against a dark background, not for the borders and fills
+      -- `terminal_black` is used for elsewhere.
+      on_colors = function(c)
+        c.terminal = vim.tbl_extend("force", c.terminal or {}, terminal_ansi)
+      end,
 
       styles = {
         comments = { italic = true },

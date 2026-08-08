@@ -53,6 +53,7 @@ check_file "$config_home/yazi/theme.toml"
 check_file "$config_home/lazygit/config.yml"
 check_file "$config_home/btop/themes/tokyo-night.theme"
 check_file "$config_home/kitty/themes/tokyonight_night.conf"
+check_file "$config_home/nvim/lua/plugins/tokyonight.lua"
 
 # --- 3. did this shell actually export what theme.sh sets? -----------------
 #
@@ -115,9 +116,14 @@ block "255;158;100" "orange      #ff9e64"
 block "255;80;0" "cursor      #ff5000"
 
 # The 16 ANSI slots come from the *terminal*, not from any file here, so this
-# is the one section that says whether kitty/wezterm/VS Code picked up the
-# theme. Slot 8 is the one to look at: it should be legible grey (#85899c),
-# not the near-invisible upstream #414868.
+# is the one section that says whether this terminal picked up the theme.
+# Slot 8 is the one to look at: it should be legible grey (#85899c), not the
+# near-invisible upstream #414868.
+#
+# Worth running once in each of the four (docs/tokyonight.md, "Four terminals,
+# not two"): kitty, wezterm, VS Code's integrated terminal, and Neovim's — a
+# `:terminal` buffer answers for itself here, since the slots it hands out are
+# the ones being printed.
 echo
 echo "-- terminal's own 16 ANSI colours (0-7 normal, 8-15 bright) --"
 i=0

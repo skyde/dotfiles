@@ -38,7 +38,7 @@ Taken from [`folke/tokyonight.nvim`](https://github.com/folke/tokyonight.nvim)
 | `bg`             | `#1a1b26` | default background                        |
 | `bg_dark`        | `#16161e` | status lines, sidebars, floats, popups    |
 | `black`          | `#15161e` | ANSI 0 background-ish, tab bar background  |
-| `terminal_bg`    | `#1d202f` | ANSI 0 in kitty and wezterm               |
+| `terminal_bg`    | `#1d202f` | ANSI 0 in every terminal                  |
 | `bg_dark1`       | `#1f2335` | a fill that must read as inactive next to `bg_visual` |
 | `bg_storm`       | `#24283b` | the third step of the blame stripe        |
 | `bg_highlight`   | `#292e42` | inactive borders, boxes, subtle fills     |
@@ -68,12 +68,42 @@ enough apart that adjacent commits separate.
 | `dark3`      | `#545c7e` | inactive tabs, line numbers          |
 | `terminal_black` | `#414868` | ANSI 8 (upstream value — see note) |
 
-> **Note on ANSI 8.** kitty, wezterm and VS Code's integrated terminal all use
-> `#85899c` instead of the upstream `#414868`. That is deliberate: `#414868` is
-> close to unreadable for "bright black" text that CLI tools use for
-> de-emphasised output. Keep all **three** terminals in sync — VS Code's is a
-> terminal like the other two, running the same tools, and it is the one that
-> gets forgotten. `tests/check-theme.py` compares them.
+> **Note on ANSI 8.** Every terminal here uses `#85899c` instead of the
+> upstream `#414868`. That is deliberate: `#414868` is close to unreadable for
+> "bright black" text that CLI tools use for de-emphasised output. Keep all
+> **four** terminals in sync — see below for who counts as one.
+> `tests/check-theme.py` compares them.
+
+### Four terminals, not two
+
+Two of them are obvious. The other two get forgotten, and each was found
+wearing upstream's `#414868` after the deviation above had already been
+applied to the obvious ones:
+
+- **VS Code's integrated terminal** is a terminal like kitty and wezterm,
+  running the same tools, and it is easy to file under "editor".
+- **Neovim's `:terminal`** is the same trap one level further in. `<leader>ft`,
+  the lazygit and yazi windows and the vcs diff view all run real programs
+  inside one, and those programs pick their colours out of sixteen ANSI slots
+  exactly as they would under kitty.
+
+Neovim's sixteen come from `terminal_ansi` in `plugins/tokyonight.lua`, which
+is kitty's table copied out rather than the theme's own palette. Two reasons it
+is spelled out instead of nudged:
+
+- The theme derives ANSI 9–14 by running `Util.brighten()` over the accents,
+  and the vendored kitty file that has to match them is a static copy of one
+  past result of that function. Left implicit, an upstream change to `brighten`
+  moves Neovim's terminal alone, silently.
+- A table the test can read is a table the test can check. `check-theme.py`
+  compares all sixteen against kitty, the same way it does for wezterm and VS
+  Code, and separately checks the wiring — `terminal_colors = true` and an
+  `on_colors` that actually hands the table over — because a palette nobody
+  reads is the failure mode described under "dead keys" below.
+
+Only `colors.terminal` is replaced, not the palette the editor's own highlight
+groups are built from: `#85899c` is a colour for reading text against a dark
+background, not for the borders and fills `terminal_black` draws elsewhere.
 
 ### Accents
 
@@ -418,7 +448,7 @@ it fails the test.
 | wezterm  | `common/.config/wezterm/wezterm.lua`                  |
 | VS Code terminal | `common/.config/Code/User/settings.json` (the `terminal.*` keys) |
 | tmux     | `common/.tmux.conf` (the `# Theme` section)           |
-| Neovim   | `common/.config/nvim/lua/plugins/tokyonight.lua`      |
+| Neovim   | `common/.config/nvim/lua/plugins/tokyonight.lua` (chrome, and `:terminal`'s ANSI slots) |
 | Neovim   | `common/.config/nvim/lua/util/inline_diff.lua` (the diff tints) |
 | lazygit  | `common/.config/lazygit/config.yml` (`gui.theme`)     |
 | delta, git | `common/.config/git/config` (`[delta]`, and git's own `[color "…"]`) |
@@ -450,9 +480,9 @@ It checks seven things:
 1. **Every colour is documented here.** Any hex or `38;2;R;G;B` triple in a
    themed config has to appear somewhere in this file. That is what makes this
    document the registry rather than a description that rots.
-2. **All three terminals agree**, slot for slot: background, foreground,
-   cursor, selection and all sixteen ANSI colours, across kitty, wezterm and
-   VS Code's integrated terminal.
+2. **All four terminals agree**, slot for slot: background, foreground,
+   cursor, selection and all sixteen ANSI colours, across kitty, wezterm,
+   VS Code's integrated terminal and Neovim's `:terminal`.
 3. **One file-type table, three dialects.** `LS_COLORS` (asked of a real shell,
    not reparsed), `lf/colors` and yazi's `[filetype]` rules must agree on every
    extension and file kind, colour *and* boldness — including where yazi says

@@ -7,7 +7,8 @@ and nothing but care has been keeping them in agreement. This is that care,
 written down:
 
   1. every colour in a themed config is one docs/tokyonight.md documents
-  2. kitty, wezterm and VS Code's terminal agree, slot for slot
+  2. kitty, wezterm, VS Code's terminal and Neovim's :terminal agree,
+     slot for slot
   3. the file-type table is the same in LS_COLORS, lf and yazi
   4. Neovim's inline diff uses delta's tints, exactly
   5. every file naming the syntax theme names the same one
@@ -149,7 +150,7 @@ def check_documented(report: Report) -> None:
             report.ok(f"{relative} uses only documented colours")
 
 
-# --- 2. kitty and wezterm agree --------------------------------------------
+# --- 2. every terminal agrees ----------------------------------------------
 
 # The pairs that have to match, named as kitty spells them.
 TERMINAL_KEYS = [
@@ -221,6 +222,50 @@ def parse_vscode_terminal() -> dict[str, str]:
         if match:
             values[key] = norm(match.group(1))
     return values
+
+
+# Neovim's `:terminal` is the fourth. It is easy to file under "editor" and
+# forget, but `<leader>ft`, the lazygit and yazi windows and the vcs diff view
+# all run real programs inside one, and those programs read their colours out
+# of the same sixteen ANSI slots they would under kitty.
+#
+# plugins/tokyonight.lua spells the slots out in a `terminal_ansi` table and
+# hands it to the theme through `on_colors`; these are the names it uses.
+NVIM_TERMINAL_SLOTS = {
+    "color0": "black",
+    "color1": "red",
+    "color2": "green",
+    "color3": "yellow",
+    "color4": "blue",
+    "color5": "magenta",
+    "color6": "cyan",
+    "color7": "white",
+    "color8": "black_bright",
+    "color9": "red_bright",
+    "color10": "green_bright",
+    "color11": "yellow_bright",
+    "color12": "blue_bright",
+    "color13": "magenta_bright",
+    "color14": "cyan_bright",
+    "color15": "white_bright",
+}
+
+NVIM_TOKYONIGHT = "common/.config/nvim/lua/plugins/tokyonight.lua"
+
+
+def parse_nvim_terminal() -> dict[str, str]:
+    """The `terminal_ansi` table out of plugins/tokyonight.lua."""
+    block = re.search(
+        r"^local terminal_ansi = \{$(.*?)^\}$", read(NVIM_TOKYONIGHT), re.S | re.M
+    )
+    if not block:
+        return {}
+    return {
+        slot: norm(colour)
+        for slot, colour in re.findall(
+            r"(\w+)\s*=\s*\"(#[0-9a-fA-F]{6})\"", block.group(1)
+        )
+    }
 
 
 def parse_kitty_theme() -> dict[str, str]:
@@ -309,6 +354,64 @@ def check_terminals(report: Report) -> None:
                 f"{key} is {expected} in kitty but {setting} is {actual} in VS Code",
             )
     report.ok("VS Code's integrated terminal agrees with kitty")
+
+    check_nvim_terminal(report, kitty)
+
+
+def check_nvim_terminal(report: Report, kitty: dict[str, str]) -> None:
+    """Neovim's `:terminal` gets the same sixteen slots as the other three.
+
+    A table nobody reads is not a palette, so the wiring is checked as well as
+    the values: the theme only pushes these out when `terminal_colors` is on,
+    and only sees them at all if `on_colors` hands the table over.
+    """
+    text = read(NVIM_TOKYONIGHT)
+    nvim = parse_nvim_terminal()
+    if not nvim:
+        report.fail(
+            "terminals",
+            f"{NVIM_TOKYONIGHT} has no `local terminal_ansi = {{...}}` table, so a "
+            f":terminal buffer is back on the theme's own ANSI colours",
+        )
+        return
+
+    for guard, why in (
+        (
+            r"terminal_colors\s*=\s*true",
+            "terminal_colors is not true, so the table is never pushed to the "
+            "terminal at all",
+        ),
+        (
+            r"on_colors\s*=\s*function.*?terminal_ansi",
+            "on_colors does not hand terminal_ansi to the theme, so the table is "
+            "dead and :terminal keeps the theme's own colours",
+        ),
+    ):
+        if not re.search(guard, text, re.S):
+            report.fail("terminals", f"{NVIM_TOKYONIGHT}: {why}")
+
+    missing = set(NVIM_TERMINAL_SLOTS.values()) - set(nvim)
+    extra = set(nvim) - set(NVIM_TERMINAL_SLOTS.values())
+    for slot in sorted(missing):
+        report.fail("terminals", f"Neovim's terminal_ansi table has no {slot}")
+    for slot in sorted(extra):
+        report.fail(
+            "terminals",
+            f"Neovim's terminal_ansi table sets {slot}, which is not an ANSI slot",
+        )
+
+    for key, slot in NVIM_TERMINAL_SLOTS.items():
+        expected = kitty.get(key)
+        actual = nvim.get(slot)
+        if expected is None or actual is None:
+            continue  # already reported
+        if actual != expected:
+            report.fail(
+                "terminals",
+                f"{key} is {expected} in kitty but terminal_ansi.{slot} is "
+                f"{actual} in Neovim",
+            )
+    report.ok("Neovim's :terminal agrees with kitty")
 
 
 # --- 3. one file-type table, three dialects --------------------------------
