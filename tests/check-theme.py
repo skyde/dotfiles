@@ -1703,10 +1703,50 @@ def check_contrast(doc, verbose):
 # which pairs exist. PAIRS above is hand-written and therefore covers what
 # someone thought to list: 10 of yazi's 16 real pairs were missing from it, and
 # one of those was the least readable pair in the repository.
-STATED_PAIRS = [
-    (YAZI, r'\bfg\s*=\s*"(#[0-9a-fA-F]{6})"', r'\bbg\s*=\s*"(#[0-9a-fA-F]{6})"'),
-]
 STATED_FLOOR = 4.5
+
+# Three syntaxes state a foreground against a background, so each needs its own
+# reader. The bug that motivated all of this was written in all three at once.
+SGR_PAIR = re.compile(r"38;2;(\d+);(\d+);(\d+);48;2;(\d+);(\d+);(\d+)")
+TOML_FG = re.compile(r'\bfg\s*=\s*"(#[0-9a-fA-F]{6})"')
+TOML_BG = re.compile(r'\bbg\s*=\s*"(#[0-9a-fA-F]{6})"')
+TMUX_FG = re.compile(r"\bfg=(#[0-9a-fA-F]{6})")
+TMUX_BG = re.compile(r"\bbg=(#[0-9a-fA-F]{6})")
+
+
+def _pairs_toml(line):
+    """yazi: one table per line, fg and bg beside each other."""
+    fg, bg = TOML_FG.search(line), TOML_BG.search(line)
+    return [(fg.group(1), bg.group(1))] if fg and bg else []
+
+
+def _pairs_sgr(line):
+    """lf's colours file: a raw SGR sequence, foreground then background."""
+    return [("#%02x%02x%02x" % tuple(int(x) for x in m.group(1, 2, 3)),
+             "#%02x%02x%02x" % tuple(int(x) for x in m.group(4, 5, 6)))
+            for m in SGR_PAIR.finditer(line)]
+
+
+def _pairs_tmux(line):
+    """tmux: several independent style segments can share one line.
+
+    Read per segment rather than per line. `window-status-current-format` sets
+    three `#[...]` blocks in a row, and taking the first fg with the first bg
+    across the whole line would invent a pair that is never drawn.
+    """
+    pairs = []
+    for seg in re.split(r"#\[|\]|'|\"", line):
+        fg, bg = TMUX_FG.search(seg), TMUX_BG.search(seg)
+        if fg and bg:
+            pairs.append((fg.group(1), bg.group(1)))
+    return pairs
+
+
+STATED_PAIRS = [
+    (YAZI, _pairs_toml),
+    ("common/.config/lf/colors", _pairs_sgr),
+    (TMUX, _pairs_tmux),
+]
 
 
 def _check_stated_pairs(verbose):
@@ -1730,26 +1770,24 @@ def _check_stated_pairs(verbose):
     tiered = {(norm(fg), norm(bg)): TIERS[tier]
               for tier, fg, bg, _source, _what in PAIRS}
     problems, checked = [], 0
-    for rel, fg_pat, bg_pat in STATED_PAIRS:
+    for rel, extract in STATED_PAIRS:
         path = os.path.join(REPO, rel)
         if not os.path.isfile(path):
             continue
         for lineno, line in enumerate(open(path, encoding="utf-8"), 1):
             if line.lstrip().startswith("#"):
                 continue
-            fg, bg = re.search(fg_pat, line), re.search(bg_pat, line)
-            if not (fg and bg):
-                continue
-            f, b = norm(fg.group(1)), norm(bg.group(1))
-            if f == b:
-                continue
-            checked += 1
-            got = ratio(f, b)
-            floor = tiered.get((f, b), STATED_FLOOR)
-            if got < floor:
-                problems.append(
-                    "%s:%d: %s on %s is %.2f:1, below %.1f:1 -- %s"
-                    % (rel, lineno, f, b, got, floor, line.strip()[:60]))
+            for raw_fg, raw_bg in extract(line):
+                f, b = norm(raw_fg), norm(raw_bg)
+                if f == b:
+                    continue
+                checked += 1
+                got = ratio(f, b)
+                floor = tiered.get((f, b), STATED_FLOOR)
+                if got < floor:
+                    problems.append(
+                        "%s:%d: %s on %s is %.2f:1, below %.1f:1 -- %s"
+                        % (rel, lineno, f, b, got, floor, line.strip()[:60]))
     if verbose and not problems:
         print("  %6s   %d stated fg/bg pairs, all at or above %.1f:1"
               % ("", checked, STATED_FLOOR))

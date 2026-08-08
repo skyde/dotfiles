@@ -463,10 +463,16 @@ quietly approximating it.
 
   Two lists feed it. One is written by hand and says what each pair is *for*,
   which is the only way a deliberately quiet pair — an inactive tab label — can
-  be held to a lower floor than body text. The other is derived: yazi states a
-  foreground and a background on the same line, so every pair in that file can
-  be read off it and held to 4.5:1 without anyone listing it. The hand-written
-  tier wins wherever both apply.
+  be held to a lower floor than body text. The other is derived: yazi, `lf`'s
+  colours file and `.tmux.conf` each state a foreground against a background,
+  so all 44 of those pairs are read off the files and held to 4.5:1 without
+  anyone listing them. The hand-written tier wins wherever both apply.
+
+  Each of the three needs its own reader — a TOML table, a raw SGR sequence,
+  tmux style segments — and tmux has to be read per segment rather than per
+  line, because `window-status-current-format` sets three `#[...]` blocks in a
+  row and pairing the first foreground with the first background would invent a
+  combination that is never drawn.
 
   The derived half exists because the hand-written half had covered 6 of yazi's
   16 real pairs, and sticky directories — `#c0caf5` on `#7aa2f7`, **1.56:1**,

@@ -230,6 +230,19 @@ MUTATIONS = [
      r'is = "sticky", fg = "#16161e"', 'is = "sticky", fg = "#c0caf5"',
      "below 4.5:1", None),
 
+    # The same pair in the other two syntaxes it was written in. Each file
+    # needs its own reader -- a raw SGR sequence in lf, style segments in
+    # tmux -- so each reader needs its own proof that it fires.
+    ("an unreadable SGR pair in lf's colours", "contrast", LF_COLORS,
+     r"st      38;2;22;22;30;48;2;122;162;247",
+     "st      38;2;192;202;245;48;2;122;162;247",
+     "below 4.5:1", None),
+
+    ("an unreadable tmux style segment", "contrast", TMUX,
+     r"set -g menu-style          'bg=#16161e,fg=#c0caf5'",
+     "set -g menu-style          'bg=#16161e,fg=#565f89'",
+     "below 4.5:1", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be
