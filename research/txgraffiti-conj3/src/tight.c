@@ -256,7 +256,7 @@ static int sat_rec(int v)
 /* Fast exact path for small instances: keep a bitmask over all 2^nvars
  * assignments and intersect the satisfying set of each clause.  Same answer
  * as sat_rec, roughly ten times quicker at t = 3. */
-#define MAXW 64                       /* enough for nvars <= 12 */
+#define MAXW 512                      /* enough for nvars <= 15 */
 static u64 varmask[24][2][MAXW];
 static int nwords, use_masks;
 static int force_slow = 0;
@@ -264,7 +264,7 @@ static int force_slow = 0;
 static void build_varmasks(void)
 {
     nvars = ne / 2;
-    use_masks = (nvars <= 12) && !force_slow;
+    use_masks = (nvars <= 15) && !force_slow;
     if (!use_masks) return;
     long total = 1L << nvars;
     nwords = (int)((total + 63) / 64);
@@ -303,8 +303,33 @@ static int transversal_cover_exists(void)
     return sat_rec(0);
 }
 
+
+/* Number of transversals that cover every vertex of D (exact).
+ * Zero means the pairing answers Q(t) in the negative. */
+static long count_covering_transversals(void)
+{
+    build_clauses();
+    u64 acc[MAXW];
+    long total = 1L << nvars;
+    for (int w = 0; w < nwords; w++) acc[w] = ~(u64)0;
+    if (total < 64) acc[0] = (((u64)1 << total) - 1);
+    for (int c = 0; c < nclauses; c++)
+        for (int w = 0; w < nwords; w++) {
+            u64 cm = 0;
+            for (int k = 0; k < cllen[c]; k++)
+                cm |= varmask[lit_var[c][k]][(int)lit_val[c][k]][w];
+            acc[w] &= cm;
+        }
+    long cnt = 0;
+    for (int w = 0; w < nwords; w++) cnt += pc(acc[w]);
+    return cnt;
+}
+
 /* ---- statistics ---- */
 static unsigned long long tried = 0, found = 0, unsat = 0;
+static long global_best = -1;
+static int track_min = 0;
+static long min_count = -1;
 static int dump = 0, nofilter = 0;
 
 static void test_current(void)
@@ -312,7 +337,12 @@ static void test_current(void)
     tried++;
     if (dump) { apply_pairing(); char g[512]; emit_graph6(g); puts(g); return; }
 
-    if (!nofilter) {
+    if (track_min) {
+        long c = count_covering_transversals();
+        if (min_count < 0 || c < min_count) min_count = c;
+        if (c > 0) return;                         /* i(G) <= 3t: holds */
+        unsat++;
+    } else if (!nofilter) {
         if (transversal_cover_exists()) return;    /* i(G) <= 3t: holds */
         unsat++;
     }
@@ -369,14 +399,67 @@ static void sample_pairings(long long count)
     }
 }
 
+
+/* Hill-climb over pairings of E(D), minimising the number of covering
+ * transversals.  Reaching 0 would refute Q(t) and give a candidate
+ * counterexample; the run reports the least value it ever attained. */
+static long minimize_over_pairings(long long steps, long long restarts)
+{
+    int perm[64];
+    long best_overall = -1;
+
+    for (long long rs = 0; rs < restarts; rs++) {
+        for (int e = 0; e < ne; e++) perm[e] = e;
+        for (int e = ne - 1; e > 0; e--) {
+            int j = (int)(rnd() % (u64)(e + 1));
+            int tmp = perm[e]; perm[e] = perm[j]; perm[j] = tmp;
+        }
+        for (int e = 0; e + 1 < ne; e += 2) {
+            partner[perm[e]] = perm[e + 1];
+            partner[perm[e + 1]] = perm[e];
+        }
+        long cur = count_covering_transversals();
+
+        for (long long st = 0; st < steps && cur > 0; st++) {
+            /* pick two pairs and re-pair them the other way round */
+            int a = (int)(rnd() % (u64)ne), c = (int)(rnd() % (u64)ne);
+            int bb = partner[a], d = partner[c];
+            if (a == c || a == d || bb == c) continue;
+            partner[a] = c; partner[c] = a;
+            partner[bb] = d; partner[d] = bb;
+            long nxt = count_covering_transversals();
+            if (nxt <= cur) {
+                cur = nxt;
+            } else {                                  /* revert */
+                partner[a] = bb; partner[bb] = a;
+                partner[c] = d;  partner[d] = c;
+            }
+        }
+        if (best_overall < 0 || cur < best_overall) best_overall = cur;
+        if (cur == 0) {
+            apply_pairing();
+            char g[512]; emit_graph6(g);
+            printf("NO_COVERING_TRANSVERSAL %s n=%d t=%d\n", g, n, t);
+            fflush(stdout);
+            if (!has_ids(3 * t))
+                printf("COUNTEREXAMPLE %s n=%d r=3 mu*=%d\n", g, n, 3 * t);
+            return 0;
+        }
+    }
+    return best_overall;
+}
+
 int main(int argc, char **argv)
 {
-    long long samples = 0;
+    long long samples = 0, mini_steps = 0, mini_restarts = 1;
     for (int a = 1; a < argc; a++) {
         if (!strcmp(argv[a], "-s") && a + 1 < argc) samples = atoll(argv[++a]);
         else if (!strcmp(argv[a], "--dump")) dump = 1;
         else if (!strcmp(argv[a], "--nofilter")) nofilter = 1;
         else if (!strcmp(argv[a], "--slowsat")) force_slow = 1;
+        else if (!strcmp(argv[a], "--mincount")) track_min = 1;
+        else if (!strcmp(argv[a], "--minimize") && a + 1 < argc) mini_steps = atoll(argv[++a]);
+        else if (!strcmp(argv[a], "--restarts") && a + 1 < argc) mini_restarts = atoll(argv[++a]);
         else if (!strcmp(argv[a], "--seed") && a + 1 < argc)
             rng_state = strtoull(argv[++a], NULL, 10) | 1;
     }
@@ -393,10 +476,18 @@ int main(int argc, char **argv)
         nD++;
         build_base();
         build_varmasks();
-        if (samples) sample_pairings(samples);
-        else         enum_pairings(0);
+        if (mini_steps) {
+            long best = minimize_over_pairings(mini_steps, mini_restarts);
+            if (best < global_best || global_best < 0) global_best = best;
+        }
+        else if (samples) sample_pairings(samples);
+        else              enum_pairings(0);
     }
     fprintf(stderr, "base_graphs=%llu pairings_tested=%llu counterexamples=%llu no_transversal_cover=%llu\n",
             nD, tried, found, unsat);
+    if (min_count >= 0)
+        fprintf(stderr, "min_covering_transversals=%ld\n", min_count);
+    if (global_best >= 0)
+        fprintf(stderr, "fewest_covering_transversals_found=%ld (0 would refute Q(t))\n", global_best);
     return 0;
 }

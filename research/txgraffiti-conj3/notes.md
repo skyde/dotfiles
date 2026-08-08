@@ -131,8 +131,12 @@ sufficient condition fails:
   uncovered by exactly `2^{3t-3}` of the `2^{3t}` transversals, so at most
   `4t · 2^{3t}/8 = t · 2^{3t}/2` transversals are bad.  That is smaller than
   `2^{3t}` only when `t = 1`.
-* **Lovász Local Lemma.** Each bad event has probability `1/8` and is dependent
-  with up to `11` others; `e · (1/8) · 12 ≈ 4.08 > 1`.
+* **Lovász Local Lemma.** The bad event at `u` has probability `1/8` and
+  involves the three pairs meeting `u`.  Each pair consists of two edges with
+  four endpoints in total, so it is used by at most three *other* vertices;
+  hence the dependency degree is `d <= 9`.  Even Shearer's exact bound for
+  degree `d` needs `p <= d^d/(d+1)^{d+1} = 9^9/10^10 ≈ 0.0387`, and here
+  `p = 1/8 = 0.125`.  The LLL genuinely does not apply.
 * **Harris/FKG.** The bad events are not monotone under any re-orientation of
   the variables: each variable occurs twice positively and twice negatively.
 
@@ -145,6 +149,13 @@ and each of the `4` vertices is bad for at most `2^{3-3} = 1` of them.  At most
 Hence no cubic graph on `10` vertices with `mu* = 3` is a counterexample. For
 `t >= 2` counting no longer suffices; `Q(2)` and `Q(3)` are settled here by
 exhaustive computation (see `RESULTS.md`).
+
+A sharper quantity than "is there one?" is *how many* transversals work.  Let
+`N(D, π)` be the number of covering transversals, so `Q(t)` asks whether
+`N > 0` always.  Exhaustively, `min N = 4` over every pairing of every cubic
+multigraph on `8` vertices.  The minimum stays comfortably positive as `t`
+grows, which is the strongest evidence available here that `Q(t)` never
+fails.
 
 ## 6. General `r`
 

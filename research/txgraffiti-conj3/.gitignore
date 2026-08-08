@@ -5,3 +5,5 @@ logs/*.g6
 logs/*.log
 src/search
 src/tight
+logs/*.err
+logs/*.multig
