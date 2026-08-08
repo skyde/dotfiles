@@ -81,11 +81,13 @@ Bright ANSI variants (9–15) are the accents lightened:
 
 Same failure as yazi's below, without yazi's probe: lazygit accepts any key it
 does not recognise and does nothing with it, and there is no debug output that
-names the offender. Keys move between releases (0.64 renamed `git.pagers` to
-`git.diffRenderers`), so a config that worked last year can be half-inert now,
-looking exactly like one that works. `./tests/check-lazygit-config.sh` is the
-substitute for a probe: it validates the file against the schema published for
-the installed lazygit version. Details in [`lazygit.md`](lazygit.md).
+names the offender — `gui.theme.lightTheme` sat in the config here for a long
+time doing exactly nothing. Renamed keys behave differently and worse: lazygit
+migrates those and writes the migrated file back through the stow symlink, so
+the repo's own copy gets edited (that is where `git.pagers` went).
+`./tests/check-lazygit-config.sh` is the substitute for a probe: it validates
+the file against the schema published for the installed lazygit version, and
+rejects anything on the migration list. Details in [`lazygit.md`](lazygit.md).
 
 ### Gotcha: lazygit reads `COLORTERM`, not terminfo
 

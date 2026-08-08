@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Check that lazygit actually understands every key in our lazygit config.
 
-lazygit ignores configuration it does not recognise. A key that moved between
-versions, sits at the wrong nesting level, or is simply misspelled produces no
-error at all — the feature just stops happening, which is how `git.pagers`
-survived in this repo long after 0.64 renamed it to `git.diffRenderers`.
+lazygit reacts to a config it does not fully recognise in two silent ways, and
+this checks for both:
 
-Two modes, strongest first:
+  * A key it has never heard of is dropped. Misspell one, or nest it wrongly,
+    and the feature simply stops happening with no error — `gui.theme.lightTheme`
+    and a top-level `scrollOffBehavior` lived in this repo's config that way.
+  * A key it has *renamed* is migrated, and lazygit then writes the migrated
+    config back to disk. The write follows the stow symlink, so it edits the
+    tracked file in this repo. `git.pagers` (renamed in 0.64) did exactly that.
+
+Two modes for the first kind, strongest first:
 
   schema   Validate against lazygit's own published JSON schema (generated
            from the same structs the binary parses with). Catches unknown
@@ -849,8 +854,82 @@ def check_semantics(config: dict, defaults: dict | None) -> tuple[list[str], lis
                     warnings.append(f"custom command {label!r}: prompt {name!r} is never used")
 
     walk(config.get("customCommands") or [], "")
+    errors += check_migrations(config)
     warnings += check_programs(config)
     return errors, warnings
+
+
+# Keys lazygit renames on load, from computeMigratedConfig in
+# pkg/config/app_config.go. These are NOT ignored — lazygit migrates them and
+# then writes the migrated file back to disk with os.WriteFile, which follows
+# the stow symlink and edits the copy inside this repo. Verified on 0.64.0:
+# a config with `git.pagers` came back rewritten to `git.diffRenderers`, with
+# every comment intact, through a symlink.
+MIGRATED_KEYS = {
+    ("gui", "skipUnstageLineWarning"): "gui.skipDiscardChangeWarning",
+    ("gui", "windowSize"): "gui.screenMode",
+    ("git", "paging"): "git.diffRenderers (a list)",
+    ("git", "pagers"): "git.diffRenderers",
+    ("git", "allBranchesLogCmd"): "git.allBranchesLogCmds (a list)",
+    ("keybinding", "universal", "executeCustomCommand"): "keybinding.universal.executeShellCommand",
+    ("keybinding", "universal", "cyclePagers"): "keybinding.universal.cycleDiffRenderers",
+    ("keybinding", "universal", "cyclePagersReverse"): "keybinding.universal.cycleDiffRenderersReverse",
+    ("keybinding", "files", "openMergeTool"): "keybinding.files.openMergeOptions",
+    ("keybinding", "worktrees", "viewWorktreeOptions"): "keybinding.universal.newWorktree",
+}
+
+MIGRATION_NOTE = (
+    "lazygit migrates this on load and rewrites the config file in place — "
+    "through the stow symlink, so it edits the copy in this repo. Write it as {} instead"
+)
+
+
+def check_migrations(config: dict) -> list[str]:
+    """Reject anything lazygit would rewrite, rather than let it edit the repo."""
+    errors = []
+
+    def get(path):
+        node = config
+        for part in path:
+            if not isinstance(node, dict) or part not in node:
+                return None, False
+            node = node[part]
+        return node, True
+
+    for path, replacement in MIGRATED_KEYS.items():
+        _, present = get(path)
+        if present:
+            errors.append(f"{'.'.join(path)}: " + MIGRATION_NOTE.format(replacement))
+
+    # Shape migrations: same rewrite, triggered by the type rather than the name.
+    prefix = (config.get("git") or {}).get("commitPrefix")
+    if isinstance(prefix, dict):
+        errors.append("git.commitPrefix: " + MIGRATION_NOTE.format("a list of {pattern, replace}"))
+    prefixes = (config.get("git") or {}).get("commitPrefixes")
+    if isinstance(prefixes, dict) and any(isinstance(v, dict) for v in prefixes.values()):
+        errors.append("git.commitPrefixes: " + MIGRATION_NOTE.format("a list per repository"))
+
+    def walk_commands(commands, path):
+        for i, command in enumerate(commands):
+            if not isinstance(command, dict):
+                continue
+            here = f"{path}[{i}]"
+            for old in ("stream", "showOutput"):
+                if old in command:
+                    errors.append(f"{here}.{old}: " + MIGRATION_NOTE.format("output: log | popup | terminal"))
+            walk_commands(command.get("commandMenu") or [], f"{here}.commandMenu")
+
+    walk_commands(config.get("customCommands") or [], "customCommands")
+
+    for section, bindings in (config.get("keybinding") or {}).items():
+        if not isinstance(bindings, dict):
+            continue
+        for action, value in bindings.items():
+            if value is None:
+                errors.append(
+                    f"keybinding.{section}.{action}: " + MIGRATION_NOTE.format("'<disabled>'")
+                )
+    return errors
 
 
 def check_programs(config: dict) -> list[str]:
@@ -952,7 +1031,14 @@ SELFTEST_EXPECTED = {
 
 # Each case is (config, substring that must appear in the reported problems).
 SELFTEST_CASES = [
-    ({"git": {"pagers": [{"pager": "delta"}]}}, "git.pagers"),
+    ({"git": {"pagers": [{"pager": "delta"}]}}, "rewrites the config file in place"),
+    ({"gui": {"windowSize": "half"}}, "gui.windowSize"),
+    ({"git": {"commitPrefix": {"pattern": "x", "replace": "y"}}}, "git.commitPrefix"),
+    ({"keybinding": {"universal": {"undo": None}}}, "'<disabled>'"),
+    (
+        {"customCommands": [{"key": "a", "context": "files", "command": "true", "stream": True}]},
+        "output: log | popup | terminal",
+    ),
     ({"scrollOffBehavior": "margin"}, "scrollOffBehavior"),
     ({"gui": {"theme": {"lightTheme": False}}}, "lightTheme"),
     ({"gui": {"showFileIcons": "yes"}}, "showFileIcons"),
@@ -1096,6 +1182,16 @@ def main() -> int:
     else:
         print("❌ need --schema or --defaults", file=sys.stderr)
         return 2
+
+    # A migrated key is not an unknown key: the schema does not list it, but
+    # lazygit acts on it (and rewrites the file). Let check_migrations be the
+    # one that explains it, rather than reporting it twice, half wrongly.
+    migrated = {".".join(path) for path in MIGRATED_KEYS}
+    errors = [
+        e
+        for e in errors
+        if not (e.split(":")[0] in migrated and "unknown key" in e)
+    ]
 
     semantic_errors, warnings = check_semantics(config, defaults)
     errors += semantic_errors

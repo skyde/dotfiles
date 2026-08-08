@@ -4,16 +4,21 @@
 links to that one file (see [Where the config lives](#where-the-config-lives)).
 It targets **lazygit 0.64+**, which `./install-lazygit.sh` installs.
 
-Two things about lazygit shape everything below:
+Three things about lazygit shape everything below:
 
-1. **It ignores configuration it does not understand.** A key that was renamed,
-   sits at the wrong nesting level, or is misspelled produces no error — the
-   feature just silently stops happening. `git.pagers` (renamed to
-   `git.diffRenderers` in 0.64), a top-level `scrollOffBehavior` (it belongs
-   under `gui:`), `gui.theme.lightTheme` and `promptToOpenMergeTool` were all
-   sitting in this file doing nothing before `./tests/check-lazygit-config.sh`
-   existed. **Run that after any edit.**
-2. **Custom commands are shell, run through Go templates.** Quoting mistakes
+1. **It ignores configuration it does not understand.** A key that sits at the
+   wrong nesting level or is misspelled produces no error — the feature just
+   silently stops happening. A top-level `scrollOffBehavior` (it belongs under
+   `gui:`), `gui.theme.lightTheme` and `promptToOpenMergeTool` were all sitting
+   in this file doing nothing before `./tests/check-lazygit-config.sh` existed.
+   **Run that after any edit.**
+2. **Keys it has renamed are worse than ignored: they are rewritten.** lazygit
+   migrates them on load and writes the migrated file back to disk — following
+   the stow symlink, so it edits the tracked copy in this repo. That is what
+   happened to `git.pagers`, which 0.64 renamed to `git.diffRenderers`: delta
+   kept working, and the dotfiles repo grew a modification nobody made. The
+   checker refuses every key on lazygit's migration list for that reason.
+3. **Custom commands are shell, run through Go templates.** Quoting mistakes
    surface as an empty argument rather than an error, which is why the checker
    parses every command with `sh -n`.
 
@@ -167,7 +172,8 @@ installed).
 It validates against the JSON schema published for the *installed* lazygit
 version (cached under `~/.cache/dotfiles`, downloaded once), and falls back to
 comparing key paths against `lazygit --config` when offline. On top of the
-schema it checks the things the schema cannot express: custom-command contexts,
+schema it checks the things the schema cannot express: keys lazygit would
+migrate (and therefore rewrite this file for), custom-command contexts,
 `{{.Selected...}}` placeholders against lazygit's actual model fields, `{{.Form.X}}`
 against the prompts that define them, keybinding names, key collisions, and
 whether every command parses as shell. It also warns when a custom command

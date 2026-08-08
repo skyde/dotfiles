@@ -3,14 +3,24 @@
 # lazygit — Tokyo Night chrome, delta diffs, tuned for large repositories.
 #
 # Targets lazygit 0.64+ (install-lazygit.sh always fetches the latest release).
-# lazygit silently ignores keys it does not recognise: a renamed, misplaced or
-# misspelled option does not error, it just quietly stops doing anything. That
-# is not hypothetical — `git.pagers` (renamed in 0.64, which disconnected
-# delta), a top-level `scrollOffBehavior`, `gui.theme.lightTheme` and
-# `promptToOpenMergeTool` all used to sit in this file doing nothing. Run
-# `./tests/check-lazygit-config.sh` after touching it: it validates this file
-# against the schema lazygit publishes for the installed version, and falls
-# back to the key list in `lazygit --config` when offline.
+#
+# Two things lazygit does to a config it does not fully recognise, and neither
+# of them is an error message:
+#
+#  1. Keys it has never heard of are dropped in silence. A misspelled or
+#     misplaced option simply stops doing anything: a top-level
+#     `scrollOffBehavior` (it belongs under `gui:`), `gui.theme.lightTheme` and
+#     `promptToOpenMergeTool` all sat in this file doing nothing.
+#  2. Keys it has *renamed* are migrated — and lazygit writes the migrated file
+#     back to disk. That write follows the stow symlink, so it edits this file
+#     inside the dotfiles repo. `git.pagers` here became `git.diffRenderers`
+#     that way, which is why an unexplained modification to a tracked file can
+#     show up after a lazygit upgrade.
+#
+# `./tests/check-lazygit-config.sh` catches both: it validates this file
+# against the schema lazygit publishes for the installed version (falling back
+# to the key list in `lazygit --config` when offline), and separately refuses
+# any key lazygit would migrate, so the rewrite never happens.
 #
 # Palette reference: docs/tokyonight.md. Keys and commands: docs/lazygit.md.
 
@@ -103,8 +113,9 @@ gui:
 git:
   # Diff renderers, cycled with `|` (and `\` backwards). lazygit 0.64 renamed
   # this section: it was `git.pagers` (a list) before, and an older `git.paging`
-  # (an object) before that. Both are ignored on 0.64+, which is exactly the
-  # silent failure the header warns about — diffs quietly render as raw git.
+  # (an object) before that. Both still work, because lazygit migrates them —
+  # and then rewrites the config file, through the stow symlink, into this
+  # repo. Writing the current names is what stops that.
   #
   # First entry is the default. delta reads its styling from the [delta]
   # section of common/.config/git/config, so only the lazygit-specific
