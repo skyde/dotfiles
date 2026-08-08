@@ -161,7 +161,18 @@ local function check_clipboard()
   -- provider is in effect; a missing one means yanking silently does nothing.
   local provider = vim.g.clipboard and vim.g.clipboard.name
   if provider then
-    health.ok(("provider: %s (set by config/options.lua)"):format(provider))
+    -- Naming a provider is not the same as having one. config/options.lua picks
+    -- win32yank on Windows whether or not it is installed, and Neovim does not
+    -- fall back once vim.g.clipboard is set: every yank becomes a silent no-op.
+    local copy = vim.g.clipboard.copy and vim.g.clipboard.copy["+"]
+    local bin = type(copy) == "table" and copy[1] or type(copy) == "string" and copy or nil
+    if bin and not has(bin) then
+      health.error(("provider: %s, but %s is not on PATH — yanking to + goes nowhere"):format(provider, bin), {
+        ("Install %s, or unset vim.g.clipboard to let Neovim pick its own provider."):format(bin),
+      })
+    else
+      health.ok(("provider: %s (set by config/options.lua)"):format(provider))
+    end
   else
     local detected = first({ "pbcopy", "wl-copy", "xclip", "xsel", "win32yank.exe" })
     if detected then

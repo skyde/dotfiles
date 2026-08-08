@@ -272,6 +272,50 @@ do
 end
 
 --------------------------------------------------------------------------
+-- a configured clipboard provider that is not installed
+--------------------------------------------------------------------------
+
+do
+  -- config/options.lua sets vim.g.clipboard to win32yank on Windows whether or
+  -- not it is installed, and Neovim does not fall back once that is set — every
+  -- yank becomes a silent no-op. Reporting the provider by name and calling it
+  -- ok was the one way this check could be wrong and look right.
+  local real_clipboard = vim.g.clipboard
+  vim.g.clipboard = {
+    name = "win32yank-lf",
+    copy = { ["+"] = { "win32yank.exe", "-i", "--crlf" } },
+    paste = { ["+"] = { "win32yank.exe", "-o", "--lf" } },
+  }
+  local entries = report({})
+  local err = find(entries, "error", "win32yank.exe is not on PATH")
+  check("configured provider: a missing binary is an error", err ~= nil, text(entries, "error") .. text(entries, "ok"))
+  check(
+    "configured provider: the advice says what to do",
+    err and table.concat(err.advice or {}, " "):find("Install win32yank.exe", 1, true) ~= nil,
+    err and vim.inspect(err.advice)
+  )
+  check(
+    "configured provider: and it is not also reported ok",
+    find(entries, "ok", "provider: win32yank-lf") == nil,
+    text(entries, "ok")
+  )
+
+  fake("win32yank.exe")
+  local installed = report({})
+  check(
+    "configured provider: present, it is reported ok",
+    find(installed, "ok", "provider: win32yank-lf") ~= nil,
+    text(installed, "ok")
+  )
+  check(
+    "configured provider: and no longer an error",
+    find(installed, "error", "win32yank.exe") == nil,
+    text(installed, "error")
+  )
+  vim.g.clipboard = real_clipboard
+end
+
+--------------------------------------------------------------------------
 -- clipboard over SSH
 --------------------------------------------------------------------------
 
