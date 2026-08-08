@@ -813,6 +813,62 @@ def _check_doctor_swatches(verbose):
     return problems
 
 
+# The two colours a search result is made of, stated three times: once in
+# ripgrep's own config as decimal triples, and once in each picker's awk prefix
+# as an SGR escape. The pickers strip ripgrep's colouring and repaint, so a
+# disagreement means the same file:line is one colour from `rg` and another
+# from the picker wrapping it.
+RGRC = "common/.ripgreprc"
+
+PICKER_COLOURS = [
+    ("path", r"--colors=path:fg:(\d+,\d+,\d+)", "mag", "the file name"),
+    ("line", r"--colors=line:fg:(\d+,\d+,\d+)", "gre", "the line number"),
+]
+PICKERS = ["common/.local/bin/st-rg", "common/.local/bin/st-zoekt"]
+
+
+def _check_picker_colours(verbose):
+    """`rg` and the pickers that wrap it paint a result the same way."""
+    rc = os.path.join(REPO, RGRC)
+    if not os.path.isfile(rc):
+        return []
+    rc_body = open(rc, encoding="utf-8").read()
+
+    problems, checked = [], 0
+    for _name, pattern, var, what in PICKER_COLOURS:
+        m = re.search(pattern, rc_body)
+        if not m:
+            problems.append(
+                "%s no longer sets %s, so the pickers have nothing to agree "
+                "with" % (RGRC, what))
+            continue
+        want = "#%02x%02x%02x" % tuple(int(x) for x in m.group(1).split(","))
+        for rel in PICKERS:
+            path = os.path.join(REPO, rel)
+            if not os.path.isfile(path):
+                continue
+            # st-rg embeds its awk in a single-quoted string and st-zoekt
+            # nests it one layer deeper, so the quotes and the escape arrive
+            # with one or two backslashes depending on which file this is.
+            found = re.search(r'%s=\\?"\\+033\[([0-9;]+)m' % var,
+                              open(path, encoding="utf-8").read())
+            if not found:
+                problems.append(
+                    "%s no longer sets %s where this looks for it" % (rel, var))
+                continue
+            trip = DECIMAL_TRIPLE.search(found.group(1))
+            got = ("#%02x%02x%02x" % tuple(int(x) for x in trip.groups())
+                   if trip else found.group(1))
+            checked += 1
+            if got != want:
+                problems.append(
+                    "%s paints %s %s and %s says %s -- the same result, two "
+                    "colours" % (rel, what, got, RGRC, want))
+    if verbose and not problems:
+        print("  %d picker colour(s) agree with ripgrep's own" % checked)
+    return problems
+
+
 def _check_lazygit_theme_keys(verbose):
     """lazygit's own defaults are the list of theme keys it knows.
 
@@ -1986,6 +2042,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_tmux_options(verbose))
     problems.extend(_check_shared_roles(verbose))
     problems.extend(_check_doctor_swatches(verbose))
+    problems.extend(_check_picker_colours(verbose))
     problems.extend(_check_lazygit_theme_keys(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))

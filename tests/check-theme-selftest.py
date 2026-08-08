@@ -47,6 +47,7 @@ TMUX = "common/.tmux.conf"
 RGRC = "common/.ripgreprc"
 BTOP = "common/.config/btop/themes/tokyo-night.theme"
 DOCTOR = "doctor-theme.sh"
+STZOEKT = "common/.local/bin/st-zoekt"
 LAZYGIT = "common/.config/lazygit/config.yml"
 STARSHIP = "common/.config/starship.toml"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
@@ -336,6 +337,16 @@ MUTATIONS = [
      r"a directory:      %s\[1;38;2;122;162;247msrc/",
      "a directory:      %s[1;38;2;158;206;106msrc/",
      "theme.sh exports", None),
+
+    # The pickers strip ripgrep's colouring and repaint, so the same
+    # file:line is one colour from `rg` and another from the picker wrapping
+    # it if they drift. Aimed at st-zoekt rather than st-rg because it nests
+    # its awk one quoting layer deeper -- the escapes arrive doubled, and a
+    # reader that only handles st-rg's form silently checks nothing here.
+    ("a picker that repaints a result off-palette", "parity", STZOEKT,
+     r"mag=\\\"\\\\033\[38;2;122;162;247m",
+     'mag=\\"\\\\033[38;2;158;206;106m',
+     "the same result, two colours", None),
 
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is

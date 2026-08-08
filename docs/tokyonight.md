@@ -787,6 +787,7 @@ quietly approximating it.
   | tmux | a server on its own socket, then `show-options` | an option name tmux drops on load |
   | lazygit | its own `--config` dump, for `gui.theme` only | a theme key lazygit has no field for |
   | the doctor | its swatches, against what `theme.sh` really exports | a demo colour the shell stopped producing |
+  | the search pickers | their awk prefixes, against `~/.ripgreprc` | a result `rg` and its picker paint differently |
   | git | `--get-color` on every `color.*` key | an attribute typo the hex scan cannot see, e.g. `#7aa2f7 blod` |
   | wezterm | `ls-fonts`, which evaluates the config | any colour it cannot parse, by key name — the strictest of them |
 
