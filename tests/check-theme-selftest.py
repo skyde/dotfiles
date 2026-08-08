@@ -158,6 +158,13 @@ MUTATIONS = [
      'export BAT_THEME="No Such Theme"',
      "does not have", "bat|batcat"),
 
+    # A git colour is a hex plus attributes, and the palette check only sees
+    # the hex -- it passes this happily while git rejects the whole value and
+    # the setting does nothing. This is the half a colour scanner cannot cover.
+    ("a git colour attribute git rejects", "parity", GIT,
+     r'current = "#bb9af7 bold"', 'current = "#bb9af7 blod"',
+     "git rejects", None),
+
     ("a delta option that does not exist", "parity", GIT,
      r'blame-separator-style = "#3b4261"',
      'blame-separator-style = "#3b4261"\n    blame-timestamp-style = "#737aa2"',

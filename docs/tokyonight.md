@@ -418,8 +418,17 @@ quietly approximating it.
   | starship | `explain`, then its session log under `STARSHIP_CACHE` | an unknown section or key |
   | bat | `--list-themes` | `BAT_THEME` naming a theme it does not carry |
   | kitty | its own config loader via `+runpy` | an unknown option key |
+  | git | `--get-color` on every `color.*` key | an attribute typo the hex scan cannot see, e.g. `#7aa2f7 blod` |
 
   Each of these was added because the one before it found something real.
+
+  Two tools are deliberately absent, so nobody repeats the experiment. **btop**
+  loads a theme containing an unknown key without a word — it is not an oracle,
+  and the only way to check its theme is to diff the keys against
+  `Default_theme` in its `src/btop_theme.cpp`. **lazygit** looks like one
+  because it prints `--config`, but that output omits every field with an empty
+  default, so real keys appear missing; its schema is the reference, and the
+  command for it is in a comment beside the theme block in its config.
 - **contrast** — every foreground/background pair clears the floor for the job
   it does, and every focused fill stands off the page behind it. The tiers, and
   why they are not simply WCAG AA, are in the script.

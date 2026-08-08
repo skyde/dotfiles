@@ -852,6 +852,56 @@ def _check_kitty_config(verbose):
     return problems
 
 
+def _check_git_colours(verbose):
+    """Have git resolve every colour it is given, since it validates the spec.
+
+    A git colour is a hex plus optional attributes -- "#7aa2f7 bold" -- and the
+    palette check only sees the hex. `#7aa2f7 blod` passes it happily while git
+    rejects the whole value, so the setting does nothing. Asking git to resolve
+    each one covers the half a colour scanner cannot.
+
+    Keys come from --get-regexp rather than being listed here, so a section
+    added later is covered without anyone remembering to. They arrive already
+    lowercased, which matters: --get-color is case-sensitive where --get is
+    not, so `color.decorate.HEAD` spelled as written in the file resolves to
+    nothing at all.
+    """
+    import shutil
+    import subprocess
+
+    if shutil.which("git") is None:
+        if verbose:
+            print("  git not installed, its colour specs not resolved")
+        return []
+
+    path = os.path.join(REPO, GIT)
+    try:
+        listed = subprocess.run(
+            ["git", "config", "--file", path, "--get-regexp", r"^color\."],
+            capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return ["could not read git colours: %s" % exc]
+
+    problems = []
+    checked = 0
+    for line in listed.stdout.splitlines():
+        key = line.split(None, 1)[0] if line.strip() else ""
+        if not key:
+            continue
+        checked += 1
+        out = subprocess.run(
+            ["git", "config", "--file", path, "--get-color", key],
+            capture_output=True, text=True, timeout=30)
+        if out.returncode != 0 or out.stderr.strip():
+            problems.append("git rejects %s: %s"
+                            % (key, out.stderr.strip() or "non-zero exit"))
+        elif not out.stdout:
+            problems.append("git resolves %s to nothing" % key)
+    if verbose and not problems:
+        print("  %d git colour specs resolve" % checked)
+    return problems
+
+
 def _check_ripgrep_config(verbose):
     """Let ripgrep parse its own config, since it is strict about colours.
 
@@ -1010,6 +1060,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_starship_config(verbose))
     problems.extend(_check_bat_theme(verbose))
     problems.extend(_check_kitty_config(verbose))
+    problems.extend(_check_git_colours(verbose))
     problems.extend(_check_nvim_delta_parity(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))
