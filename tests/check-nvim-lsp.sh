@@ -33,7 +33,11 @@ if [[ -z "$python" ]]; then
   exit 0
 fi
 
-sandbox="$(mktemp -d)"
+# Resolved with pwd -P: on macOS mktemp -d hands back /var/folders/..., which
+# is a symlink to /private/var/folders/.... Neovim and clangd both report the
+# resolved path, so an unresolved sandbox makes every path comparison in the
+# checks below fail against a server that is behaving perfectly.
+sandbox="$(cd "$(mktemp -d)" && pwd -P)"
 trap 'rm -rf "$sandbox"' EXIT
 
 # A plain C++ project, with the compilation database already in place.
