@@ -526,6 +526,35 @@ settle()
 eq("failure: automatic runs resume after a success", before_broken + 4, #generate_log())
 
 --------------------------------------------------------------------------
+-- a checkout that has never been generated
+--------------------------------------------------------------------------
+
+-- root2 has no out/ at all. There is nothing to regenerate from, and every
+-- buffer switch asks again — so the answer must be said once, not every
+-- couple of seconds. Explicit runs still answer every time they are asked.
+local real_notify = vim.notify
+local notices = {}
+vim.notify = function(msg, level) ---@diagnostic disable-line: duplicate-set-field
+  table.insert(notices, { msg = msg, level = level })
+end
+local function warnings()
+  local n = 0
+  for _, notice in ipairs(notices) do
+    if type(notice.msg) == "string" and notice.msg:find("No generated build dir", 1, true) then
+      n = n + 1
+    end
+  end
+  return n
+end
+chromium.generate({ root = root2, force = true, auto = true })
+chromium.generate({ root = root2, force = true, auto = true })
+chromium.generate({ root = root2, force = true, auto = true })
+eq("no build dir: automatic runs say it once", 1, warnings())
+chromium.generate({ root = root2, force = true })
+eq("no build dir: an explicit run always answers", 2, warnings())
+vim.notify = real_notify
+
+--------------------------------------------------------------------------
 -- the membership probe when the database cannot be read
 --------------------------------------------------------------------------
 

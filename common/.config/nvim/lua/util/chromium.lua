@@ -347,6 +347,7 @@ end
 -- reports it once; anything a person asked for runs, and reports, regardless.
 local FAILURE_COOLDOWN_MS = 60000
 local failed_at = {} ---@type table<string, integer>
+local no_out_warned = {} ---@type table<string, true>
 
 ---@param root string
 ---@param auto boolean|nil  true when nobody asked for this run
@@ -389,11 +390,18 @@ function M.generate(opts)
   end
   local out = M.out_dir(root)
   if not out then
-    if not opts.silent then
+    -- A checkout that has never been `gn gen`'d hits this on every buffer
+    -- switch. Deciding it is two stats, so it is not put on the failure
+    -- cooldown — a `gn gen` run in a terminal should be picked up on the
+    -- next buffer switch, not a minute later. It is only the message that
+    -- must not repeat every couple of seconds.
+    if not opts.silent and (not opts.auto or not no_out_warned[root]) then
       vim.notify("No generated build dir under out/ (run gn gen, or :ChromiumOutDir)", vim.log.levels.WARN)
     end
+    no_out_warned[root] = true
     return
   end
+  no_out_warned[root] = nil
 
   inflight[root] = true
   if not opts.silent then
