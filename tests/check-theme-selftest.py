@@ -367,6 +367,17 @@ MUTATIONS = [
      'Command("sh")\n\tpcall(function()\n\t\tcmd = cmd',
      "drops to 256 colours", None),
 
+    # The stale-pair guard asks whether a colour still appears in its config,
+    # and a change to that colour is exactly what leaves a comment naming it
+    # behind. Moving btop's inactive text to #414868 -- the value the doc
+    # itself calls unreadable, at 1.91:1 -- while saying so above the line left
+    # the checker asserting 2.76:1 against a config painting 1.91:1, silently.
+    ("a contrast pair whose colour survives only in a comment", "contrast",
+     BTOP,
+     r'theme\[inactive_fg\]="#565f89"',
+     '# inactive_fg was #565f89 until this line\ntheme[inactive_fg]="#414868"',
+     "no longer appears in", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be

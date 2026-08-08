@@ -826,6 +826,16 @@ quietly approximating it.
   through the standard library's extension-to-mime table, which is the one
   mapping here that is not itself part of the theme.
 
+  A note on how these read their configs. A check that asks "is this colour
+  still in that file?" has to ask it of the lines the tool will read, not of
+  the file as text — because every config here explains its choices in
+  comments, and changing a colour is exactly what leaves a comment naming the
+  old one behind. Two checks were satisfied that way before it was noticed: the
+  COLORTERM guard accepted the paragraph explaining an export as the export,
+  and the stale-pair guard accepted a comment as proof a colour was still being
+  painted. Whole-line comments are stripped first now, by the marker the file's
+  syntax uses.
+
 - **contrast** — every foreground/background pair clears the floor for the job
   it does, and every focused fill stands off the page behind it. The tiers, and
   why they are not simply WCAG AA, are in the script.

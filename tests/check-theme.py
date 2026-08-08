@@ -2456,14 +2456,40 @@ def ratio(fg, bg):
     return (hi + 0.05) / (lo + 0.05)
 
 
+# Comment markers by file, so a colour can be looked for in what a tool will
+# actually read rather than in the prose around it.
+COMMENT_MARKERS = {
+    ".lua": "--", ".json": "//", ".jsonc": "//",
+}
+DEFAULT_COMMENT_MARKER = "#"
+
+
+def uncommented(path, text):
+    """`text` with whole-line comments removed.
+
+    The pair rows below carry a colour and the file it should be in, and the
+    membership test used to run against the raw file. Every one of these
+    configs explains its choices in comments, and a comment naming a colour is
+    exactly what a change to that colour leaves behind -- so moving btop's
+    inactive text from #565f89 to #414868, and saying so in a comment above it,
+    left the checker asserting a 2.76:1 pair against a config painting 1.91:1
+    and reporting nothing. Verified before this existed.
+    """
+    marker = COMMENT_MARKERS.get(os.path.splitext(path)[1],
+                                 DEFAULT_COMMENT_MARKER)
+    return "\n".join(line for line in text.splitlines()
+                      if not line.lstrip().startswith(marker))
+
+
 def check_contrast(doc, verbose):
     problems = []
     known = documented_colours(doc)
     bodies = {}
     for tier, fg, bg, source, what in PAIRS:
         if source not in bodies:
-            bodies[source] = open(os.path.join(REPO, source),
-                                  encoding="utf-8").read().lower()
+            bodies[source] = uncommented(
+                source,
+                open(os.path.join(REPO, source), encoding="utf-8").read()).lower()
         body = bodies[source]
 
         for colour in (fg, bg):
@@ -2496,7 +2522,8 @@ def check_contrast(doc, verbose):
     for fill, page, source, what in FILLS:
         body = bodies.setdefault(
             source,
-            open(os.path.join(REPO, source), encoding="utf-8").read().lower(),
+            uncommented(source, open(os.path.join(REPO, source),
+                                     encoding="utf-8").read()).lower(),
         )
         if fill not in body:
             problems.append(
