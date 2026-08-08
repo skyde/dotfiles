@@ -133,6 +133,10 @@ local STATUS = {
   -- jj's copy detection, hg's `status -C` on a source that is still there. It
   -- had been labelled "conflict", which no backend has ever reported this way.
   C = { icon = "C", hl = "DiffAdd", label = "copied" },
+  -- Unmerged: what `m` is for. git calls a conflicted file a plain
+  -- modification in its changed-file list, so without a status of its own the
+  -- one file that needs resolving reads like every other one.
+  U = { icon = "!", hl = "DiffText", label = "conflicted" },
   ["?"] = { icon = "?", hl = "Comment", label = "untracked" },
 }
 
@@ -1677,7 +1681,7 @@ local HELP = {
 
 -- The order the legend lists them in; also the only place every status a row
 -- can carry is written down.
-local STATUS_ORDER = { "M", "A", "D", "R", "C", "?" }
+local STATUS_ORDER = { "M", "A", "D", "R", "C", "U", "?" }
 
 local function show_help()
   local lines = {}

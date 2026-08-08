@@ -39,8 +39,8 @@ The list is a tree, VS Code explorer style: directories first, chains of
 single-child directories compacted onto one line (`a/b/c/`), and every
 filename shown whole instead of a full path truncated against the panel
 edge. Status letters sit in the left column — `M` modified, `A` added, `D`
-deleted, `R` renamed, `C` copied, `?` untracked, all of them listed again in
-the `?` cheat sheet — filetype icons follow when mini.icons is around,
+deleted, `R` renamed, `C` copied, `!` conflicted, `?` untracked, all of them
+listed again in the `?` cheat sheet — filetype icons follow when mini.icons is around,
 renamed files read `new ← old`, and the header tracks the selection as
 `file 3 of 12` plus the listing's total churn (`+125 -40`). The right edge of each row carries the
 review state: the file's own `+n -n` (computed in the background off the
@@ -61,7 +61,7 @@ revision moves.
 | `a` | stage / unstage the file, where the backend has an index (git) |
 | `y` | copy the selected file's diff to the clipboard |
 | `X` | revert the file to its base version, after a confirm; on an added or untracked file this deletes it |
-| `m` | open the three-way merge view for a conflicted file; `<leader>cq` there drops back into this view |
+| `m` | open the three-way merge view for a conflicted file — the `!` rows; `<leader>cq` there drops back into this view |
 | `r` | hard refresh: re-ask the backend for everything |
 | `q` | close — also from a scratch diff pane |
 | `?` | cheat sheet of these keys, and what each status letter means |
@@ -417,6 +417,11 @@ budgeted against.
   leading `:` are pattern syntax, so staging `star*.txt` would stage every file
   the glob matched and `:notes.txt` could not be named at all. A rename is one
   row carrying its old path, and staging or reverting it names both halves.
+  While a merge, rebase or cherry-pick is unfinished, unmerged paths are marked
+  `!` rather than reading as ordinary modifications, which is what git's
+  changed-file list calls them. That costs an extra command, so it is asked for
+  only when a marker file in the git directory says a conflict is in progress —
+  a stat rather than a process on every refresh.
 * **jj** — calls that ask what the working copy looks like *now* (`diff`,
   `log`) let jj snapshot, because in jj the working copy is a commit and
   `jj status` snapshots as a matter of course. Suppressing it with

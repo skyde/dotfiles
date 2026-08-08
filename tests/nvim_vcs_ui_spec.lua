@@ -1287,7 +1287,7 @@ do
   -- The status column is a single letter and this is the only place it is
   -- spelled out. R in particular is worth stating: it is renamed here, while
   -- Mercurial's own R means removed.
-  for _, expect in ipairs({ "modified", "added", "deleted", "renamed", "copied", "untracked" }) do
+  for _, expect in ipairs({ "modified", "added", "deleted", "renamed", "copied", "conflicted", "untracked" }) do
     check(("help: the legend explains %s"):format(expect), text:find(expect, 1, true) ~= nil, text)
   end
   feed("q")
@@ -1784,7 +1784,7 @@ do
   -- column is what makes a row depth 0.
   local listed = {}
   for _, line in ipairs(panel_lines()) do
-    local name = line:match("^ [MAD?RC]  (%S.*)$")
+    local name = line:match("^ [MAD?RC!]  (%S.*)$")
     if name then
       table.insert(listed, vim.trim(name))
     end
@@ -1818,6 +1818,7 @@ do
     return {
       { path = "a_modified.txt", status = "M" },
       { path = "copied.txt", status = "C", orig = "a_modified.txt" },
+      { path = "conflicted.txt", status = "U" },
     }
   end
 
@@ -1827,8 +1828,9 @@ do
     return not ui.busy()
   end)
 
+  local panel_rows = panel_lines()
   local row, lnum
-  for i, line in ipairs(panel_lines()) do
+  for i, line in ipairs(panel_rows) do
     if line:find("copied.txt", 1, true) then
       row, lnum = line, i
     end
@@ -1853,6 +1855,18 @@ do
     end
   end
   eq("copied: the status column is coloured as an addition, not a conflict", "DiffAdd", status_hl)
+
+  -- And the conflicted row beside it: git reports an unmerged file as a plain
+  -- modification, so a status of its own is the only thing that says which file
+  -- `m` is for.
+  local conflicted
+  for _, line in ipairs(panel_rows) do
+    if line:find("conflicted.txt", 1, true) then
+      conflicted = line
+    end
+  end
+  check("conflicted: the row is listed", conflicted ~= nil, vim.inspect(panel_rows))
+  check("conflicted: it is marked !", conflicted and conflicted:sub(1, 3) == " ! ", vim.inspect(conflicted))
 
   ui.close()
   vcs.clear_cache()
@@ -1919,7 +1933,7 @@ do
 
     local rows = {}
     for _, line in ipairs(panel_lines()) do
-      local name = line:match("^ [MAD?RC]  %s*(%S.*)$")
+      local name = line:match("^ [MAD?RC!]  %s*(%S.*)$")
       if name then
         table.insert(rows, vim.trim(name))
       end

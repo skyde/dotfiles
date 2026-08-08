@@ -213,7 +213,7 @@ local function file_rows()
   local rows = {}
   for i, line in ipairs(panel_lines()) do
     -- " M  name", " D  name", " ?  name" — a status letter in the left column.
-    if line:match("^ [MAD?RC]  %S") then
+    if line:match("^ [MAD?RC!]  %S") then
       table.insert(rows, i)
     end
   end
@@ -239,9 +239,9 @@ for _, inline in ipairs({ true, false }) do
     local pw = panel_win()
     vim.api.nvim_set_current_win(pw)
     vim.api.nvim_win_set_cursor(pw, { row, 0 })
-    -- [MAD?RC], not %a: `?` is a status code and is not a letter, so a
+    -- [MAD?RC!], not %a: `?` is a status code and is not a letter, so a
     -- letters-only pattern leaves it stuck to the front of the filename.
-    local name = vim.trim((panel_lines()[row] or ""):gsub("^ [MAD?RC]  ", ""))
+    local name = vim.trim((panel_lines()[row] or ""):gsub("^ [MAD?RC!]  ", ""))
     -- Drive it the way the cursor does, so the debounce and the async base
     -- fetch run exactly as they would for a person holding `j`.
     drain_errors()

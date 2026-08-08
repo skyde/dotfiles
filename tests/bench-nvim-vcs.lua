@@ -108,7 +108,7 @@ local rows = 0
 for _, line in ipairs(lines) do
   -- Any depth: the tree indents nested rows, so anything after the status
   -- column counts, not just a name flush against it.
-  if line:match("^ [MAD?RC]  %s*%S") then
+  if line:match("^ [MAD?RC!]  %s*%S") then
     rows = rows + 1
   end
 end

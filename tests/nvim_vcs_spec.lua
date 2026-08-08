@@ -245,6 +245,41 @@ do
   eq("git pathspec: unstaging the pair succeeds", true, pb.unstage(proot, renamed.path, renamed.orig))
   eq("git pathspec: and the index is empty again", "", vim.trim(git(ps, "diff", "--cached", "--name-only")))
 
+  -- Conflicts. `git diff --name-status` calls an unmerged file a plain
+  -- modification, so mid-merge the one file that actually needs attention read
+  -- like every other one in the listing.
+  local mg = temp .. "/git-merge"
+  vim.fn.mkdir(mg, "p")
+  git(mg, "init", "-q", "-b", "main")
+  write(mg .. "/conflicted.txt", "base\n")
+  write(mg .. "/clean.txt", "base\n")
+  git(mg, "add", "-A")
+  git(mg, "commit", "-qm", "base")
+  git(mg, "checkout", "-qb", "side")
+  write(mg .. "/conflicted.txt", "side\n")
+  git(mg, "commit", "-qam", "side")
+  git(mg, "checkout", "-q", "main")
+  write(mg .. "/conflicted.txt", "main\n")
+  write(mg .. "/clean.txt", "main, and no one else touched it\n")
+  git(mg, "commit", "-qam", "main")
+
+  local mb, mroot = vcs.detect(mg)
+  local before = status_map(mb.changed(mroot, mb.rev(mroot, "working")))
+  eq("merge: nothing is conflicted before the merge", nil, before["conflicted.txt"])
+
+  -- The merge itself fails, which is the point, so it cannot go through run().
+  vim.system({ "git", "-c", "user.email=t@example.com", "-c", "user.name=Test", "merge", "side" }, { cwd = mg }):wait()
+  local during = status_map(mb.changed(mroot, mb.rev(mroot, "working")))
+  eq("merge: an unmerged file is marked U, not M", "U", during["conflicted.txt"])
+  eq("merge: a file the merge did not touch is unaffected", nil, during["clean.txt"])
+
+  -- Resolved, and the marker gone: back to an ordinary modification.
+  write(mg .. "/conflicted.txt", "resolved\n")
+  git(mg, "add", "conflicted.txt")
+  git(mg, "commit", "-qm", "merged")
+  local after = status_map(mb.changed(mroot, mb.rev(mroot, "working")))
+  eq("merge: once committed there is nothing unmerged left", nil, after["conflicted.txt"])
+
   eq("git: unmodified file absent", nil, working["deep/a/b/c/nested.txt"])
   eq("git: working scope excludes the branch commit", nil, working["src/main.c"])
 

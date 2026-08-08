@@ -27,7 +27,7 @@ local M = {}
 
 ---@class VcsFile
 ---@field path string  repo-relative path
----@field status string  one of M A D R ? C
+---@field status string  one of M A D R C U ?
 ---@field orig string|nil  pre-rename path, when status is R
 ---@field rev string|nil  per-file base revision, when the backend tracks one (p4's haveRev)
 ---@field stats {add: integer, del: integer}|nil  line churn, filled in lazily by the UI's stats pass
@@ -221,16 +221,61 @@ local function nul_fields(s)
   return out
 end
 
+---The names git writes into the git directory while a merge, rebase or
+---cherry-pick is unfinished. Checked as files rather than by asking git,
+---because this runs on every listing refresh and `git diff --diff-filter=U`
+---costs a third of a second on a large tree — worth paying during a conflict,
+---not worth paying the rest of the time.
+local CONFLICT_MARKERS =
+  { "MERGE_HEAD", "REBASE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply" }
+
+local function git_conflict_in_progress(root)
+  local dot = root .. "/.git"
+  local stat = vim.uv.fs_stat(dot)
+  if not stat then
+    return false
+  end
+  if stat.type ~= "directory" then
+    -- A linked worktree or a submodule: `.git` is a file pointing elsewhere, so
+    -- the markers are not here and only git knows where they are.
+    dot = one(sh({ "git", "rev-parse", "--absolute-git-dir" }, root))
+    if not dot then
+      return false
+    end
+  end
+  for _, marker in ipairs(CONFLICT_MARKERS) do
+    if vim.uv.fs_stat(dot .. "/" .. marker) then
+      return true
+    end
+  end
+  return false
+end
+
 function git.changed(root, rev)
   local out = {}
   local seen = {}
+
+  -- Unmerged paths, while a merge, rebase or cherry-pick is in flight. git
+  -- reports a conflicted file as a plain modification in --name-status, so
+  -- without this the one file that actually needs attention looks like every
+  -- other one in the listing.
+  local unmerged = {}
+  if git_conflict_in_progress(root) then
+    local res = sh({ "git", "diff", "--name-only", "--diff-filter=U", "-z" }, root)
+    if res and res.code == 0 then
+      for _, path in ipairs(nul_fields(res.stdout)) do
+        unmerged[path] = true
+      end
+    end
+  end
+
   ---@param path string
   ---@param status string
   ---@param orig string|nil
   local function add(path, status, orig)
     if path ~= "" and not seen[path] then
       seen[path] = true
-      table.insert(out, { path = path, status = status, orig = orig })
+      table.insert(out, { path = path, status = unmerged[path] and "U" or status, orig = orig })
     end
   end
 

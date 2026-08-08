@@ -53,7 +53,9 @@ resolve".
 
 ## Reviewing before you commit
 
-`<leader>gc` opens the changed-files view; `s` inside it cycles between
+`<leader>gc` opens the changed-files view, where a file git still calls
+unmerged is marked `!` and `m` opens the three-way view on it; `s` inside it
+cycles between
 uncommitted changes, everything since the fork point, and the last commit. See
 [`nvim-vscode-parity.md`](nvim-vscode-parity.md) for the full set.
 
