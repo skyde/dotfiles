@@ -723,6 +723,93 @@ CLI_HEADING = "Dark+ on the command line"
 CLI_TOKYO_EXCEPTIONS = ("red", "comment")
 
 
+TINTS_HEADING = "Diff tints"
+
+# The doc's grid column -> delta's key. `body` is the plain style; the other
+# two are the emphasised token and the unchanged remainder of the same line.
+TINT_COLUMNS = {"non-emph": "%s-non-emph-style", "body": "%s-style",
+                "emph": "%s-emph-style"}
+TINT_ROWS = {"added": "plus", "removed": "minus"}
+
+
+def _check_diff_tints(doc, verbose):
+    """delta paints a diff in the colours the doc's tint tables name.
+
+    The `[delta]` section was the largest block of colours in the tree that
+    nothing pinned -- 69 of its 77. Its option *names* are checked by delta
+    itself and git's colour slots by git, but the values answered to nothing,
+    so a diff could be painted in any documented colour at all.
+
+    Both tint tables are read: the added/removed grid by row and column, and
+    the moved table through the `map-styles` key it names in its own column.
+    Neovim's inline diff is already held to delta, so pinning delta pins that
+    too.
+    """
+    section = doc.split(TINTS_HEADING, 1)
+    if len(section) != 2:
+        return ["docs/tokyonight.md no longer has a %r section" % TINTS_HEADING]
+    body = section[1].split("\n### ", 1)[0]
+
+    wanted = {}
+    header = []
+    for line in body.splitlines():
+        cells = [c.strip().strip("`") for c in line.split("|")][1:-1]
+        if not cells:
+            continue
+        if not header and any(c in TINT_COLUMNS for c in cells):
+            header = cells
+            continue
+        if header and cells[0] in TINT_ROWS:
+            for name, value in zip(header[1:], cells[1:]):
+                if name in TINT_COLUMNS and HEX.fullmatch(value):
+                    wanted[TINT_COLUMNS[name] % TINT_ROWS[cells[0]]] = norm(value)
+        # The moved table names the map-styles key it belongs to, in a middle
+        # column that is a gesture rather than a colour -- which is what tells
+        # it apart from the grid above, whose middle column is a hex.
+        if (len(cells) >= 3 and cells[0] not in TINT_ROWS
+                and not HEX.fullmatch(cells[1]) and HEX.fullmatch(cells[2])):
+            wanted.setdefault("map:" + cells[1], norm(cells[2]))
+
+    if not wanted:
+        return ["the %r tables list no colours" % TINTS_HEADING]
+
+    cfg = os.path.join(REPO, GIT)
+    if not os.path.isfile(cfg):
+        return []
+    text = uncommented(cfg, open(cfg, encoding="utf-8").read())
+
+    problems, checked = [], 0
+    for key, want in sorted(wanted.items()):
+        if key.startswith("map:"):
+            gesture = key[4:]
+            m = re.search(r"map-styles\s*=\s*\"([^\"]*)\"", text)
+            if not m:
+                problems.append("%s sets no map-styles, so the moved-code "
+                                "colours are not the doc's" % GIT)
+                break
+            found = re.search(re.escape(gesture) + r"\s*=>\s*\S+\s+(#[0-9a-fA-F]{6})",
+                              m.group(1))
+            got = norm(found.group(1)) if found else None
+        else:
+            found = re.search(r"^\s*%s\s*=\s*\"?[^\"#\n]*(#[0-9a-fA-F]{6})"
+                              % re.escape(key), text, re.M)
+            got = norm(found.group(1)) if found else None
+        if got is None:
+            problems.append(
+                "%s no longer sets %s, which the %r table gives as %s"
+                % (GIT, key.replace("map:", "map-styles "), TINTS_HEADING, want))
+            continue
+        checked += 1
+        if got != want:
+            problems.append(
+                "%s paints %s %s and the %r table says %s"
+                % (GIT, key.replace("map:", "map-styles "), got,
+                   TINTS_HEADING, want))
+    if verbose and not problems:
+        print("  %d diff tint(s) match the doc's tables" % checked)
+    return problems
+
+
 def _check_command_line_palette(doc, verbose):
     """Every colour on either command line is one the Dark+ table sanctions.
 
@@ -2208,6 +2295,7 @@ def check_parity(doc, verbose):
     problems.extend(run_check(_check_bat_truecolor, verbose))
     problems.extend(run_check(_check_command_lines, verbose))
     problems.extend(run_check(_check_command_line_palette, doc, verbose))
+    problems.extend(run_check(_check_diff_tints, doc, verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")

@@ -412,6 +412,21 @@ MUTATIONS = [
      "globbing                      'fg=#9ece6a'",
      "does not list", None),
 
+    # The [delta] section was the largest unpinned block in the tree: its
+    # option names are checked by delta and git's slots by git, but the values
+    # answered to nothing. Two mutations, because the doc states them in two
+    # differently-shaped tables -- a row/column grid, and a list keyed by the
+    # map-styles gesture it belongs to.
+    ("a diff tint that differs from the doc's grid", "parity", GIT,
+     r'plus-emph-style = "syntax #2c5a3a"',
+     'plus-emph-style = "syntax #683131"',
+     "Diff tints", None),
+
+    ("a moved-code colour that differs from the doc", "parity", GIT,
+     r"bold cyan => syntax #12384a",
+     "bold cyan => syntax #15423d",
+     "Diff tints", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be

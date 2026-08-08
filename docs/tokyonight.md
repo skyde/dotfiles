@@ -859,6 +859,14 @@ quietly approximating it.
   `.zshrc` was 32 of its 41 until the command line got tied to the table above;
   it is 1 now.
 
+  The number does not always move when a check lands, and that is worth
+  knowing before chasing it. Binding delta's diff tints to the tint tables
+  changed nothing in the count, because Neovim's inline diff already held them
+  — they were pinned to another config rather than to the decision. Anchoring
+  them to the doc is still the better arrangement (two configs can drift
+  together; the doc is where the choice was made), but it bought no new
+  coverage, and the honest count says so.
+
   It samples one colour per file by default and sweeps every one under
   `--probe-comments` — worth running after adding a check, because the sample
   found one fooled reader and the full sweep found five more in a single file.
