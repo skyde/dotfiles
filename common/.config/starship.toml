@@ -69,8 +69,19 @@ format = "on [$symbol$branch]($style) "
 symbol = " "
 style = "bold magenta"
 
+# Renders only when HEAD is detached (starship's only_detached default), so
+# what it says is "you are not on a branch, you are at this commit". Starship's
+# default style for it is 'bold green', and green in this palette means an
+# addition or a success — the wrong claim entirely. git already answers this
+# question: [color "decorate"] paints HEAD orange, the "you are here" colour
+# the cursor and the current search match wear. The prompt says it the same way.
+#
+# It does not collide with git_state's orange below: git_state covers REBASING,
+# MERGING and friends, and a plain detached HEAD is none of them, so only one
+# of the two is ever on screen.
 [git_commit]
 disabled = false
+style = 'bold orange'
 
 [git_state]
 disabled = false
