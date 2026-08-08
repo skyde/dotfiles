@@ -730,6 +730,89 @@ GIT_SECTION_COMMANDS = {
 GIT_SENTINEL = "#010203"
 
 
+DOCTOR = "doctor-theme.sh"
+
+# What the doctor demonstrates, and the export it is demonstrating. Its swatch
+# is a second copy of a fact theme.sh already states, so the two can drift and
+# the doctor would go on cheerfully painting a colour the shell never produces
+# -- while reporting PASS, because what it checks is that the variable is set.
+DOCTOR_SWATCHES = [
+    (r"a directory:.*?\[([0-9;]+)m", "LS_COLORS", "di", "a directory"),
+    (r"a broken symlink:.*?\[([0-9;]+)m", "LS_COLORS", "or", "a broken symlink"),
+    (r"an in-buffer one:.*?\[([0-9;]+)m", "LESS_TERMCAP_so", None,
+     "a match inside text you are reading"),
+]
+
+
+def _sgr_params(sgr):
+    """An SGR parameter list as an unordered set of whole parameters.
+
+    `38;2;R;G;B;1` and `1;38;2;R;G;B` paint the same thing, and theme.sh and
+    the doctor happen to write them in opposite orders, so comparing the
+    strings would report a difference that does not exist. Splitting naively on
+    `;` would be worse: it would make a truecolour triple indistinguishable
+    from three unrelated attributes.
+    """
+    parts, out, i = sgr.split(";"), [], 0
+    while i < len(parts):
+        if parts[i] in ("38", "48") and parts[i + 1:i + 2] == ["2"]:
+            out.append(";".join(parts[i:i + 5]))
+            i += 5
+        else:
+            out.append(parts[i])
+            i += 1
+    return frozenset(out)
+
+
+def _check_doctor_swatches(verbose):
+    """The doctor shows the colours the shell actually exports."""
+    import subprocess
+
+    doc_path = os.path.join(REPO, DOCTOR)
+    theme = os.path.join(REPO, "common/.config/shell/theme.sh")
+    if not (os.path.isfile(doc_path) and os.path.isfile(theme)):
+        return []
+    wanted = sorted({v for _p, v, _k, _w in DOCTOR_SWATCHES})
+    script = '. "$1"; for v in %s; do eval "printf \'%%s\\n\' \\"\\$$v\\""; done' \
+        % " ".join(wanted)
+    try:
+        code, stdout, stderr = source_theme("bash", theme, script)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return ["could not source theme.sh for the doctor check: %s" % exc]
+    if code != 0:
+        return ["theme.sh failed to source: %s" % stderr.strip()]
+    live = dict(zip(wanted, stdout.split("\n")))
+
+    body = open(doc_path, encoding="utf-8").read()
+    problems, checked = [], 0
+    for pattern, var, key, what in DOCTOR_SWATCHES:
+        m = re.search(pattern, body, re.S)
+        if not m:
+            problems.append(
+                "%s no longer shows %s where this looks for it" % (DOCTOR, what))
+            continue
+        value = live.get(var, "")
+        if key:
+            value = next((e.split("=", 1)[1] for e in value.split(":")
+                          if e.startswith(key + "=")), "")
+        else:
+            value = value.replace("\033[", "").replace("\x1b[", "").rstrip("m")
+            value = re.sub(r"^\x1b\[", "", value)
+        if not value:
+            problems.append(
+                "%s demonstrates %s and theme.sh exports nothing for it"
+                % (DOCTOR, what))
+            continue
+        checked += 1
+        if _sgr_params(m.group(1)) != _sgr_params(value):
+            problems.append(
+                "%s paints %s as %s and theme.sh exports %s"
+                % (DOCTOR, what, m.group(1), value))
+    if verbose and not problems:
+        print("  %d doctor swatch(es) match what the shell exports" % checked)
+    return problems
+
+
 def _check_lazygit_theme_keys(verbose):
     """lazygit's own defaults are the list of theme keys it knows.
 
@@ -1902,6 +1985,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_git_paints(verbose))
     problems.extend(_check_tmux_options(verbose))
     problems.extend(_check_shared_roles(verbose))
+    problems.extend(_check_doctor_swatches(verbose))
     problems.extend(_check_lazygit_theme_keys(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))

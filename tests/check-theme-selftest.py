@@ -46,6 +46,7 @@ GIT = "common/.config/git/config"
 TMUX = "common/.tmux.conf"
 RGRC = "common/.ripgreprc"
 BTOP = "common/.config/btop/themes/tokyo-night.theme"
+DOCTOR = "doctor-theme.sh"
 LAZYGIT = "common/.config/lazygit/config.yml"
 STARSHIP = "common/.config/starship.toml"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
@@ -324,6 +325,17 @@ MUTATIONS = [
     ("a lazygit theme key lazygit does not have", "parity", LAZYGIT,
      r"    optionsTextColor:", "    optionsTxtColor:",
      "no such key", "lazygit"),
+
+    # doctor-theme.sh demonstrates the colours the shell exports, which makes
+    # its swatch a second copy of a fact theme.sh already states. Drift and the
+    # doctor keeps painting a colour the shell never produces -- while
+    # reporting PASS, since what it checks is that the variable is set at all.
+    # The two files write the same SGR in opposite parameter orders, so the
+    # comparison has to be order-insensitive and this has to still fire.
+    ("a doctor swatch that no longer matches the shell", "parity", DOCTOR,
+     r"a directory:      %s\[1;38;2;122;162;247msrc/",
+     "a directory:      %s[1;38;2;158;206;106msrc/",
+     "theme.sh exports", None),
 
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
