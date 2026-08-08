@@ -1,0 +1,9 @@
+[[mgr.prepend_keymap]]
+on = "z"
+run = 'shell --block -- ~/.config/yazi/scripts/ff_like_fzf_reveal.sh'
+desc = "fzf (ff-style) with live preview → cd/reveal"
+
+# [[mgr.prepend_keymap]]
+# on = "<Space>"
+# run = 'shell --block -- ~/.config/yazi/scripts/ff_like_fzf_reveal.sh'
+# desc = "Space: fzf (ff-style) with preview"
