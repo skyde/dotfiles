@@ -18,6 +18,13 @@ you. It reports two things:
   AHEAD   a key the release still reads but upstream's default branch has
           dropped or renamed. Not broken yet; it breaks on the next upgrade.
 
+A rename puts a config on both sides of it at once, so a key can also be
+deliberately BEHIND: the pre-rename spelling, kept so a binary older than the
+release still finds the setting. Those are listed in ACCEPTED_BEHIND, each
+paired with the modern spelling that has to be present too — and the pairing is
+verified, because an old spelling on its own is not a compatibility shim, it is
+exactly the dead key this script is looking for.
+
 The release/main split is the whole point of comparing against both. An
 upstream preset on `main` includes renames that have not shipped, so diffing
 against `main` alone cries wolf, and diffing against the release alone gives no
@@ -211,6 +218,26 @@ INERT = {
     },
 }
 
+# Keys the *current* release no longer reads, kept on purpose so a binary from
+# before the rename still finds them. The mirror image of ACCEPTED_AHEAD: that
+# one is early, this one is late, and a config that has to work on machines
+# whose yazi was installed at different times needs both spellings of a rename
+# present at once.
+#
+# Each entry names the modern spelling that has to be there too, and that is
+# checked rather than assumed — an old spelling on its own is not a
+# compatibility shim, it is the dead key this script exists to find. (The
+# filetype rules say `url` and `name` both ways for the same reason;
+# check-theme.py already fails on a rule that carries only one, so they are not
+# repeated here.)
+ACCEPTED_BEHIND = {
+    "yazi": {
+        "[mgr.hovered] (whole section)": "[indicator] current",
+        "[mgr.preview_hovered] (whole section)": "[indicator] preview",
+        "[confirm] content": "[confirm] body",
+    },
+}
+
 # Keys that are AHEAD on purpose, with the reason. An entry here says "yes, this
 # is superseded upstream, and staying on it is the right call until the rename
 # ships" — it does not silence DEAD, which is about the release we run.
@@ -244,9 +271,19 @@ def main() -> int:
             unreachable += 1
             continue
 
+        behind = ACCEPTED_BEHIND.get(name, {})
         for key in sorted(dead):
+            partner = behind.get(key)
+            if partner and partner in mine:
+                if arguments.verbose:
+                    print(f"  ok  {name} {key} is behind, accepted (paired with {partner})")
+                continue
             print(f"DEAD  {name} {key}")
-            print(f"      -> {tag} does not read this; it is doing nothing right now")
+            if partner:
+                print(f"      -> kept for a pre-rename {name}, but {partner} is gone, so "
+                      f"nothing reads this on {tag} either")
+            else:
+                print(f"      -> {tag} does not read this; it is doing nothing right now")
             failures += 1
 
         inert = mine & set(INERT.get(name, {}))

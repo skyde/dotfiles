@@ -218,21 +218,75 @@ prompt; anything else would mean accepting a history entry recoloured it.
 
 | Role                                        | Hex       |
 | ------------------------------------------- | --------- |
-| plain text, redirections, `;` and `\|`       | `#d4d4d4` |
+| plain text, arguments                       | `#d4d4d4` |
 | comments                                    | `#6a9955` |
 | strings                                     | `#ce9178` |
 | commands, functions, aliases, `$(…)`        | `#dcdcaa` |
-| control words, and precommands like `sudo`  | `#c586c0` |
+| subcommands — `git commit`, `docker run`    | `#4ec9b0` |
+| control words, precommands, `[[ ]]` `(( ))` | `#c586c0` |
 | variables, assignments, interpolation       | `#9cdcfe` |
-| type names                                  | `#4ec9b0` |
-| globs, history expansion, escapes           | `#d7ba7d` |
+| globs, case patterns, history expansion     | `#d7ba7d` |
 | options                                     | `#569cd6` |
 | numbers and file descriptors                | `#b5cea8` |
+| redirections, `;` and `\|`                   | `#737aa2` |
+| bracket pairs, by nesting depth             | `#ffd700` `#da70d6` `#179fff` |
 
 Two things stay Tokyo Night, because they are facts about the machine rather
 than about syntax and Dark+ has no vocabulary for either: a word that resolves
 to no command is `red`, and a path that has not resolved to anything yet is
 `comment`. A path that *does* exist gets an underline instead of a hue.
+
+Three of those rows are about keeping the line from going flat. **Subcommands**
+get the type colour because `git commit` and `docker run` are the most-typed
+tokens on the line and had no colour of their own — `fast-syntax-highlighting`
+knows them from its per-command grammars, and left unset they fell through to
+the plugin's raw ANSI `fg=yellow`. **Plumbing** dropped from `#d4d4d4` to dark5
+so that it stops reading level with the words either side of it; that is the
+same move the path separators make, and for the same reason. **Bracket pairs**
+are VS Code's own bracket-pair-colourisation hues, since the prompt is code.
+
+The rest of the shell's grammar — `case` arms, here-strings, `for` headers,
+array subscripts — is named in the table too. Not because each one needs its
+own hue, but because *unset is not neutral*: both highlighters ship defaults
+for these, and those defaults are ANSI-indexed (`fg=green`, `fg=yellow,bold`)
+or outright backgrounds (`bg=blue`, `bg=18`), so anything left out was painted
+from a palette this repo does not otherwise use. `tests/check-theme.py` check 8
+is what keeps a role from silently going back to one.
+
+One role in that table is not a colour at all. `fast-syntax-highlighting`
+keeps a *secondary* style table for anything it treats as an embedded shell —
+most visibly the inside of `$(…)` — and ships `secondary` pointing at a theme
+it downloads from `raw.githubusercontent.com` the first time a shell starts.
+While that switch is armed, the words inside the parentheses are painted from
+the downloaded file instead of from the table above — and that file speaks in
+256-colour indices, so they land outside the palette entirely:
+
+```
+before   x=$(git rev-parse HEAD)     git fg=180 #d7af87 · rev-parse fg=150 #afd787
+after    x=$(git rev-parse HEAD)     git #dcdcaa · rev-parse #4ec9b0 · HEAD #9cdcfe
+```
+
+Emptying `secondary` stops the switch, and a nested command reads exactly like
+a top-level one. `~/.zshrc` also pins `FAST_WORK_DIR` and leaves an empty
+`secondary_theme.zsh` in it, so the download — now never read — is not part of
+opening a shell. On a cold cache the difference is a 3.4 KB fetch from GitHub
+during startup versus none.
+
+> Worth knowing when checking this by hand: if `secondary_theme.zsh` exists but
+> is **empty** — which is exactly what `~/.zshrc` now leaves behind — the
+> switch still happens but finds no `free*` keys, and the body comes out one
+> flat run of `#9cdcfe` rather than in 256-colour indices. Two different wrong
+> answers from the same mechanism, depending on cache state. Delete the whole
+> work dir before measuring, or a warm cache will tell you a different story
+> than a cold one.
+
+One thing the table cannot reach, so as not to go looking for it later: the
+handful of `fast-syntax-highlighting` chromas that highlight an *embedded*
+language — the awk program inside `awk '{print $1}'`, and the perl and ruby
+equivalents. Those build a style by pasting two entries together with a comma
+(`→chroma/-awk.ch`), which yields `fg=#c586c0,fg=#ce9178`, and zsh resolves a
+doubled `fg=` to a colour that is neither. It predates this table and is not
+something a value here can fix; the shell *around* the string is unaffected.
 
 > **Three Dark+ ports are in play, and this table is one of them.** The hexes
 > above are VS Code's *published* Dark+ token colours. The editor side —
@@ -246,29 +300,35 @@ to no command is `red`, and a path that has not resolved to anything yet is
 The third port is the one bat compiles in, and it is worth knowing it is not
 quite this table. Rendering shell, Python, C++ and JSON through
 `bat --theme="Visual Studio Dark+"` — identically on 0.24.0, 0.25.0 and 0.26.1
-— gives ten colours, and five of them are the five above:
+— gives ten colours. Four of the rows below differ, one has no counterpart
+there at all, and five are identical:
 
-| Role                    | This table | What bat emits |
-| ----------------------- | ---------- | -------------- |
-| plain text              | `#d4d4d4`  | `#dcdcdc`      |
-| comments                | `#6a9955`  | `#608b4e`      |
-| strings                 | `#ce9178`  | `#d69d85`      |
-| escapes                 | `#d7ba7d`  | `#e3bbab`      |
-| type names              | `#4ec9b0`  | — (bat gives types the variable blue) |
-| commands and functions  | `#dcdcaa`  | `#dcdcaa`      |
-| control words           | `#c586c0`  | `#c586c0`      |
-| variables               | `#9cdcfe`  | `#9cdcfe`      |
-| options and keywords    | `#569cd6`  | `#569cd6`      |
-| numbers                 | `#b5cea8`  | `#b5cea8`      |
+| Role                   | This table | What bat emits |
+| ---------------------- | ---------- | -------------- |
+| plain text             | `#d4d4d4`  | `#dcdcdc`      |
+| comments               | `#6a9955`  | `#608b4e`      |
+| strings                | `#ce9178`  | `#d69d85`      |
+| escapes                | `#d7ba7d`  | `#e3bbab`      |
+| subcommands            | `#4ec9b0`  | — no such role; bat gives a type name the variable blue |
+| commands and functions | `#dcdcaa`  | `#dcdcaa`      |
+| control words          | `#c586c0`  | `#c586c0`      |
+| variables              | `#9cdcfe`  | `#9cdcfe`      |
+| options and keywords   | `#569cd6`  | `#569cd6`      |
+| numbers                | `#b5cea8`  | `#b5cea8`      |
+
+Plumbing and the bracket-pair hues are absent from that comparison because they
+are not Dark+ syntax roles: one is dark5 out of this palette, the others are VS
+Code's bracket-pair colourisation.
 
 So a history entry containing a quoted string does shift a little on its way
 from the Ctrl-R picker to the prompt. That is accepted rather than chased,
 because an exact match was never available: bat and zsh's highlighter divide a
 command line into different tokens in the first place. bat's Bash grammar
 paints `grep` as a variable and `echo` as plain text, scopes `;` and `|` as
-control words, and has no notion at all of "this word resolves to no command" —
-the distinctions the prompt exists to draw. Aligning the palette to bat's port
-would move three shades and fix none of that.
+control words, and has no notion at all of "this word resolves to no command"
+or of a subcommand — several of the distinctions the table above exists to
+draw. Aligning the palette to bat's port would move four shades and fix none of
+that.
 
 What the table buys is the part that does survive: the same *roles* in the same
 *family of colours*, so nothing changes category on the way down. Reach for
@@ -412,10 +472,24 @@ schema.
 **Renames are the dangerous case**, because nothing about the config looks
 wrong afterwards — the setting is still there, still spelled correctly, and
 has simply stopped being read. yazi v25.12.29 moved `[mgr] hovered` and
-`preview_hovered` into `[indicator]` as `current` and `preview`, and renamed
-`[confirm] content` to `body`; until this was noticed, the hovered row had
-silently gone back to `reversed` and the preview row to `underline` — the two
-defaults those settings exist to override.
+`preview_hovered` into `[indicator]` as `current` and `preview`, renamed
+`[confirm] content` to `body`, and renamed the rule pattern key `name` to
+`url`; until this was noticed, the hovered row had silently gone back to
+`reversed` and the preview row to `underline` — the two defaults those
+settings exist to override.
+
+**And a rename cuts both ways.** These dotfiles land on machines whose yazi
+was installed at different times, and each side of a rename ignores the
+other's spelling: chasing the new names alone broke every machine still on
+an older binary — a url-only filetype table matches nothing there, so the
+whole listing renders in plain foreground. The resolution is to say it both
+ways: every filetype rule carries `url` and `name` with identical globs, the
+hovered row is set in `[mgr]` and in `[indicator]`, and `[confirm]` has both
+`content` and `body`. Whichever spelling a given yazi understands is the one
+it reads; it ignores the other. Verified by running 25.5.31 and 26.5.6
+against the same config and reading the rendered colours back, and
+`tests/check-theme.py` fails if a rule loses a spelling or a pair drifts
+apart.
 
 `tests/check-theme.py` cannot catch that: a colour that is never read is still
 a valid colour. Re-audit by diffing against the version of upstream's preset
@@ -719,6 +793,15 @@ fetches two refs:
   nothing right now.
 - **AHEAD** — the release still reads it, but upstream's default branch has
   renamed or dropped it. Not broken yet; it breaks on the next upgrade.
+
+There is a third state, and it is the one "a rename cuts both ways" above puts
+this repo in: a key can be deliberately **behind**, the pre-rename spelling kept
+so an older binary still finds the setting. `[mgr] hovered`,
+`[mgr] preview_hovered` and `[confirm] content` are all there for that reason.
+They live in the script's `ACCEPTED_BEHIND`, each paired with the modern
+spelling that has to be present alongside it — and the script checks the pair
+rather than taking the entry's word for it, because an old spelling on its own
+is not a compatibility shim, it is the dead key the audit is looking for.
 
 Diffing against `main` alone would cry wolf, because an upstream preset carries
 renames that have not shipped; diffing against the release alone would give no

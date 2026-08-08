@@ -15,6 +15,8 @@ written down:
   6. the roles that only work if they are one colour (the cursor, the
      selected row, a search match) are that one colour everywhere
   7. docs/tokyonight.md's file table points at files that exist
+  8. the command line names every syntax role, so none falls back to the
+     highlighter's own ANSI defaults
 
 Run it after touching any colour:
 
@@ -564,11 +566,26 @@ def parse_yazi_filetypes() -> dict[str, dict[str, str]]:
         fields.update(flags)
         if "mime" in fields:
             key = fields["mime"]
+        elif "url" in fields or "name" in fields:
+            # Both spellings are present on purpose — `name` before yazi
+            # v25.12.29, `url` since, so one config works on both sides of
+            # the rename. A rule that carries only one of them is silently
+            # dead on the other side, and a pair that disagrees is two
+            # different rules wearing one colour; both are errors here.
+            url, name = fields.get("url"), fields.get("name")
+            if url is None or name is None:
+                raise RuntimeError(
+                    f"yazi filetype rule {url or name!r} must carry both "
+                    f"`url` and `name` (it has only one spelling)"
+                )
+            if url != name:
+                raise RuntimeError(
+                    f"yazi filetype rule has url={url!r} but name={name!r}; "
+                    f"the two spellings must stay identical"
+                )
+            key = "is:" + fields["is"] if "is" in fields else url
         elif "is" in fields:
             key = "is:" + fields["is"]
-        elif "url" in fields:
-            # `name` before yazi v25.12.29 renamed it.
-            key = fields["url"]
         else:
             continue
         rules.setdefault(key, fields)
@@ -851,9 +868,15 @@ SHARED_ROLES = [
             ("common/.tmux.conf", r"mode-style\s+'bg=(#[0-9a-fA-F]{6})"),
             ("common/.zshrc", r"'ma=48;2;(\d+;\d+;\d+)'"),
             (
-                # [indicator] current — `[mgr] hovered` before yazi v25.12.29.
+                # [indicator] current — read by yazi v25.12.29 and later.
                 "common/.config/yazi/theme.toml",
                 r"^current = \{ fg = \"#[0-9a-fA-F]{6}\", bg = \"(#[0-9a-fA-F]{6})\"",
+            ),
+            (
+                # [mgr] hovered — the same setting as read by older yazi;
+                # both spellings live in the file so both versions get it.
+                "common/.config/yazi/theme.toml",
+                r"\[mgr\.hovered\]\nfg = \"#[0-9a-fA-F]{6}\"\nbg = \"(#[0-9a-fA-F]{6})\"",
             ),
             (
                 "common/.config/btop/themes/tokyo-night.theme",
@@ -1071,6 +1094,82 @@ def check_doc_paths(report: Report) -> None:
             )
 
 
+# --- 8. the command line leaves no role to the plugin's ANSI defaults ------
+
+# Both syntax highlighters ship a default for every role they know, and those
+# defaults are ANSI-indexed (`fg=green`, `fg=13`) or backgrounds (`bg=blue`,
+# `bg=18`). So a role the table forgets is not neutral — it is painted out of
+# the terminal's 16-colour palette, in the middle of a line that otherwise
+# comes from Dark+. That is invisible in a diff and obvious on screen, which
+# is the combination this file exists for.
+#
+# Listed below is every role either plugin gives a *coloured* default, taken
+# from fast-syntax-highlighting's `fast-highlight` and zsh-syntax-highlighting's
+# highlighters. Roles whose default is `none`, `free` or an attribute like
+# `standout` are absent on purpose: those introduce no foreign colour, so the
+# table is free to stay quiet about them.
+CLI_ROLES_WITH_COLOURED_DEFAULTS = [
+    "alias", "arg0", "assign-array-bracket", "autodirectory",
+    "back-dollar-quoted-argument", "back-double-quoted-argument",
+    "back-or-dollar-double-quoted-argument", "back-quoted-argument-delimiter",
+    "bracket-error", "bracket-level-1", "bracket-level-2", "bracket-level-3",
+    "bracket-level-4", "bracket-level-5", "builtin", "case-condition",
+    "case-input", "case-parentheses", "command", "command-substitution-delimiter",
+    "comment", "correct-subtle", "dollar-double-quoted-argument",
+    "dollar-quoted-argument", "double-hyphen-option", "double-paren",
+    "double-quoted-argument", "double-sq-bracket", "for-loop-number",
+    "for-loop-operator", "for-loop-separator", "function", "global-alias",
+    "globbing", "globbing-ext", "hashed-command", "here-string-text",
+    "here-string-tri", "here-string-var", "history-expansion",
+    "incorrect-subtle", "matherr", "mathnum", "mathvar", "paired-bracket",
+    "path", "path-to-dir", "precommand", "process-substitution-delimiter",
+    "rc-quote", "redirection", "reserved-word", "single-hyphen-option",
+    "single-quoted-argument", "single-sq-bracket", "subcommand", "subtle-bg",
+    "subtle-separator", "suffix-alias", "unknown-token", "variable",
+]
+
+CLI_TABLE_RE = re.compile(
+    r"typeset -gA _tn_cli_styles=\((.*?)^\)", re.S | re.M
+)
+CLI_ENTRY_RE = re.compile(r"^\s*([A-Za-z0-9_-]+)\s+'([^']*)'\s*$", re.M)
+# `fg=` / `bg=` must be followed by a hex; anything else is a palette we do not
+# control (a colour name, or an index into the terminal's own 256).
+CLI_NON_HEX_COLOUR_RE = re.compile(r"\b(?:fg|bg)=(?!#[0-9a-fA-F]{6}\b)([^,\s]+)")
+
+
+def check_cli_styles(report: Report) -> None:
+    block = CLI_TABLE_RE.search(read("common/.zshrc"))
+    if not block:
+        report.fail("cli-styles", "common/.zshrc no longer defines _tn_cli_styles")
+        return
+    styles = dict(CLI_ENTRY_RE.findall(block.group(1)))
+    if not styles:
+        report.fail("cli-styles", "the _tn_cli_styles table parsed as empty")
+        return
+
+    for role, style in sorted(styles.items()):
+        for colour in CLI_NON_HEX_COLOUR_RE.findall(style):
+            report.fail(
+                "cli-styles",
+                f"the command line paints {role} with {colour!r}, which is not a "
+                f"palette hex — the whole line has to come from one table",
+            )
+
+    missing = [r for r in CLI_ROLES_WITH_COLOURED_DEFAULTS if r not in styles]
+    if missing:
+        report.fail(
+            "cli-styles",
+            "these roles are left to the highlighter's own ANSI defaults: "
+            + ", ".join(missing),
+        )
+    else:
+        report.ok(
+            f"the command line names all {len(CLI_ROLES_WITH_COLOURED_DEFAULTS)} "
+            f"roles the highlighters would otherwise colour themselves "
+            f"({len(styles)} in the table)"
+        )
+
+
 # --- main ------------------------------------------------------------------
 
 
@@ -1090,6 +1189,7 @@ def main() -> int:
         check_syntax_theme,
         check_shared_roles,
         check_doc_paths,
+        check_cli_styles,
     ):
         try:
             check(report)
