@@ -10,10 +10,11 @@ automation, then closes the gaps the extension still leaves:
 | --- | --- |
 | generates `src/compile_commands.json` with `tools/clang/scripts/generate_compdb.py` when the first C++ file opens | `FileType` autocmd in `config/chromium.lua`, when the database is missing or older than the build dir's `build.ninja` |
 | regenerates whenever a GN file is edited | `BufWritePost *.gn,*.gni`, debounced 2s |
-| runs `clangd.restart` after regenerating | restarts clangd (stop-and-reattach; `:LspRestart` when the plugin provides it — under nvim 0.12's native `:lsp` command nvim-lspconfig defines no `Lsp*` commands) |
+| runs `clangd.restart` after regenerating | restarts the clangd rooted at *this* checkout, leaving any other checkout's client and its warm index alone: stop, wait for the process to actually exit, then re-attach every buffer it was serving (unsaved changes included) |
 | tracks the active build dir via the `out/current_link` symlink | same symlink, so VS Code and Neovim always index the same build |
 | relies on the vscode-clangd extension for gd/gu | `plugins/chromium-clangd.lua` configures clangd for real (nothing configured it before) |
-| — | re-checks freshness on every `BufEnter`/`FocusGained` (throttled), so a build, gn run, or `git pull` outside the editor is noticed mid-session, not next session |
+| — | enables clangd from the checkout's bundled binary, or PATH's, instead of waiting on Mason to download a clangd this config never runs; Mason is the fallback for a machine that has none |
+| — | re-checks freshness on every `BufEnter`/`FocusGained` (throttled), so a build, gn run, or `git pull` outside the editor is noticed mid-session, not next session — and stands down for a minute after a failed regeneration, so a build dir that no longer generates does not mean `ninja -t compdb` every couple of seconds |
 | — | probes once per file per session that the buffer's file is actually *in* the database; a miss (the fate of every file added since the last regeneration) forces one regeneration |
 | — | pins clangd's workspace root to the checkout's `src`, so v8/blink/webrtc/skia (which carry their own `.git`/`.clang-format` root markers) don't each spawn a clangd instance with its own racing background indexer |
 
@@ -30,7 +31,10 @@ Nothing here runs outside a Chromium checkout (detected by the presence of
 | `:ChromiumHealth` (= `:checkhealth chromium`) | diagnose the whole chain: binary, build dir, compdb freshness, whether the current buffer is in it, the running client's actual command, background-index progress, required tools |
 
 Without `out/current_link`, the generated out dir with the newest
-`build.ninja` — the one actually being built — is used.
+`build.ninja` — the one actually being built — is used. A build dir may be a
+symlink (`out/Default -> /ssd/chromium-out/Default` keeps a 100 GB build off
+the checkout's disk); what counts is that `build.ninja` is reachable through
+it.
 
 When gd or find-usages misbehaves, start with `:ChromiumHealth`: every
 way this setup can silently degrade (stale database, buffer missing from

@@ -129,7 +129,6 @@ local keys = {
   " ci",
   " cz",
   " cv",
-  " ce",
   " cI",
   "]c",
   "[c",
@@ -189,7 +188,7 @@ local ok, err = xpcall(function()
   for _, k in ipairs(keys) do
     invoke(k)
   end
-  for _, k in ipairs({ " cV", " ce" }) do
+  for _, k in ipairs({ " cV" }) do
     invoke(k, "x")
   end
   invoke("ig", "o")

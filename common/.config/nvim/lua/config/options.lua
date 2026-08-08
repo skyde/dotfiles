@@ -64,6 +64,9 @@ end
 
 vim.opt.clipboard:append("unnamedplus")
 
+-- Diagnostics before any language server is up. LazyVim replaces the whole
+-- diagnostic config when nvim-lspconfig loads, so the setting that actually
+-- lasts lives in plugins/diagnostics.lua; this one only covers startup.
 vim.diagnostic.config({ underline = false })
 
 -- Do not highlight the current line itself, but do highlight its line number.
