@@ -367,6 +367,43 @@ do
   vim.fn.delete(path)
 end
 
+do
+  -- <leader>cq from a side pane. Those panes are reconstructions with every
+  -- conflict already taken one way, so checking the current buffer reported the
+  -- merge finished and closed the tab with the markers still in the file.
+  local path = vim.fn.tempname()
+  vim.fn.writefile(multi, path)
+  vim.cmd("edit " .. vim.fn.fnameescape(path))
+  local working = vim.api.nvim_get_current_buf()
+  local tabs = vim.fn.tabpagenr("$")
+  conflict.merge_view()
+  eq("side pane: the merge view opened a tab", tabs + 1, vim.fn.tabpagenr("$"))
+
+  -- Leftmost window: the "ours" reconstruction, which has no markers.
+  local left = vim.api.nvim_tabpage_list_wins(0)[1]
+  vim.api.nvim_set_current_win(left)
+  check("side pane: it really has no markers of its own", not conflict.has_conflicts(0))
+
+  conflict.finish()
+  eq("side pane: finish refuses, the tab stays open", tabs + 1, vim.fn.tabpagenr("$"))
+  eq("side pane: and the file is untouched on disk", multi, vim.fn.readfile(path))
+  eq("side pane: the working buffer keeps its conflicts", 3, #conflict.list(working))
+
+  -- Resolve in the working buffer, then finish from the side pane again.
+  vim.api.nvim_buf_call(working, function()
+    conflict.choose_all("ours")
+  end)
+  vim.api.nvim_set_current_win(left)
+  conflict.finish()
+  eq("side pane: once resolved, finish closes the tab", tabs, vim.fn.tabpagenr("$"))
+  eq(
+    "side pane: and writes the working buffer, not the pane",
+    { "alpha", "one-ours", "beta", "two-ours", "gamma", "three-ours" },
+    vim.fn.readfile(path)
+  )
+  vim.fn.delete(path)
+end
+
 --------------------------------------------------------------------------
 -- highlighting
 --------------------------------------------------------------------------

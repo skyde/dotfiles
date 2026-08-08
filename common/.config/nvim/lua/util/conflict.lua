@@ -238,6 +238,10 @@ function M.merge_view()
 
   vim.cmd("tab split")
   local middle = vim.api.nvim_get_current_win()
+  -- Which buffer this tab is a merge view *of*. `<leader>cq` can be pressed
+  -- from any of the three panes, and the outer two are reconstructions with no
+  -- markers left in them.
+  vim.t.vcs_conflict_buf = buf
   vim.cmd("leftabove vertical split")
   local left = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(left, pane("ours", side("ours")))
@@ -262,13 +266,23 @@ end
 
 ---Save the resolved file and drop back out of the merge view.
 function M.finish()
-  if M.has_conflicts(0) then
-    local left = #M.list(0)
+  -- The working buffer, not whichever pane the cursor happens to be in: the
+  -- ours and theirs panes are reconstructions with every conflict already taken
+  -- one way, so asking them would report the merge finished and close the tab
+  -- with the real markers still in the file.
+  local buf = vim.t.vcs_conflict_buf
+  if not (type(buf) == "number" and vim.api.nvim_buf_is_valid(buf)) then
+    buf = vim.api.nvim_get_current_buf()
+  end
+  if M.has_conflicts(buf) then
+    local left = #M.list(buf)
     vim.notify(("Still %d unresolved conflict%s"):format(left, left == 1 and "" or "s"), vim.log.levels.WARN)
     return
   end
-  if vim.bo.modifiable and vim.api.nvim_buf_get_name(0) ~= "" then
-    vim.cmd("write")
+  if vim.bo[buf].modifiable and vim.api.nvim_buf_get_name(buf) ~= "" then
+    vim.api.nvim_buf_call(buf, function()
+      vim.cmd("write")
+    end)
   end
   if vim.fn.tabpagenr("$") > 1 then
     vim.cmd("tabclose")
