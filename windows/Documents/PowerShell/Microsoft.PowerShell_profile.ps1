@@ -47,11 +47,17 @@ Set-PSReadLineOption -Colors @{
     Member             = '#9cdcfe'
     Type               = '#4ec9b0'
     Number             = '#b5cea8'
-    # `|`, `>`, `=` and friends are structure rather than content, so they sit
-    # one step below plain text instead of level with it — the same dark5 the
-    # zsh table gives `redirection` and `commandseparator`, so the shape of a
-    # pipeline reads the same on both platforms.
-    Operator           = '#737aa2'
+    # Stays level with plain text. zsh moved its `redirection` and
+    # `commandseparator` down to dark5 so a pipeline shows its joints, and the
+    # obvious mirror here is Operator — but PSReadLine only spends Operator on
+    # tokens the PowerShell parser flags as unary, binary or assignment
+    # operators, and `|` and `>` are neither: they are TokenKind.Pipe and
+    # TokenKind.Redirection, and land on Default. So recolouring Operator would
+    # not move a single character of a pipeline; it would only restyle `-eq`,
+    # `=` and `+`, which zsh paints from other roles entirely. Left alone until
+    # someone can check it against a real PSReadLine — this is the one row where
+    # the two platforms deliberately do not match.
+    Operator           = '#d4d4d4'
     ContinuationPrompt = '#565f89'
     Error              = '#f7768e'
     InlinePrediction   = '#565f89'
