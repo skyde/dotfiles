@@ -47,7 +47,11 @@ Set-PSReadLineOption -Colors @{
     Member             = '#9cdcfe'
     Type               = '#4ec9b0'
     Number             = '#b5cea8'
-    Operator           = '#d4d4d4'
+    # `|`, `>`, `=` and friends are structure rather than content, so they sit
+    # one step below plain text instead of level with it — the same dark5 the
+    # zsh table gives `redirection` and `commandseparator`, so the shape of a
+    # pipeline reads the same on both platforms.
+    Operator           = '#737aa2'
     ContinuationPrompt = '#565f89'
     Error              = '#f7768e'
     InlinePrediction   = '#565f89'

@@ -160,21 +160,59 @@ prompt; anything else would mean accepting a history entry recoloured it.
 
 | Role                                        | Hex       |
 | ------------------------------------------- | --------- |
-| plain text, redirections, `;` and `\|`       | `#d4d4d4` |
+| plain text, arguments                       | `#d4d4d4` |
 | comments                                    | `#6a9955` |
 | strings                                     | `#ce9178` |
 | commands, functions, aliases, `$(…)`        | `#dcdcaa` |
-| control words, and precommands like `sudo`  | `#c586c0` |
+| subcommands — `git commit`, `docker run`    | `#4ec9b0` |
+| control words, precommands, `[[ ]]` `(( ))` | `#c586c0` |
 | variables, assignments, interpolation       | `#9cdcfe` |
-| type names                                  | `#4ec9b0` |
-| globs, history expansion, escapes           | `#d7ba7d` |
+| globs, case patterns, history expansion     | `#d7ba7d` |
 | options                                     | `#569cd6` |
 | numbers and file descriptors                | `#b5cea8` |
+| redirections, `;` and `\|`                   | `#737aa2` |
+| bracket pairs, by nesting depth             | `#ffd700` `#da70d6` `#179fff` |
 
 Two things stay Tokyo Night, because they are facts about the machine rather
 than about syntax and Dark+ has no vocabulary for either: a word that resolves
 to no command is `red`, and a path that has not resolved to anything yet is
 `comment`. A path that *does* exist gets an underline instead of a hue.
+
+Three of those rows are about keeping the line from going flat. **Subcommands**
+get the type colour because `git commit` and `docker run` are the most-typed
+tokens on the line and had no colour of their own — `fast-syntax-highlighting`
+knows them from its per-command grammars, and left unset they fell through to
+the plugin's raw ANSI `fg=yellow`. **Plumbing** dropped from `#d4d4d4` to dark5
+so that it stops reading level with the words either side of it; that is the
+same move the path separators make, and for the same reason. **Bracket pairs**
+are VS Code's own bracket-pair-colourisation hues, since the prompt is code.
+
+The rest of the shell's grammar — `case` arms, here-strings, `for` headers,
+array subscripts — is named in the table too. Not because each one needs its
+own hue, but because *unset is not neutral*: both highlighters ship defaults
+for these, and those defaults are ANSI-indexed (`fg=green`, `fg=yellow,bold`)
+or outright backgrounds (`bg=blue`, `bg=18`), so anything left out was painted
+from a palette this repo does not otherwise use. `tests/check-theme.py` check 8
+is what keeps a role from silently going back to one.
+
+One role in that table is not a colour at all. `fast-syntax-highlighting`
+keeps a *secondary* style table for anything it treats as an embedded shell —
+most visibly the inside of `$(…)` — and ships it pointing at a theme it
+downloads from GitHub the first time a shell starts. So `date` in
+`echo $(date)` was `fg=180`, a 256-colour tan out of a file fetched off the
+internet, while the same word outside the parentheses was `#dcdcaa`. Setting
+`secondary` to nothing stops the switch, and a nested command now reads
+exactly like a top-level one. `~/.zshrc` also pins `FAST_WORK_DIR` and leaves
+an empty `secondary_theme.zsh` in it, so the download that would now go unread
+is not part of opening a shell.
+
+One thing the table cannot reach, so as not to go looking for it later: the
+handful of `fast-syntax-highlighting` chromas that highlight an *embedded*
+language — the awk program inside `awk '{print $1}'`, and the perl and ruby
+equivalents. Those build a style by pasting two entries together with a comma
+(`→chroma/-awk.ch`), which yields `fg=#c586c0,fg=#ce9178`, and zsh resolves a
+doubled `fg=` to a colour that is neither. It predates this table and is not
+something a value here can fix; the shell *around* the string is unaffected.
 
 > **Two Dark+ variants are in play, on purpose.** These are bat's built-in
 > `Visual Studio Dark+`. The editor side — Neovim's `lua/util/vscode_syntax.lua`

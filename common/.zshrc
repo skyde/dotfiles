@@ -236,6 +236,16 @@ ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#565f89'
 
 _source_zsh_plugin "zsh-autosuggestions" "zsh-autosuggestions.zsh"
 
+# fast-syntax-highlighting keeps a work dir, and on the very first startup it
+# curls a "secondary theme" into it from raw.githubusercontent.com and later
+# sources that file — see the `secondary_theme.zsh` block in its plugin file.
+# The table below switches the secondary theme off, so the download would only
+# ever be fetched to sit unread; pinning the directory and leaving the file in
+# place is what stops a network round trip from being part of opening a shell.
+typeset -g FAST_WORK_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/fast-syntax-highlighting"
+[[ -e $FAST_WORK_DIR/secondary_theme.zsh ]] ||
+  { mkdir -p -- "$FAST_WORK_DIR" && : >| "$FAST_WORK_DIR/secondary_theme.zsh" } 2>/dev/null
+
 # Prefer fast-syntax-highlighting (usually installs to zsh-fast-syntax-highlighting)
 # but some package managers might use fast-syntax-highlighting
 if ! _source_zsh_plugin "zsh-fast-syntax-highlighting" "fast-syntax-highlighting.plugin.zsh" && \
@@ -271,6 +281,15 @@ typeset -gA _tn_cli_styles=(
   # Commands: the thing being called, in Dark+'s function yellow. A word that
   # resolves to nothing is the one place Tokyo Night's red overrides.
   command                       'fg=#dcdcaa'
+  # The verb after the command — `git commit`, `docker run`, `apt-get install`.
+  # fast-syntax-highlighting knows these from its per-command grammars, and it
+  # is the single most-typed token that had no colour of its own here: left
+  # unset it fell through to the plugin's `fg=yellow`, i.e. raw ANSI colour3,
+  # from neither palette. It takes Dark+'s type/class teal, which nothing else
+  # on the command line uses and which PSReadLine already spends on `Type`.
+  # A subcommand really is the closest thing a command line has to a type: it
+  # picks which grammar the rest of the words are read in.
+  subcommand                    'fg=#4ec9b0'
   builtin                       'fg=#dcdcaa'
   function                      'fg=#dcdcaa'
   alias                         'fg=#dcdcaa'
@@ -278,7 +297,13 @@ typeset -gA _tn_cli_styles=(
   global-alias                  'fg=#dcdcaa'
   hashed-command                'fg=#dcdcaa'
   arg0                          'fg=#dcdcaa'
+  # A substitution runs a command, so its wrapper — `$(`, `)`, the backticks,
+  # the `<(` of a process substitution — is marked as one rather than left to
+  # read as punctuation.
   back-quoted-argument          'fg=#dcdcaa'
+  back-quoted-argument-delimiter 'fg=#dcdcaa'
+  command-substitution-delimiter 'fg=#dcdcaa'
+  process-substitution-delimiter 'fg=#dcdcaa'
   unknown-token                 'fg=#f7768e'
   # Control words, and the precommands (sudo, command, noglob) that read as
   # control over the command that follows.
@@ -299,6 +324,7 @@ typeset -gA _tn_cli_styles=(
   # Metacharacters that expand to something else, in the gold Dark+ uses for
   # escape sequences — a glob and a \n are the same kind of "not literal".
   globbing                      'fg=#d7ba7d'
+  globbing-ext                  'fg=#d7ba7d'
   history-expansion             'fg=#d7ba7d'
   # Options modify the command the way a storage modifier modifies a
   # declaration, and take the blue Dark+ gives those.
@@ -309,9 +335,18 @@ typeset -gA _tn_cli_styles=(
   named-fd                      'fg=#b5cea8'
   numeric-fd                    'fg=#b5cea8'
   matherr                       'fg=#f7768e'
-  # Plumbing stays the plain text colour: | ; && > are structure, not content.
-  redirection                   'fg=#d4d4d4'
-  commandseparator              'fg=#d4d4d4'
+  # Plumbing is structure, not content — so it recedes rather than taking a
+  # hue of its own. Previously it was #d4d4d4, the same as an ordinary
+  # argument, which meant `cat f.txt | grep -i foo > out.log` painted the four
+  # words and the two operators in one flat colour and the shape of the
+  # pipeline had to be read character by character. dark5 is one step down
+  # from plain text and already in use two screens up for completion
+  # messages. This is the rule the path separators below already follow: the
+  # segments carry the eye, the joints stay out of the way.
+  redirection                   'fg=#737aa2'
+  commandseparator              'fg=#737aa2'
+  here-string-tri               'fg=#737aa2'
+  subtle-separator              'fg=#737aa2'
   # Paths. Underline is the "this exists" signal, so a real path is legible
   # without spending a hue on it; a prefix that has not resolved to anything
   # yet is muted instead. The separators take the same quiet grey, which is
@@ -319,10 +354,70 @@ typeset -gA _tn_cli_styles=(
   # perm_sep — so the segments of a long path carry the eye, not the slashes.
   path                          'fg=#d4d4d4,underline'
   path-to-dir                   'fg=#d4d4d4,underline'
+  autodirectory                 'fg=#d4d4d4,underline'
   path_prefix                   'fg=#565f89'
   path_pathseparator            'fg=#565f89'
   path_prefix_pathseparator     'fg=#565f89'
   pathseparator                 'fg=#565f89'
+  # -------- shell structure
+  # Everything below was previously left unset, which is not the same as
+  # leaving it alone: both plugins ship defaults for these, and those defaults
+  # are ANSI-indexed (`fg=green`, `fg=yellow,bold`) or worse, backgrounds
+  # (`bg=blue`, `bg=18`). So a `case` block or a here-string was painted out of
+  # a palette this repo does not use, in the middle of a line that otherwise
+  # came from Dark+. They are named here so the whole line comes from one
+  # table — and so the constructs that were flat before now have some shape.
+  #
+  # Grouping constructs are control flow, so they take the same magenta as the
+  # reserved words they belong to.
+  double-paren                  'fg=#c586c0'
+  single-sq-bracket             'fg=#c586c0'
+  double-sq-bracket             'fg=#c586c0'
+  case-parentheses              'fg=#c586c0'
+  # A case pattern is a glob, and is coloured as one.
+  case-condition                'fg=#d7ba7d'
+  case-input                    'fg=#9cdcfe'
+  # for/while headers: the variable and the counter keep the colours those
+  # things have everywhere else, the `;` joins the plumbing above.
+  for-loop-variable             'fg=#9cdcfe'
+  for-loop-number               'fg=#b5cea8'
+  for-loop-operator             'fg=#d4d4d4'
+  for-loop-separator            'fg=#737aa2'
+  assign-array-bracket          'fg=#9cdcfe'
+  # A here-string is a string; the `<<<` that introduces it is plumbing.
+  here-string-text              'fg=#ce9178'
+  here-string-var               'fg=#9cdcfe'
+  back-or-dollar-double-quoted-argument 'fg=#d7ba7d'
+  # Bracket pairs, in VS Code's own bracket-pair-colourisation colours — the
+  # command line is code, and this is what the editor does with nesting.
+  # zsh-syntax-highlighting cycles through as many levels as are defined and
+  # fast-syntax-highlighting uses three, so the first three carry the load and
+  # 4/5 repeat rather than inventing two more hues.
+  bracket-level-1               'fg=#ffd700'
+  bracket-level-2               'fg=#da70d6'
+  bracket-level-3               'fg=#179fff'
+  bracket-level-4               'fg=#ffd700'
+  bracket-level-5               'fg=#da70d6'
+  bracket-error                 'fg=#f7768e'
+  # The pair either side of the cursor. fg_gutter is a neutral fill no other
+  # role claims — deliberately not bg_visual, which means "this row is
+  # selected" in five other tools.
+  paired-bracket                'bg=#3b4261'
+  cursor-matchingbracket        'bg=#3b4261'
+  # The hint a chroma leaves when it recognises (or fails to recognise) a
+  # subcommand: the same muted grey / Tokyo Night red split used everywhere
+  # else for "fine" versus "this will not work".
+  correct-subtle                'fg=#565f89'
+  incorrect-subtle              'fg=#f7768e'
+  subtle-bg                     'bg=#292e42'
+  # Not a colour: the name of a *second* style table that
+  # fast-syntax-highlighting switches to for anything it treats as an embedded
+  # shell — most visibly the inside of `$(…)`. It ships pointing at the theme
+  # it downloads on first run, so `date` in `echo $(date)` came out fg=180,
+  # a 256-colour tan from a file fetched off the internet, while the same word
+  # outside the parentheses was #dcdcaa. Emptied, the highlighter never
+  # switches, and a nested command reads exactly like a top-level one.
+  secondary                     ''
 )
 
 if (( ${+FAST_HIGHLIGHT_STYLES} )); then
