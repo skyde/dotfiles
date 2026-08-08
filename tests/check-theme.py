@@ -213,6 +213,128 @@ def _comment_leads(path):
     return os.path.basename(path) in ("colors", ".ripgreprc")
 
 
+def _fzf_colour_lines(text):
+    """The fzf palette theme.sh builds, one row per role it names.
+
+    fzf's colours are not a config file, they are a flag accumulated across
+    eight lines -- `--color=hl:#e0af68:bold:reverse,hl+:#faba4a:bold:reverse`
+    and so on -- and fzf resolves a role named twice to the last value it was
+    given. Nothing else here reads them by role: the contrast table only asks
+    whether the colour appears somewhere in the file, which a stale duplicate
+    satisfies with the copy that is no longer in effect.
+
+    Roles whose value is not a colour (`bg:-1`, `gutter:-1`) are skipped, so
+    the row set is the palette rather than the flag.
+    """
+    out = []
+    for lineno, line in enumerate(text.splitlines(), 1):
+        for payload in re.findall(r"--color=([^\s\"']+)", line):
+            for field in payload.split(","):
+                role, _, spec = field.partition(":")
+                colour = re.match(r"(#[0-9a-fA-F]{6})\b", spec)
+                if role and colour:
+                    out.append((lineno, "fzf", role.lower(),
+                                (norm(colour.group(1)),)))
+    return out
+
+
+def _keyed_colour_lines(path, text):
+    """(section, key, colour...) for each line of `text` that assigns a colour.
+
+    Only lines carrying a hex are considered, and that restriction is what
+    makes the caller safe rather than merely convenient. Every one of these
+    formats has keys that repeat legitimately -- kitty's `map`, git's
+    `difftool`, a toml array of inline tables listing `url` sixty-four times --
+    and not one of those lines carries a colour. Narrowing to the lines that
+    do leaves a set where a repeat is always a mistake.
+
+    Returns None for a format with no key grammar worth parsing (lua tables,
+    shell, tmux, where a repeated option is normal and the "key" is a guess).
+    """
+    posix, ext = path.replace(os.sep, "/"), os.path.splitext(path)[1]
+    section_re = re.compile(r'^\s*\[([^\]]+)\]\s*$')
+    if posix.endswith("/shell/theme.sh"):
+        return _fzf_colour_lines(text)
+    if ext == ".toml" or (posix.endswith("/config") and "/git/" in posix):
+        assign_re = re.compile(r'^\s*([\w.-]+)\s*=')
+    elif "/kitty/" in posix or ext in (".theme", ".ini"):
+        # kitty writes `background #1a1b26`; btop `theme[x]="#1a1b26"`;
+        # fsh `key=colour`.
+        assign_re = re.compile(r'^\s*([\w.\[\]-]+?)\s*(?:=|\s)')
+    else:
+        # Everything else, and .tmux.conf is why the list is by path rather
+        # than by extension: tmux's key is `set`, repeated once per option, so
+        # reading it as a key grammar makes every line a conflict with every
+        # other. Its options are checked by asking tmux itself.
+        return None
+
+    out, section = [], ""
+    for lineno, line in enumerate(text.splitlines(), 1):
+        s = section_re.match(line)
+        if s:
+            section = s.group(1)
+            continue
+        colours = tuple(norm(h) for h in re.findall(r"#[0-9a-fA-F]{6}\b", line))
+        if not colours:
+            continue
+        a = assign_re.match(line)
+        if not a:
+            continue
+        out.append((lineno, section, a.group(1).lower(), colours))
+    return out
+
+
+def _check_repeated_keys(verbose):
+    """No config assigns the same key two different colours.
+
+    None of these formats treats that as an error you get told about. git
+    merges repeated sections and lets the last value win, so a whole
+    [color "status"] block earlier in the file is not a conflict -- it is a
+    block that does nothing. kitty and btop are the same, last line wins.
+    Only toml refuses outright, and only for a key repeated inside one table.
+
+    So the failure looks like a setting that is present, commented, and inert.
+    This file grew two [color "branch"] sections and two [color "decorate"]
+    sections in separate sittings, disagreeing about whether a remote ref is
+    purple or cyan, and a second delta.inline-hint-style eleven lines below the
+    first; every checker here read the first of each and was satisfied, while
+    git read the last. Found by the self-test's first-match probe, which
+    duplicates a line to see whether anything looks past the copy it finds.
+
+    The same-colour case is left alone: writing a key twice with the same value
+    is redundant rather than wrong, and saying so would mostly flag deliberate
+    restatements.
+    """
+    doc_path = os.path.join(REPO, "docs/tokyonight.md")
+    if not os.path.isfile(doc_path):
+        return []
+    problems, checked = [], 0
+    for full in themed_files(open(doc_path, encoding="utf-8").read()):
+        rel = os.path.relpath(full, REPO)
+        body = uncommented(full, open(full, encoding="utf-8").read())
+        rows = _keyed_colour_lines(full, body)
+        if rows is None:
+            continue
+        checked += 1
+        seen = {}
+        for lineno, section, key, colours in rows:
+            seen.setdefault((section, key), []).append((lineno, colours))
+        for (section, key), hits in sorted(seen.items()):
+            values = {c for _l, c in hits}
+            if len(values) < 2:
+                continue
+            where = "%s.%s" % (section, key) if section else key
+            problems.append(
+                "%s assigns %s %d different colours (%s) -- the last one wins "
+                "and the rest are inert"
+                % (rel, where, len(values),
+                   ", ".join("%s at line %d" % (" ".join(c), l)
+                             for l, c in hits)))
+    if verbose and not problems:
+        print("  %d keyed config(s) assign each colour key once" % checked)
+    return problems
+
+
 # Checks that need an external binary or a subshell. Skipping them is what
 # makes the comment-decoy probe in the self-test affordable: it runs the
 # checker twice per colour line in the tree, and the oracles are 2.2 of the
@@ -1633,6 +1755,15 @@ def _check_tmux_options(verbose):
     to something containing a colour is looked up in `show-options`, and both
     the presence and the colours have to match. An option tmux dropped is an
     option that never applied.
+
+    The socket name carries the pid, and that is not decoration. A tmux socket
+    is a shared name in an abstract namespace, so with a fixed one two runs of
+    this checker on the same machine are the same server: the second run's
+    `kill-server` takes down the first run's session between its start and its
+    `show-options`, which comes back empty and reads as "tmux knows none of
+    these option names" -- twenty-three failures, none of them about the
+    config. The self-test runs the checker hundreds of times, sometimes
+    alongside a run in another terminal, so this was not hypothetical.
     """
     import shutil
     import subprocess
@@ -1642,7 +1773,7 @@ def _check_tmux_options(verbose):
     conf = os.path.join(REPO, TMUX)
     if not os.path.isfile(conf):
         return []
-    sock = "theme-check"
+    sock = "theme-check-%d" % os.getpid()
 
     def tmux(*args):
         return subprocess.run(["tmux", "-L", sock] + list(args),
@@ -1660,6 +1791,12 @@ def _check_tmux_options(verbose):
                 parts = line.split(None, 1)
                 if len(parts) == 2:
                     held[parts[0]] = parts[1].strip().strip('"')
+        # A live server always holds options, so an empty reading means the
+        # server went away rather than that the config set nothing. Say that
+        # once, instead of reporting every option in the file as unknown.
+        if not held:
+            return ["tmux started but reported no options at all, so this run "
+                    "learned nothing about %s" % TMUX]
 
         problems, checked = [], 0
         for line in open(conf, encoding="utf-8"):
@@ -1695,10 +1832,19 @@ def _check_tmux_options(verbose):
 
 
 def _git_section(body, name):
-    """The body of a [color "x"] section, or "" when it is absent."""
+    """The body of a [color "x"] section, or "" when it is absent.
+
+    `body` must be comment-stripped. A git config comment is prose, and prose
+    about this file quotes section headers -- the note above [color "status"]
+    explaining why there is only one of it contains the string `[color
+    "status"]`, which this matched in preference to the real header, returning
+    four lines of English with no keys in them. The slot check then found
+    nothing to test and passed, on a config with a misspelled `untracked` in
+    it. Caught by the self-test, one mutation later.
+    """
     section = name.split(".", 1)[1] if "." in name else name
-    m = re.search(r'\[color "%s"\](.*?)(?=\n\[|\Z)' % re.escape(section),
-                  body, re.S)
+    m = re.search(r'^\[color "%s"\](.*?)(?=\n\[|\Z)' % re.escape(section),
+                  body, re.S | re.M)
     return m.group(1) if m else ""
 
 
@@ -1729,7 +1875,7 @@ def _check_git_paints(verbose):
     cfg = os.path.join(REPO, GIT)
     if not os.path.isfile(cfg):
         return []
-    body = open(cfg, encoding="utf-8").read()
+    body = uncommented(cfg, open(cfg, encoding="utf-8").read())
 
     tmp = tempfile.mkdtemp(prefix="theme-git-")
     work = os.path.join(tmp, "work")
@@ -1926,6 +2072,22 @@ def _check_starship_config(verbose):
     reads the log it leaves behind. That is deterministic, and it catches all three shapes:
     an unknown top-level section, a misspelled section header, and a bad key
     inside a module starship knows.
+
+    Every line in that log is treated as a problem, which is only fair if the
+    log can only contain config complaints -- so the run gets an empty
+    directory of its own rather than inheriting whatever the caller was
+    standing in. starship scans the working directory to decide which language
+    modules apply, gives that scan a 30ms budget, and writes a WARN when it
+    overruns. Whether it overruns is a question about the tree and the disk,
+    not about starship.toml -- this check was first seen failing on a config
+    it had passed a minute earlier from somewhere else. A check that answers
+    differently depending on where it was run is one people learn to ignore.
+
+    An empty directory costs no coverage: starship validates the keys of every
+    module the config names when it loads the file, not when the module
+    renders, so a bad key under [git_branch] is reported outside a repo just
+    as it is inside one. What an empty directory does buy is that the result
+    is the same everywhere.
     """
     import shutil
     import subprocess
@@ -1936,7 +2098,8 @@ def _check_starship_config(verbose):
             print("  starship not installed, its config not read")
         return []
 
-    with tempfile.TemporaryDirectory() as cache:
+    with tempfile.TemporaryDirectory() as cache, \
+            tempfile.TemporaryDirectory() as cwd:
         env = dict(os.environ,
                    STARSHIP_CONFIG=os.path.join(REPO, STARSHIP),
                    STARSHIP_CACHE=cache,
@@ -1946,7 +2109,7 @@ def _check_starship_config(verbose):
                    SSH_CONNECTION="1.2.3.4 22 5.6.7.8 22")
         try:
             subprocess.run(["starship", "explain"], capture_output=True,
-                           text=True, timeout=30, env=env,
+                           text=True, timeout=30, env=env, cwd=cwd,
                            stdin=subprocess.DEVNULL)
         except (OSError, subprocess.SubprocessError) as exc:
             return ["could not run starship: %s" % exc]
@@ -2488,7 +2651,18 @@ def check_parity(doc, verbose):
                           open(nvim_theme, encoding="utf-8").read())
         for field, slot, label in [("black", 0, "ANSI 0"),
                                    ("black_bright", 8, "ANSI 8")]:
-            m = re.search(r'c\.terminal\.%s\s*=\s*"(#[0-9a-fA-F]{6})"' % field, src)
+            # Every assignment, not the first: a second `c.terminal.black =`
+            # further down wins at runtime, and a reader that stops at the top
+            # of the file would never see it.
+            found = re.findall(r'c\.terminal\.%s\s*=\s*"(#[0-9a-fA-F]{6})"'
+                               % field, src)
+            m = re.match(r"(#[0-9a-fA-F]{6})", found[-1]) if found else None
+            for extra in found[:-1]:
+                if norm(extra) != norm(found[-1]):
+                    problems.append(
+                        "Neovim sets c.terminal.%s twice, to %s and %s -- the "
+                        "last one wins and the other is dead"
+                        % (field, norm(extra), norm(found[-1])))
             if not m:
                 problems.append(
                     "Neovim does not override c.terminal.%s, so a :terminal "
@@ -2563,6 +2737,7 @@ def check_parity(doc, verbose):
     # if something compares the two. Sourcing the file is also the only check
     # that it is still valid shell.
     problems.extend(run_check(_check_ls_colors, lf_entries))
+    problems.extend(run_check(_check_repeated_keys, verbose))
     problems.extend(run_check(_check_shell_parity, verbose))
     problems.extend(run_check(_check_delta_options, verbose))
     problems.extend(run_check(_check_ripgrep_config, verbose))

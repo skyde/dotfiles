@@ -765,6 +765,17 @@ quietly approximating it.
   the extension and nothing breaks loudly — VS Code falls back to another dark
   theme, and Neovim keeps painting colours resolved against one that is gone.
 
+  It also checks that no config assigns one key two different colours. None of
+  these formats calls that an error: git merges repeated sections and lets the
+  last value win, kitty and btop take the last line, and fzf's `--color` flag
+  takes the last value for a role. So the loser is a setting that is present,
+  commented, correctly spelled, and inert. This file had three of them at once
+  — two `[color "branch"]` sections and two `[color "decorate"]` sections
+  written in separate sittings, disagreeing about whether a remote ref is
+  purple or cyan, plus a second `delta.inline-hint-style` eleven lines below
+  the first. Every check here read the first of each and was satisfied; git
+  read the last.
+
   It also checks that Neovim's inline diff and delta paint the same diff:
   `lua/util/inline_diff.lua` maps each of its highlights to a delta style in
   its own header comment, and this is what holds the two files to it.
@@ -880,6 +891,33 @@ quietly approximating it.
   them to the doc is still the better arrangement (two configs can drift
   together; the doc is where the choice was made), but it bought no new
   coverage, and the honest count says so.
+
+  One shape is exempt from the first-match probe, and it is a fact about yazi
+  rather than about the checker: `[filetype]` and `[icon]` are an ordered list
+  where the *first* matching rule wins, so a copy placed below the original is
+  dead to yazi exactly as it is dead to a first-match reader. There is nothing
+  to notice, and requiring the checker to notice would be requiring it to call
+  correct config broken.
+
+  A case the readers miss is re-run with the oracles on before it is called a
+  gap. The sweep turns them off — they are 2.2 of the 2.3 seconds a run costs,
+  and hundreds of runs is the whole point — but some colours are held in place
+  only by an oracle: a ninth entry in wezterm's eight-colour `brights` array is
+  a hard error from wezterm and invisible to every reader here. Both remaining
+  "fooled" results were that, and neither was a gap.
+
+  Running the full sweep is also what surfaced two checks whose answer depended
+  on the machine rather than on the config, which is its own kind of broken —
+  a check that fails at random is one people learn to skip. The starship check
+  reads every line starship logs as a config complaint, and starship logs a
+  WARN when its 30ms scan of the working directory overruns, so the answer
+  moved with the size of the directory the checker was invoked from; it now
+  runs in an empty one of its own. The tmux check started a server on a socket
+  named `theme-check`, which is a *shared* name — two runs on one machine were
+  one server, and the second one's `kill-server` emptied the first one's
+  `show-options` into twenty-three failures about option names tmux knows
+  perfectly well. The socket carries the pid now. Measured, not assumed: twelve
+  concurrent runs hit it twice before and zero times after.
 
   It samples one colour per file by default and sweeps every one under
   `--probe-comments` — worth running after adding a check, because the sample

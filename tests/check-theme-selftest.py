@@ -215,6 +215,21 @@ MUTATIONS = [
      r"`common/\.config/nvim/lua/util/vscode_syntax\.lua`", "`common/.config/nvim/lua/util/gone.lua`",
      "stale", None),
 
+    # A key assigned twice is inert config that reads as live config, and none
+    # of these formats says so: git merges repeated sections and takes the last
+    # value, kitty takes the last line. Both shapes, because the git one is
+    # what actually happened -- two [color "branch"] sections written in
+    # separate sittings, disagreeing about the colour of a remote ref.
+    ("a git colour section written twice", "parity", GIT,
+     r'\[index\]',
+     '[color "branch"]\n    remote = "#9d7cd8"\n\n[index]',
+     "different colours", None),
+
+    ("a kitty colour key written twice", "parity", KITTY,
+     r"background #1a1b26\n",
+     "background #1a1b26\nbackground #16161e\n",
+     "different colours", None),
+
     # The parity doc is where the VS Code resolution work is written down and
     # the lua file is where it is acted on, so the two can disagree silently:
     # a scope re-resolved in the doc leaves Neovim painting the old answer, and
@@ -568,6 +583,82 @@ def probe_targets(module, sample_per_file=None):
     return targets
 
 
+def _first_match_wins(rel, line):
+    """True where a copy placed after a line is dead config, not a live one.
+
+    yazi resolves `[filetype]` and `[icon]` by walking the rules in order and
+    taking the first that matches, so a duplicate rule below the original never
+    applies -- to yazi or to a reader. Recognised by the rule shape rather than
+    by the section header, since these are the only lines in the file that are
+    an inline table carrying a pattern.
+    """
+    return (rel.endswith("yazi/theme.toml")
+            and re.match(r'\s*\{\s*(url|mime|name)\s*=', line) is not None)
+
+
+def probe_first_match(verbose, files, sample_per_file=None):
+    """Require every reader to look past the first match it finds.
+
+    `re.search` reads as "find it", and in a config file the honest question is
+    almost always "find them all". That habit produced three separate bugs in
+    this tree -- the picker check reading one of st-rg's two awk prefixes, the
+    unpinned report reading one of fzf's four colours per line, the shared-role
+    check reading one of yazi's three identical borders -- so it is generated
+    now rather than watched for.
+
+    One shape is exempt, and it is a property of the config rather than of the
+    checker. yazi's `[filetype]` and `[icon]` rules are an ordered list where
+    the *first* matching rule wins, so a copy placed after the original is
+    dead in yazi exactly as it is dead to a first-match reader. There is
+    nothing for the checker to notice, and demanding it notice anyway would be
+    demanding it report correct config as broken.
+
+    For each colour something constrains: put a *second* copy of the line
+    beside it with a different colour, leaving the correct one in place. A
+    reader that stops at the first match finds the good one and passes. A
+    reader that looks at all of them finds the bad one. So something must
+    still fail.
+    """
+    module = load_checker()
+    fooled, constrained = [], 0
+    with tempfile.TemporaryDirectory() as tmp:
+        make_copy(files, tmp)
+        for rel, lineno, colour, _marker in probe_targets(module, sample_per_file):
+            path = os.path.join(tmp, rel)
+            original = open(path, encoding="utf-8").read()
+            lines = original.splitlines(True)
+            if _first_match_wins(rel, lines[lineno]):
+                continue
+            other = _probe_replacement(colour)
+            changed = lines[lineno].replace(colour, other, 1)
+
+            if not _probe_run(tmp, path, lines, lineno, changed, original):
+                continue
+            constrained += 1
+            # The correct line first, the wrong copy after it.
+            both = lines[lineno] if lines[lineno].endswith("\n") else lines[lineno] + "\n"
+            if _probe_run(tmp, path, lines, lineno, both + changed, original):
+                continue
+            # Nothing among the readers noticed. Before calling that a gap,
+            # ask the oracles, which the sweep runs without: wezterm rejects a
+            # ninth entry in an eight-colour array and tmux reports the option
+            # value it actually ended up holding, and neither fact is available
+            # to a reader. Both of these were reported as fooled until this
+            # second run existed.
+            if _probe_run(tmp, path, lines, lineno, both + changed, original,
+                          tools=True):
+                continue
+            fooled.append("%s:%d — %s is read only until the first match"
+                          % (rel, lineno + 1, colour))
+
+    if verbose:
+        for f in fooled:
+            print("  fooled  %s" % f)
+        print("  first-match probe: %d constrained, %d fooled"
+              % (constrained, len(fooled)))
+    return fooled
+
+
 def report_unpinned(files, only=None):
     """How much of the theme is held in place, per file.
 
@@ -644,12 +735,24 @@ def probe_comments(verbose, files, sample_per_file=None):
     return fooled
 
 
-def _probe_run(root, path, lines, lineno, replacement, original):
-    """Swap one line into the copy, run the checker there, put it back."""
+def _probe_run(root, path, lines, lineno, replacement, original, tools=False):
+    """Swap one line into the copy, run the checker there, put it back.
+
+    Tools are off by default because they are 2.2 of the 2.3 seconds a run
+    costs and the probes make hundreds of runs. That is a real trade, though,
+    not a free one: some colours are constrained *only* by an oracle -- a ninth
+    entry in wezterm's `brights` is a hard error from wezterm and invisible to
+    every reader here -- so a run without them reports those as unconstrained.
+    Pass tools=True to settle a case rather than to sweep for one.
+    """
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("".join(lines[:lineno]) + replacement
                  + "".join(lines[lineno + 1:]))
-    env = dict(os.environ, THEME_CHECK_NO_TOOLS="1")
+    env = dict(os.environ)
+    if tools:
+        env.pop("THEME_CHECK_NO_TOOLS", None)
+    else:
+        env["THEME_CHECK_NO_TOOLS"] = "1"
     out = subprocess.run(
         [sys.executable, os.path.join(root, "tests", "check-theme.py")],
         capture_output=True, text=True, env=env, timeout=180)
@@ -782,6 +885,49 @@ def run_units(verbose):
     check("the doc's table resolves to real files", len(files) >= 15)
     check("it reaches outside common/",
           any("/common/" not in f for f in files))
+
+    # A git config comment is prose, and prose about this file quotes section
+    # headers: the note explaining why there is only one [color "status"]
+    # contains that string. Read raw, the section matcher preferred the comment
+    # and handed back four lines of English, so the slot check found no keys to
+    # test and passed on a config with a misspelled `untracked` in it.
+    #
+    # The decoy is left in the file deliberately -- it is a fixture as much as
+    # a comment, and the misspelled-slot mutation above only means something
+    # while it is there. This says so, so that deleting the comment fails here
+    # rather than quietly weakening that mutation.
+    git_raw = open(os.path.join(REPO, GIT), encoding="utf-8").read()
+    check("git's config still carries a section header inside a comment",
+          any(line.lstrip().startswith("#") and '[color "' in line
+              for line in git_raw.splitlines()))
+    check("the section matcher skips it and finds the real one",
+          "untracked" in m._git_section(m.uncommented(GIT, git_raw),
+                                        "color.status"))
+
+    # The starship check treats every line starship logs as a config problem,
+    # which is only sound while nothing else can write to that log. starship
+    # gives its working-directory scan a 30ms budget and logs a WARN when the
+    # scan overruns it, so before the run was given a directory of its own the
+    # check's answer depended on where it was invoked from and how loaded the
+    # filesystem was at the time -- it was first seen failing on a config it
+    # had just passed, from a different directory.
+    #
+    # This asserts the answer is the same from two very different working
+    # directories. It cannot fail spuriously, and it will not catch every
+    # regression either: whether an un-isolated run overruns 30ms is a
+    # question about the machine, so a broken version can still pass here on a
+    # fast disk. What it pins is the property that broke.
+    if shutil.which("starship"):
+        here = os.getcwd()
+        answers = []
+        for where in ("/usr/share", REPO):
+            try:
+                os.chdir(where)
+                answers.append(m._check_starship_config(False))
+            finally:
+                os.chdir(here)
+        check("starship's log says the same thing from any directory",
+              answers[0] == answers[1] == [])
     return failures
 
 
@@ -820,6 +966,8 @@ def main(argv):
     if verbose:
         print("\ncomment-decoy probe:")
     failures += probe_comments(
+        verbose, files, None if "--probe-comments" in argv else 1)
+    failures += probe_first_match(
         verbose, files, None if "--probe-comments" in argv else 1)
 
     for s in skipped:

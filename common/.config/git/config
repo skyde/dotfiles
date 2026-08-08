@@ -95,62 +95,6 @@
     cmd = nvim -f -d "$LOCAL" "$MERGED" "$REMOTE"
     trustExitCode = false
 
-# --- git's own colours ---
-# Delta only ever sees diffs. Everything else git prints -- status, branch,
-# the decorations on a log line, the prompts in `add -p` -- was still on git's
-# stock eight-colour defaults, which land wherever the terminal's ANSI palette
-# happens to put them.
-#
-# The roles follow docs/tokyonight.md rather than being picked by eye: magenta
-# is the palette's branch colour, which is what starship and lazygit already
-# use for the branch, and teal is its "untracked / new". HEAD gets the orange
-# of the shared "you are here" accent.
-#
-# Two sections are deliberately absent. `color.diff` is delta's input, and
-# `diff.colorMoved` above works by having delta recognise the *specific*
-# colours git paints moved lines with -- see map-styles below -- so recolouring
-# them here would quietly turn every move back into an add and a remove.
-# `color.grep` is the same story for `delta --grep`, which does its own match
-# styling further down.
-[color "branch"]
-    current = "#bb9af7 bold"
-    local = "#a9b1d6"
-    remote = "#9d7cd8"
-    upstream = "#7dcfff"
-    plain = "#c0caf5"
-
-[color "status"]
-    header = "#565f89"
-    added = "#9ece6a"
-    updated = "#9ece6a"
-    changed = "#e0af68"
-    untracked = "#1abc9c"
-    unmerged = "#f7768e"
-    branch = "#bb9af7 bold"
-    nobranch = "#db4b4b bold"
-    localBranch = "#bb9af7"
-    remoteBranch = "#9d7cd8"
-
-[color "decorate"]
-    HEAD = "#ff9e64 bold"
-    branch = "#bb9af7 bold"
-    remoteBranch = "#9d7cd8"
-    tag = "#e0af68"
-    stash = "#7dcfff"
-    grafted = "#f7768e"
-
-[color "interactive"]
-    prompt = "#7aa2f7"
-    header = "#c0caf5 bold"
-    help = "#565f89"
-    error = "#f7768e bold"
-
-[color "remote"]
-    hint = "#565f89"
-    warning = "#e0af68"
-    success = "#9ece6a"
-    error = "#f7768e bold"
-
 # --- Delta styling ---
 # Everything lives in this one [delta] section on purpose. On delta 0.18 named
 # [delta "..."] features are effectively dead: beyond the long-known dropping
@@ -249,12 +193,18 @@
     merge-conflict-theirs-diff-header-style = "#e0af68 bold"
     merge-conflict-theirs-diff-header-decoration-style = "#292e42 box"
 
-    # Delta's own annotations — the symbols marking a wrapped line, the
-    # characters standing in for tabs. Default is blue, which is the primary
-    # accent and the colour of hunk headers and grep file paths; these are
-    # incidental marks and should not carry that much weight. `comment` is the
-    # palette's role for exactly this.
-    inline-hint-style = "#565f89"
+    # Delta's own annotations — the marker on a wrapped line, the characters
+    # standing in for tabs, the "+N" on a collapsed one. They are notes about
+    # the diff rather than part of it, so not delta's default blue: that is the
+    # primary accent, worn by hunk headers and grep file paths, and it reads as
+    # though the mark belonged to the code.
+    #
+    # The tertiary grey rather than the darker `comment` grey, because unlike a
+    # comment these are painted on the diff backgrounds, not on the page.
+    # #565f89 measures 2.76:1 against #1a1b26 and then falls to 1.29:1 on the
+    # emphasised plus background, which is not a mark you can find. #737aa2
+    # holds 1.91:1 there and 2.98:1 on a removed line.
+    inline-hint-style = "#737aa2"
 
     # `delta --grep` / rg integration. Matches are inverted yellow blocks for
     # the same reason as fzf's hl/hl+ (see theme.sh): a recoloured foreground
@@ -269,12 +219,6 @@
     grep-header-file-style = "#7aa2f7 bold"
     grep-header-decoration-style = omit
     grep-context-line-style = syntax
-
-    # Delta's own annotations in the margin -- the marker on a wrapped line,
-    # the "+N" on a collapsed one. They are notes about the diff rather than
-    # part of it, so they take the tertiary grey instead of delta's default
-    # blue, which reads as though it belonged to the code.
-    inline-hint-style = "#737aa2"
 
 # --- Git's own colours ---
 # Delta paints diffs. Everything else git prints — status, branch listings,
@@ -293,6 +237,15 @@
 # on the exact colours git emits for moved code — `bold purple`, `bold cyan`
 # and friends — so overriding git's diff colours would quietly stop moves from
 # being recognised, and the diff would go back to reading as plain add/remove.
+# `color.grep` is absent for the same reason: `delta --grep` does its own match
+# styling, in the grep-*-style options above.
+#
+# Every color.* section git reads lives in this one run, and each appears once.
+# git merges repeated sections and lets the last value win, so a second
+# [color "status"] further up the file is not a conflict it reports — it is a
+# block that silently does nothing. This file had exactly that, three sections
+# deep, painting remote refs purple here and cyan there; tests/check-theme.py
+# now fails on a repeated key.
 [color "status"]
     header = "#565f89"
     added = "#9ece6a"
@@ -303,12 +256,22 @@
     nobranch = "#f7768e bold"
     localBranch = "#bb9af7"
     remoteBranch = "#7dcfff"
+    # `updated` is staged-and-modified, which git prints in the same list as
+    # `added`; same green, since the distinction it draws is not one of state.
+    updated = "#9ece6a"
 
 [color "branch"]
     current = "#bb9af7 bold"
     local = "#a9b1d6"
     remote = "#7dcfff"
+    # Not a remote-tracking ref, so not the remote cyan: `upstream` is the
+    # branch a local branch follows, and it appears beside `remote` in
+    # `branch -vv` where the two need telling apart.
     upstream = "#9d7cd8"
+    # `plain` is every other branch in the list. Left at the body foreground
+    # rather than unset, so the listing does not inherit whatever the
+    # terminal's default happens to be.
+    plain = "#c0caf5"
 
 [color "decorate"]
     HEAD = "#ff9e64 bold"
@@ -317,6 +280,21 @@
     tag = "#e0af68"
     stash = "#9d7cd8"
     grafted = "#f7768e"
+
+# `add -p`, `checkout -p` and the rest of git's interactive prompts.
+[color "interactive"]
+    prompt = "#7aa2f7"
+    header = "#c0caf5 bold"
+    help = "#565f89"
+    error = "#f7768e bold"
+
+# What `push` and `fetch` print back from the far end, including the hints a
+# server sends for a rejected push.
+[color "remote"]
+    hint = "#565f89"
+    warning = "#e0af68"
+    success = "#9ece6a"
+    error = "#f7768e bold"
 
 [index]
     threads = 10
