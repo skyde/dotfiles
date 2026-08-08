@@ -217,6 +217,12 @@ do
     pb.raw_diff(proot, prev, "star*.txt"):find("edited", 1, true)
   )
   eq("git pathspec: log of a glob-ish name returns revisions", true, #pb.log(proot, "star*.txt") >= 1)
+  -- show goes through `<rev>:<path>`, an object lookup rather than a pathspec —
+  -- it splits at the first colon, so a name that starts with one still
+  -- resolves. Asserted rather than assumed: it is the same class of name that
+  -- broke everywhere else.
+  eq("git pathspec: show of a glob-ish name", { "base 1" }, pb.show(proot, prev, "star*.txt"))
+  eq("git pathspec: show of a name starting with a colon", { "base 5" }, pb.show(proot, prev, ":notes.txt"))
   git(ps, "reset", "-q")
   eq("git pathspec: revert restores just that file", true, pb.revert(proot, prev, { path = "star*.txt", status = "M" }))
   eq("git pathspec: the reverted file is back to base", { "base 1" }, vim.fn.readfile(ps .. "/star*.txt"))
