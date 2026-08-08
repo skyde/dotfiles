@@ -177,6 +177,64 @@ end, 200)
 check("compile_commands.json was generated", vim.uv.fs_stat(src .. "/compile_commands.json") ~= nil)
 check("the database is not stale afterwards", not chromium.stale(src))
 
+-- The restart after a regeneration is what makes clangd re-read the database.
+-- It has to leave exactly one client, attached to the buffers the old one was
+-- serving — including buffers with unsaved changes, and including the case
+-- where nothing else in the session would ever re-trigger an attach.
+local function clangd_for(root)
+  local found = {}
+  for _, c in ipairs(vim.lsp.get_clients({ name = "clangd" })) do
+    if c.config.root_dir == root then
+      table.insert(found, c)
+    end
+  end
+  return found
+end
+vim.wait(10000, function()
+  return not chromium.busy()
+end, 200)
+vim.wait(3000)
+local cbuf = vim.api.nvim_get_current_buf()
+local was = clangd_for(src)[1]
+local plain_before = clangd_for(plain)[1]
+vim.api.nvim_buf_set_lines(cbuf, 0, 0, false, { "// unsaved" })
+chromium.restart_clangd(src)
+local back = vim.wait(25000, function()
+  local now = clangd_for(src)[1]
+  return now ~= nil and (not was or now.id ~= was.id) and now.attached_buffers[cbuf] ~= nil
+end, 200)
+check("restart: clangd comes back attached", back)
+check("restart: unsaved changes are kept", vim.bo[cbuf].modified)
+vim.wait(2000)
+eq("restart: exactly one clangd is left for the checkout", 1, #clangd_for(src))
+-- The other project's client is not this checkout's to restart.
+local plain_after = clangd_for(plain)[1]
+check(
+  "restart: another project's clangd is untouched",
+  plain_before ~= nil and plain_after ~= nil and plain_after.id == plain_before.id,
+  ("before %s, after %s"):format(plain_before and plain_before.id, plain_after and plain_after.id)
+)
+vim.bo[cbuf].modified = false
+
+-- And again with the checkout's clangd as the only one in the session, which
+-- is the ordinary case and the one a plugin-provided :LspRestart used to be
+-- delegated to. Its reattach runs on a fixed timer and behind a
+-- `v:vim_did_enter` guard, so it could leave clangd simply stopped.
+for _, c in ipairs(clangd_for(plain)) do
+  c:stop()
+end
+vim.wait(10000, function()
+  return #vim.lsp.get_clients({ name = "clangd" }) == #clangd_for(src)
+end, 200)
+local only = clangd_for(src)[1]
+eq("restart: the checkout's clangd is now the only one", 1, #vim.lsp.get_clients({ name = "clangd" }))
+chromium.restart_clangd(src)
+local back_alone = vim.wait(25000, function()
+  local now = clangd_for(src)[1]
+  return now ~= nil and (not only or now.id ~= only.id) and now.attached_buffers[cbuf] ~= nil
+end, 200)
+check("restart: a lone clangd comes back attached too", back_alone)
+
 local findings = chromium.diagnose(vim.api.nvim_get_current_buf())
 local function finding(pattern)
   for _, f in ipairs(findings) do

@@ -10,7 +10,7 @@ automation, then closes the gaps the extension still leaves:
 | --- | --- |
 | generates `src/compile_commands.json` with `tools/clang/scripts/generate_compdb.py` when the first C++ file opens | `FileType` autocmd in `config/chromium.lua`, when the database is missing or older than the build dir's `build.ninja` |
 | regenerates whenever a GN file is edited | `BufWritePost *.gn,*.gni`, debounced 2s |
-| runs `clangd.restart` after regenerating | restarts the clangd rooted at *this* checkout, leaving any other checkout's client and its warm index alone (stop-and-reattach; `:LspRestart` when every clangd is a target and the plugin provides it — under nvim 0.12's native `:lsp` command nvim-lspconfig defines no `Lsp*` commands) |
+| runs `clangd.restart` after regenerating | restarts the clangd rooted at *this* checkout, leaving any other checkout's client and its warm index alone: stop, wait for the process to actually exit, then re-attach every buffer it was serving (unsaved changes included) |
 | tracks the active build dir via the `out/current_link` symlink | same symlink, so VS Code and Neovim always index the same build |
 | relies on the vscode-clangd extension for gd/gu | `plugins/chromium-clangd.lua` configures clangd for real (nothing configured it before) |
 | — | enables clangd from the checkout's bundled binary, or PATH's, instead of waiting on Mason to download a clangd this config never runs; Mason is the fallback for a machine that has none |

@@ -553,26 +553,21 @@ end
 ---holding two checkouts (or a checkout and an unrelated C++ project) must
 ---not lose the other one's client — and its warm in-memory index — every
 ---time this one's database is regenerated.
+---
+---This does the stop-and-reattach itself rather than deferring to
+---nvim-lspconfig's :LspRestart, which cannot be scoped to one root and
+---reattaches by re-running `vim.lsp.enable` on a fixed 500 ms timer: too
+---early and the buffers attach to the still-dying client and are left
+---serverless when it finally exits, and the reattach it does is a
+---`doautoall` guarded on `v:vim_did_enter`, so it is not guaranteed to
+---happen at all. A restart that leaves clangd stopped is worse than no
+---restart, and silent either way.
 ---@param root? string  restart only the client rooted here; all of them when nil
 function M.restart_clangd(root)
-  local all = vim.lsp.get_clients({ name = "clangd" })
-  local targets = {}
-  for _, client in ipairs(all) do
+  for _, client in ipairs(vim.lsp.get_clients({ name = "clangd" })) do
     if root == nil or client_root(client) == root then
-      table.insert(targets, client)
+      restart_client(client)
     end
-  end
-  if #targets == 0 then
-    return
-  end
-  -- :LspRestart restarts every clangd there is, so it is only the right tool
-  -- when every clangd *is* a target. (It also may not exist: under nvim
-  -- 0.12's native :lsp command nvim-lspconfig defines no Lsp* commands.)
-  if #targets == #all and pcall(vim.cmd, "LspRestart clangd") then
-    return
-  end
-  for _, client in ipairs(targets) do
-    restart_client(client)
   end
 end
 
@@ -888,10 +883,11 @@ function M.diagnose(bufnr)
   -- are the only ones this checkout's report is about. Counting every clangd
   -- in the session made a second checkout, or any unrelated C++ project,
   -- read as both a duplicate instance and the wrong workspace root: two
-  -- warnings for a healthy setup. :ChromiumCompdb is the advice because it
-  -- both regenerates and restarts — and unlike :LspRestart it always exists
-  -- (nvim 0.12's native :lsp command makes nvim-lspconfig skip defining its
-  -- Lsp* commands entirely).
+  -- warnings for a healthy setup. :ChromiumCompdb is the advice throughout
+  -- because it both regenerates and restarts, and its restart is this
+  -- module's own — scoped to the checkout, and not dependent on a plugin
+  -- command that may not exist (nvim 0.12's native :lsp command makes
+  -- nvim-lspconfig skip defining its Lsp* commands entirely).
   local clients = vim.lsp.get_clients({ name = "clangd" })
   local mine = {}
   for _, client in ipairs(clients) do
