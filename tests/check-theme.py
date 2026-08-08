@@ -76,6 +76,9 @@ def read_doc():
         return fh.read()
 
 
+PROSE_LABEL = "explained in prose"
+
+
 def documented_colours(doc):
     """Every hex the palette doc mentions, mapped to the names it gives them.
 
@@ -108,10 +111,13 @@ def documented_colours(doc):
             found = HEX.findall(cell)
             if found and not re.sub(r"#[0-9a-fA-F]{6}|[`\s]", "", cell):
                 owned.update(norm(c) for c in found)
-        # Outside a table there is no label cell, and the sentence is the
-        # explanation -- which is the thing the label stands for anyway.
+        # Outside a table there is no label cell. Using the sentence as the
+        # label made every colour mentioned in prose carry a fragment of that
+        # prose as its name, which is not a name -- `#ff9e64` came back called
+        # "`orange` `#ff9e64`. You are moving through a body of text and the
+        # colour says". Accounted for, but not named, is the honest record.
         if len(cells) < 3:
-            label = line.strip().lstrip("> ").rstrip()[:80]
+            label = PROSE_LABEL
             owned = {norm(c) for c in HEX.findall(line)}
         for found in HEX.findall(line):
             key = norm(found)

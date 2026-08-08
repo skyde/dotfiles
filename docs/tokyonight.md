@@ -853,7 +853,7 @@ quietly approximating it.
 
   The same machinery answers a blunter question: how much of the theme is
   actually pinned? `--report-unpinned` changes each colour to another
-  *documented* colour and reports where nothing failed. 245 of 509 do not — which is not all wrong, a
+  *documented* colour and reports where nothing failed. 276 of 568 do not — which is not all wrong, a
   colour with no counterpart in another tool has nothing to be pinned to — but
   it is the honest number, and it is where the next check should come from.
   `.zshrc` was 32 of its 41 until the command line got tied to the table above;
@@ -862,7 +862,11 @@ quietly approximating it.
   Those three and the shell palette are the same shape — a name the palette
   already defines, beside a hex — and one check reads all four.
 
-  Only colours a tool will actually read are counted. An earlier version of the
+  Every colour on a line is counted, not the first: fzf's options put four on
+  one line, and testing only the leading one left the other three unmeasured —
+  which is how `theme.sh` read as 8 of 8 loose while its fzf pointer was
+  already pinned as a shared role. Only colours a tool will actually read are
+  counted. An earlier version of the
   report included hexes sitting in trailing comments — `lf`'s colours file and
   both search pickers write their real values as decimal SGR and name the hex
   only in the comment beside it — which inflated both halves of the fraction by

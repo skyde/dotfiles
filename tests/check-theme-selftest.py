@@ -514,9 +514,14 @@ def probe_targets(module, sample_per_file=None):
             if line.lstrip().startswith(marker):
                 continue
             cut = module.comment_start(marker, line)
-            m = hexes.search(line if cut < 0 else line[:cut])
-            if m:
-                found.append((i, m.group(0)))
+            code = line if cut < 0 else line[:cut]
+            # Every distinct colour on the line, not the first. fzf's options
+            # put four on one line, and testing only the leading one reported
+            # the other three as untested when some of them are pinned -- the
+            # same first-match-only mistake this session already fixed in a
+            # check, repeated in the thing measuring the checks.
+            for colour in dict.fromkeys(hexes.findall(code)):
+                found.append((i, colour))
         if sample_per_file is not None:
             found = found[:sample_per_file]
         targets.extend((rel, i, colour, marker) for i, colour in found)
