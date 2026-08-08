@@ -28,7 +28,21 @@ return {
     opts = function(_, opts)
       local chromium = require("util.chromium")
       opts.servers = opts.servers or {}
+      -- LazyVim hands every server mason knows about to mason-lspconfig: it
+      -- calls vim.lsp.config for the server but leaves vim.lsp.enable to
+      -- mason, which only fires once the package is installed. For clangd
+      -- that is backwards here. cmd below always chooses the binary itself —
+      -- the checkout's bundled clangd, or PATH's — so mason's copy is
+      -- downloaded and then never executed; and when mason cannot install it
+      -- (offline, a proxy, a failed download) clangd is never enabled at
+      -- all, leaving C++ with no language server while a perfectly good
+      -- clangd sits on PATH. That is exactly the silent degradation this
+      -- file exists to prevent, so mason is asked only when there is
+      -- genuinely no clangd to use.
+      local root = chromium.src_root(vim.api.nvim_buf_get_name(0))
+      local have_clangd = chromium.clangd_path(root) ~= "clangd" or vim.fn.executable("clangd") == 1
       opts.servers.clangd = vim.tbl_deep_extend("force", opts.servers.clangd or {}, {
+        mason = not have_clangd,
         cmd = function(dispatchers, config)
           return vim.lsp.rpc.start(chromium.spawn_cmd(config), dispatchers, {
             cwd = config and config.cmd_cwd or nil,

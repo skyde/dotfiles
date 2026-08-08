@@ -317,7 +317,20 @@ Invokes every binding against the real config inside a throwaway repository.
 Callback maps must not raise even with no language server and no debug session
 attached — degrading with a message is fine, throwing is not.
 
-Neither is wired into CI; they are run by hand, like `nvim_clipboard_spec.lua`.
+```bash
+tests/check-nvim-lsp.sh
+```
+
+Drives a real clangd through the real config: goto-definition across files,
+find-references, switch header/source, the Chromium checkout automation
+(pinned root, generated `compile_commands.json`, health report) and the
+diagnostic settings. Skips itself when clangd is not installed. This is the
+check that sees what unit tests cannot — a server that is configured but never
+enabled, a keymap naming a command a plugin has since renamed, a setting
+LazyVim replaces after `config/options.lua` has set it.
+
+None of these are wired into CI; they are run by hand, like
+`nvim_clipboard_spec.lua`.
 
 ## Backend notes
 

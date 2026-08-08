@@ -13,6 +13,7 @@ automation, then closes the gaps the extension still leaves:
 | runs `clangd.restart` after regenerating | restarts the clangd rooted at *this* checkout, leaving any other checkout's client and its warm index alone (stop-and-reattach; `:LspRestart` when every clangd is a target and the plugin provides it — under nvim 0.12's native `:lsp` command nvim-lspconfig defines no `Lsp*` commands) |
 | tracks the active build dir via the `out/current_link` symlink | same symlink, so VS Code and Neovim always index the same build |
 | relies on the vscode-clangd extension for gd/gu | `plugins/chromium-clangd.lua` configures clangd for real (nothing configured it before) |
+| — | enables clangd from the checkout's bundled binary, or PATH's, instead of waiting on Mason to download a clangd this config never runs; Mason is the fallback for a machine that has none |
 | — | re-checks freshness on every `BufEnter`/`FocusGained` (throttled), so a build, gn run, or `git pull` outside the editor is noticed mid-session, not next session |
 | — | probes once per file per session that the buffer's file is actually *in* the database; a miss (the fate of every file added since the last regeneration) forces one regeneration |
 | — | pins clangd's workspace root to the checkout's `src`, so v8/blink/webrtc/skia (which carry their own `.git`/`.clang-format` root markers) don't each spawn a clangd instance with its own racing background indexer |

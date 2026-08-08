@@ -406,6 +406,33 @@ end)
 check("plugin: root_dir answers outside a checkout", called)
 eq("plugin: no pin outside a checkout (stock markers apply)", nil, got_root)
 
+-- LazyVim hands every server mason knows about to mason-lspconfig, which
+-- calls vim.lsp.enable only once the package is installed. Since cmd picks
+-- the binary itself, mason's clangd is downloaded and never run — and a
+-- mason install that cannot happen leaves C++ with no language server at
+-- all, next to a perfectly usable clangd. mason is for when there is none.
+vim.cmd("edit " .. vim.fn.fnameescape(root .. "/base/logging.cc"))
+popts = { servers = {} }
+plug[1].opts(nil, popts)
+eq("plugin: no mason when the checkout has a bundled clangd", false, popts.servers.clangd.mason)
+
+local saved_path = vim.env.PATH
+vim.env.PATH = temp .. "/nothing-here"
+vim.cmd("edit " .. vim.fn.fnameescape(temp .. "/outside.cc"))
+popts = { servers = {} }
+plug[1].opts(nil, popts)
+eq("plugin: mason installs one when there is no clangd anywhere", true, popts.servers.clangd.mason)
+
+vim.env.PATH = saved_path
+vim.fn.mkdir(temp .. "/path-clangd", "p")
+write(temp .. "/path-clangd/clangd", "#!/bin/sh\n")
+assert(vim.uv.fs_chmod(temp .. "/path-clangd/clangd", 493))
+vim.env.PATH = temp .. "/path-clangd"
+popts = { servers = {} }
+plug[1].opts(nil, popts)
+eq("plugin: no mason when PATH has a clangd", false, popts.servers.clangd.mason)
+vim.env.PATH = saved_path
+
 --------------------------------------------------------------------------
 -- symlinked build dirs
 --------------------------------------------------------------------------

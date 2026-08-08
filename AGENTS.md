@@ -23,6 +23,13 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 - Run the Neovim specs if you touched the Lua config: `./tests/run-nvim-specs.sh`
   (self-contained, no plugins required), and `./tests/check-nvim-keymaps.sh` to
   invoke every binding against the real config.
+- If you touched anything LSP-shaped, run `./tests/check-nvim-lsp.sh`: it drives
+  a real clangd through the real config (goto-definition, find-references,
+  switch header/source, the Chromium checkout automation, the diagnostic
+  settings). It skips itself when clangd is not installed. The plugin-free
+  specs cannot see a server that is configured but never enabled, a keymap
+  naming a command a plugin has renamed, or a setting LazyVim replaces later —
+  this one can.
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines
