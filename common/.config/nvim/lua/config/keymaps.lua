@@ -149,16 +149,12 @@ map({ "n", "i" }, "<D-s>", "<cmd>w<CR>", { desc = "Save file" })
 -- Same action via Shift+F5 (sent by kitty Cmd+S)
 map_shift_f(5, "<cmd>w<CR>", { mode = { "n", "i" }, desc = "Save file" })
 
--- Toggle between source and header files (requires clangd). nvim-lspconfig
--- renamed its buffer-local command ClangdSwitchSourceHeader ->
--- LspClangdSwitchSourceHeader; accept either so the binding survives both.
+-- Toggle between source and header files (requires clangd). The request goes
+-- straight to the server rather than through nvim-lspconfig's buffer-local
+-- command, whose name has already changed once; see util.lsp. `gh` in
+-- config/parity.lua is the same helper.
 map("n", "<A-o>", function()
-  for _, cmd in ipairs({ "LspClangdSwitchSourceHeader", "ClangdSwitchSourceHeader" }) do
-    if vim.fn.exists(":" .. cmd) == 2 then
-      return vim.cmd(cmd)
-    end
-  end
-  vim.notify("clangd is not attached; switch header/source needs it", vim.log.levels.WARN)
+  require("util.lsp").switch_source_header()
 end, { desc = "Switch header/source" })
 
 -- Navigate jump list with Alt+Left/Right

@@ -407,6 +407,163 @@ check("plugin: root_dir answers outside a checkout", called)
 eq("plugin: no pin outside a checkout (stock markers apply)", nil, got_root)
 
 --------------------------------------------------------------------------
+-- symlinked build dirs
+--------------------------------------------------------------------------
+
+-- `out/Default -> /ssd/chromium-out/Default` is how a 100 GB build is kept
+-- off the checkout's disk. readdir calls that entry a "link", not a
+-- "directory"; requiring the latter made the build dir invisible, so no
+-- compile commands could ever be generated for such a checkout.
+local root3 = temp .. "/chrome3/src"
+write(root3 .. "/tools/clang/scripts/generate_compdb.py", "pass\n")
+vim.fn.mkdir(root3 .. "/out", "p")
+write(temp .. "/elsewhere-build/build.ninja", "ninja\n")
+assert(vim.uv.fs_symlink(temp .. "/elsewhere-build", root3 .. "/out/Linked"))
+eq("out: a symlinked build dir is found", "out/Linked", chromium.out_dir(root3))
+
+local picked
+vim.ui.select = function(items, _, cb) ---@diagnostic disable-line: duplicate-set-field
+  picked = items
+  cb(nil) -- cancel: this checkout has no generator stub to run
+end
+vim.cmd("edit " .. vim.fn.fnameescape(root3 .. "/a.cc"))
+chromium.pick_out_dir()
+eq("picker: offers a symlinked build dir", { "out/Linked" }, picked)
+
+-- A dangling link is not a build dir.
+assert(vim.uv.fs_symlink(temp .. "/no-such-build", root3 .. "/out/Dangling"))
+eq("out: a dangling link is ignored", "out/Linked", chromium.out_dir(root3))
+
+--------------------------------------------------------------------------
+-- a generator that cannot be spawned at all
+--------------------------------------------------------------------------
+
+-- vim.system raises (rather than reporting through its callback) when the
+-- binary does not exist — no python on PATH, say. Unhandled, that threw out
+-- of the autocmd with the run still marked inflight, and every later
+-- regeneration for the checkout was skipped for the rest of the session.
+local real_system = vim.system
+vim.system = function() ---@diagnostic disable-line: duplicate-set-field
+  error("ENOENT: no such file or directory (cmd): 'python3'")
+end
+local before_fail = #generate_log()
+local spawn_ok = pcall(chromium.generate, { root = root, force = true, silent = true })
+vim.system = real_system
+check("spawn: a failed spawn is reported, not raised out of the caller", spawn_ok)
+check("spawn: a failed spawn does not leave the checkout busy", not chromium.busy())
+eq("spawn: nothing ran", before_fail, #generate_log())
+
+chromium.generate({ root = root, force = true, silent = true })
+settle()
+eq("spawn: the next regeneration still runs", before_fail + 1, #generate_log())
+
+--------------------------------------------------------------------------
+-- the membership probe when the database cannot be read
+--------------------------------------------------------------------------
+
+-- A probe that could not read the database learned nothing. Recording a
+-- verdict anyway retired the file for the session, so the one regeneration
+-- its absence should have forced never happened.
+local ahead = os.time() + 400
+assert(vim.uv.fs_utime(root .. "/compile_commands.json", ahead, ahead))
+write(root .. "/base/other.cc", "// c++\n")
+local before_probe = #generate_log()
+local real_contains = chromium.file_contains
+chromium.file_contains = function(_, _, cb) ---@diagnostic disable-line: duplicate-set-field
+  cb(nil) -- unreadable: rewritten under the scan, or deleted
+end
+chromium.compdb_probe(root, root .. "/base/other.cc")
+vim.wait(300)
+settle()
+eq("probe: an unreadable database regenerates nothing", before_probe, #generate_log())
+
+chromium.file_contains = real_contains
+chromium.compdb_probe(root, root .. "/base/other.cc")
+vim.wait(5000, function()
+  return #generate_log() > before_probe
+end)
+settle()
+eq("probe: the file is probed again once the database is readable", before_probe + 1, #generate_log())
+
+--------------------------------------------------------------------------
+-- the running client: scoped restarts, drift, diagnosis
+--------------------------------------------------------------------------
+
+-- A fake clangd, so the client half of the module can be exercised without
+-- a language server: what matters is which clients get stopped and which
+-- buffers they are put back on.
+local function fake_client(root_dir)
+  local client
+  client = {
+    name = "clangd",
+    config = { name = "clangd", root_dir = root_dir, cmd = { "clangd" } },
+    attached_buffers = {},
+    stopped = false,
+    stop = function(self)
+      self.stopped = true
+    end,
+    is_stopped = function(self)
+      return self.stopped
+    end,
+  }
+  return client
+end
+
+local fake_clients = {}
+local real_get_clients = vim.lsp.get_clients
+vim.lsp.get_clients = function(opts) ---@diagnostic disable-line: duplicate-set-field
+  if opts and opts.name == "clangd" then
+    return fake_clients
+  end
+  return real_get_clients(opts)
+end
+local restarted_on = {}
+local real_lsp_start = vim.lsp.start
+vim.lsp.start = function(config) ---@diagnostic disable-line: duplicate-set-field
+  table.insert(restarted_on, config.root_dir)
+  return 1
+end
+
+vim.cmd("edit " .. vim.fn.fnameescape(root .. "/base/logging.cc"))
+local cppbuf = vim.api.nvim_get_current_buf()
+local mine, theirs = fake_client(root), fake_client(root2)
+mine.attached_buffers = { [cppbuf] = true }
+fake_clients = { mine, theirs }
+
+-- Unsaved changes are the case that matters: the buffer being worked on is
+-- the one that most needs its server back, and `silent! edit` — the old
+-- reattach — refuses to reload a modified buffer and swallows the refusal.
+vim.bo[cppbuf].modified = true
+chromium.restart_clangd(root)
+check("restart: the checkout's own client is stopped", mine.stopped)
+check("restart: another checkout's client is left alone", not theirs.stopped)
+vim.wait(2000, function()
+  return #restarted_on > 0
+end)
+eq("restart: the client is put back on its buffers, unsaved changes and all", { root }, restarted_on)
+vim.bo[cppbuf].modified = false
+
+-- Drift: the bundled clangd landing mid-session changes what the root wants.
+-- The check used to be memoized by a bare flag set on the first C++ buffer —
+-- before anything had spawned — so it never ran at all.
+local root2_bundled = root2 .. "/third_party/llvm-build/Release+Asserts/bin/clangd"
+vim.fn.delete(root2_bundled)
+chromium.spawn_cmd({ root_dir = root2 }) -- what is running: PATH clangd
+mine.stopped, theirs.stopped = false, false
+chromium.ensure_clangd(root2)
+check("drift: a client already matching its root is left running", not theirs.stopped)
+
+write(root2_bundled, "#!/bin/sh\n")
+assert(vim.uv.fs_chmod(root2_bundled, 493))
+chromium.ensure_clangd(root2)
+check("drift: the bundled clangd appearing restarts the client", theirs.stopped)
+check("drift: only the drifted root is restarted", not mine.stopped)
+
+theirs.stopped = false
+chromium.ensure_clangd(root2)
+check("drift: the same drift is not acted on twice", not theirs.stopped)
+
+--------------------------------------------------------------------------
 -- diagnosis
 --------------------------------------------------------------------------
 
@@ -434,6 +591,24 @@ check("diagnose: sees the bundled clangd", bin ~= nil and bin.status == "ok")
 check("diagnose: compdb reported current", finding("compile_commands.json:") ~= nil)
 local member = finding("is not in compile_commands.json")
 check("diagnose: flags a buffer missing from the compdb", member ~= nil and member.status == "warn")
+
+-- The client half of the report is about *this* checkout's clangd. Counting
+-- every clangd in the session made a second checkout read as both a
+-- duplicate instance and the wrong workspace root: two warnings, no bug.
+check("diagnose: reports the checkout's own client", finding("clangd running") ~= nil)
+check("diagnose: another checkout's client is not a duplicate", finding("instances are running") == nil)
+check("diagnose: another checkout's root is not a mismatch", finding("not at this checkout") == nil)
+
+fake_clients = { theirs }
+findings = chromium.diagnose(vim.api.nvim_get_current_buf())
+local elsewhere = finding("not at this checkout")
+check("diagnose: a clangd rooted elsewhere is flagged", elsewhere ~= nil and elsewhere.status == "warn")
+
+fake_clients = { mine, fake_client(root) }
+findings = chromium.diagnose(vim.api.nvim_get_current_buf())
+local split = finding("instances are running for this checkout")
+check("diagnose: two clients for one checkout is flagged", split ~= nil and split.status == "warn")
+fake_clients = {}
 
 -- Outside a checkout the report is a single line.
 vim.cmd("edit " .. vim.fn.fnameescape(temp .. "/outside.cc"))

@@ -10,7 +10,7 @@ automation, then closes the gaps the extension still leaves:
 | --- | --- |
 | generates `src/compile_commands.json` with `tools/clang/scripts/generate_compdb.py` when the first C++ file opens | `FileType` autocmd in `config/chromium.lua`, when the database is missing or older than the build dir's `build.ninja` |
 | regenerates whenever a GN file is edited | `BufWritePost *.gn,*.gni`, debounced 2s |
-| runs `clangd.restart` after regenerating | restarts clangd (stop-and-reattach; `:LspRestart` when the plugin provides it — under nvim 0.12's native `:lsp` command nvim-lspconfig defines no `Lsp*` commands) |
+| runs `clangd.restart` after regenerating | restarts the clangd rooted at *this* checkout, leaving any other checkout's client and its warm index alone (stop-and-reattach; `:LspRestart` when every clangd is a target and the plugin provides it — under nvim 0.12's native `:lsp` command nvim-lspconfig defines no `Lsp*` commands) |
 | tracks the active build dir via the `out/current_link` symlink | same symlink, so VS Code and Neovim always index the same build |
 | relies on the vscode-clangd extension for gd/gu | `plugins/chromium-clangd.lua` configures clangd for real (nothing configured it before) |
 | — | re-checks freshness on every `BufEnter`/`FocusGained` (throttled), so a build, gn run, or `git pull` outside the editor is noticed mid-session, not next session |
@@ -30,7 +30,10 @@ Nothing here runs outside a Chromium checkout (detected by the presence of
 | `:ChromiumHealth` (= `:checkhealth chromium`) | diagnose the whole chain: binary, build dir, compdb freshness, whether the current buffer is in it, the running client's actual command, background-index progress, required tools |
 
 Without `out/current_link`, the generated out dir with the newest
-`build.ninja` — the one actually being built — is used.
+`build.ninja` — the one actually being built — is used. A build dir may be a
+symlink (`out/Default -> /ssd/chromium-out/Default` keeps a 100 GB build off
+the checkout's disk); what counts is that `build.ninja` is reachable through
+it.
 
 When gd or find-usages misbehaves, start with `:ChromiumHealth`: every
 way this setup can silently degrade (stale database, buffer missing from

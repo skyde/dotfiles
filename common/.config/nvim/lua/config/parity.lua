@@ -34,7 +34,9 @@ end, { desc = "Find Usages" })
 map("n", "gn", function()
   vim.lsp.buf.hover()
 end, { desc = "Definition Preview (hover)" })
-map("n", "gh", "<cmd>ClangdSwitchSourceHeader<cr>", { desc = "Switch Header/Source" })
+map("n", "gh", function()
+  require("util.lsp").switch_source_header()
+end, { desc = "Switch Header/Source" })
 
 -- Whole-buffer text object, so vig / yig / dig all work. The operator-pending
 -- half has to go through :normal! rather than a motion, which is the standard
