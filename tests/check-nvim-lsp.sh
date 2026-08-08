@@ -92,13 +92,22 @@ for dirpath, _, names in os.walk(root):
     if os.path.relpath(dirpath, root).split(os.sep)[0] in ("out", "tools"):
         continue
     for name in names:
-        if name.endswith((".cc", ".cpp")):
-            rel = os.path.relpath(os.path.join(dirpath, name), build_dir)
-            entries.append({
-                "directory": build_dir,
-                "file": rel,
-                "command": "clang++ -std=c++17 -c " + rel,
-            })
+        # ObjC++ counts: a mac build compiles .mm, and those entries are what
+        # make navigation work in Chromium's platform code.
+        if not name.endswith((".cc", ".cpp", ".mm")):
+            continue
+        # A mac build never compiles the Windows or Android sources, so they
+        # are absent from the database exactly as they are on a real checkout.
+        # The probe has to degrade quietly on them rather than regenerate for
+        # a file that can never appear.
+        if name.endswith(("_win.cc", "_android.cc")):
+            continue
+        rel = os.path.relpath(os.path.join(dirpath, name), build_dir)
+        entries.append({
+            "directory": build_dir,
+            "file": rel,
+            "command": "clang++ -std=c++17 -c " + rel,
+        })
 json.dump(entries, open(os.path.join(root, out), "w"), indent=2)
 EOF
 cat >"$src/base/logging.h" <<'EOF'
@@ -119,6 +128,43 @@ EOF
 mkdir -p "$src/out/Default/gen"
 cat >"$src/out/Default/gen/generated.cc" <<'EOF'
 int generated_value() { return 3; }
+EOF
+
+# A cross-platform family, laid out the way Chromium lays one out: a shared
+# header, the implementation the mac build compiles, an ObjC++ sibling, and
+# the Windows/Android ones it never compiles. Only the first three reach the
+# database, so this is where "degrades quietly" is actually exercised.
+mkdir -p "$src/base/files" "$src/base/mac"
+cat >"$src/base/files/file_util.h" <<'EOF'
+#pragma once
+int PlatformId();
+EOF
+cat >"$src/base/files/file_util_posix.cc" <<'EOF'
+#include "base/files/file_util.h"
+int PlatformId() { return 1; }
+EOF
+cat >"$src/base/files/file_util_mac.mm" <<'EOF'
+#include "base/files/file_util.h"
+int PlatformIdMac() { return PlatformId() + 10; }
+EOF
+cat >"$src/base/files/file_util_win.cc" <<'EOF'
+#include "base/files/file_util.h"
+int PlatformIdWin() { return PlatformId() + 20; }
+EOF
+cat >"$src/base/files/file_util_android.cc" <<'EOF'
+#include "base/files/file_util.h"
+int PlatformIdAndroid() { return PlatformId() + 30; }
+EOF
+# A paired ObjC++ header/implementation. clangd resolves counterparts by
+# basename, so this is the pair switch-header/source has to traverse -- the
+# _mac.mm above deliberately has none.
+cat >"$src/base/mac/scoped_nsobject.h" <<'EOF'
+#pragma once
+int ScopedNSObjectTag();
+EOF
+cat >"$src/base/mac/scoped_nsobject.mm" <<'EOF'
+#include "base/mac/scoped_nsobject.h"
+int ScopedNSObjectTag() { return 42; }
 EOF
 
 export NVIM_LSP_SANDBOX="$sandbox"
