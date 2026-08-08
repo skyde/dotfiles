@@ -319,9 +319,13 @@ def wezterm_colours():
         return [norm(h) for h in HEX.findall(m.group(1))] if m else []
 
     ansi = block("ansi") + block("brights")
+    # The flat scan runs with the tab_bar block cut out. Both it and the window
+    # define `background`, and whichever came last silently won -- which stayed
+    # harmless only while the two held the same colour.
+    outer = re.sub(r"tab_bar\s*=\s*\{.*?\n  \}", "", text, flags=re.S)
     scalars = dict(
         (k, norm(v))
-        for k, v in re.findall(r"(\w+)\s*=\s*'(#[0-9a-fA-F]{6})'", text)
+        for k, v in re.findall(r"(\w+)\s*=\s*'(#[0-9a-fA-F]{6})'", outer)
     )
     # The tab entries nest, and every one of them spells its keys the same
     # way, so a flat scan would have active_tab and inactive_tab overwrite
@@ -331,6 +335,18 @@ def wezterm_colours():
         if m:
             for k, v in re.findall(r"(\w+)\s*=\s*'(#[0-9a-fA-F]{6})'", m.group(1)):
                 scalars["%s.%s" % (tab, k)] = norm(v)
+
+    # `tab_bar.background` is the strip the tabs sit on, and the flat scan
+    # above stored it as plain `background` -- the same key the window's own
+    # background writes to. Both happened to be #1a1b26, so the collision was
+    # invisible, and the strip was the one terminal surface with no counterpart
+    # to be compared against. Read tab_bar's own scalars under their own name,
+    # with the nested sub-tables removed first so active_tab's keys stay out.
+    m = re.search(r"tab_bar\s*=\s*\{(.*?)\n  \}", text, re.S)
+    if m:
+        direct = re.sub(r"\w+\s*=\s*\{.*?\}", "", m.group(1), flags=re.S)
+        for k, v in re.findall(r"(\w+)\s*=\s*'(#[0-9a-fA-F]{6})'", direct):
+            scalars["tab_bar.%s" % k] = norm(v)
     return ansi, scalars
 
 
@@ -1305,6 +1321,11 @@ def check_parity(doc, verbose):
         ("cursor text", "cursor_text_color", "cursor_fg", "terminalCursor.background"),
         ("selection bg", "selection_background", "selection_bg",
          "terminal.selectionBackground"),
+        # The strip the tabs sit on, behind and around them. kitty had it at
+        # #15161e and wezterm at #1a1b26 -- a real difference, invisible for
+        # as long as nothing named the wezterm side distinctly enough to
+        # compare.
+        ("tab bar background", "tab_bar_background", "tab_bar.background", None),
         ("active tab bg", "active_tab_background", "active_tab.bg_color", None),
         ("active tab fg", "active_tab_foreground", "active_tab.fg_color", None),
         ("inactive tab bg", "inactive_tab_background", "inactive_tab.bg_color", None),

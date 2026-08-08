@@ -45,7 +45,10 @@ config.colors = {
     '#c0caf5', -- bright white
   },
   tab_bar = {
-    background = '#1a1b26',
+    -- The strip the tabs sit on: #15161e, matching kitty's tab_bar_background.
+    -- A shade below the page so the bar reads as chrome rather than as more
+    -- terminal.
+    background = '#15161e',
     active_tab = {
       bg_color = '#7aa2f7',
       fg_color = '#16161e',

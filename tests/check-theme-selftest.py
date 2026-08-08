@@ -266,6 +266,20 @@ MUTATIONS = [
      'markedBaseCommitBgColor: ["#3b4261"]',
      "below 4.5:1", None),
 
+    # The strip the tabs sit on. wezterm names it `background` inside the
+    # tab_bar table, which is also what the window's own background is called,
+    # so the flat scan stored one over the other and the surface had nothing
+    # to be compared against. Both halves need proving: that the two terminals
+    # are compared at all, and that the outer background is still read from the
+    # window rather than from the tab bar.
+    ("a tab bar strip that differs between terminals", "parity", WEZTERM,
+     r"background = '#15161e'", "background = '#1a1b26'",
+     "tab bar background disagrees", None),
+
+    ("a window background read from the wrong table", "parity", KITTY,
+     r"\nbackground #1a1b26", "\nbackground #16161e",
+     "background disagrees", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be

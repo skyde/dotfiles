@@ -25,7 +25,7 @@ Taken from [`folke/tokyonight.nvim`](https://github.com/folke/tokyonight.nvim)
 | ---------------- | --------- | ----------------------------------------- |
 | `bg`             | `#1a1b26` | default background                        |
 | `bg_dark`        | `#16161e` | status lines, sidebars, floats, popups    |
-| `black`          | `#15161e` | ANSI 0 background-ish, tab bar background  |
+| `black`          | `#15161e` | the strip the tabs sit on, in kitty and wezterm alike |
 | `bg_highlight`   | `#292e42` | inactive borders, boxes, subtle fills     |
 | `bg_visual`      | `#283457` | visual selection                          |
 | `selection`      | `#2e3c64` | terminal selection background             |
