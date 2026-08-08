@@ -273,6 +273,42 @@ do
   eq("merge: an unmerged file is marked U, not M", "U", during["conflicted.txt"])
   eq("merge: a file the merge did not touch is unaffected", nil, during["clean.txt"])
 
+  -- A linked worktree keeps its git directory somewhere else entirely: `.git`
+  -- is a file pointing at it, so the conflict markers are not where the
+  -- ordinary check looks and it has to ask git where they are. Its own
+  -- repository, because it needs main to move after the worktree branches off
+  -- and the merge above is still open in mg.
+  do
+    local wr = temp .. "/git-worktree"
+    vim.fn.mkdir(wr, "p")
+    git(wr, "init", "-q", "-b", "main")
+    write(wr .. "/shared.txt", "base\n")
+    git(wr, "add", "-A")
+    git(wr, "commit", "-qm", "base")
+
+    local wt = temp .. "/git-worktree-linked"
+    git(wr, "worktree", "add", "-q", wt, "-b", "wt-side")
+    eq("worktree: .git is a file there, not a directory", "file", (vim.uv.fs_stat(wt .. "/.git") or {}).type)
+
+    write(wt .. "/shared.txt", "worktree side\n")
+    git(wt, "commit", "-qam", "worktree side")
+    -- main moves after the branch point, so the merge below has two sides.
+    write(wr .. "/shared.txt", "main side\n")
+    git(wr, "commit", "-qam", "main side")
+    vim
+      .system({ "git", "-c", "user.email=t@example.com", "-c", "user.name=Test", "merge", "main" }, { cwd = wt })
+      :wait()
+
+    local wb, wroot = vcs.detect(wt)
+    eq("worktree: detected as git", "git", wb and wb.name)
+    eq(
+      "worktree: an unmerged file is still marked U",
+      "U",
+      status_map(wb.changed(wroot, wb.rev(wroot, "working")))["shared.txt"]
+    )
+    vcs.clear_cache()
+  end
+
   -- Resolved, and the marker gone: back to an ordinary modification.
   write(mg .. "/conflicted.txt", "resolved\n")
   git(mg, "add", "conflicted.txt")

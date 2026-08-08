@@ -42,10 +42,11 @@ local M = {}
 ---@field raw_diff fun(root: string, rev: string, path: string|nil, orig: string|nil): string
 ---@field log fun(root: string, path: string): table[]
 ---@field revert fun(root: string, rev: string, file: VcsFile): boolean|nil
----@field staged fun(root: string, path: string, orig: string|nil): boolean|nil
----@field stage fun(root: string, path: string, orig: string|nil): boolean|nil
----@field unstage fun(root: string, path: string, orig: string|nil): boolean|nil
----@field resolve fun(root: string, rev: string): string|nil  optional: the canonical id for a revision the user typed, nil when it names nothing
+--- The rest are optional, and the UI checks for them rather than assuming:
+---@field staged? fun(root: string, path: string, orig: string|nil): boolean|nil  git's index; absent everywhere else
+---@field stage? fun(root: string, path: string, orig: string|nil): boolean|nil
+---@field unstage? fun(root: string, path: string, orig: string|nil): boolean|nil
+---@field resolve? fun(root: string, rev: string): string|nil  the canonical id for a revision the user typed, nil when it names nothing. Perforce has no equivalent
 
 --------------------------------------------------------------------------
 -- helpers
