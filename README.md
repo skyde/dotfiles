@@ -72,19 +72,21 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 
 ## Theme
 
-Everything above wears **Tokyo Night (night)**, from the terminal down to the
-colour of a `.zip` in a completion menu — see [docs/tokyonight.md](docs/tokyonight.md)
-for the palette, which tool reads it from where, and the deliberate deviations
-(the `#ff5000` cursor, the lightened ANSI 8). Syntax highlighting is
-deliberately *not* Tokyo Night: `bat`, `delta`, VS Code and yazi's preview all
-use `Visual Studio Dark+`, driven by the single `BAT_THEME` setting.
+Every one of those tools — plus tmux, yazi, btop, the three terminals, the zsh
+and PowerShell command lines, `ls`, man pages and git's own output — is themed
+**Tokyo Night (night)**, from one palette. Syntax highlighting is deliberately
+*not* Tokyo Night: code is Visual Studio Dark+ everywhere it appears, so the
+chrome and the code stay two separate decisions.
 
-Nothing keeps a dozen configs in four syntaxes agreeing on one palette except
-`tests/check-theme.py`, which needs nothing installed:
+[`docs/tokyonight.md`](docs/tokyonight.md) is the source of truth for the
+palette and the reasoning — including the parts that are not obvious, like why
+a search match is blue in some tools and an inverted yellow block in others.
+
+Two things keep it honest:
 
 ```bash
-tests/check-theme.py            # palette, parity and contrast
-tests/check-theme.py --verbose  # and what passed
+tests/check-theme.py   # do the configs agree with each other and the docs?
+./doctor-theme.sh      # did they reach this machine, and can it render them?
 ```
 
 ## Neovim

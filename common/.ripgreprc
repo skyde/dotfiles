@@ -7,25 +7,29 @@
 --hidden
 --smart-case
 
-# --- Colours (Tokyo Night; palette reference: docs/tokyonight.md) ---
-# A match is an inverted yellow block, the same as it is in fzf, in grep and in
-# `delta --grep`. See docs/tokyonight.md for why matches invert rather than
-# recolour: a match painted only on the foreground disappears into a line that
-# some other tool has already syntax-coloured, and inverting cannot.
+# --- Colours (Tokyo Night night — palette reference: docs/tokyonight.md) ---
+# rg takes decimal RGB triples, not hex, so each line carries the hex it means.
 #
-# ripgrep has no `reverse` style -- its styles are only bold/intense/underline
-# -- so the inversion is written out as the two colours swapped by hand.
+# A match is an inverted yellow block rather than recoloured text: the same
+# gesture as fzf's hl/hl+ and delta's grep-match-word-style, and for the same
+# reason. rg's output is routinely piped into something that has already
+# coloured the line — st-rg's fzf picker, delta --grep, bat — where swapping
+# only the foreground drops a colour into a line that may already be wearing
+# it. Foreground and background inverted cannot be lost that way.
 #
-# The old single line here was `match:fg:243,178,109`, which is #f3b26d: a
-# near-miss of the palette's #e0af68 that nothing else in the tree used. It is
-# also why tests/check-theme.py reads decimal triplets and not just hex.
+# Remember the rule at the top of this file: a line is one argv, so the hex a
+# triple stands for has to sit on its own comment line — trailing it after the
+# value makes the comment part of the colour and rg refuses to start.
+#
+# bg #1a1b26 on yellow #e0af68
 --colors=match:fg:26,27,38
 --colors=match:bg:224,175,104
 --colors=match:style:bold
-
-# The surrounding fields borrow delta's grep styling exactly, so `rg`,
-# `grep -rn` and `git grep` produce three sets of output that line up.
+# Path and line number mirror delta's grep-file-style / grep-line-number-style
+# so `rg foo` and `git grep foo` (which pages through delta) read alike.
+# blue #7aa2f7
 --colors=path:fg:122,162,247
+# dark3 #545c7e
 --colors=line:fg:84,92,126
 --colors=column:fg:84,92,126
 

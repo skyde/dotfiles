@@ -5,10 +5,6 @@
 [mgr]
 cwd = { fg = "#7dcfff" }
 
-# Where a symlink points. The link's own name is already cyan (see [filetype]
-# below); the target is reference, so it recedes.
-symlink_target = { fg = "#565f89", italic = true }
-
 find_keyword = { fg = "#ff9e64", bold = true }
 find_position = { fg = "#bb9af7", bg = "reset", italic = true }
 
@@ -25,29 +21,37 @@ count_selected = { fg = "#16161e", bg = "#e0af68" }
 border_symbol = "│"
 border_style = { fg = "#292e42" }
 
-# The hovered row in each of the three panes.
+# The hovered row in each column, said twice on purpose.
 #
-# These lived under `[mgr]` as `hovered` and `preview_hovered` until yazi
-# v25.12.29 reclassified them here as `current` and `preview`. Yazi ignores
-# unknown keys without a word (see the gotcha in docs/tokyonight.md), so the
-# old names did not error — they just quietly stopped applying, and both panes
-# fell back to yazi's defaults, which are the two things the settings were
-# written to avoid: `reversed = true` on the current row and `underline = true`
-# on the preview's.
-[indicator]
-# The selection blue rather than a reverse-video flip, so the file icon and the
-# git status colours survive underneath the cursor.
-current = { fg = "#c0caf5", bg = "#283457" }
+# yazi v25.12.29 reclassified `[mgr] hovered` and `preview_hovered` into
+# [indicator] as `current` and `preview` (splitting out `parent`, which
+# `hovered` used to cover). Either version ignores the other's spelling
+# without a word — the gotcha further down docs/tokyonight.md — so a config
+# that carries only one spelling looks correct and quietly loses the setting
+# on the other side of the rename: the hovered row falls back to a
+# reverse-video flip and the preview row to a hard underline, the two
+# defaults these settings exist to avoid. Both spellings, same values, and
+# whichever your yazi understands is the one it reads. Verified on 25.5.31
+# and 26.5.6. tests/check-theme.py fails if the pair drifts apart.
+#
+# The values: the selection blue, not reverse video, so the file icon and
+# git status colours survive underneath the cursor; the preview pane gets a
+# muted fill — the same gesture, quieter, because that pane is not focused.
+[mgr.hovered]
+fg = "#c0caf5"
+bg = "#283457"
 
-# The parent and preview panes are not focused, so they get the quieter fill
-# rather than a hard rule across a pane you are not working in. Same gesture,
-# lower voice.
-parent = { fg = "#c0caf5", bg = "#292e42" }
+[mgr.preview_hovered]
+fg = "#c0caf5"
+bg = "#292e42"
+
+[indicator]
+parent = { fg = "#c0caf5", bg = "#283457" }
+current = { fg = "#c0caf5", bg = "#283457" }
 preview = { fg = "#c0caf5", bg = "#292e42" }
 
 [tabs]
 active = { fg = "#16161e", bg = "#7aa2f7", bold = true }
-# dark5, matching kitty's inactive tab: dark3 on this fill is 2.05:1.
 inactive = { fg = "#737aa2", bg = "#292e42" }
 
 [mode]
@@ -77,7 +81,6 @@ progress_normal = { fg = "#7aa2f7", bg = "#292e42" }
 progress_error = { fg = "#f7768e", bg = "#292e42" }
 
 [which]
-border = { fg = "#7aa2f7" }
 mask = { bg = "#1f2335" }
 cand = { fg = "#7dcfff" }
 rest = { fg = "#565f89" }
@@ -88,8 +91,9 @@ separator_style = { fg = "#3b4261" }
 [confirm]
 border = { fg = "#7aa2f7" }
 title = { fg = "#7aa2f7" }
-# `content` until v25.12.29, `body` since.
+# `content` until v25.12.29, `body` since; both spellings so both read it.
 body = {}
+content = {}
 list = { fg = "#7dcfff" }
 btn_yes = { fg = "#16161e", bg = "#9ece6a", bold = true }
 btn_no = { fg = "#16161e", bg = "#f7768e", bold = true }
@@ -124,67 +128,51 @@ inactive = { fg = "#a9b1d6" }
 [tasks]
 border = { fg = "#7aa2f7" }
 title = {}
-# Same treatment as the preview pane's indicator: a fill, not a hard underline.
+# Same treatment as preview_hovered: a fill rather than a hard underline.
 hovered = { fg = "#bb9af7", bg = "#292e42" }
 
-# Both spellings on purpose, and this one is a bet rather than a fix.
-#
-# Yazi is superseding `on` with `chord` and folding `run` and `desc` into
-# `action`, but that change is still unreleased — so today the old names are
-# the live ones and the new names do nothing, and after the next release it is
-# the other way round. Because yazi ignores keys it does not recognise without
-# complaining, carrying both means the help menu is themed either way, and the
-# old three can simply be deleted once the release lands.
-#
-# `footer` goes away in the same change and has no successor; it is harmless
-# until then.
 [help]
-border = { fg = "#7aa2f7" }
-hovered = { bg = "#283457", bold = true }
-# Post-rename names.
-chord = { fg = "#7dcfff" }
-action = { fg = "#a9b1d6" }
-# Pre-rename names, still the live ones as of v26.5.6.
 on = { fg = "#7dcfff" }
 run = { fg = "#bb9af7" }
 desc = { fg = "#a9b1d6" }
+hovered = { bg = "#283457", bold = true }
 footer = { fg = "#16161e", bg = "#c0caf5" }
 
 # Filetype colours. These mirror common/.config/lf/colors so the two file
 # managers agree on what a .zip or a broken symlink looks like.
 #
-# The key is `url`, not `name`. Yazi renamed it in v25.12.29 ("Rename `name` to
-# `url` for open, fetchers, spotters, preloaders, previewers, filetype, and
-# `globs` icon rules", #3034) and, unlike an unknown *style* key, an unknown
-# rule key is fatal: yazi refuses the whole file and falls back to its preset
-# theme. Everything above here was going with it.
-#
-# Order matters and follows yazi's own convention: specific mime/name patterns
+# Order matters and follows yazi's own convention: specific mime/url patterns
 # first, then the catch-all `is = ...` rules and the directory glob last. The
 # valid `is` values are exactly: none, hidden, link, orphan, dummy, block,
 # char, fifo, sock, exec, sticky (yazi rejects anything else, including "dir" —
-# directories are matched with the name glob "*/").
+# directories are matched with the glob "*/").
+#
+# Every pattern is spelled twice, `url` and `name`, with identical globs.
+# v25.12.29 renamed the key across filetype, previewer, fetcher and icon
+# rules to make room for virtual filesystems, and each side of that rename
+# ignores the other's spelling without a word — on an older yazi a url-only
+# table means every rule matches nothing and the whole listing renders in
+# plain foreground. Both spellings keeps one config correct on both sides;
+# verified on 25.5.31 and 26.5.6, and tests/check-theme.py fails if a pair
+# drifts apart. `mime` patterns are unchanged by the rename — a plain
+# `image/*` still matches on 26.5.6, so no `**/` prefix is needed.
 [filetype]
 rules = [
   # --- archives → red ---
-  { url = "*.tar", fg = "#f7768e" },
-  { url = "*.tgz", fg = "#f7768e" },
-  { url = "*.gz", fg = "#f7768e" },
-  { url = "*.bz2", fg = "#f7768e" },
-  { url = "*.xz", fg = "#f7768e" },
-  { url = "*.zst", fg = "#f7768e" },
-  { url = "*.zip", fg = "#f7768e" },
-  { url = "*.7z", fg = "#f7768e" },
-  { url = "*.rar", fg = "#f7768e" },
-  { url = "*.deb", fg = "#f7768e" },
-  { url = "*.rpm", fg = "#f7768e" },
-  { url = "*.dmg", fg = "#f7768e" },
+  { url = "*.tar", name = "*.tar", fg = "#f7768e" },
+  { url = "*.tgz", name = "*.tgz", fg = "#f7768e" },
+  { url = "*.gz", name = "*.gz", fg = "#f7768e" },
+  { url = "*.bz2", name = "*.bz2", fg = "#f7768e" },
+  { url = "*.xz", name = "*.xz", fg = "#f7768e" },
+  { url = "*.zst", name = "*.zst", fg = "#f7768e" },
+  { url = "*.zip", name = "*.zip", fg = "#f7768e" },
+  { url = "*.7z", name = "*.7z", fg = "#f7768e" },
+  { url = "*.rar", name = "*.rar", fg = "#f7768e" },
+  { url = "*.deb", name = "*.deb", fg = "#f7768e" },
+  { url = "*.rpm", name = "*.rpm", fg = "#f7768e" },
+  { url = "*.dmg", name = "*.dmg", fg = "#f7768e" },
 
   # --- media → magenta, audio → purple ---
-  # The `**/` is load-bearing. Yazi matches a mime pattern against a
-  # scheme-prefixed string now (its own presets carry the same prefix, and one
-  # of them matches `vfs/{absent,stale}`), so a bare `image/*` matches nothing
-  # and every image, video, audio file and PDF fell through to the catch-all.
   { mime = "**/image/*", fg = "#bb9af7" },
   { mime = "**/video/*", fg = "#bb9af7" },
   { mime = "**/audio/*", fg = "#9d7cd8" },
@@ -192,68 +180,73 @@ rules = [
   # --- documents → orange ---
   { mime = "**/application/pdf", fg = "#ff9e64" },
   { mime = "**/application/epub+zip", fg = "#ff9e64" },
-  { url = "*.djvu", fg = "#ff9e64" },
-  { url = "*.docx", fg = "#ff9e64" },
-  { url = "*.xlsx", fg = "#ff9e64" },
-  { url = "*.pptx", fg = "#ff9e64" },
+  # By name rather than mime: DjVu has no registered type most mime
+  # databases agree on, so the extension is what lf and LS_COLORS match too.
+  { url = "*.djvu", name = "*.djvu", fg = "#ff9e64" },
+  { url = "*.docx", name = "*.docx", fg = "#ff9e64" },
+  { url = "*.xlsx", name = "*.xlsx", fg = "#ff9e64" },
+  { url = "*.pptx", name = "*.pptx", fg = "#ff9e64" },
 
   # --- source code → green ---
-  { url = "*.c", fg = "#9ece6a" },
-  { url = "*.h", fg = "#9ece6a" },
-  { url = "*.cc", fg = "#9ece6a" },
-  { url = "*.cpp", fg = "#9ece6a" },
-  { url = "*.hpp", fg = "#9ece6a" },
-  { url = "*.cs", fg = "#9ece6a" },
-  { url = "*.go", fg = "#9ece6a" },
-  { url = "*.rs", fg = "#9ece6a" },
-  { url = "*.py", fg = "#9ece6a" },
-  { url = "*.rb", fg = "#9ece6a" },
-  { url = "*.js", fg = "#9ece6a" },
-  { url = "*.ts", fg = "#9ece6a" },
-  { url = "*.tsx", fg = "#9ece6a" },
-  { url = "*.jsx", fg = "#9ece6a" },
-  { url = "*.lua", fg = "#9ece6a" },
-  { url = "*.sh", fg = "#9ece6a" },
-  { url = "*.zsh", fg = "#9ece6a" },
-  { url = "*.bash", fg = "#9ece6a" },
-  { url = "*.ps1", fg = "#9ece6a" },
+  { url = "*.c", name = "*.c", fg = "#9ece6a" },
+  { url = "*.h", name = "*.h", fg = "#9ece6a" },
+  { url = "*.cc", name = "*.cc", fg = "#9ece6a" },
+  { url = "*.cpp", name = "*.cpp", fg = "#9ece6a" },
+  { url = "*.hpp", name = "*.hpp", fg = "#9ece6a" },
+  { url = "*.cs", name = "*.cs", fg = "#9ece6a" },
+  { url = "*.go", name = "*.go", fg = "#9ece6a" },
+  { url = "*.rs", name = "*.rs", fg = "#9ece6a" },
+  { url = "*.py", name = "*.py", fg = "#9ece6a" },
+  { url = "*.rb", name = "*.rb", fg = "#9ece6a" },
+  { url = "*.js", name = "*.js", fg = "#9ece6a" },
+  { url = "*.ts", name = "*.ts", fg = "#9ece6a" },
+  { url = "*.tsx", name = "*.tsx", fg = "#9ece6a" },
+  { url = "*.jsx", name = "*.jsx", fg = "#9ece6a" },
+  { url = "*.lua", name = "*.lua", fg = "#9ece6a" },
+  { url = "*.sh", name = "*.sh", fg = "#9ece6a" },
+  { url = "*.zsh", name = "*.zsh", fg = "#9ece6a" },
+  { url = "*.bash", name = "*.bash", fg = "#9ece6a" },
+  { url = "*.ps1", name = "*.ps1", fg = "#9ece6a" },
 
   # --- config and data → yellow ---
-  { url = "*.json", fg = "#e0af68" },
-  { url = "*.toml", fg = "#e0af68" },
-  { url = "*.yaml", fg = "#e0af68" },
-  { url = "*.yml", fg = "#e0af68" },
-  { url = "*.ini", fg = "#e0af68" },
-  { url = "*.conf", fg = "#e0af68" },
-  { url = "*.cfg", fg = "#e0af68" },
-  { url = "*.xml", fg = "#e0af68" },
+  { url = "*.json", name = "*.json", fg = "#e0af68" },
+  { url = "*.toml", name = "*.toml", fg = "#e0af68" },
+  { url = "*.yaml", name = "*.yaml", fg = "#e0af68" },
+  { url = "*.yml", name = "*.yml", fg = "#e0af68" },
+  { url = "*.ini", name = "*.ini", fg = "#e0af68" },
+  { url = "*.conf", name = "*.conf", fg = "#e0af68" },
+  { url = "*.cfg", name = "*.cfg", fg = "#e0af68" },
+  { url = "*.xml", name = "*.xml", fg = "#e0af68" },
 
   # --- prose → foreground ---
-  { url = "*.md", fg = "#c0caf5" },
-  { url = "*.txt", fg = "#c0caf5" },
-  { url = "*.rst", fg = "#c0caf5" },
+  { url = "*.md", name = "*.md", fg = "#c0caf5" },
+  { url = "*.txt", name = "*.txt", fg = "#c0caf5" },
+  { url = "*.rst", name = "*.rst", fg = "#c0caf5" },
 
-  # --- build noise → dark5 (see the note in ../lf/colors) ---
-  { url = "*.log", fg = "#737aa2" },
-  { url = "*.bak", fg = "#737aa2" },
-  { url = "*.tmp", fg = "#737aa2" },
-  { url = "*.swp", fg = "#737aa2" },
-  { url = "*.o", fg = "#737aa2" },
-  { url = "*.pyc", fg = "#737aa2" },
-  { url = "*.lock", fg = "#737aa2" },
+  # --- build noise → comment grey ---
+  { url = "*.log", name = "*.log", fg = "#737aa2" },
+  { url = "*.bak", name = "*.bak", fg = "#737aa2" },
+  { url = "*.tmp", name = "*.tmp", fg = "#737aa2" },
+  { url = "*.swp", name = "*.swp", fg = "#737aa2" },
+  { url = "*.o", name = "*.o", fg = "#737aa2" },
+  { url = "*.pyc", name = "*.pyc", fg = "#737aa2" },
+  { url = "*.lock", name = "*.lock", fg = "#737aa2" },
 
   # --- special file kinds, checked after the patterns above ---
-  { url = "*", is = "orphan", fg = "#f7768e", bold = true },
-  { url = "*", is = "link", fg = "#7dcfff" },
-  { url = "*", is = "block", fg = "#e0af68" },
-  { url = "*", is = "char", fg = "#e0af68" },
-  { url = "*", is = "fifo", fg = "#bb9af7" },
-  { url = "*", is = "sock", fg = "#bb9af7" },
-  { url = "*", is = "sticky", fg = "#16161e", bg = "#7aa2f7" },
-  { url = "*", is = "exec", fg = "#9ece6a" },
-  { url = "*", is = "dummy", fg = "#737aa2" },
+  { url = "*", name = "*", is = "orphan", fg = "#f7768e", bold = true },
+  { url = "*", name = "*", is = "link", fg = "#7dcfff" },
+  { url = "*", name = "*", is = "block", fg = "#e0af68" },
+  { url = "*", name = "*", is = "char", fg = "#e0af68" },
+  # Yellow, with the block and char devices above and against the magenta
+  # socket below. That is what lf and LS_COLORS say, and what `ls` has said
+  # since long before either — pi is yellow, so is magenta.
+  { url = "*", name = "*", is = "fifo", fg = "#e0af68" },
+  { url = "*", name = "*", is = "sock", fg = "#bb9af7" },
+  { url = "*", name = "*", is = "sticky", fg = "#16161e", bg = "#7aa2f7" },
+  { url = "*", name = "*", is = "exec", fg = "#9ece6a" },
+  { url = "*", name = "*", is = "dummy", fg = "#737aa2" },
 
   # --- directories, and finally everything else ---
-  { url = "*/", fg = "#7aa2f7", bold = true },
-  { url = "*", fg = "#c0caf5" },
+  { url = "*/", name = "*/", fg = "#7aa2f7", bold = true },
+  { url = "*", name = "*", fg = "#c0caf5" },
 ]

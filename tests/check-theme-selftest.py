@@ -46,7 +46,6 @@ GIT = "common/.config/git/config"
 TMUX = "common/.tmux.conf"
 RGRC = "common/.ripgreprc"
 BTOP = "common/.config/btop/themes/tokyo-night.theme"
-FSH_INI = "common/.config/fsh/tokyonight.ini"
 LAZYGIT = "common/.config/lazygit/config.yml"
 STARSHIP = "common/.config/starship.toml"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
@@ -115,8 +114,8 @@ MUTATIONS = [
      "titlebar disagrees", None),
 
     ("a file colour that differs between lf and yazi", "parity", YAZI,
-     r'\{ url = "\*\.zip", fg = "#f7768e" \}',
-     '{ url = "*.zip", fg = "#9ece6a" }',
+     r'\{ url = "\*\.zip", name = "\*\.zip", fg = "#f7768e" \}',
+     '{ url = "*.zip", name = "*.zip", fg = "#9ece6a" }',
      "in lf but", None),
 
     # The one that cost the most to find by hand. Yazi tolerates an unknown
@@ -124,8 +123,8 @@ MUTATIONS = [
     # whole file and falls back to its presets, so a single stale `name = `
     # cost the entire theme while every colour in the file still looked right.
     ("a yazi rule key yazi no longer accepts", "parity", YAZI,
-     r'\{ url = "\*\.tar", fg = "#f7768e" \}',
-     '{ name = "*.tar", fg = "#f7768e" }',
+     r'\{ url = "\*\.tar", name = "\*\.tar", fg = "#f7768e" \}',
+     '{ urls = "*.tar", name = "*.tar", fg = "#f7768e" }',
      "rejects one of its configs", "yazi"),
 
     ("a file colour that differs between lf and the shell", "parity", LF_COLORS,
@@ -144,8 +143,8 @@ MUTATIONS = [
 
     ("a command-line role that differs between zsh and PowerShell", "parity",
      PSPROFILE,
-     r'Keyword            = "\$e\[38;2;187;154;247m"',
-     'Keyword            = "$e[38;2;125;207;255m"',
+     r"Command            = '#dcdcaa'",
+     "Command            = '#7dcfff'",
      "on the PowerShell one", None),
 
     ("a bat call site that forgets COLORTERM", "parity", FF,
@@ -203,11 +202,11 @@ MUTATIONS = [
     # at. Both directions matter: a file that falls out of every list, and a
     # list entry for a file that no longer has a colour in it.
     ("a colour-bearing file that fell off every list", "parity", TOKYODOC,
-     r"\n\| `common/\.config/kitty/kitty\.conf` \|[^\n]*", "",
+     r"\n\| `common/\.config/nvim/lua/util/vscode_syntax\.lua` \|[^\n]*", "",
      "nothing checks it", None),
 
     ("an exemption for a file with no colours left", "parity", TOKYODOC,
-     r"`common/\.config/kitty/kitty\.conf`", "`common/.config/kitty/gone.conf`",
+     r"`common/\.config/nvim/lua/util/vscode_syntax\.lua`", "`common/.config/nvim/lua/util/gone.lua`",
      "stale", None),
 
     # The parity doc is where the VS Code resolution work is written down and
@@ -325,14 +324,6 @@ MUTATIONS = [
     ("a lazygit theme key lazygit does not have", "parity", LAZYGIT,
      r"    optionsTextColor:", "    optionsTxtColor:",
      "no such key", "lazygit"),
-
-    # fsh writes one role per line -- a bare colour for text, `bg:` for a
-    # fill -- so both are pairs against something implicit, the page or the
-    # default text colour. A scan looking for two colours on one line found
-    # none of its 52 roles, which is why they went unchecked.
-    ("an unreadable command-line role in fsh", "contrast", FSH_INI,
-     r"\nvariable(\s+)= #9d7cd8", "\\nvariable\\1= #3b4261",
-     "below 4.5:1", None),
 
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
@@ -462,8 +453,11 @@ def run_units(verbose):
           "cursor glyph" in known.get("#000000", set()))
     check("#ff5000 is the cursor",
           "cursor" in known.get("#ff5000", set()))
-    check("Dark+'s foreground is not in the palette",
-          "#d4d4d4" not in known)
+    # Dark+ used to be deliberately absent from the doc. It is not any more:
+    # the command line is code, both shells paint it from the Dark+ table, and
+    # a colour a config uses is a colour the doc has to account for.
+    check("Dark+'s foreground is documented, since the command line uses it",
+          "#d4d4d4" in known)
 
     # The file list comes out of the doc, so an empty list would silently mean
     # "nothing is checked".

@@ -233,14 +233,13 @@
     blame-code-style = syntax
     blame-palette = "#1a1b26 #1f2335 #24283b #292e42"
     blame-separator-style = "#3b4261"
-    # There is no blame-timestamp-style. This config carried one for a long
-    # time and it never did anything: delta has blame-timestamp-format and
-    # blame-timestamp-output-format, but the timestamp's colour is not
-    # separately settable — it comes from blame-code-style like the rest of the
-    # line. Verified against `delta --help` and against delta's source back to
-    # 0.16; the option has never existed. Left as a note rather than deleted
-    # silently, because a plausible-looking key that does nothing is exactly
-    # what gets re-added.
+    # There is no blame-timestamp-style, and there never was — delta has
+    # blame-timestamp-format and blame-timestamp-output-format, but no style
+    # option for that field. One was set here and, like any unknown key in a
+    # git config, was read by nobody. The blame prefix has exactly two knobs
+    # that take a colour: blame-palette for the per-commit background, and
+    # blame-separator-style; the author and timestamp take the foreground
+    # they are given.
 
     # Merge conflicts (merge.conflictstyle = zdiff3 above shows all three sides)
     merge-conflict-begin-symbol = "▼"
@@ -249,6 +248,13 @@
     merge-conflict-ours-diff-header-decoration-style = "#292e42 box"
     merge-conflict-theirs-diff-header-style = "#e0af68 bold"
     merge-conflict-theirs-diff-header-decoration-style = "#292e42 box"
+
+    # Delta's own annotations — the symbols marking a wrapped line, the
+    # characters standing in for tabs. Default is blue, which is the primary
+    # accent and the colour of hunk headers and grep file paths; these are
+    # incidental marks and should not carry that much weight. `comment` is the
+    # palette's role for exactly this.
+    inline-hint-style = "#565f89"
 
     # `delta --grep` / rg integration. Matches are inverted yellow blocks for
     # the same reason as fzf's hl/hl+ (see theme.sh): a recoloured foreground
@@ -269,6 +275,48 @@
     # part of it, so they take the tertiary grey instead of delta's default
     # blue, which reads as though it belonged to the code.
     inline-hint-style = "#737aa2"
+
+# --- Git's own colours ---
+# Delta paints diffs. Everything else git prints — status, branch listings,
+# the decorations in a log graph — it colours itself, and it was doing that
+# from its defaults: plain ANSI names that land on this palette by way of the
+# terminal, but with git's meanings rather than these ones. Most visibly,
+# default `git status` paints a modified file and an untracked file the same
+# red, when only one of those is anything like an error.
+#
+# The colours below are the roles docs/tokyonight.md already assigns: green
+# added, yellow modified, teal untracked or new, magenta a branch, cyan a
+# remote, and orange for HEAD — the "you are here" colour that the cursor and
+# the current search match already wear.
+#
+# There is deliberately no [color "diff"] section. Delta's map-styles matches
+# on the exact colours git emits for moved code — `bold purple`, `bold cyan`
+# and friends — so overriding git's diff colours would quietly stop moves from
+# being recognised, and the diff would go back to reading as plain add/remove.
+[color "status"]
+    header = "#565f89"
+    added = "#9ece6a"
+    changed = "#e0af68"
+    untracked = "#1abc9c"
+    unmerged = "#f7768e bold"
+    branch = "#bb9af7 bold"
+    nobranch = "#f7768e bold"
+    localBranch = "#bb9af7"
+    remoteBranch = "#7dcfff"
+
+[color "branch"]
+    current = "#bb9af7 bold"
+    local = "#a9b1d6"
+    remote = "#7dcfff"
+    upstream = "#9d7cd8"
+
+[color "decorate"]
+    HEAD = "#ff9e64 bold"
+    branch = "#bb9af7 bold"
+    remoteBranch = "#7dcfff"
+    tag = "#e0af68"
+    stash = "#9d7cd8"
+    grafted = "#f7768e"
 
 [index]
     threads = 10

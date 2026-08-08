@@ -1,0 +1,17 @@
+# bat's configuration.
+#
+# Only the syntax theme lives here, and only as a fallback. BAT_THEME in
+# ~/.zshenv and ~/.bashrc-custom is still the source of truth — bat reads the
+# environment variable in preference to this file, so setting it there
+# continues to decide what bat, delta and the yazi preview all show.
+#
+# What this file buys is the case where there is no environment to read: bat
+# launched from something that is not one of those shells — an editor task, a
+# GUI app, a cron job, `env -i` — otherwise falls back to bat's own default
+# (Monokai Extended), which looks nothing like the rest of the setup. Same
+# reasoning as vendoring btop's theme rather than trusting the packaged copy,
+# and as keeping ~/.config/lf/colors even though lf reads LS_COLORS.
+#
+# tests/check-theme.py checks that every file naming this theme names the
+# same one. Palette reference: docs/tokyonight.md
+--theme="Visual Studio Dark+"

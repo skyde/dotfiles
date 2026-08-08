@@ -100,7 +100,19 @@ def documented_colours(doc):
         # A row's label belongs to the colour sitting in its own cell, not to
         # every colour the row happens to mention: the cursor row names both
         # the black glyph it is about and the orange it sits on.
-        owned = {norm(c) for c in cells if HEX.fullmatch(c)}
+        # A cell may hold several colours -- the diff-tint rows list a whole
+        # family of steps in one -- so a cell counts as owning every colour in
+        # it as long as it holds nothing else.
+        owned = set()
+        for cell in cells:
+            found = HEX.findall(cell)
+            if found and not re.sub(r"#[0-9a-fA-F]{6}|[`\s]", "", cell):
+                owned.update(norm(c) for c in found)
+        # Outside a table there is no label cell, and the sentence is the
+        # explanation -- which is the thing the label stands for anyway.
+        if len(cells) < 3:
+            label = line.strip().lstrip("> ").rstrip()[:80]
+            owned = {norm(c) for c in HEX.findall(line)}
         for found in HEX.findall(line):
             key = norm(found)
             names.setdefault(key, set())
@@ -617,59 +629,80 @@ def _check_bat_truecolor(verbose):
 # themes PowerShell's, and they were written to agree role for role -- the
 # whole point being that the prompt looks the same on either machine. Two
 # files, two syntaxes, one written in hex and the other in SGR escapes.
-FSH_INI = "common/.config/fsh/tokyonight.ini"
 PSPROFILE = "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
+ZSHRC = "common/.zshrc"
+
+# zsh's key -> PSReadLine's key, for the roles both name. Both command lines
+# are Visual Studio Dark+ (see "Dark+ on the command line" in the palette doc),
+# so these are not merely analogous roles -- they must be the same hex.
 COMMAND_LINE_ROLES = [
-    ("command", "Command", "what will run"),
-    ("reserved-word", "Keyword", "keywords"),
+    ("default", "Default", "plain text"),
+    ("comment", "Comment", "comments"),
     ("single-quoted-argument", "String", "strings"),
+    ("command", "Command", "a command that will run"),
     ("single-hyphen-option", "Parameter", "options"),
     ("variable", "Variable", "variables"),
     ("mathnum", "Number", "numbers"),
-    ("commandseparator", "Operator", "operators"),
-    ("comment", "Comment", "comments"),
+    ("redirection", "Operator", "operators"),
     ("unknown-token", "Error", "a command that will not run"),
 ]
 
 
 def _check_command_lines(verbose):
-    fsh_path = os.path.join(REPO, FSH_INI)
+    """The zsh and PowerShell command lines are the same table.
+
+    Both are Visual Studio Dark+ rather than Tokyo Night, because the line you
+    are typing is code -- and because Ctrl-R pipes history through bat, which
+    has already painted it that way one keystroke earlier. So these are not two
+    themes that ought to rhyme; they are one table written twice, and a role
+    that differs is a command that changes colour when you change machine.
+
+    zsh's half used to live in an fsh .ini and now lives in `_tn_cli_styles` in
+    .zshrc, which is what made this check stop finding it during the merge.
+    """
+    zsh_path = os.path.join(REPO, ZSHRC)
     ps_path = os.path.join(REPO, PSPROFILE)
-    if not (os.path.isfile(fsh_path) and os.path.isfile(ps_path)):
+    if not (os.path.isfile(zsh_path) and os.path.isfile(ps_path)):
         return []
 
-    fsh = {}
-    for key, value in re.findall(r"^([\w-]+)\s*=\s*(.+)$",
-                                 open(fsh_path, encoding="utf-8").read(), re.M):
+    zsh = {}
+    block = re.search(r"_tn_cli_styles=\((.*?)\n\)", 
+                      open(zsh_path, encoding="utf-8").read(), re.S)
+    if not block:
+        return ["%s no longer defines _tn_cli_styles, so the zsh command line "
+                "cannot be compared with the PowerShell one" % ZSHRC]
+    for key, value in re.findall(r"^\s*([\w-]+)\s+'([^']+)'", block.group(1), re.M):
         found = HEX.findall(value)
         if found:
-            fsh[key] = norm(found[0])
+            zsh[key] = norm(found[0])
 
+    ps_src = open(ps_path, encoding="utf-8").read()
     ps = {}
-    for key, value in re.findall(r"^\s*(\w+)\s*=\s*\"\$e\[([0-9;]+)m\"",
-                                 open(ps_path, encoding="utf-8").read(), re.M):
+    for key, value in re.findall(r"^\s*(\w+)\s*=\s*'(#[0-9a-fA-F]{6})'",
+                                 ps_src, re.M):
+        ps[key] = norm(value)
+    for key, value in re.findall(r"^\s*(\w+)\s*=\s*\"`?e\[([0-9;]+)m\"",
+                                 ps_src, re.M):
         m = DECIMAL_TRIPLE.search(value)
         if m:
-            ps[key] = "#%02x%02x%02x" % tuple(int(x) for x in m.groups())
+            ps.setdefault(key, "#%02x%02x%02x" % tuple(int(x) for x in m.groups()))
 
-    problems = []
-    checked = 0
-    for fsh_key, ps_key, role in COMMAND_LINE_ROLES:
-        if fsh_key not in fsh or ps_key not in ps:
+    problems, checked = [], 0
+    for zsh_key, ps_key, role in COMMAND_LINE_ROLES:
+        if zsh_key not in zsh or ps_key not in ps:
             problems.append(
-                "cannot compare %s: %s is %s in the fsh theme and %s in the "
-                "PowerShell profile"
-                % (role, role,
-                   "set" if fsh_key in fsh else "missing",
+                "cannot compare %s: %s in .zshrc, %s in the PowerShell profile"
+                % (role,
+                   "set" if zsh_key in zsh else "missing",
                    "set" if ps_key in ps else "missing"))
             continue
         checked += 1
-        if fsh[fsh_key] != ps[ps_key]:
+        if zsh[zsh_key] != ps[ps_key]:
             problems.append(
                 "%s is %s on the zsh command line but %s on the PowerShell one"
-                % (role, fsh[fsh_key], ps[ps_key]))
+                % (role, zsh[zsh_key], ps[ps_key]))
     if verbose and not problems:
-        print("  %d command-line roles identical in zsh and PowerShell" % checked)
+        print("  %d command-line role(s) identical in zsh and PowerShell" % checked)
     return problems
 
 
@@ -764,6 +797,155 @@ def _check_lazygit_theme_keys(verbose):
     ]
     if verbose and not problems:
         print("  lazygit knows all %d of its theme keys" % len(mine))
+    return problems
+
+
+SHARED_ROLES = [
+    {
+        "name": "the cursor",
+        "hex": "#ff5000",
+        "aliases": (),
+        # The one colour here that is not Tokyo Night at all: chosen to be
+        # findable against a blue-violet palette. docs/tokyonight.md: "Keep it."
+        "settings": [
+            ("common/.config/kitty/themes/tokyonight_night.conf", r"^cursor\s+(#[0-9a-fA-F]{6})"),
+            ("common/.config/wezterm/wezterm.lua", r"cursor_bg\s*=\s*'(#[0-9a-fA-F]{6})'"),
+            ("common/.config/wezterm/wezterm.lua", r"cursor_border\s*=\s*'(#[0-9a-fA-F]{6})'"),
+            (
+                "common/.config/wezterm/wezterm.lua",
+                r"quick_select_label_bg\s*=\s*\{\s*Color\s*=\s*'(#[0-9a-fA-F]{6})'",
+            ),
+            (
+                "common/.config/Code/User/settings.json",
+                r'"editorCursor\.foreground"\s*:\s*"(#[0-9a-fA-F]{6})"',
+            ),
+            (
+                "common/.config/Code/User/settings.json",
+                r'"terminalCursor\.foreground"\s*:\s*"(#[0-9a-fA-F]{6})"',
+            ),
+            (
+                "common/.config/nvim/lua/plugins/tokyonight.lua",
+                r"hl\.Cursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+            ),
+            (
+                "common/.config/nvim/lua/plugins/tokyonight.lua",
+                r"hl\.TermCursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+            ),
+            (
+                "common/.config/nvim/lua/plugins/tokyonight.lua",
+                r"hl\.lCursor\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+            ),
+            (
+                "common/.config/nvim/lua/plugins/tokyonight.lua",
+                r"hl\.CursorIM\s*=\s*\{[^}]*bg\s*=\s*\"(#[0-9a-fA-F]{6})\"",
+            ),
+            ("common/.config/shell/theme.sh", r"pointer:(#[0-9a-fA-F]{6})"),
+        ],
+    },
+    {
+        "name": "the selected row",
+        "hex": "#283457",
+        # Neovim names it rather than spelling it, which is the better habit.
+        "aliases": ("c.bg_visual",),
+        "settings": [
+            ("common/.config/shell/theme.sh", r"bg\+:(#[0-9a-fA-F]{6})"),
+            ("common/.tmux.conf", r"mode-style\s+'bg=(#[0-9a-fA-F]{6})"),
+            ("common/.zshrc", r"'ma=48;2;(\d+;\d+;\d+)'"),
+            (
+                # [indicator] current — read by yazi v25.12.29 and later.
+                "common/.config/yazi/theme.toml",
+                r"^current = \{ fg = \"#[0-9a-fA-F]{6}\", bg = \"(#[0-9a-fA-F]{6})\"",
+            ),
+            (
+                # [mgr] hovered — the same setting as read by older yazi;
+                # both spellings live in the file so both versions get it.
+                "common/.config/yazi/theme.toml",
+                r"\[mgr\.hovered\]\nfg = \"#[0-9a-fA-F]{6}\"\nbg = \"(#[0-9a-fA-F]{6})\"",
+            ),
+            (
+                "common/.config/btop/themes/tokyo-night.theme",
+                r'theme\[selected_bg\]="(#[0-9a-fA-F]{6})"',
+            ),
+            (
+                "common/.config/lazygit/config.yml",
+                r'selectedLineBgColor:\s*\["(#[0-9a-fA-F]{6})"\]',
+            ),
+            (
+                "common/.config/nvim/lua/plugins/tokyonight.lua",
+                r"hl\.PmenuSel\s*=\s*\{\s*bg\s*=\s*([\w.]+)\s*\}",
+            ),
+        ],
+    },
+    {
+        "name": "a match inside text you are reading",
+        "hex": "#3d59a1",
+        "aliases": (),
+        # The other half of this convention — orange for the *current* match —
+        # is the role below. See "Two kinds of match" in docs/tokyonight.md.
+        "settings": [
+            ("common/.tmux.conf", r"copy-mode-match-style\s+'bg=(#[0-9a-fA-F]{6})"),
+            (
+                "common/.config/wezterm/wezterm.lua",
+                r"copy_mode_inactive_highlight_bg\s*=\s*\{\s*Color\s*=\s*'(#[0-9a-fA-F]{6})'",
+            ),
+            (
+                "common/.config/wezterm/wezterm.lua",
+                r"quick_select_match_bg\s*=\s*\{\s*Color\s*=\s*'(#[0-9a-fA-F]{6})'",
+            ),
+            # less gets it through theme.sh's shorthand for the same colour.
+            ("common/.config/shell/theme.sh", r"_tn_bg_search='48;2;(\d+;\d+;\d+)'"),
+        ],
+    },
+    {
+        "name": "the current match",
+        "hex": "#ff9e64",
+        "aliases": (),
+        "settings": [
+            ("common/.tmux.conf", r"copy-mode-current-match-style\s+'bg=(#[0-9a-fA-F]{6})"),
+            (
+                "common/.config/wezterm/wezterm.lua",
+                r"copy_mode_active_highlight_bg\s*=\s*\{\s*Color\s*=\s*'(#[0-9a-fA-F]{6})'",
+            ),
+        ],
+    },
+]
+
+
+def _check_shared_roles(verbose):
+    """One role, one hex, everywhere it is set.
+
+    Carried over from the checker that landed on main in #475, which was
+    written independently of this one and got to this idea first. The other
+    checks here ask whether a file is internally right or whether two named
+    files agree; this asks whether a *role* -- the cursor, the selected row --
+    holds one colour across every tool that draws it, which is the thing a
+    person actually notices when it drifts.
+
+    Each entry names the exact line it expects in each file, so a setting that
+    moves or is renamed fails loudly rather than silently going unchecked.
+    """
+    problems, checked = [], 0
+    for role in SHARED_ROLES:
+        for rel, pattern in role["settings"]:
+            path = os.path.join(REPO, rel)
+            if not os.path.isfile(path):
+                continue
+            m = re.search(pattern, open(path, encoding="utf-8").read(), re.M)
+            if not m:
+                problems.append(
+                    "%s no longer sets %s where this looks for it (%s)"
+                    % (rel, role["name"], pattern))
+                continue
+            found = m.group(1)
+            if re.fullmatch(r"\d{1,3};\d{1,3};\d{1,3}", found):
+                found = "#%02x%02x%02x" % tuple(int(x) for x in found.split(";"))
+            checked += 1
+            if norm(found) != norm(role["hex"]) and found not in role["aliases"]:
+                problems.append(
+                    "%s sets %s to %s, not %s"
+                    % (rel, role["name"], norm(found), role["hex"]))
+    if verbose and not problems:
+        print("  %d shared-role setting(s) hold one colour each" % checked)
     return problems
 
 
@@ -1719,6 +1901,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_mime_extension_bridge(verbose))
     problems.extend(_check_git_paints(verbose))
     problems.extend(_check_tmux_options(verbose))
+    problems.extend(_check_shared_roles(verbose))
     problems.extend(_check_lazygit_theme_keys(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))
@@ -1853,10 +2036,10 @@ PAIRS = [
     # tmux status line
     ("ui", "#ff9e64", "#1a1b26", TMUX, "tmux session name"),
     ("muted", "#565f89", "#1a1b26", TMUX, "tmux status base text"),
-    ("muted", "#737aa2", "#1a1b26", TMUX, "tmux hostname"),
+    ("muted", "#565f89", "#1a1b26", TMUX, "tmux hostname"),
     ("ui", "#7aa2f7", "#3b4261", TMUX, "tmux current window index"),
     ("ui", "#7aa2f7", "#1a1b26", TMUX, "tmux current window name"),
-    ("muted", "#545c7e", "#1a1b26", TMUX, "tmux inactive window index"),
+    ("muted", "#565f89", "#1a1b26", TMUX, "tmux inactive window index"),
     ("ui", "#a9b1d6", "#1a1b26", TMUX, "tmux inactive window name"),
     ("ui", "#e0af68", "#1a1b26", TMUX, "tmux window with activity"),
     ("ui", "#f7768e", "#1a1b26", TMUX, "tmux window with a bell"),
@@ -1880,7 +2063,7 @@ PAIRS = [
     ("text", "#16161e", "#7aa2f7", TMUX, "tmux copy-mode mark"),
     # prefix+q flashes these over each pane; you have about a second to read
     # one and type it.
-    ("ui", "#737aa2", "#1a1b26", TMUX, "tmux pane number overlay"),
+    ("muted", "#565f89", "#1a1b26", TMUX, "tmux pane number overlay"),
     ("ui", "#ff9e64", "#1a1b26", TMUX, "tmux active pane number overlay"),
 
     # starship
@@ -1937,15 +2120,6 @@ PAIRS = [
 
     # The command line. Both shells and both platforms share these roles, and
     # all of them sit on the page rather than on a fill.
-    ("text", "#9ece6a", "#1a1b26", FSH_INI, "a command that will run"),
-    ("text", "#bb9af7", "#1a1b26", FSH_INI, "a keyword"),
-    ("text", "#e0af68", "#1a1b26", FSH_INI, "a string"),
-    ("text", "#7dcfff", "#1a1b26", FSH_INI, "an option"),
-    ("text", "#9d7cd8", "#1a1b26", FSH_INI, "a variable"),
-    ("ui", "#ff9e64", "#1a1b26", FSH_INI, "a number"),
-    ("ui", "#89ddff", "#1a1b26", FSH_INI, "an operator"),
-    ("text", "#f7768e", "#1a1b26", FSH_INI, "a command that will not run"),
-    ("muted", "#565f89", "#1a1b26", FSH_INI, "a comment on the command line"),
 ]
 
 
@@ -2234,7 +2408,6 @@ def _pairs_fsh(line):
 
 STATED_PAIRS = [
     (YAZI, _pairs_toml),
-    (FSH_INI, _pairs_fsh),
     ("common/.config/lf/colors", _pairs_sgr),
     (TMUX, _pairs_tmux),
 ]

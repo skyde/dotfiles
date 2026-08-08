@@ -43,13 +43,10 @@ if (( $+commands[fzf] )); then
   export FZF_DEFAULT_COMMAND='rg --files --follow'
 fi
 
-# Tokyo Night colours for the shell's tooling, shared with bash.
-# See docs/tokyonight.md.
-#
-# Outside the fzf guard above, and deliberately: this file themes ls, eza,
-# grep, man pages and the line editor as well as fzf's own layout, and a box
-# without fzf installed still has every one of those. It starts no processes
-# and reads no files, so it is safe on the path of every non-interactive zsh.
+# Tokyo Night colours for shell tooling, shared with bash. See
+# docs/tokyonight.md. Sourced outside the fzf guard above because only one of
+# its sections is about fzf: LS_COLORS (ls, eza, fd, the completion menu) and
+# the man page colours have to be set on machines with no fzf too.
 # shellcheck disable=SC1091
 [ -r "$HOME/.config/shell/theme.sh" ] && . "$HOME/.config/shell/theme.sh"
 

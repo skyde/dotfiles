@@ -13,9 +13,11 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 ## Optional checks
 
-- If you touched a colour anywhere, run `./tests/check-theme.py`. It needs
-  nothing installed, and it is the only thing keeping a dozen configs in four
-  syntaxes agreeing on the same palette. See `docs/tokyonight.md`.
+- If you touched a colour anywhere, run `./tests/check-theme.py` (needs only
+  python3 and a POSIX shell). The theme is spread across a dozen tools that
+  each want it in a different dialect; the test is what keeps them agreeing.
+  `./doctor-theme.sh` is the runtime companion, for when the theme looks wrong
+  on one machine rather than wrong in the repo. See `docs/tokyonight.md`.
 - If you changed that checker, run `./tests/check-theme-selftest.py` too: it
   breaks one thing at a time in a copy of the tree and requires each check to
   catch it.

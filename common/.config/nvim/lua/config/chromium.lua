@@ -17,28 +17,33 @@ vim.api.nvim_create_user_command("ChromiumClangd", function()
   chromium.install_bundled_clangd()
 end, { desc = "Install the bundled clangd (checkout_clangd in .gclient + gclient sync)" })
 
+vim.api.nvim_create_user_command("ChromiumHealth", function()
+  vim.cmd("checkhealth chromium")
+end, { desc = "Diagnose Chromium clangd: binary, compdb, index, client" })
+
 local group = vim.api.nvim_create_augroup("chromium_compdb", { clear = true })
 
--- Opening C++ inside a checkout: make sure clangd is the bundled one, and
--- regenerate the compdb when it is missing or predates the current
--- build.ninja — ChromiumIDE's "InitOnly" generation, plus its staleness
--- check. Checked once per root per session; :ChromiumCompdb forces.
-local checked = {} ---@type table<string, true>
 local CPP_FILETYPES = { "c", "cpp", "objc", "objcpp" }
+local cpp = {} ---@type table<string, true>
+for _, ft in ipairs(CPP_FILETYPES) do
+  cpp[ft] = true
+end
 
+-- Every touch of a C++ buffer inside a checkout: make sure clangd is the
+-- bundled one, re-check the database's freshness (throttled — builds and
+-- gn runs happen outside the editor, and a session outlives one compdb),
+-- and check once per file that the file is actually in the database.
+-- Everything in here dedupes itself, so calling it often is cheap.
 local function check_buf(buf)
-  local root = chromium.src_root(vim.api.nvim_buf_get_name(buf))
+  local name = vim.api.nvim_buf_get_name(buf)
+  local root = chromium.src_root(name)
   if not root then
     return
   end
   chromium.ensure_clangd(root)
   chromium.offer_bundled_clangd(root)
-  if not checked[root] then
-    checked[root] = true
-    if chromium.stale(root) then
-      chromium.generate({ root = root, force = true })
-    end
-  end
+  chromium.refresh(root)
+  chromium.compdb_probe(root, name)
 end
 
 vim.api.nvim_create_autocmd("FileType", {
@@ -49,14 +54,22 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+-- Re-entering a buffer or refocusing the editor is when out-of-editor
+-- changes (a build, a gn run, a git pull) become visible — re-check then,
+-- not once per session.
+vim.api.nvim_create_autocmd({ "BufEnter", "FocusGained" }, {
+  group = group,
+  callback = function(ev)
+    if cpp[vim.bo[ev.buf].filetype] then
+      check_buf(ev.buf)
+    end
+  end,
+})
+
 -- This module is pulled in from config/keymaps.lua, which LazyVim loads on
 -- VeryLazy — after startup, so the FileType event for any buffer named on
 -- the command line (`nvim foo.cc`) has already fired and the autocmd above
 -- missed it. Catch those buffers up now.
-local cpp = {} ---@type table<string, true>
-for _, ft in ipairs(CPP_FILETYPES) do
-  cpp[ft] = true
-end
 for _, buf in ipairs(vim.api.nvim_list_bufs()) do
   if vim.api.nvim_buf_is_loaded(buf) and cpp[vim.bo[buf].filetype] then
     check_buf(buf)

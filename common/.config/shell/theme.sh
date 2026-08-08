@@ -42,6 +42,8 @@ _tn_bg_dark='22;22;30'     # #16161e  dark surfaces
 _tn_bg_high='41;46;66'     # #292e42  subtle fill
 _tn_bg_visual='40;52;87'   # #283457  selection
 _tn_gutter='59;66;97'      # #3b4261  separators
+_tn_bg_search='48;2;61;89;161' # blue0 #3d59a1 as a background: a match inside
+                              # text you are reading, not one in a list of results
 _tn_fg='192;202;245'       # #c0caf5  default text
 _tn_dark3='84;92;126'      # #545c7e  line numbers, indices
 _tn_comment='86;95;137'    # #565f89  comments, muted text
@@ -282,6 +284,10 @@ _eza="${_eza}:cm=38;2;${_tn_dark5}:tm=38;2;${_tn_dark5}"
 _eza="${_eza}:lc=38;2;${_tn_dark3}:lm=38;2;${_tn_dark3}"
 _eza="${_eza}:mp=38;2;${_tn_cyan}:sp=38;2;${_tn_magenta}"
 _eza="${_eza}:bO=38;2;${_tn_red1}:cc=38;2;${_tn_red1}"
+# Device major/minor, the two columns only a device node fills in. Carried over
+# from main: they are eza-only keys, so lf and LS_COLORS have no counterpart to
+# have kept them honest, and nothing here would have missed them.
+_eza="${_eza}:df=38;2;${_tn_dark5}:ds=38;2;${_tn_dark5}"
 EZA_COLORS="${_eza}"
 export EZA_COLORS
 unset _eza
@@ -320,7 +326,7 @@ LESS_TERMCAP_mb=$'\033[1;38;2;'"${_tn_red}"'m'      # blink, which man uses for 
 LESS_TERMCAP_me=$'\033[0m'
 LESS_TERMCAP_us=$'\033[4;38;2;'"${_tn_cyan}"'m'     # underline: substitutable values
 LESS_TERMCAP_ue=$'\033[0m'
-LESS_TERMCAP_so=$'\033[1;38;2;'"${_tn_bg}"';48;2;'"${_tn_yellow}"'m'
+LESS_TERMCAP_so=$'\033[38;2;'"${_tn_fg}"';'"${_tn_bg_search}"'m'
 LESS_TERMCAP_se=$'\033[0m'
 export LESS_TERMCAP_md LESS_TERMCAP_mb LESS_TERMCAP_me
 export LESS_TERMCAP_us LESS_TERMCAP_ue LESS_TERMCAP_so LESS_TERMCAP_se
@@ -342,7 +348,7 @@ export GROFF_NO_SGR
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#565f89"
 export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE
 
-unset _tn_bg _tn_bg_dark _tn_bg_high _tn_bg_visual _tn_gutter
+unset _tn_bg_search _tn_bg _tn_bg_dark _tn_bg_high _tn_bg_visual _tn_gutter
 unset _tn_fg _tn_dark3 _tn_comment _tn_dark5
 unset _tn_red _tn_red1 _tn_green _tn_yellow _tn_blue _tn_magenta _tn_cyan
 unset _tn_orange _tn_purple _tn_teal

@@ -52,13 +52,12 @@ command -v bat >/dev/null 2>&1 || {
 #   3: pretty display (colored "path:line[:col]: text" with rg match highlights)
 export RG_AWK_SCRIPT='BEGIN{
     FS=":"; OFS=":";
-    # Search-result path in the blue that delta grep-file-style and the
-    # rg path colour in ~/.ripgreprc both use, line/col in dark3 to match
-    # delta grep-line-number-style. Palette: docs/tokyonight.md.
-    # (No apostrophes below this line: awk sees this whole block through
-    # a single-quoted shell string.)
-    mag="\033[38;2;122;162;247m";  # filename color  #7aa2f7
-    gre="\033[38;2;84;92;126m";    # line/col color  #545c7e
+    # Tokyo Night, matching delta grep-file-style / grep-line-number-style and
+    # the rg path/line colours in ~/.ripgreprc. Palette: docs/tokyonight.md.
+    # (No apostrophes below this line: awk sees this whole block through a
+    # single-quoted shell string, so one would end the string mid-script.)
+    mag="\033[38;2;122;162;247m";  # filename → blue    #7aa2f7
+    gre="\033[38;2;84;92;126m";    # line/col → dark3   #545c7e
     rst="\033[0m";
   }
   function strip_ansi(s) {
@@ -92,9 +91,10 @@ export RG_AWK_SCRIPT='BEGIN{
 # Note: git grep -n output format is file:line:content
 export GIT_GREP_AWK_SCRIPT='BEGIN{
     FS=":"; OFS=":";
-    # Same colours as RG_AWK_SCRIPT above. Palette: docs/tokyonight.md.
-    mag="\033[38;2;122;162;247m";  # filename color  #7aa2f7
-    gre="\033[38;2;84;92;126m";    # line/col color  #545c7e
+    # Tokyo Night, matching delta grep-file-style / grep-line-number-style and
+    # the rg path/line colours in ~/.ripgreprc. Palette: docs/tokyonight.md.
+    mag="\033[38;2;122;162;247m";  # filename → blue    #7aa2f7
+    gre="\033[38;2;84;92;126m";    # line/col → dark3   #545c7e
     rst="\033[0m";
   }
   function strip_ansi(s) {

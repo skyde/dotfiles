@@ -70,10 +70,10 @@ if command -v zoxide >/dev/null 2>&1; then
   eval "$(zoxide init bash)"
 fi
 
-# -------- Tokyo Night colours for the shell's tooling
-# Outside the fzf block below, and deliberately: this file themes ls, eza,
-# grep, man pages and the line editor as well as fzf's own layout, and a box
-# without fzf installed still has every one of those. See docs/tokyonight.md.
+# -------- Tokyo Night colours for shell tooling, shared with zsh
+# Outside the fzf block below on purpose: LS_COLORS (ls, eza, fd) and the man
+# page colours are not fzf's business, and the fzf half of the file costs only
+# a couple of unused variables where fzf is missing. See docs/tokyonight.md.
 # shellcheck disable=SC1091
 [ -r "$HOME/.config/shell/theme.sh" ] && . "$HOME/.config/shell/theme.sh"
 

@@ -16,11 +16,7 @@
 # The yazi wrapper in ~/.local/bin/yazi concatenates that local file onto this
 # one at launch when it exists.
 
-# No "$schema" key here. Yazi validates the top level of this file strictly and
-# rejects a key that is not kebab-cased, so `"$schema"` makes it refuse the
-# whole file and fall back to its preset keymap — every binding below silently
-# gone. The schema URL is the one above, as a comment:
-# https://yazi-rs.github.io/schemas/keymap.json
+#:schema https://yazi-rs.github.io/schemas/keymap.json
 
 [[mgr.prepend_keymap]]
 on = "<Esc>"
