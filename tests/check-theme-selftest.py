@@ -292,6 +292,14 @@ MUTATIONS = [
      r"| `#15423d` | moved to here (teal)\1|\n| `#1d2229` | a wash that is barely there |",
      "deuteranope", None),
 
+    # yazi colours audio by mime and lf by extension, so the two describe the
+    # same *.mp3 and never meet in the rule-by-rule parity comparison. Repaint
+    # one side and only a bridge across the two matching styles notices.
+    ("a mime rule that disagrees with lf's extensions", "parity", YAZI,
+     r'\{ mime = "\*\*/audio/\*", fg = "#9d7cd8" \}',
+     '{ mime = "**/audio/*", fg = "#bb9af7" }',
+     "the same file, two colours", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be

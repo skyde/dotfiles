@@ -483,6 +483,14 @@ quietly approximating it.
   command for it is in a comment beside the theme block in its config. **eza**
   discards a malformed `EZA_COLORS` code without a word; its key names were
   checked against `man eza_colors` instead.
+  Media files are the case where the two tools genuinely describe the same
+  thing in different languages: yazi matches images, video, audio and PDFs by
+  mime (`**/image/*`), while `lf` and `LS_COLORS` have no notion of mime and
+  spell out `*.png`. A rule-by-rule comparison never brings those together, so
+  18 file types were described twice and compared never. The check bridges them
+  through the standard library's extension-to-mime table, which is the one
+  mapping here that is not itself part of the theme.
+
 - **contrast** — every foreground/background pair clears the floor for the job
   it does, and every focused fill stands off the page behind it. The tiers, and
   why they are not simply WCAG AA, are in the script.

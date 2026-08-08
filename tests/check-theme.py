@@ -673,6 +673,66 @@ def _check_command_lines(verbose):
     return problems
 
 
+def _check_mime_extension_bridge(verbose):
+    """A file matched by mime in yazi and by extension in lf is one colour.
+
+    yazi colours images, video, audio and PDFs with `mime = "**/image/*"` and
+    friends; lf and LS_COLORS have no notion of mime and spell out `*.png`.
+    The lf/yazi parity check compares rules that share a pattern, so these two
+    describe the same 18 files and never meet: yazi's `**/audio/*` could be
+    repainted and nothing would notice `*.mp3` in lf disagreeing with it.
+
+    The mapping from extension to mime type comes from the standard library
+    rather than a list written here, so the bridge cannot quietly go stale
+    against a hand-maintained table that is itself the thing being checked.
+    """
+    import fnmatch
+    import mimetypes
+
+    yazi_path = os.path.join(REPO, YAZI)
+    lf_path = os.path.join(REPO, "common/.config/lf/colors")
+    if not (os.path.isfile(yazi_path) and os.path.isfile(lf_path)):
+        return []
+    body = open(yazi_path, encoding="utf-8").read()
+
+    mime_rules = [(pat, norm(col)) for pat, col in re.findall(
+        r'\{\s*mime\s*=\s*"([^"]+)"\s*,\s*fg\s*=\s*"(#[0-9a-fA-F]{6})"', body)]
+    by_ext = set(re.findall(r'url = "(\*\.[^"]+)"', body))
+    if not mime_rules:
+        return []
+
+    lf_colours = {}
+    for line in open(lf_path, encoding="utf-8"):
+        if not line.strip() or line.startswith("#"):
+            continue
+        parts = line.split()
+        m = re.search(r"38;2;(\d+);(\d+);(\d+)", parts[1]) if len(parts) > 1 else None
+        if parts[0].startswith("*.") and m:
+            lf_colours[parts[0]] = "#%02x%02x%02x" % tuple(
+                int(x) for x in m.groups())
+
+    problems, checked = [], 0
+    for ext, lf_colour in sorted(lf_colours.items()):
+        if ext in by_ext:
+            continue  # yazi names this extension itself; parity covers it
+        mime = mimetypes.guess_type("x" + ext[1:])[0]
+        if not mime:
+            continue
+        for pat, yazi_colour in mime_rules:
+            if fnmatch.fnmatch(mime, pat.replace("**/", "")):
+                checked += 1
+                if yazi_colour != lf_colour:
+                    problems.append(
+                        "%s is %s in lf/colors but yazi paints it %s via "
+                        "%s -- the same file, two colours"
+                        % (ext, lf_colour, yazi_colour, pat))
+                break
+    if verbose and not problems:
+        print("  %d file type(s) matched by mime in yazi and by extension in "
+              "lf agree" % checked)
+    return problems
+
+
 def _check_yazi_configs(verbose):
     """Have yazi load our yazi configs and say whether it accepted them.
 
@@ -1387,6 +1447,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_vscode_theme_chain(verbose))
     problems.extend(_check_nvim_delta_parity(verbose))
     problems.extend(_check_colour_coverage(doc, verbose))
+    problems.extend(_check_mime_extension_bridge(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))
 
