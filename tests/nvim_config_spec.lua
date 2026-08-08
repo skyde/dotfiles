@@ -475,10 +475,19 @@ do
   local reveal = vim.fn.maparg(" E", "n", false, true).callback
   check("reveal: the binding exists", type(reveal) == "function", type(reveal))
 
-  local real_has, real_system = vim.fn.has, vim.system
+  local real_has, real_system, real_executable = vim.fn.has, vim.system, vim.fn.executable
   ---Run the binding as if on `os`, and return the argv it would have spawned.
+  ---The opener is reported as installed: whether this machine has xdg-open is
+  ---not what these cases are about, and the missing-opener path has its own.
   local function argv_on(os_name, path)
     local spawned
+    ---@diagnostic disable-next-line: duplicate-set-field
+    vim.fn.executable = function(bin)
+      if bin == "open" or bin == "explorer" or bin == "xdg-open" then
+        return 1
+      end
+      return real_executable(bin)
+    end
     vim.fn.has = function(feature)
       if feature == "mac" then
         return os_name == "mac" and 1 or 0
@@ -499,7 +508,7 @@ do
     end
     local ok = pcall(reveal)
     pcall(vim.api.nvim_buf_delete, scratch, { force = true })
-    vim.fn.has, vim.system = real_has, real_system
+    vim.fn.has, vim.system, vim.fn.executable = real_has, real_system, real_executable
     check(("reveal: the %s branch does not raise"):format(os_name), ok, "it raised")
     return spawned
   end
@@ -517,6 +526,40 @@ do
     { "xdg-open", "/tmp/lin" },
     argv_on("linux", "/tmp/lin/file.c")
   )
+  -- vim.system raises when the binary is missing, so a box with no xdg-open
+  -- would have answered the key with a traceback.
+  do
+    local real_has, real_system, real_executable = vim.fn.has, vim.system, vim.fn.executable
+    local spawned = false
+    vim.fn.has = function(feature)
+      if feature == "mac" or feature == "win32" then
+        return 0
+      end
+      return real_has(feature)
+    end
+    ---@diagnostic disable-next-line: duplicate-set-field
+    vim.fn.executable = function(bin)
+      if bin == "xdg-open" then
+        return 0
+      end
+      return real_executable(bin)
+    end
+    vim.system = function()
+      spawned = true
+      return { wait = function() end }
+    end
+    vim.cmd("enew")
+    local scratch = vim.api.nvim_get_current_buf()
+    vim.api.nvim_buf_set_name(scratch, "/tmp/nox/file.c")
+    local said = with_notify(function()
+      check("reveal: a missing opener does not raise", pcall(reveal), "it raised")
+    end)
+    pcall(vim.api.nvim_buf_delete, scratch, { force = true })
+    vim.fn.has, vim.system, vim.fn.executable = real_has, real_system, real_executable
+    check("reveal: and nothing is spawned", not spawned, "it spawned anyway")
+    check("reveal: it names what is missing", said:find("xdg-open is not on PATH", 1, true) ~= nil, said)
+  end
+
   -- A scratch buffer has no path; the working directory is the sensible answer.
   eq(
     "reveal: an unnamed buffer falls back to the cwd",

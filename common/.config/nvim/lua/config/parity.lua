@@ -75,6 +75,11 @@ map("n", "<leader>E", function()
   local opener = vim.fn.has("mac") == 1 and { "open", "-R", path }
     or vim.fn.has("win32") == 1 and { "explorer", "/select," .. path }
     or { "xdg-open", vim.fn.fnamemodify(path, ":h") }
+  -- vim.system raises rather than reporting when the binary is missing, and a
+  -- headless or minimal Linux box often has no xdg-open at all. Say so.
+  if vim.fn.executable(opener[1]) ~= 1 then
+    return vim.notify(("%s is not on PATH; nothing here can reveal a file"):format(opener[1]), vim.log.levels.WARN)
+  end
   vim.system(opener)
 end, { desc = "Reveal in file manager" })
 
@@ -144,7 +149,9 @@ local function zoom(delta)
     vim.g.neovide_scale_factor = delta and (vim.g.neovide_scale_factor or 1) + delta or 1
     return
   end
-  if vim.env.KITTY_LISTEN_ON then
+  -- The variable can outlive the binary: it is inherited by anything the
+  -- terminal launches, including an ssh session on a host with no kitty.
+  if vim.env.KITTY_LISTEN_ON and vim.fn.executable("kitty") == 1 then
     local arg = delta and (delta > 0 and "+1" or "-1") or "0"
     vim.system({ "kitty", "@", "--to", vim.env.KITTY_LISTEN_ON, "set-font-size", arg })
     return

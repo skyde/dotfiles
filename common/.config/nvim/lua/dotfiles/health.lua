@@ -37,6 +37,12 @@ end
 ---`bin --version`, first line, for the report. Falls back to the path when the
 ---binary has no version flag worth calling.
 local function version_of(bin, args)
+  -- Guarded: vim.system raises on a missing binary, and this is the module
+  -- someone runs *because* something is missing. Every caller checks has()
+  -- first today; that is not a reason for the diagnostic tool to depend on it.
+  if not has(bin) then
+    return "not found"
+  end
   local res = vim.system(vim.list_extend({ bin }, args or { "--version" }), { text = true }):wait()
   local line = vim.split(res.stdout or "", "\n", { plain = true })[1]
   if res.code ~= 0 or not line or vim.trim(line) == "" then
