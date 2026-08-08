@@ -48,6 +48,7 @@ RGRC = "common/.ripgreprc"
 BTOP = "common/.config/btop/themes/tokyo-night.theme"
 STARSHIP = "common/.config/starship.toml"
 INLINE_DIFF = "common/.config/nvim/lua/util/inline_diff.lua"
+NVIM_THEME = "common/.config/nvim/lua/plugins/tokyonight.lua"
 FF = "common/.local/bin/ff"
 PSPROFILE = "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
 ZSHENV = "common/.zshenv"
@@ -80,6 +81,14 @@ MUTATIONS = [
     ("a kitty option kitty does not know", "parity", KITTY,
      r"macos_titlebar_color #16161e", "macos_titlebar_colour #16161e",
      "unknown config key", "kitty"),
+
+    # Neovim is the fourth copy of the 16 ANSI slots, via `terminal_colors`.
+    # It is the least obvious one, and it was the only one still on upstream's
+    # values for the two slots this theme changes on purpose.
+    ("Neovim's :terminal disagreeing with the terminals", "parity", NVIM_THEME,
+     r'c\.terminal\.black_bright = "#85899c"',
+     'c.terminal.black_bright = "#414868"',
+     "ANSI 8 disagrees", None),
 
     ("a titlebar that disagrees between terminals", "parity", KITTY,
      r"macos_titlebar_color #16161e", "macos_titlebar_color #1a1b26",

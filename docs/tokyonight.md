@@ -47,9 +47,14 @@ Taken from [`folke/tokyonight.nvim`](https://github.com/folke/tokyonight.nvim)
 > use `#85899c` instead of the upstream `#414868`. That is deliberate:
 > `#414868` reads at 1.9:1 against `bg`, which is close to unreadable for the
 > "bright black" that CLI tools use for de-emphasised output; `#85899c` gets it
-> to 4.9:1 while still receding. There are **three** copies of the 16 ANSI
-> slots — the third one is easy to forget, so `tests/check-theme.py parity`
-> compares all three.
+> to 4.9:1 while still receding. There are **four** copies of the 16 ANSI
+> slots, and the ones after the first are easy to forget: kitty, wezterm, the
+> VS Code integrated terminal, and Neovim — which pushes tokyonight's own
+> palette into `:terminal` when `terminal_colors = true`, putting upstream's
+> values back for exactly the two slots this theme changes on purpose. Slot 0
+> is the other one: upstream's `#15161e` is *darker* than the background, so
+> plain black text is invisible, which is why the terminals use `#1d202f`.
+> `tests/check-theme.py parity` compares all four.
 
 ### Accents
 

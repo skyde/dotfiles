@@ -12,6 +12,29 @@ return {
       -- the parent shell had.
       terminal_colors = true,
 
+      -- ...and then fix the two slots where "the theme's own palette" is not
+      -- the one the terminals use. This is a fourth copy of the 16 ANSI
+      -- colours -- kitty, wezterm and the VS Code integrated terminal being
+      -- the other three -- and it was the only one still on upstream's
+      -- values, so `:terminal` disagreed with the window it was running in.
+      --
+      -- Slot 8 is the deviation documented in docs/tokyonight.md: #414868 is
+      -- 1.9:1 against the background, which is unreadable for the bright black
+      -- that CLI tools use for de-emphasised output, and #85899c gets it to
+      -- 4.9:1. Slot 0 is upstream's #15161e, which is *darker* than the
+      -- background, so a program printing plain black text into a :terminal
+      -- buffer wrote it invisibly; the terminals all use #1d202f for exactly
+      -- that reason.
+      --
+      -- on_colors rather than setting vim.g.terminal_color_N after the fact:
+      -- it runs inside every load, and LazyVim re-applies the colorscheme by
+      -- calling `require("tokyonight").load()`, which would undo anything set
+      -- from outside. Same reasoning as on_highlights below.
+      on_colors = function(c)
+        c.terminal.black = "#1d202f"
+        c.terminal.black_bright = "#85899c"
+      end,
+
       styles = {
         comments = { italic = true },
         keywords = { italic = true },

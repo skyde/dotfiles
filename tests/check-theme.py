@@ -994,6 +994,27 @@ def check_parity(doc, verbose):
                 % (i, name, ", ".join("%s=%s" % kv for kv in sorted(trio.items())))
             )
 
+    # Neovim is the fourth copy, and the least obvious one: `terminal_colors =
+    # true` pushes tokyonight's own palette into `:terminal`, which puts
+    # upstream's values back for the two slots this theme deliberately
+    # changed. The config overrides them in `on_colors`; this is what keeps
+    # those overrides pointing at the same colours the terminals use.
+    nvim_theme = os.path.join(REPO, "common/.config/nvim/lua/plugins/tokyonight.lua")
+    if os.path.isfile(nvim_theme):
+        src = open(nvim_theme, encoding="utf-8").read()
+        for field, slot, label in [("black", 0, "ANSI 0"),
+                                   ("black_bright", 8, "ANSI 8")]:
+            m = re.search(r'c\.terminal\.%s\s*=\s*"(#[0-9a-fA-F]{6})"' % field, src)
+            if not m:
+                problems.append(
+                    "Neovim does not override c.terminal.%s, so a :terminal "
+                    "buffer uses upstream's %s instead of the terminals'"
+                    % (field, label))
+            elif norm(m.group(1)) != kitty_ansi[slot]:
+                problems.append(
+                    "%s disagrees: nvim :terminal=%s, kitty=%s"
+                    % (label, norm(m.group(1)), kitty_ansi[slot]))
+
     # The surfaces around the grid. Same argument: these are one visual
     # surface that happens to be configured in three files. `None` means the
     # tool has no such setting and simply sits the comparison out -- VS Code
@@ -1146,8 +1167,8 @@ def check_parity(doc, verbose):
         problems.append("%s is coloured in yazi but not in lf" % ext)
 
     if verbose:
-        print("  16 ANSI slots x 3 terminals, %d shared file extensions"
-              % len(set(lf_map) & set(yazi_map)))
+        print("  16 ANSI slots x 3 terminals + Neovim's :terminal, "
+              "%d shared file extensions" % len(set(lf_map) & set(yazi_map)))
     return problems
 
 
