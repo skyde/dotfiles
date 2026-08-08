@@ -19,6 +19,8 @@ on:
     paths:
       - "docs/tokyonight.md"
       - "tests/check-theme.py"
+      - "tests/check-theme-selftest.py"
+      - "docs/vscode-syntax-parity.md"
       - "common/.tmux.conf"
       - "common/.zshrc"
       - "common/.zshenv"
@@ -30,6 +32,8 @@ on:
     paths:
       - "docs/tokyonight.md"
       - "tests/check-theme.py"
+      - "tests/check-theme-selftest.py"
+      - "docs/vscode-syntax-parity.md"
       - "common/.tmux.conf"
       - "common/.zshrc"
       - "common/.zshenv"

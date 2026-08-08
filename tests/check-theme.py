@@ -997,8 +997,64 @@ def _check_vscode_theme_chain(verbose):
                 "%s is what provides the %r theme, and it is not in %s"
                 % (extension, theme, VSCODE_EXTENSIONS))
 
+    problems.extend(_check_syntax_doc_table(doc, verbose))
+
     if verbose and not problems:
         print("  VS Code runs %r, provided by %s" % (theme, extension))
+    return problems
+
+
+NVIM_SYNTAX = "common/.config/nvim/lua/util/vscode_syntax.lua"
+
+
+def _check_syntax_doc_table(doc, verbose):
+    """Tables in the parity doc naming a capture and a hex have to be true.
+
+    The doc is where the resolution work is written down -- which VS Code scope
+    a capture stands in for, and what that scope resolves to once the theme and
+    the user's textMateRules combine. The lua file is where that answer is
+    acted on. Nothing connects them, so a colour corrected in one and not the
+    other leaves a doc that describes a mapping the editor does not have.
+
+    Any row of the form `| ... | #RRGGBB | @capture, @capture |` is checked, so
+    documenting a scope is what enrols it -- there is no second list to update.
+    """
+    src_path = os.path.join(REPO, NVIM_SYNTAX)
+    if not os.path.isfile(src_path):
+        return []
+    src = open(src_path, encoding="utf-8").read()
+
+    # The palette is `role = "#RRGGBB",`; the mapping is `["@cap"] = c.role,`.
+    roles = {name: norm(hexa) for name, hexa
+             in re.findall(r'^\s*(\w+)\s*=\s*"(#[0-9A-Fa-f]{6})"',
+                           src, re.M)}
+    mapped = {}
+    for cap, role in re.findall(r'\["(@[\w.]+)"\]\s*=\s*c\.(\w+)', src):
+        mapped.setdefault(cap, roles.get(role))
+
+    problems, checked = [], 0
+    for row in re.findall(r"^\|(.+)\|\s*$", doc, re.M):
+        cells = [cell.strip() for cell in row.split("|")]
+        hexes = [c for c in cells if re.fullmatch(r"`#[0-9A-Fa-f]{6}`", c)]
+        caps = [m.group(0) for cell in cells
+                for m in re.finditer(r"@[\w.]+", cell)]
+        if len(hexes) != 1 or not caps:
+            continue
+        want = norm(hexes[0].strip("`"))
+        for cap in caps:
+            checked += 1
+            got = mapped.get(cap)
+            if got is None:
+                problems.append(
+                    "%s documents %s as %s and %s does not map it"
+                    % (SYNTAX_DOC, cap, want, NVIM_SYNTAX))
+            elif got != want:
+                problems.append(
+                    "%s documents %s as %s but %s paints it %s"
+                    % (SYNTAX_DOC, cap, want, NVIM_SYNTAX, got))
+    if verbose and not problems and checked:
+        print("  %d capture(s) documented in %s match %s"
+              % (checked, SYNTAX_DOC, NVIM_SYNTAX))
     return problems
 
 

@@ -55,6 +55,7 @@ FF = "common/.local/bin/ff"
 PSPROFILE = "windows/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
 ZSHENV = "common/.zshenv"
 BASHRC = "common/.bashrc-custom"
+NVIM_SYNTAX = "common/.config/nvim/lua/util/vscode_syntax.lua"
 
 # (name, check to run, file, pattern, replacement, expected words, tool needed)
 #
@@ -194,6 +195,19 @@ MUTATIONS = [
      r'blame-separator-style = "#3b4261"',
      'blame-separator-style = "#3b4261"\n    blame-timestamp-style = "#737aa2"',
      "delta has no", "delta"),
+
+    # The parity doc is where the VS Code resolution work is written down and
+    # the lua file is where it is acted on, so the two can disagree silently:
+    # a scope re-resolved in the doc leaves Neovim painting the old answer, and
+    # a capture dropped from the mapping leaves a doc describing a colour the
+    # editor does not have. One mutation for each direction.
+    ("a documented capture painted the wrong colour", "parity", NVIM_SYNTAX,
+     r'tag_delimiter = "#808080"', 'tag_delimiter = "#DFDDB9"',
+     "paints it", None),
+
+    ("a documented capture that lost its mapping", "parity", NVIM_SYNTAX,
+     r'\n\s*\["@tag\.attribute"\] = c\.variable,[^\n]*', "",
+     "does not map it", None),
 
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is

@@ -38,6 +38,8 @@ local c = {
   variable = "#9CDCFE", -- variable
   parameter = "#9A9A9A", -- variable.parameter, keyword.control.directive
   namespace = "#C8C8C8", -- entity.name.namespace, entity.name.scope-resolution
+  tag = "#569CD6", -- entity.name.tag (the `div` in `<div>`)
+  tag_delimiter = "#808080", -- punctuation.definition.tag (the angle brackets)
   macro = "#C255C5", -- entity.name.function.preprocessor
   property = "#DADADA", -- variable.other.property
   object = "#DD9DC2", -- variable.other.object
@@ -110,7 +112,10 @@ local shared = {
   ["@module"] = c.namespace,
   ["@module.builtin"] = c.variable,
   ["@label"] = c.namespace,
-  ["@tag"] = c.type,
+  ["@tag"] = c.tag,
+  ["@tag.builtin"] = c.tag,
+  ["@tag.delimiter"] = c.tag_delimiter,
+  ["@tag.attribute"] = c.variable, -- entity.other.attribute-name
 }
 
 -- Per-language overrides. Neovim resolves `@capture.<lang>` before `@capture`,

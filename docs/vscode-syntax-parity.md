@@ -108,6 +108,32 @@ is on the left, so `asyncio.TimeoutError` colours like `obj.field` rather than
 like C++'s `std::runtime_error`. C++ can tell them apart because `::` and `.`
 are different operators; Python has only the one.
 
+## Markup tags
+
+HTML and XML are not what this repository is for, but they are what shows up in
+a `.html` fixture or a `CMakePresets`-adjacent bit of XML, and they were the one
+place the two editors visibly disagreed. The base theme has rules for all three
+pieces of a tag, and the user's `textMateRules` restate one of them at the same
+value, so what VS Code resolves is unambiguous:
+
+| Scope | Resolves to | Neovim capture |
+| --- | --- | --- |
+| `entity.name.tag` | `#569CD6` | `@tag`, `@tag.builtin` |
+| `punctuation.definition.tag` | `#808080` | `@tag.delimiter` |
+| `entity.other.attribute-name` | `#9CDCFE` | `@tag.attribute` |
+
+Before this, `@tag` took the `entity.name.type` teal and the angle brackets fell
+through to the generic punctuation colour, so `<div>` read as teal-on-pale-yellow
+in Neovim against blue-on-grey in VS Code. The two `#808080` rules — one in the
+theme, one in the user's overrides — agree, which is why the grey is the answer
+rather than something the override changes.
+
+`#808080` on `#1a1b26` is 4.3:1, under the 4.5:1 the palette's text tier asks
+for. It stays anyway: these are VS Code's resolved values, not Tokyo Night's, and
+the whole point of the file is that a buffer reads the same in both editors.
+Angle brackets are also the one token where being quieter than the tag name is
+the intent.
+
 ## How it was checked
 
 Each sample file was tokenized twice and compared character by character:
