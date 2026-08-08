@@ -96,6 +96,13 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends bat
           || echo "bat unavailable; the BAT_THEME check will only compare the two shells"
 
+      # tmux accepts an option name by unambiguous prefix and drops an
+      # unknown one without a word, so "the config loaded" says nothing. The
+      # check starts a server on its own socket and asks what it holds.
+      - name: Install tmux
+        run: sudo apt-get install -y --no-install-recommends tmux
+          || echo "tmux unavailable; its option check will skip"
+
       - name: Install kitty
         run: sudo apt-get install -y --no-install-recommends kitty
           || echo "kitty unavailable; its config check will skip"

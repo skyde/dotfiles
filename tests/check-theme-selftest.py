@@ -309,6 +309,14 @@ MUTATIONS = [
      r"    untracked = \"#1abc9c\"", '    untraked = "#1abc9c"',
      "paints nothing", None),
 
+    # A misspelled tmux option is not an error -- the config loads without a
+    # word and the option simply is not there afterwards. tmux also accepts a
+    # truncated name, because option names match by unambiguous prefix, so
+    # "it started fine" proves nothing. Asking tmux what it holds does.
+    ("a tmux option tmux quietly drops", "parity", TMUX,
+     r"set -g menu-selected-style", "set -g menu-selcted-style",
+     "does not hold it", "tmux"),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be

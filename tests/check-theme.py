@@ -697,6 +697,80 @@ GIT_SECTION_COMMANDS = {
 GIT_SENTINEL = "#010203"
 
 
+def _check_tmux_options(verbose):
+    """tmux holds every colour the config sets, under the name it was set by.
+
+    A misspelled tmux option is not an error. `menu-selcted-style` loads
+    without a word and simply is not there afterwards -- tmux even accepts a
+    truncated name like `status-styl`, because option names are matched by
+    unambiguous prefix, so "it started fine" proves very little.
+
+    What proves something is asking tmux what it ended up holding. The server
+    is started on its own socket with this config, every option the file sets
+    to something containing a colour is looked up in `show-options`, and both
+    the presence and the colours have to match. An option tmux dropped is an
+    option that never applied.
+    """
+    import shutil
+    import subprocess
+
+    if not shutil.which("tmux"):
+        return []
+    conf = os.path.join(REPO, TMUX)
+    if not os.path.isfile(conf):
+        return []
+    sock = "theme-check"
+
+    def tmux(*args):
+        return subprocess.run(["tmux", "-L", sock] + list(args),
+                              capture_output=True, text=True, timeout=30)
+
+    tmux("kill-server")
+    try:
+        started = tmux("-f", conf, "new-session", "-d", "-s", "probe")
+        if started.returncode != 0:
+            return ["tmux will not load %s: %s"
+                    % (TMUX, (started.stderr or started.stdout).strip()[:200])]
+        held = {}
+        for scope in ("-g", "-gw"):
+            for line in tmux("show-options", scope).stdout.splitlines():
+                parts = line.split(None, 1)
+                if len(parts) == 2:
+                    held[parts[0]] = parts[1].strip().strip('"')
+
+        problems, checked = [], 0
+        for line in open(conf, encoding="utf-8"):
+            if line.lstrip().startswith("#"):
+                continue
+            m = re.match(r"\s*setw?\s+-g\w*\s+(\S+)\s+(.*)$", line)
+            if not m:
+                continue
+            key, value = m.group(1), m.group(2).strip()
+            wanted = [norm(h) for h in HEX.findall(value)]
+            if not wanted:
+                continue
+            checked += 1
+            if key not in held:
+                problems.append(
+                    "%s sets %s and tmux does not hold it afterwards -- the "
+                    "name is not one tmux knows, so the line does nothing"
+                    % (TMUX, key))
+                continue
+            got = [norm(h) for h in HEX.findall(held[key])]
+            if got != wanted:
+                problems.append(
+                    "%s: tmux holds %s as %s, not %s"
+                    % (TMUX, key, ",".join(got) or "no colour",
+                       ",".join(wanted)))
+        if verbose and not problems:
+            print("  tmux holds all %d of its colour options" % checked)
+        return problems
+    except (OSError, subprocess.SubprocessError) as exc:
+        return ["could not ask tmux about its options: %s" % exc]
+    finally:
+        tmux("kill-server")
+
+
 def _git_section(body, name):
     """The body of a [color "x"] section, or "" when it is absent."""
     section = name.split(".", 1)[1] if "." in name else name
@@ -1574,6 +1648,7 @@ def check_parity(doc, verbose):
     problems.extend(_check_colour_coverage(doc, verbose))
     problems.extend(_check_mime_extension_bridge(verbose))
     problems.extend(_check_git_paints(verbose))
+    problems.extend(_check_tmux_options(verbose))
     problems.extend(_check_bat_truecolor(verbose))
     problems.extend(_check_command_lines(verbose))
 
