@@ -121,7 +121,29 @@ local function check_vcs()
     health.ok(("this directory is %s · %s"):format(backend.name, root))
     health.info(("working base resolves to %s"):format(rev:sub(1, 12)))
   else
-    health.info("this directory is not under version control — nothing to diff here")
+    -- Detection needs the client, not just the marker on disk: a repository
+    -- whose client is not installed is indistinguishable from no repository at
+    -- all, which is the most confusing answer to give someone standing in one.
+    -- Same order as util.vcs detects in, so a colocated repo names jj.
+    local orphaned
+    for _, pair in ipairs({ { ".jj", "jj" }, { ".git", "git" }, { ".hg", "hg" } }) do
+      local found = vim.fs.find({ pair[1] }, { path = vim.fn.getcwd(), upward = true, limit = 1 })[1]
+      if found and not has(pair[2]) then
+        orphaned = { marker = found, bin = pair[2] }
+        break
+      end
+    end
+    if orphaned then
+      health.error(
+        ("%s found here but %s is not on PATH — the diff UI cannot read this repository"):format(
+          orphaned.marker,
+          orphaned.bin
+        ),
+        { ("Install %s, or open the view from a checkout whose client is installed."):format(orphaned.bin) }
+      )
+    else
+      health.info("this directory is not under version control — nothing to diff here")
+    end
   end
 
   if has("delta") then

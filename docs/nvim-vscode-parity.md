@@ -356,7 +356,8 @@ turns a skip into a failure so a backend cannot quietly stop being covered.
   bundled-clangd flow, against a stubbed checkout.
 * `nvim_health_spec.lua` — `:checkhealth dotfiles` against a PATH built per
   case: nothing installed, git with and without a TUI, SSH with and without the
-  OSC clipboard helpers.
+  OSC clipboard helpers, a configured clipboard provider whose binary is
+  missing, and a checkout whose version-control client is not installed.
 * `nvim_text_spec.lua` — the `vim.diff` → `vim.text.diff` shim, and a sweep of
   the whole Lua tree for APIs Neovim has already deprecated.
 * `nvim_ripgrep_spec.lua` — the Neovim-filetype → ripgrep-type translation

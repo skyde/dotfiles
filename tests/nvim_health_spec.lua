@@ -92,11 +92,18 @@ local function report(opts)
   -- Detection shells out and memoises per directory; a PATH change has to
   -- invalidate that or every case after the first sees the first one's answer.
   vcs.clear_cache()
+  local real_cwd = vim.uv.cwd()
+  if opts.cwd then
+    vim.cmd("cd " .. vim.fn.fnameescape(opts.cwd))
+  end
 
   local ok, err = pcall(function()
     require("dotfiles.health").check()
   end)
 
+  if opts.cwd then
+    vim.cmd("cd " .. vim.fn.fnameescape(real_cwd or "."))
+  end
   for name in pairs(opts.env or {}) do
     vim.env[name] = real_env[name]
   end
@@ -269,6 +276,53 @@ do
     text(with_tui, "ok")
   )
   check("git machine: and no longer warns about it", find(with_tui, "warn", "lazygit") == nil, text(with_tui, "warn"))
+end
+
+--------------------------------------------------------------------------
+-- a repository whose client is not installed
+--------------------------------------------------------------------------
+
+do
+  -- Standing in a checkout with no client on PATH, detection fails exactly the
+  -- way it fails outside a repository — so the report used to say "not under
+  -- version control", which is the most confusing thing it could say to
+  -- someone looking at a .git directory.
+  local orphan = temp .. "/orphaned"
+  vim.fn.mkdir(orphan .. "/.git", "p")
+  vim.fn.mkdir(orphan .. "/nested/deeper", "p")
+
+  -- Its own empty PATH: earlier cases leave fake clients in the shared bin
+  -- directory, and a fake git is still a git as far as detection is concerned.
+  local nothing = temp .. "/empty-bin"
+  vim.fn.mkdir(nothing, "p")
+
+  local entries = report({ path = nothing, cwd = orphan })
+  local err = find(entries, "error", "is not on PATH")
+  check("orphaned repo: it is an error, not a shrug", err ~= nil, text(entries, "error") .. text(entries, "info"))
+  check("orphaned repo: it names the client", err and err.msg:find("git", 1, true) ~= nil, err and err.msg)
+  check(
+    "orphaned repo: and not the line for a directory with no repository",
+    find(entries, "info", "not under version control") == nil,
+    text(entries, "info")
+  )
+
+  -- From a subdirectory too: the marker is found upward, the way detection
+  -- looks for it.
+  local nested = report({ path = nothing, cwd = orphan .. "/nested/deeper" })
+  check(
+    "orphaned repo: found from a subdirectory",
+    find(nested, "error", "is not on PATH") ~= nil,
+    text(nested, "error")
+  )
+
+  -- A directory that really has no repository still reads as one.
+  local bare = report({ path = nothing, cwd = temp })
+  check(
+    "no repo: still reported as nothing to diff",
+    find(bare, "info", "not under version control") ~= nil,
+    text(bare, "info")
+  )
+  check("no repo: and not as a missing client", find(bare, "error", "is not on PATH") == nil, text(bare, "error"))
 end
 
 --------------------------------------------------------------------------
