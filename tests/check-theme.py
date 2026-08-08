@@ -89,6 +89,7 @@ CHROME_FILES = [
     "common/.ripgreprc",
     "common/.config/yazi/theme.toml",
     "common/.config/lf/colors",
+    "common/.config/glow/tokyonight.json",
     "common/.config/btop/themes/tokyo-night.theme",
     "common/.config/git/config",
     "common/.config/nvim/lua/plugins/tokyonight.lua",

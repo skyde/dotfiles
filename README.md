@@ -72,22 +72,31 @@ Linux systems have a default `.bashrc`. These dotfiles include `.bashrc-custom` 
 
 ## Theme
 
-Every one of those tools — plus tmux, yazi, btop, the three terminals, the zsh
-and PowerShell command lines, `ls`, man pages and git's own output — is themed
-**Tokyo Night (night)**, from one palette. Syntax highlighting is deliberately
-*not* Tokyo Night: code is Visual Studio Dark+ everywhere it appears, so the
-chrome and the code stay two separate decisions.
+Every one of those tools — plus tmux, yazi, btop, `glow`, the four terminals,
+the zsh and PowerShell command lines, `ls`, man pages and git's own output — is
+themed **Tokyo Night (night)**, from one palette. Syntax highlighting is
+deliberately *not* Tokyo Night: code is Visual Studio Dark+ everywhere it
+appears, so the chrome and the code stay two separate decisions.
+
+(Four terminals because Neovim's `:terminal` is one — it runs the same programs
+out of the same sixteen ANSI slots, and it is the one that gets forgotten.)
 
 [`docs/tokyonight.md`](docs/tokyonight.md) is the source of truth for the
 palette and the reasoning — including the parts that are not obvious, like why
 a search match is blue in some tools and an inverted yellow block in others.
 
-Two things keep it honest:
+Three things keep it honest:
 
 ```bash
-tests/check-theme.py   # do the configs agree with each other and the docs?
-./doctor-theme.sh      # did they reach this machine, and can it render them?
+tests/check-theme.py        # do the configs agree with each other and the docs?
+./doctor-theme.sh           # did they reach this machine, and can it render them?
+tests/audit-theme-keys.py   # does upstream still read the keys we set?
 ```
+
+The third is the one the other two cannot do: a colour nobody reads is still a
+valid colour, so a key that quietly stopped being read looks like nothing at
+all. It asks each tool's upstream what it reads and diffs. It needs the
+network; run it after upgrading a themed tool.
 
 ## Neovim
 

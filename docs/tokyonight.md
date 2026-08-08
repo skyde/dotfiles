@@ -246,6 +246,41 @@ What the table buys is the part that does survive: the same *roles* in the same
 *family of colours*, so nothing changes category on the way down. Reach for
 these values, not bat's, when adding a surface here.
 
+### Markdown in the terminal: `glow`
+
+`glow` is the one place where the chrome/code split happens *inside a single
+document*, so it is worth being explicit about where the line falls.
+
+Headings, links, block quotes, rules, tables and the inline-code chip are
+chrome, and take Tokyo Night. `h1` is `bg_dark` on `blue`, which is the same
+pair kitty gives its active tab; a link is `green1`, which is kitty's
+`url_color`; the rule is `fg_gutter`, the separator colour.
+
+A fenced block is code, so it takes Dark+ — and specifically **bat's** Dark+,
+not the published values in the command-line table above. `bat README.md`
+highlights the fence contents too, with the syntax it detects from the info
+string, so glow and bat are two ways of looking at the same file in the same
+terminal. That is the "two panes rendering the same file differently" case, and
+it is the one place in the setup where bat's port is the right one to copy.
+
+Two things about the result are worth knowing before you go looking for a bug:
+
+- **Code blocks are 256-colour.** glamour hardcodes
+  `chromaFormatter = "terminal256"` and glow never calls
+  `WithChromaFormatter`, so the chroma table is rounded to the cube on the way
+  out — `#569cd6` renders as `#5fafd7`. Nothing in the config can reach 24-bit
+  there. The markdown chrome around it is true 24-bit. If glamour ever picks
+  the formatter from the colour profile, these values become exact for free.
+- **A few chrome colours come out one unit low.** Sweeping all 256 byte values
+  through glow, 24 of them lose one: `33+4k`, `66+8k` and `132+16k` for
+  `k = 0..7`. So `#7aa2f7` arrives as `#79a2f7` and `#292e42` as `#282e41`.
+  It is a rounding artefact in glow's colour layer, it is invisible, and it is
+  not the config drifting — do not "correct" the style file to chase it.
+
+The style is pointed at by `GLOW_STYLE` in `theme.sh` rather than by `style` in
+`glow.yml`, because a path in the config file does not work. `glow.yml` carries
+the explanation.
+
 ### Why `jq` is not themed
 
 `jq` is in `packages.txt` and prints JSON to the same terminal as everything
@@ -530,6 +565,7 @@ it fails the test.
 | search   | `common/.local/bin/st-rg`, `common/.local/bin/st-zoekt` |
 | yazi     | `common/.config/yazi/theme.toml`, `plugins/bat-preview.yazi/` |
 | lf       | `common/.config/lf/colors`                            |
+| glow     | `common/.config/glow/tokyonight.json`, `common/.config/glow/glow.yml` |
 | btop     | `common/.config/btop/themes/tokyo-night.theme`        |
 | swatches | `doctor-theme.sh` (renders the palette, so it holds a copy) |
 
