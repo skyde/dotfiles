@@ -4,7 +4,16 @@
 -- than post-filtering. Shared by the pickers configured in `opts` and the
 -- live_grep_args keys below.
 local speedup_globs = {
+  -- --hidden is what makes dotfiles searchable, and it is also what puts the
+  -- repository's own metadata in range: with it, ripgrep happily greps
+  -- .git/index, COMMIT_EDITMSG, ORIG_HEAD and every loose object, and .jj's
+  -- operation log is larger still. Excluding them by glob means rg never opens
+  -- them, rather than telescope hiding the results afterwards.
   "--hidden",
+  "--glob=!.git/**",
+  "--glob=!.jj/**",
+  "--glob=!.hg/**",
+  "--glob=!.svn/**",
   "--glob=!build/**",
   "--glob=!out/**",
   "--glob=!bin/**",

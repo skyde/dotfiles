@@ -200,6 +200,55 @@ else
 end
 
 --------------------------------------------------------------------------
+-- the globs the pickers pass, run through a real ripgrep
+--------------------------------------------------------------------------
+
+-- lua/plugins/telescope-ignore.lua hands ripgrep --hidden so dotfiles are
+-- searchable. --hidden is also what puts .git/index, COMMIT_EDITMSG, ORIG_HEAD
+-- and every loose object in range, and .jj's operation log with them, so the
+-- globs beside it are the only thing keeping a grep out of the repository's own
+-- metadata. Asserted by running the real thing: the args are only meaningful to
+-- ripgrep, so a list comparison would prove nothing about what it does.
+if vim.fn.executable("rg") == 1 then
+  local spec = dofile(repo .. "/common/.config/nvim/lua/plugins/telescope-ignore.lua")
+  local opts = {}
+  spec.opts(nil, opts)
+  local args = opts.pickers.live_grep.additional_args()
+  check("globs: the picker passes some", #args > 0, vim.inspect(args))
+
+  local dir = vim.fn.tempname()
+  for _, meta in ipairs({ ".git", ".jj", ".hg", ".svn" }) do
+    vim.fn.mkdir(dir .. "/" .. meta, "p")
+    local fd = assert(io.open(dir .. "/" .. meta .. "/COMMIT_EDITMSG", "wb"))
+    fd:write("needle in the metadata\n")
+    fd:close()
+  end
+  local fd = assert(io.open(dir .. "/tracked.txt", "wb"))
+  fd:write("needle in a real file\n")
+  fd:close()
+  local hidden = assert(io.open(dir .. "/.hidden-config", "wb"))
+  hidden:write("needle in a dotfile\n")
+  hidden:close()
+
+  local cmd = vim.list_extend({ "rg", "--no-config", "--files-with-matches", "needle" }, vim.deepcopy(args))
+  local res = vim.system(cmd, { cwd = dir, text = true }):wait()
+  local hits = {}
+  for _, line in ipairs(vim.split(res.stdout or "", "\n", { trimempty = true })) do
+    hits[(line:gsub("^%./", ""))] = true
+  end
+
+  eq("globs: a normal file is still searched", true, hits["tracked.txt"])
+  -- The whole point of --hidden, and the reason it cannot simply be dropped.
+  eq("globs: a dotfile is still searched", true, hits[".hidden-config"])
+  for _, meta in ipairs({ ".git", ".jj", ".hg", ".svn" }) do
+    eq(("globs: %s is not searched"):format(meta), nil, hits[meta .. "/COMMIT_EDITMSG"])
+  end
+  vim.fn.delete(dir, "rf")
+else
+  print("SKIP picker glob check (rg not installed)")
+end
+
+--------------------------------------------------------------------------
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 if failed > 0 then
