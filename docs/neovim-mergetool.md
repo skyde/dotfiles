@@ -43,8 +43,8 @@ conflict went that way — so they need no index access and work in any backend.
 The middle pane is the real buffer. Resolve there with the keys above, or pull
 a hunk across from a side pane with `dp`, or from the middle with `do`. The
 whole-file keys (`<leader>cO` / `cT` / `cB`) work from any pane — they do not
-depend on the cursor, so they always act on the middle one. `]c` /
-`[c` move between hunks. `<leader>cc` jumps to the other side.
+depend on the cursor, so they always act on the middle one. `]c` / `[c` move
+between hunks. `<leader>cc` jumps to the other side.
 
 `<leader>cq` saves and closes the view. It asks the middle pane, not whichever
 one the cursor is in — the side panes have no markers left in them by
