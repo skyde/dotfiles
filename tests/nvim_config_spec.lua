@@ -194,6 +194,65 @@ do
     eq("stop: falls through to stopping an Overseer task", true, _G.__overseer_stopped)
   end)
 
+  -- 3b. A build is actually running under Overseer *and* cmake-tools has
+  -- loaded. :CMakeStop exists in any C/C++ buffer whether or not it is running
+  -- anything, so probing it first answered the key with a no-op and left the
+  -- build running.
+  with_modules({
+    dap = {
+      session = function()
+        return nil
+      end,
+      adapters = {},
+    },
+    overseer = {
+      STATUS = { RUNNING = "RUNNING" },
+      list_tasks = function(opts)
+        _G.__listed_status = opts and opts.status
+        return { { name = "build" } }
+      end,
+    },
+  }, function()
+    _G.__overseer_stopped, _G.__cmake_stopped, _G.__listed_status = nil, nil, nil
+    vim.api.nvim_create_user_command("CMakeStop", function()
+      _G.__cmake_stopped = true
+    end, {})
+    vim.api.nvim_create_user_command("OverseerQuickAction", function()
+      _G.__overseer_stopped = true
+    end, { nargs = "*" })
+    debug_module().stop()
+    vim.api.nvim_del_user_command("CMakeStop")
+    vim.api.nvim_del_user_command("OverseerQuickAction")
+    eq("stop: a running Overseer task beats :CMakeStop", true, _G.__overseer_stopped)
+    eq("stop: and the build is not asked to stop as well", nil, _G.__cmake_stopped)
+    eq("stop: only running tasks are looked for", "RUNNING", _G.__listed_status)
+  end)
+
+  -- 3c. Overseer is loaded but idle: the CMake build is the thing to stop.
+  with_modules({
+    dap = {
+      session = function()
+        return nil
+      end,
+      adapters = {},
+    },
+    overseer = {
+      STATUS = { RUNNING = "RUNNING" },
+      list_tasks = function()
+        return {}
+      end,
+    },
+  }, function()
+    _G.__overseer_stopped, _G.__cmake_stopped = nil, nil
+    vim.api.nvim_create_user_command("CMakeStop", function()
+      _G.__cmake_stopped = true
+    end, {})
+    debug_module().stop()
+    vim.api.nvim_del_user_command("CMakeStop")
+    eq("stop: with no task running the build is stopped", true, _G.__cmake_stopped)
+    eq("stop: and Overseer is left alone", nil, _G.__overseer_stopped)
+  end)
+
   -- 4. Nothing to stop: say so rather than failing silently. The Shift+F7 key
   -- is labelled "stop build" and gets pressed when nothing is running.
   with_modules({
@@ -250,6 +309,97 @@ do
     check("select_and_start: no configurations reports instead of picking", not offered, "a picker was opened")
     check("select_and_start: and says why", said:find("No DAP configurations", 1, true) ~= nil, said)
   end)
+
+  -- A launch.json that does not parse. dap.ext.vscode raises, and swallowing
+  -- that left the debug key doing nothing for a reason nothing on screen
+  -- explained.
+  do
+    local ws = vim.fn.tempname()
+    vim.fn.mkdir(ws .. "/.vscode", "p")
+    vim.fn.writefile({ '{ "configurations": [ }' }, ws .. "/.vscode/launch.json")
+    local cwd = vim.uv.cwd()
+    vim.cmd("cd " .. vim.fn.fnameescape(ws))
+
+    with_modules({
+      dap = {
+        session = function()
+          return nil
+        end,
+        adapters = {},
+        configurations = {},
+      },
+      ["dap.ext.vscode"] = {
+        load_launchjs = function()
+          error("Expected value but found invalid token at character 22")
+        end,
+      },
+    }, function()
+      local said = with_notify(function()
+        debug_module().load_launch_json()
+      end)
+      check("launch.json: a parse failure is reported", said:find("Could not read", 1, true) ~= nil, said)
+      check("launch.json: the report names the file", said:find(".vscode/launch.json", 1, true) ~= nil, said)
+      check("launch.json: and carries the parser's complaint", said:find("invalid token", 1, true) ~= nil, said)
+    end)
+
+    -- One that parses says nothing at all.
+    vim.fn.writefile({ '{ "version": "0.2.0", "configurations": [] }' }, ws .. "/.vscode/launch.json")
+    with_modules({
+      dap = {
+        session = function()
+          return nil
+        end,
+        adapters = {},
+        configurations = {},
+      },
+      ["dap.ext.vscode"] = {
+        load_launchjs = function() end,
+      },
+    }, function()
+      local said = with_notify(function()
+        debug_module().load_launch_json()
+      end)
+      eq("launch.json: a readable one is reported on not at all", "", said)
+    end)
+
+    -- The attach fix-up: VS Code writes ${command:pickProcess}, nvim-dap wants
+    -- a function on `pid`. dap.utils is reached only when one is there to fix.
+    vim.fn.writefile({ '{ "version": "0.2.0", "configurations": [] }' }, ws .. "/.vscode/launch.json")
+    local attach = { name = "attach", request = "attach", processId = "${command:pickProcess}" }
+    local plain = { name = "launch", request = "launch", program = "a.out" }
+    local picked = false
+    with_modules({
+      dap = {
+        session = function()
+          return nil
+        end,
+        adapters = {},
+        configurations = { cpp = { attach, plain } },
+      },
+      ["dap.ext.vscode"] = {
+        load_launchjs = function() end,
+      },
+      ["dap.utils"] = {
+        pick_process = function()
+          picked = true
+          return 4242
+        end,
+      },
+    }, function()
+      local said = with_notify(function()
+        debug_module().load_launch_json()
+      end)
+      eq("attach: normalising is not reported as a failure", "", said)
+      eq("attach: the VS Code placeholder is cleared", nil, attach.processId)
+      eq("attach: pid becomes callable", "function", type(attach.pid))
+      eq("attach: dap.utils is not touched until the pid is asked for", false, picked)
+      eq("attach: and calling it picks a process", 4242, attach.pid and attach.pid())
+      eq("attach: a launch config is left alone", nil, plain.pid)
+    end)
+
+    vim.cmd("cd " .. vim.fn.fnameescape(cwd or "."))
+    vim.fn.delete(ws, "rf")
+  end
 
   package.loaded["config.vscode_debug"] = nil
 end

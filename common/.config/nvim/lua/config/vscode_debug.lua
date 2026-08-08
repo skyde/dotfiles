@@ -19,7 +19,14 @@ end
 ---VS Code writes `${command:pickProcess}` for attach configs; nvim-dap wants a
 ---function on `pid`.
 local function normalize_attach_pids(dap)
-  local pick = require("dap.utils").pick_process
+  -- Required only once something actually needs it. Loading dap.utils up front
+  -- makes its absence look like a broken launch.json, which is a confusing way
+  -- to report a missing module.
+  local picker
+  local function pick(...)
+    picker = picker or require("dap.utils").pick_process
+    return picker(...)
+  end
   for _, lang in ipairs({ "c", "cpp", "rust", "objc", "objcpp" }) do
     local cfgs = dap.configurations[lang]
     if type(cfgs) == "table" then
@@ -29,7 +36,10 @@ local function normalize_attach_pids(dap)
             cfg.pid = pick
             cfg.processId = nil
           end
-          if type(cfg.pid) == "string" and cfg.pid:find("%${command:pickProcess}") then
+          -- Bound to a local first: the type checker narrows a local through
+          -- `type()`, but not a field that is also assigned a function below.
+          local pid = cfg.pid
+          if type(pid) == "string" and pid:find("%${command:pickProcess}") then
             cfg.pid = pick
           end
         end
@@ -49,13 +59,19 @@ function M.load_launch_json()
   if roots and roots[1] then
     local f = roots[1] .. "/launch.json"
     if vim.uv.fs_stat(f) then
-      pcall(function()
+      -- Reported, not swallowed. A trailing comma or a stray brace in
+      -- launch.json makes this throw, and silently continuing means the debug
+      -- key does nothing for a reason nothing on screen explains.
+      local loaded, err = pcall(function()
         require("dap.ext.vscode").load_launchjs(f, {
           lldb = { "c", "cpp", "rust" },
           codelldb = { "c", "cpp", "rust" },
         })
         normalize_attach_pids(dap)
       end)
+      if not loaded then
+        vim.notify(("Could not read %s: %s"):format(f, err), vim.log.levels.WARN)
+      end
     end
   end
   return dap
@@ -108,11 +124,27 @@ function M.stop()
     dap.terminate()
     return
   end
+
+  -- A build started by <leader>mb is an Overseer task, and in a C/C++ buffer
+  -- `:CMakeStop` exists whether or not cmake-tools is running anything — so
+  -- probing the command first would answer the key with a no-op and leave the
+  -- build running. An Overseer task that is actually RUNNING wins.
+  local has_overseer, overseer = pcall(require, "overseer")
+  if has_overseer then
+    local listed, running = pcall(function()
+      return overseer.list_tasks({ status = overseer.STATUS and overseer.STATUS.RUNNING or "RUNNING" })
+    end)
+    if listed and type(running) == "table" and #running > 0 then
+      pcall(vim.cmd, "OverseerQuickAction stop")
+      return
+    end
+  end
+
   if vim.fn.exists(":CMakeStop") == 2 then
     vim.cmd("CMakeStop")
     return
   end
-  if pcall(require, "overseer") then
+  if has_overseer then
     pcall(vim.cmd, "OverseerQuickAction stop")
     return
   end
