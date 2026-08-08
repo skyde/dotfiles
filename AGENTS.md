@@ -29,7 +29,17 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
   settings). It skips itself when clangd is not installed. The plugin-free
   specs cannot see a server that is configured but never enabled, a keymap
   naming a command a plugin has renamed, or a setting LazyVim replaces later —
-  this one can.
+  this one can. It also covers the cross-platform case — a `_win.cc` a mac
+  build never compiles is absent from the database and must degrade quietly
+  rather than regenerate on every visit — and switch header/source on an
+  ObjC++ pair, on a buffer with unsaved changes, and against a database that
+  could not be read.
+- If you have a Chromium checkout, `./tests/check-nvim-lsp-chromium.sh` runs the
+  same machinery against it: a 400 MB+ compilation database, real platform
+  sources, a real clangd restart. It skips itself when there is no checkout, so
+  it is safe to run anywhere; point it somewhere specific with
+  `CHROMIUM_SRC=/path/to/src`. The fixture proves the logic is right, this
+  proves it survives the scale it was written for.
 - For cross-platform confidence, optionally run the workflow helper: `./test-all-platforms.sh [cycles]`
 
 ## Commit and PR guidelines

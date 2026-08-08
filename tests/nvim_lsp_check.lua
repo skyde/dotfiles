@@ -341,5 +341,178 @@ eq("health: a working checkout reports no errors", {}, errors)
 check("health: :checkhealth chromium runs", pcall(vim.cmd, "checkhealth chromium"))
 
 --------------------------------------------------------------------------
+-- cross-platform sources
+--------------------------------------------------------------------------
+-- A mac build's database has the posix and ObjC++ sources and never the
+-- Windows or Android ones. Every one of them still has to get a language
+-- server -- degrading to heuristic flags is fine, losing navigation is not --
+-- and the ones that can never be in the database must not send the probe
+-- into regenerating on every visit.
+
+local function db_mtime()
+  local st = vim.uv.fs_stat(src .. "/compile_commands.json")
+  return st and (st.mtime.sec * 1e9 + (st.mtime.nsec or 0)) or 0
+end
+
+local function attached(path)
+  vim.cmd("edit " .. vim.fn.fnameescape(path))
+  local buf = vim.api.nvim_get_current_buf()
+  vim.wait(20000, function()
+    return #vim.lsp.get_clients({ bufnr = buf, name = "clangd" }) > 0
+  end, 100)
+  return vim.lsp.get_clients({ bufnr = buf, name = "clangd" })[1]
+end
+
+for _, case in ipairs({
+  { "posix source", "/base/files/file_util_posix.cc", true },
+  { "ObjC++ source", "/base/files/file_util_mac.mm", true },
+  { "Windows source", "/base/files/file_util_win.cc", false },
+  { "Android source", "/base/files/file_util_android.cc", false },
+}) do
+  local label, rel, in_db = case[1], case[2], case[3]
+  local hit, done = nil, false
+  chromium.file_contains(src .. "/compile_commands.json", rel .. '"', function(f)
+    hit, done = f, true
+  end)
+  vim.wait(10000, function()
+    return done
+  end, 50)
+  eq(("compdb membership: %s"):format(label), in_db, hit)
+  check(("%s still gets a language server"):format(label), attached(src .. rel) ~= nil)
+end
+
+-- Reopening a platform-excluded source must stay free: the probe records one
+-- verdict per file per session, so the single regeneration it is entitled to
+-- on first sight must not repeat.
+--
+-- busy() only reports a generation that has already started; the probe's scan
+-- runs before that and is invisible to it. So wait for the database to hold
+-- still, not merely for busy() to clear, or the baseline is taken before the
+-- first-sighting regeneration has even been requested.
+local function wait_quiet(timeout)
+  local deadline = vim.uv.now() + (timeout or 25000)
+  local last, stable_since = db_mtime(), vim.uv.now()
+  while vim.uv.now() < deadline do
+    vim.wait(300)
+    local now = db_mtime()
+    if now ~= last or chromium.busy() then
+      last, stable_since = now, vim.uv.now()
+    elseif vim.uv.now() - stable_since > 3000 then
+      return
+    end
+  end
+end
+
+-- Two excluded files in a row do not settle in one pass: the second one's scan
+-- races the regeneration the first one asked for, and a probe whose database
+-- moved underneath it is deliberately forgotten rather than recorded, so it
+-- asks again on the next visit. That is the intended trade -- a retry beats a
+-- wrong verdict cached for the session -- and it means the guarantee worth
+-- asserting is steady state: once the regenerations stop overlapping,
+-- reopening these files forever must cost nothing. So warm up first, then
+-- measure.
+local function revisit()
+  for _ = 1, 3 do
+    attached(src .. "/base/files/file_util_win.cc")
+    vim.wait(300)
+    attached(src .. "/base/files/file_util_android.cc")
+    vim.wait(300)
+  end
+end
+
+revisit()
+wait_quiet()
+local settled = db_mtime()
+revisit()
+wait_quiet(15000)
+eq("revisiting platform-excluded sources settles and then regenerates nothing", settled, db_mtime())
+
+--------------------------------------------------------------------------
+-- switch header/source on an ObjC++ pair
+--------------------------------------------------------------------------
+-- clangd resolves counterparts by basename, so scoped_nsobject.mm has one and
+-- file_util_mac.mm does not. Both answers have to be handled: jump for the
+-- first, say so for the second rather than jumping somewhere wrong.
+
+local mm = src .. "/base/mac/scoped_nsobject.mm"
+local mmh = src .. "/base/mac/scoped_nsobject.h"
+attached(mm)
+vim.wait(1000)
+require("util.lsp").switch_source_header()
+vim.wait(10000, function()
+  return vim.api.nvim_buf_get_name(0) == mmh
+end, 100)
+eq("switch header/source: .mm to its paired .h", mmh, vim.api.nvim_buf_get_name(0))
+require("util.lsp").switch_source_header()
+vim.wait(10000, function()
+  return vim.api.nvim_buf_get_name(0) == mm
+end, 100)
+eq("switch header/source: back to the .mm", mm, vim.api.nvim_buf_get_name(0))
+
+local lonely = src .. "/base/files/file_util_mac.mm"
+attached(lonely)
+vim.wait(1000)
+require("util.lsp").switch_source_header()
+vim.wait(3000)
+eq("switch header/source: a .mm with no counterpart stays put", lonely, vim.api.nvim_buf_get_name(0))
+
+--------------------------------------------------------------------------
+-- switch header/source keeps unsaved work
+--------------------------------------------------------------------------
+-- The binding used to run `silent! edit`, which does nothing at all on a
+-- modified buffer and silently swallows the refusal -- leaving the file being
+-- worked on without navigation at exactly the wrong moment.
+
+-- Inside the checkout rather than the plain project: the restart section above
+-- deliberately stops the plain project's client, and a switch with no clangd
+-- attached would be testing the fallback path instead of this one.
+local dirty_cc = src .. "/base/logging.cc"
+local dirty_h = src .. "/base/logging.h"
+local dirty_client = attached(dirty_cc)
+check("switch header/source: clangd is attached before the modified switch", dirty_client ~= nil)
+local dirty_buf = vim.api.nvim_get_current_buf()
+vim.api.nvim_buf_set_lines(dirty_buf, 0, 0, false, { "// unsaved" })
+check("switch header/source: the buffer is modified before switching", vim.bo[dirty_buf].modified)
+require("util.lsp").switch_source_header()
+vim.wait(10000, function()
+  return vim.api.nvim_buf_get_name(0) == dirty_h
+end, 100)
+eq("switch header/source: reached the header from a modified buffer", dirty_h, vim.api.nvim_buf_get_name(0))
+check("switch header/source: unsaved changes survive", vim.bo[dirty_buf].modified)
+eq("switch header/source: the unsaved line is intact", "// unsaved", vim.api.nvim_buf_get_lines(dirty_buf, 0, 1, false)[1])
+vim.bo[dirty_buf].modified = false
+
+--------------------------------------------------------------------------
+-- the probe learns nothing from a database it could not read
+--------------------------------------------------------------------------
+-- A read that fails (the database is being rewritten, or the open races a
+-- delete) is not evidence the file is missing. Recording a verdict there
+-- would mean no later event ever revisits it.
+
+local absent = src .. "/absent_from_db.cc"
+vim.fn.writefile({ "int absent_from_db() { return 1; }" }, absent)
+vim.fn.system({ "touch", src .. "/compile_commands.json" })
+vim.wait(300)
+local before_unreadable = db_mtime()
+vim.fn.system({ "chmod", "000", src .. "/compile_commands.json" })
+chromium.compdb_probe(src, absent)
+vim.wait(3000)
+vim.wait(10000, function()
+  return not chromium.busy()
+end, 200)
+eq("an unreadable database does not trigger a regeneration", before_unreadable, db_mtime())
+
+vim.fn.system({ "chmod", "644", src .. "/compile_commands.json" })
+vim.wait(300)
+chromium.compdb_probe(src, absent)
+local retried = vim.wait(20000, function()
+  return chromium.busy() or db_mtime() ~= before_unreadable
+end, 100)
+vim.wait(20000, function()
+  return not chromium.busy()
+end, 200)
+check("the probe retries once the database is readable again", retried and db_mtime() ~= before_unreadable)
+
+--------------------------------------------------------------------------
 
 vim.fn.writefile(vim.list_extend({ ("passed %d, failed %d"):format(passed, #failures) }, failures), report)
