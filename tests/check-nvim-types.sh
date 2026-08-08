@@ -5,8 +5,12 @@
 # deprecated. It catches the class of mistake the specs cannot: a typo down a
 # branch no test happens to take.
 #
-#   tests/check-nvim-types.sh              # against this checkout
-#   tests/check-nvim-types.sh --level=Hint # stricter; not expected to be clean
+#   tests/check-nvim-types.sh                 # against this checkout
+#   tests/check-nvim-types.sh --level=Warning # only the ones LuaLS calls warnings
+#
+# The default is Hint, the strictest level lua-language-server has, because the
+# config is clean at it — and a check that already passes is the cheapest time
+# to tighten one. Drop to Warning to see what a normal editor would surface.
 #
 # Needs `lua-language-server` on PATH; skips cleanly when it is missing, so this
 # stays usable on a machine that has not installed it. Release binaries:
@@ -20,7 +24,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 here="$PWD"
 
-level="Warning"
+level="Hint"
 for arg in "$@"; do
   case "$arg" in
     --level=*) level="${arg#--level=}" ;;

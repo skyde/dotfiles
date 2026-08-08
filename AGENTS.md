@@ -28,9 +28,10 @@ rest need the tool named, and each skips cleanly when it is missing.
   — formatting. Drop `--check` to apply it.
 - `./tests/check-nvim-types.sh` — lua-language-server over the config: undefined
   globals and fields, wrong arity, unchecked nils, deprecated Neovim APIs. Must
-  report zero problems. Skips without the binary, and honours
-  `NVIM_CHECKS_NO_SKIP=1` the same way. CI pins the version it installs; bump it
-  by installing the new one locally, running this, then editing the workflow.
+  report zero problems, at Hint — the strictest level the tool has. Skips
+  without the binary, and honours `NVIM_CHECKS_NO_SKIP=1` the same way. CI pins
+  the version it installs; bump it by installing the new one locally, running
+  this, then editing the workflow.
 - `./tests/check-nvim-keymaps.sh` — invokes every parity binding against the
   real config. Needs the plugins installed.
 - `./tests/check-nvim-syntax-roles.sh` — C++ and Python colour the same

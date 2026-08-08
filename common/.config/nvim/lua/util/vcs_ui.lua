@@ -1895,10 +1895,10 @@ local function ensure_tab()
       nav_pending = true
       vim.schedule(function()
         nav_pending = false
-        local win = nav_win_pending
+        local pending = nav_win_pending
         nav_win_pending = nil
-        if win and vim.api.nvim_win_is_valid(win) then
-          adopt_nav(win, vim.api.nvim_win_get_buf(win))
+        if pending and vim.api.nvim_win_is_valid(pending) then
+          adopt_nav(pending, vim.api.nvim_win_get_buf(pending))
         end
       end)
     end,

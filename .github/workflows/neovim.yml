@@ -60,8 +60,10 @@ jobs:
       # backend detection order, so it is what a colocated repo resolves to.
       # Neither runner ships either one, so both backends' blocks skipped and
       # the code that runs in preference to git was never executed here at all.
-      # jj is pinned rather than tracked, so an upstream release cannot turn a
-      # green branch red on its own.
+      # The Linux legs pin jj so an upstream release cannot turn a green branch
+      # red on its own; the macOS leg takes whatever Homebrew has, which is a
+      # deliberate second opinion — it is where a jj that changed its output
+      # format would show up first.
       - name: Install ripgrep, jj and Mercurial
         env:
           JJ_VERSION: v0.36.0
