@@ -19,7 +19,11 @@ rest need the tool named, and each skips cleanly when it is missing.
 
 - `./tests/run-nvim-specs.sh` — the specs. Self-contained: no plugins, no
   network, no system clipboard, everything built in a tempdir. Run these on any
-  change to `common/.config/nvim/lua`.
+  change to `common/.config/nvim/lua`. The jj, Mercurial and ripgrep blocks skip
+  when the tool is missing; CI installs all three and sets
+  `NVIM_SPECS_NO_SKIP=1`, which turns a skip into a failure so a backend cannot
+  quietly stop being covered. Install jj locally before touching `util.vcs` —
+  jj is first in the detection order.
 - `stylua --check --config-path common/.config/nvim/stylua.toml common/.config/nvim tests`
   — formatting. Drop `--check` to apply it.
 - `./tests/check-nvim-types.sh` — lua-language-server over the config: undefined

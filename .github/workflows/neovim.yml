@@ -55,20 +55,35 @@ jobs:
       # the type list of a real `rg`, which is what stops them rotting when
       # ripgrep renames or adds one. The specs skip cleanly without it — that is
       # why this went unnoticed — so install it and let the check run.
-      - name: Install ripgrep
+      #
+      # The same is true of jj and Mercurial, and worse: jj is *first* in the
+      # backend detection order, so it is what a colocated repo resolves to.
+      # Neither runner ships either one, so both backends' blocks skipped and
+      # the code that runs in preference to git was never executed here at all.
+      # jj is pinned rather than tracked, so an upstream release cannot turn a
+      # green branch red on its own.
+      - name: Install ripgrep, jj and Mercurial
+        env:
+          JJ_VERSION: v0.36.0
         run: |
           if [ "$RUNNER_OS" = "macOS" ]; then
-            brew install ripgrep
+            brew install ripgrep jj mercurial
           else
-            sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
+            sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep mercurial
+            curl -fsSL "https://github.com/jj-vcs/jj/releases/download/${JJ_VERSION}/jj-${JJ_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+              | sudo tar -xz -C /usr/local/bin ./jj
           fi
           rg --version | head -1
+          jj --version
+          hg --version | head -1
 
       # Plugin-free and hermetic otherwise: no network, no ~/.local/share/nvim,
       # no system clipboard. What a spec asserts must not quietly change with
       # what happens to be installed; where it genuinely cannot run, it skips
       # out loud.
       - name: Run the Neovim specs
+        env:
+          NVIM_SPECS_NO_SKIP: "1"
         run: ./tests/run-nvim-specs.sh
 
   # Its own job rather than a matrix leg, so continue-on-error can be a plain
@@ -91,7 +106,22 @@ jobs:
       - name: Report the version under test
         run: nvim --version | head -3
 
+      # Same tools as the stable job: an advisory run that silently skips three
+      # backends is a weaker early warning than it looks.
+      - name: Install ripgrep, jj and Mercurial
+        env:
+          JJ_VERSION: v0.36.0
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep mercurial
+          curl -fsSL "https://github.com/jj-vcs/jj/releases/download/${JJ_VERSION}/jj-${JJ_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin ./jj
+          rg --version | head -1
+          jj --version
+          hg --version | head -1
+
       - name: Run the Neovim specs
+        env:
+          NVIM_SPECS_NO_SKIP: "1"
         run: ./tests/run-nvim-specs.sh
 
   lint:
