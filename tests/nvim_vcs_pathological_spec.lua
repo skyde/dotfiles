@@ -316,6 +316,145 @@ do
 end
 
 --------------------------------------------------------------------------
+-- browsing leaves no trace, however long you browse
+--------------------------------------------------------------------------
+
+do
+  -- The view's central promise, and by the module's own account a bug it once
+  -- had: scrubbing the list must not accumulate open files. One pass proves
+  -- little — a leak of one buffer per cycle looks like a correct render — so
+  -- run the whole loop repeatedly and require the counts to come back to
+  -- exactly where they started.
+  local function census()
+    local listed, unlisted, scratch = 0, 0, 0
+    for _, b in ipairs(vim.api.nvim_list_bufs()) do
+      if vim.api.nvim_buf_is_valid(b) then
+        local name = vim.api.nvim_buf_get_name(b)
+        if name:match("^vcs://") or name:match("^merge://") then
+          scratch = scratch + 1
+        elseif vim.fn.buflisted(b) == 1 then
+          listed = listed + 1
+        else
+          unlisted = unlisted + 1
+        end
+      end
+    end
+    return { listed = listed, unlisted = unlisted, scratch = scratch, tabs = #vim.api.nvim_list_tabpages() }
+  end
+
+  ui.close()
+  vcs.clear_cache()
+  drain_errors()
+  local baseline = census()
+
+  -- "At most one looked-at file is ever loaded", in the module's own words.
+  -- Counted *during* the scrub, not after: close() cleans up every preview it
+  -- tracked, so a leak that accumulates while the view is open — the one the
+  -- module says it used to have — is invisible to a census taken afterwards.
+  local peak_loaded = 0
+  local function count_loaded()
+    local loaded = 0
+    for _, b in ipairs(vim.api.nvim_list_bufs()) do
+      if vim.api.nvim_buf_is_loaded(b) and vim.api.nvim_buf_get_name(b):find(root, 1, true) then
+        loaded = loaded + 1
+      end
+    end
+    peak_loaded = math.max(peak_loaded, loaded)
+  end
+
+  for cycle = 1, 6 do
+    ui.open({ scope = "working" })
+    settle()
+    local pw = panel_win()
+    for _, row in ipairs(file_rows()) do
+      vim.api.nvim_set_current_win(pw)
+      pcall(vim.api.nvim_win_set_cursor, pw, { row, 0 })
+      vim.api.nvim_exec_autocmds("CursorMoved", { buffer = vim.api.nvim_win_get_buf(pw) })
+      vim.wait(120)
+      count_loaded()
+    end
+    -- Alternate the rendering, so both paths' buffers get created and dropped.
+    if cycle % 2 == 0 then
+      ui.toggle_inline()
+      settle()
+    end
+    ui.close()
+    vim.wait(200)
+  end
+  settle()
+
+  local after = census()
+  eq("no trace: the buffer list is where it started", baseline, after)
+  check(
+    "no trace: never more than one looked-at file loaded at a time",
+    peak_loaded <= 1,
+    "peak loaded repo buffers: " .. peak_loaded
+  )
+  check("no trace: and nothing was reported along the way", drain_errors() == "", drain_errors())
+end
+
+--------------------------------------------------------------------------
+-- the view survives being driven at random
+--------------------------------------------------------------------------
+
+do
+  -- open, refresh, close, scope-switch and the two toggles all bump generation
+  -- counters that orphan work already in flight, and the base cache has an
+  -- epoch of its own. Interleaving them without letting the async work finish
+  -- is what exercises those guards; the assertion is simply that none of it
+  -- raises and the view is still usable at the end.
+  ui.close()
+  vcs.clear_cache()
+  drain_errors()
+
+  local raised = {}
+  math.randomseed(11)
+  local ops = { "open", "refresh", "close", "scrub", "inline", "collapse", "scope" }
+  local scopes = { "working", "branch", "head" }
+  for _ = 1, 80 do
+    local op = ops[math.random(#ops)]
+    local ok, err = pcall(function()
+      if op == "open" then
+        ui.open({ scope = "working" })
+      elseif op == "refresh" then
+        ui.refresh()
+      elseif op == "close" then
+        ui.close()
+      elseif op == "inline" then
+        ui.toggle_inline()
+      elseif op == "collapse" then
+        ui.toggle_collapse()
+      elseif op == "scope" then
+        ui.open({ scope = scopes[math.random(#scopes)] })
+      elseif op == "scrub" then
+        local pw = vim.api.nvim_tabpage_list_wins(0)[1]
+        if pw and vim.api.nvim_win_is_valid(pw) then
+          local b = vim.api.nvim_win_get_buf(pw)
+          pcall(vim.api.nvim_win_set_cursor, pw, { math.random(vim.api.nvim_buf_line_count(b)), 0 })
+          vim.api.nvim_exec_autocmds("CursorMoved", { buffer = b })
+        end
+      end
+    end)
+    if not ok then
+      table.insert(raised, ("%s: %s"):format(op, tostring(err)))
+    end
+    -- Deliberately not settling: half-finished async work is the point.
+    vim.wait(math.random(0, 20))
+  end
+  settle()
+  check("random driving: nothing raised", #raised == 0, table.concat(raised, " | "))
+  check("random driving: nothing was reported as an error", drain_errors() == "", drain_errors())
+
+  -- And it still works afterwards.
+  pcall(ui.close)
+  vcs.clear_cache()
+  ui.open({ scope = "working" })
+  settle()
+  check("random driving: the view still opens afterwards", #file_rows() == 9, vim.inspect(panel_lines()))
+  ui.close()
+end
+
+--------------------------------------------------------------------------
 -- CRLF must not read as "every line changed"
 --------------------------------------------------------------------------
 
