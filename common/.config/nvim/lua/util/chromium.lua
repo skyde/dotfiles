@@ -322,37 +322,50 @@ end
 -- checkout — the loudest possible failure turning into the quietest one. So
 -- the spawn is guarded and its key released; `key` is what inflight is keyed
 -- by, so this serves both generation and the gclient sync.
-local spawn_failed = {} ---@type table<string, true>
-
 ---@param key string  the inflight key to release if the spawn fails
 ---@param cmd string[]
 ---@param opts table
 ---@param on_exit fun(res: vim.SystemCompleted)
----@param quiet? boolean  automatic callers: report the first failure only
+---@param on_fail fun(msg: string)
 ---@return boolean spawned
-local function spawn(key, cmd, opts, on_exit, quiet)
+local function spawn(key, cmd, opts, on_exit, on_fail)
   local ok, err = pcall(vim.system, cmd, opts, on_exit)
   if ok then
-    spawn_failed[key] = nil
     return true
   end
   inflight[key] = nil
-  -- An automatic run repeats on every buffer switch; a missing interpreter
-  -- would turn into a message every couple of seconds. Say it once, and let
-  -- the explicit commands say it every time they are asked.
-  if not quiet or not spawn_failed[key] then
-    vim.notify(("could not run %s: %s"):format(cmd[1], err), vim.log.levels.ERROR)
-  end
-  spawn_failed[key] = true
+  on_fail(("could not run %s: %s"):format(cmd[1], err))
   flush_idle()
   return false
+end
+
+-- A regeneration that fails tends to keep failing: a build dir whose GN args
+-- no longer parse, a half-synced checkout, no python. The automatic callers
+-- fire on every buffer switch, so left alone that is `ninja -t compdb` over a
+-- Chromium build every couple of seconds, and the same error message with it.
+-- An automatic run therefore stands down for a minute after a failure and
+-- reports it once; anything a person asked for runs, and reports, regardless.
+local FAILURE_COOLDOWN_MS = 60000
+local failed_at = {} ---@type table<string, integer>
+
+---@param root string
+---@param auto boolean|nil  true when nobody asked for this run
+---@param msg string
+local function note_failure(root, auto, msg)
+  local first = failed_at[root] == nil
+  failed_at[root] = vim.uv.now()
+  if not auto or first then
+    vim.notify(msg, vim.log.levels.ERROR)
+  end
 end
 
 ---Regenerate compile_commands.json for the checkout containing the current
 ---buffer (or opts.root), asynchronously, then restart clangd so it re-reads
 ---the database. One run per root at a time; opts.force regenerates even
 ---when the database looks fresh.
----@param opts? { root?: string, force?: boolean, silent?: boolean }
+---@param opts? { root?: string, force?: boolean, silent?: boolean, auto?: boolean }
+---  silent: do not announce a successful run. auto: nobody asked for this one,
+---  so back off after a failure instead of retrying on every buffer switch.
 function M.generate(opts)
   opts = opts or {}
   local root = opts.root or M.src_root(vim.api.nvim_buf_get_name(0))
@@ -363,6 +376,9 @@ function M.generate(opts)
     return
   end
   if inflight[root] then
+    return
+  end
+  if opts.auto and failed_at[root] and vim.uv.now() - failed_at[root] < FAILURE_COOLDOWN_MS then
     return
   end
   if not opts.force and not M.stale(root) then
@@ -385,21 +401,25 @@ function M.generate(opts)
   end
   local python = vim.fn.exepath("python3")
   local cmd = { python ~= "" and python or "python", MARKER, "-p", out, "-o", "compile_commands.json" }
+  local function fail(msg)
+    note_failure(root, opts.auto, msg)
+  end
   spawn(root, cmd, { cwd = root }, function(res)
     vim.schedule(function()
       inflight[root] = nil
       if res.code == 0 then
+        failed_at[root] = nil
         if not opts.silent then
           vim.notify(("compile_commands.json regenerated (%s)"):format(out), vim.log.levels.INFO)
         end
         M.restart_clangd(root)
       else
         local err = vim.trim(res.stderr or "")
-        vim.notify("generate_compdb.py failed: " .. err:sub(-400), vim.log.levels.ERROR)
+        fail("generate_compdb.py failed: " .. err:sub(-400))
       end
       flush_idle()
     end)
-  end, opts.silent)
+  end, fail)
 end
 
 ---True while a generation is running; `fn` fires once after the next one
@@ -430,7 +450,7 @@ function M.refresh(root)
   end
   last_refresh[root] = now
   if M.stale(root) then
-    M.generate({ root = root, force = true })
+    M.generate({ root = root, force = true, auto = true })
   end
 end
 
@@ -507,7 +527,7 @@ function M.compdb_probe(root, file)
         return
       end
       vim.notify(("%s is not in compile_commands.json; regenerating"):format(rel), vim.log.levels.INFO)
-      M.generate({ root = root, force = true, silent = true })
+      M.generate({ root = root, force = true, silent = true, auto = true })
     end)
   end)
 end
@@ -694,6 +714,8 @@ function M.install_bundled_clangd(root)
       end
       flush_idle()
     end)
+  end, function(msg)
+    vim.notify(msg, vim.log.levels.ERROR)
   end)
 end
 
@@ -753,7 +775,7 @@ function M.gn_changed(root)
     GN_DEBOUNCE_MS,
     0,
     vim.schedule_wrap(function()
-      M.generate({ root = root, force = true, silent = true })
+      M.generate({ root = root, force = true, silent = true, auto = true })
     end)
   )
 end

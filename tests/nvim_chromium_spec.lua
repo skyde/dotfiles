@@ -485,6 +485,47 @@ settle()
 eq("spawn: the next regeneration still runs", before_fail + 1, #generate_log())
 
 --------------------------------------------------------------------------
+-- a generator that runs and fails
+--------------------------------------------------------------------------
+
+-- A regeneration that fails keeps failing (a build dir whose GN args no
+-- longer parse, a half-synced checkout), and the automatic callers fire on
+-- every buffer switch: `ninja -t compdb` over a Chromium build every couple
+-- of seconds, with the same error message on top. Automatic runs stand down
+-- after a failure; explicit ones do not.
+write(script, table.concat({
+  "import sys",
+  'open("generate.log", "a").write(" ".join(sys.argv[1:]) + "\\n")',
+  'sys.stderr.write("gn args are broken\\n")',
+  "sys.exit(1)",
+}, "\n") .. "\n")
+
+local before_broken = #generate_log()
+chromium.generate({ root = root, force = true, silent = true, auto = true })
+settle()
+eq("failure: an automatic run runs once", before_broken + 1, #generate_log())
+chromium.generate({ root = root, force = true, silent = true, auto = true })
+settle()
+eq("failure: the next automatic run stands down", before_broken + 1, #generate_log())
+chromium.generate({ root = root, force = true, silent = true })
+settle()
+eq("failure: an explicit run is not held back", before_broken + 2, #generate_log())
+
+-- A working generator again: the next automatic run goes through, which is
+-- what makes the cooldown a pause rather than a latch.
+write(script, table.concat({
+  "import sys",
+  'open("generate.log", "a").write(" ".join(sys.argv[1:]) + "\\n")',
+  'open(sys.argv[4], "w").write("[]")',
+}, "\n") .. "\n")
+chromium.generate({ root = root, force = true, silent = true })
+settle()
+eq("failure: a good run clears the cooldown", before_broken + 3, #generate_log())
+chromium.generate({ root = root, force = true, silent = true, auto = true })
+settle()
+eq("failure: automatic runs resume after a success", before_broken + 4, #generate_log())
+
+--------------------------------------------------------------------------
 -- the membership probe when the database cannot be read
 --------------------------------------------------------------------------
 
