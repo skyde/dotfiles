@@ -460,6 +460,19 @@ MUTATIONS = [
      r'perm_write = \{ fg = "#f7768e" \}', 'perm_write = { fg = "#ff9e64" }',
      "eza's uw is", None),
 
+    # inline_diff.lua states its own rule -- the departure stays in the red
+    # family, the arrival in the green -- and then writes nine blended
+    # backgrounds by hand, where the family is not obvious from the hex.
+    ("a moved shade that left its colour family", "parity", INLINE_DIFF,
+     r'InlineDiffMovedToTint = \{ bg = "#175035" \}',
+     'InlineDiffMovedToTint = { bg = "#4a2139" }',
+     "left the green family", None),
+
+    ("a departure shade writing in its own colour", "parity", INLINE_DIFF,
+     r'InlineDiffMovedFromSubtle2 = \{ bg = "#352337", fg = "#8a7080" \}',
+     'InlineDiffMovedFromSubtle2 = { bg = "#352337", fg = "#565f89" }',
+     "one colour, so they read as one thing", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be

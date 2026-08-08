@@ -756,6 +756,68 @@ PERM_PAIRS = [("perm_read", "ur", "the read bit"),
 YAZI_MODES = ("normal", "select", "unset")
 
 
+def _check_move_families(verbose):
+    """Neovim's moved-code shades stay in the families the file names.
+
+    inline_diff.lua says it plainly -- "the departure stays in the red family,
+    the arrival in the green family, each held apart from a real delete/add" --
+    and then writes nine blended backgrounds by hand. They are all correct and
+    nothing kept them so: these are mixed-down colours where the family is not
+    obvious from the hex, which is exactly when a hand-written one goes astray.
+
+    Family is decided by whether the background carries more red than green,
+    which is the whole content of the claim. And every "from" shade that sets
+    a foreground uses one colour, so the departures read as one thing.
+    """
+    path = os.path.join(REPO, NVIM_INLINE_DIFF)
+    if not os.path.isfile(path):
+        return []
+    src = uncommented(path, open(path, encoding="utf-8").read())
+
+    problems, checked, from_fgs = [], 0, {}
+    for name, spec in re.findall(r"(InlineDiff\w+)\s*=\s*\{([^}]*)\}", src):
+        if "Moved" not in name:
+            continue
+        bg = re.search(r'bg\s*=\s*"(#[0-9a-fA-F]{6})"', spec)
+        fg = re.search(r'fg\s*=\s*"(#[0-9a-fA-F]{6})"', spec)
+        departure = ("From" in name or name.endswith("Delete")
+                     or name.endswith("Ghost"))
+        arrival = "To" in name or name.endswith("Add")
+        if bg and (departure or arrival):
+            colour = norm(bg.group(1))
+            red, green = int(colour[1:3], 16), int(colour[3:5], 16)
+            checked += 1
+            if departure and red <= green:
+                problems.append(
+                    "%s: %s is a departure and %s carries no more red than "
+                    "green, so it has left the red family"
+                    % (NVIM_INLINE_DIFF, name, colour))
+            if arrival and green <= red:
+                problems.append(
+                    "%s: %s is an arrival and %s carries no more green than "
+                    "red, so it has left the green family"
+                    % (NVIM_INLINE_DIFF, name, colour))
+        # Only the named `MovedFrom*` family. MovedGhost is a departure
+        # background too, but its text is the hint grey MovedHint uses -- it
+        # annotates rather than being one of the shades -- and the first
+        # version of this rule swept it in and reported the difference as a
+        # fault. The check was wrong, not the theme.
+        if "From" in name and fg:
+            from_fgs.setdefault(norm(fg.group(1)), []).append(name)
+
+    if len(from_fgs) > 1:
+        problems.append(
+            "%s: the departure shades write in %s -- one colour, so they read "
+            "as one thing"
+            % (NVIM_INLINE_DIFF,
+               " and ".join("%s (%s)" % (c, ", ".join(n))
+                            for c, n in sorted(from_fgs.items()))))
+    if verbose and not problems:
+        print("  %d moved-code shade(s) are in the family the file claims"
+              % checked)
+    return problems
+
+
 def _check_yazi_roles(doc, verbose):
     """yazi's mode badges and permission column say what the rest of the tree says.
 
@@ -2493,6 +2555,7 @@ def check_parity(doc, verbose):
     problems.extend(run_check(_check_diff_tints, doc, verbose))
     problems.extend(run_check(_check_palette_variables, doc, verbose))
     problems.extend(run_check(_check_yazi_roles, doc, verbose))
+    problems.extend(run_check(_check_move_families, verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")
