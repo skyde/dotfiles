@@ -44,14 +44,15 @@ end
 ---@param rhs string|function Command or callback
 ---@param opts table|nil Additional options for `vim.keymap.set`
 local function map_shift_f(n, rhs, opts)
-  opts = opts or {}
-  local modes = opts.mode or "n"
-  opts.mode = nil
-  map(modes, "<S-F" .. n .. ">", rhs, opts)
-  map(modes, "<F" .. (n + 12) .. ">", rhs, opts)
+  -- Copied, not edited in place: `mode` is stripped before handing the rest to
+  -- vim.keymap.set, and doing that to the caller's table would silently drop
+  -- the modes from the second of any two calls that shared one.
+  local o = vim.deepcopy(opts or {})
+  local modes = o.mode or "n"
+  o.mode = nil
+  map(modes, "<S-F" .. n .. ">", rhs, o)
+  map(modes, "<F" .. (n + 12) .. ">", rhs, o)
 end
-
--- TODO: Use the vim.keymap.set style remap for all of these instead of this function call style
 
 ---Wrap an action so it behaves the same from insert mode. The footpedal turns
 ---every key into a macro key, so these get pressed mid-typing as often as not.
