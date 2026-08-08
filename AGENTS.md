@@ -13,9 +13,17 @@ This repo stores dotfiles managed with GNU Stow. Use the provided scripts and ke
 
 ## Checks for the Neovim config
 
-Everything here also runs in CI (`.github/workflows/neovim.yml`), so a change
-that passes locally passes there. The first two need nothing but `nvim`; the
-rest need the tool named, and each skips cleanly when it is missing.
+```bash
+./tests/check-nvim.sh          # specs, format, types — under a minute
+./tests/check-nvim.sh --all    # and the three that need the plugins installed
+```
+
+That is the whole list below in one command, with a summary at the end. Run it
+on any change to `common/.config/nvim/lua`. Everything it runs also runs in CI
+(`.github/workflows/neovim.yml`), so a change that passes locally passes there.
+The individual scripts, if you want one on its own — the first two need nothing
+but `nvim`, the rest need the tool named and each skips cleanly when it is
+missing:
 
 - `./tests/run-nvim-specs.sh` — the specs. Self-contained: no plugins, no
   network, no system clipboard, everything built in a tempdir. Run these on any

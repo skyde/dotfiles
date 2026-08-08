@@ -40,10 +40,10 @@ single-child directories compacted onto one line (`a/b/c/`), and every
 filename shown whole instead of a full path truncated against the panel
 edge. Status letters sit in the left column — `M` modified, `A` added, `D`
 deleted, `R` renamed, `C` copied, `!` conflicted, `?` untracked, all of them
-listed again in the `?` cheat sheet — filetype icons follow when mini.icons is around,
-renamed files read `new ← old`, and the header tracks the selection as
-`file 3 of 12` plus the listing's total churn (`+125 -40`). The right edge of each row carries the
-review state: the file's own `+n -n` (computed in the background off the
+listed again in the `?` cheat sheet — filetype icons follow when mini.icons is
+around, renamed files read `new ← old`, and the header tracks the selection as
+`file 3 of 12` plus the listing's total churn (`+125 -40`). The right edge of
+each row carries the review state: the file's own `+n -n` (computed in the background off the
 cached bases, never a subprocess) and a `✓` once the file has been looked
 at — GitHub's per-file "viewed" checks, kept per listing until its base
 revision moves.
@@ -330,6 +330,10 @@ against nightly. The four are not arbitrary: 0.10 is the floor
 `:checkhealth dotfiles` claims, and the compatibility shims in `util.text` and
 `util.vcs_ui` switch behaviour at 0.10, 0.12 and 0.13, so each of those
 boundaries has a run either side of it.
+
+All of it is one command — `tests/check-nvim.sh`, or `--all` to include the
+three that need the plugins installed — which is what to run on a change to
+`lua/`. Individually:
 
 ```bash
 tests/run-nvim-specs.sh
