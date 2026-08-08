@@ -21,23 +21,30 @@ count_selected = { fg = "#16161e", bg = "#e0af68" }
 border_symbol = "│"
 border_style = { fg = "#292e42" }
 
-# The hovered row in each column.
+# The hovered row in each column, said twice on purpose.
 #
-# These lived in [mgr] as `hovered` and `preview_hovered` until yazi
-# v25.12.29 reclassified them here as `current` and `preview` (and split out
-# `parent`, which `hovered` used to cover). Renamed keys do not warn — yazi
-# silently ignores what it does not recognise, the gotcha further down this
-# repo's docs/tokyonight.md — so the old names had quietly stopped doing
-# anything and both rows had fallen back to the defaults these settings exist
-# to avoid: `reversed` for the hovered row and `underline` for the preview.
-# On a yazi older than v25.12.29, put `current` back under [mgr] as `hovered`.
+# yazi v25.12.29 reclassified `[mgr] hovered` and `preview_hovered` into
+# [indicator] as `current` and `preview` (splitting out `parent`, which
+# `hovered` used to cover). Either version ignores the other's spelling
+# without a word — the gotcha further down docs/tokyonight.md — so a config
+# that carries only one spelling looks correct and quietly loses the setting
+# on the other side of the rename: the hovered row falls back to a
+# reverse-video flip and the preview row to a hard underline, the two
+# defaults these settings exist to avoid. Both spellings, same values, and
+# whichever your yazi understands is the one it reads. Verified on 25.5.31
+# and 26.5.6. tests/check-theme.py fails if the pair drifts apart.
 #
-# parent and current: the selection blue, not a reverse-video flip, so the
-# file icon and git status colours survive underneath the cursor.
-#
-# preview: yazi's default there is `underline = true`, which cuts a hard rule
-# across an unfocused pane. A muted fill is the same gesture as the row above,
-# just quieter because that pane is not focused.
+# The values: the selection blue, not reverse video, so the file icon and
+# git status colours survive underneath the cursor; the preview pane gets a
+# muted fill — the same gesture, quieter, because that pane is not focused.
+[mgr.hovered]
+fg = "#c0caf5"
+bg = "#283457"
+
+[mgr.preview_hovered]
+fg = "#c0caf5"
+bg = "#292e42"
+
 [indicator]
 parent = { fg = "#c0caf5", bg = "#283457" }
 current = { fg = "#c0caf5", bg = "#283457" }
@@ -84,8 +91,9 @@ separator_style = { fg = "#3b4261" }
 [confirm]
 border = { fg = "#7aa2f7" }
 title = { fg = "#7aa2f7" }
-# `content` until v25.12.29, `body` since.
+# `content` until v25.12.29, `body` since; both spellings so both read it.
 body = {}
+content = {}
 list = { fg = "#7dcfff" }
 btn_yes = { fg = "#16161e", bg = "#9ece6a", bold = true }
 btn_no = { fg = "#16161e", bg = "#f7768e", bold = true }
@@ -139,26 +147,30 @@ footer = { fg = "#16161e", bg = "#c0caf5" }
 # char, fifo, sock, exec, sticky (yazi rejects anything else, including "dir" —
 # directories are matched with the glob "*/").
 #
-# The pattern key is `url`, not `name`: v25.12.29 renamed it across filetype,
-# previewer, fetcher and icon rules to make room for virtual filesystems, and
-# an unrecognised key here is ignored rather than reported. `mime` patterns are
-# unchanged — verified against yazi 26.5.6 that a plain `image/*` still
-# matches, so they do not need the `**/` prefix upstream's preset now uses.
+# Every pattern is spelled twice, `url` and `name`, with identical globs.
+# v25.12.29 renamed the key across filetype, previewer, fetcher and icon
+# rules to make room for virtual filesystems, and each side of that rename
+# ignores the other's spelling without a word — on an older yazi a url-only
+# table means every rule matches nothing and the whole listing renders in
+# plain foreground. Both spellings keeps one config correct on both sides;
+# verified on 25.5.31 and 26.5.6, and tests/check-theme.py fails if a pair
+# drifts apart. `mime` patterns are unchanged by the rename — a plain
+# `image/*` still matches on 26.5.6, so no `**/` prefix is needed.
 [filetype]
 rules = [
   # --- archives → red ---
-  { url = "*.tar", fg = "#f7768e" },
-  { url = "*.tgz", fg = "#f7768e" },
-  { url = "*.gz", fg = "#f7768e" },
-  { url = "*.bz2", fg = "#f7768e" },
-  { url = "*.xz", fg = "#f7768e" },
-  { url = "*.zst", fg = "#f7768e" },
-  { url = "*.zip", fg = "#f7768e" },
-  { url = "*.7z", fg = "#f7768e" },
-  { url = "*.rar", fg = "#f7768e" },
-  { url = "*.deb", fg = "#f7768e" },
-  { url = "*.rpm", fg = "#f7768e" },
-  { url = "*.dmg", fg = "#f7768e" },
+  { url = "*.tar", name = "*.tar", fg = "#f7768e" },
+  { url = "*.tgz", name = "*.tgz", fg = "#f7768e" },
+  { url = "*.gz", name = "*.gz", fg = "#f7768e" },
+  { url = "*.bz2", name = "*.bz2", fg = "#f7768e" },
+  { url = "*.xz", name = "*.xz", fg = "#f7768e" },
+  { url = "*.zst", name = "*.zst", fg = "#f7768e" },
+  { url = "*.zip", name = "*.zip", fg = "#f7768e" },
+  { url = "*.7z", name = "*.7z", fg = "#f7768e" },
+  { url = "*.rar", name = "*.rar", fg = "#f7768e" },
+  { url = "*.deb", name = "*.deb", fg = "#f7768e" },
+  { url = "*.rpm", name = "*.rpm", fg = "#f7768e" },
+  { url = "*.dmg", name = "*.dmg", fg = "#f7768e" },
 
   # --- media → magenta, audio → purple ---
   { mime = "image/*", fg = "#bb9af7" },
@@ -170,71 +182,71 @@ rules = [
   { mime = "application/epub+zip", fg = "#ff9e64" },
   # By name rather than mime: DjVu has no registered type most mime
   # databases agree on, so the extension is what lf and LS_COLORS match too.
-  { url = "*.djvu", fg = "#ff9e64" },
-  { url = "*.docx", fg = "#ff9e64" },
-  { url = "*.xlsx", fg = "#ff9e64" },
-  { url = "*.pptx", fg = "#ff9e64" },
+  { url = "*.djvu", name = "*.djvu", fg = "#ff9e64" },
+  { url = "*.docx", name = "*.docx", fg = "#ff9e64" },
+  { url = "*.xlsx", name = "*.xlsx", fg = "#ff9e64" },
+  { url = "*.pptx", name = "*.pptx", fg = "#ff9e64" },
 
   # --- source code → green ---
-  { url = "*.c", fg = "#9ece6a" },
-  { url = "*.h", fg = "#9ece6a" },
-  { url = "*.cc", fg = "#9ece6a" },
-  { url = "*.cpp", fg = "#9ece6a" },
-  { url = "*.hpp", fg = "#9ece6a" },
-  { url = "*.cs", fg = "#9ece6a" },
-  { url = "*.go", fg = "#9ece6a" },
-  { url = "*.rs", fg = "#9ece6a" },
-  { url = "*.py", fg = "#9ece6a" },
-  { url = "*.rb", fg = "#9ece6a" },
-  { url = "*.js", fg = "#9ece6a" },
-  { url = "*.ts", fg = "#9ece6a" },
-  { url = "*.tsx", fg = "#9ece6a" },
-  { url = "*.jsx", fg = "#9ece6a" },
-  { url = "*.lua", fg = "#9ece6a" },
-  { url = "*.sh", fg = "#9ece6a" },
-  { url = "*.zsh", fg = "#9ece6a" },
-  { url = "*.bash", fg = "#9ece6a" },
-  { url = "*.ps1", fg = "#9ece6a" },
+  { url = "*.c", name = "*.c", fg = "#9ece6a" },
+  { url = "*.h", name = "*.h", fg = "#9ece6a" },
+  { url = "*.cc", name = "*.cc", fg = "#9ece6a" },
+  { url = "*.cpp", name = "*.cpp", fg = "#9ece6a" },
+  { url = "*.hpp", name = "*.hpp", fg = "#9ece6a" },
+  { url = "*.cs", name = "*.cs", fg = "#9ece6a" },
+  { url = "*.go", name = "*.go", fg = "#9ece6a" },
+  { url = "*.rs", name = "*.rs", fg = "#9ece6a" },
+  { url = "*.py", name = "*.py", fg = "#9ece6a" },
+  { url = "*.rb", name = "*.rb", fg = "#9ece6a" },
+  { url = "*.js", name = "*.js", fg = "#9ece6a" },
+  { url = "*.ts", name = "*.ts", fg = "#9ece6a" },
+  { url = "*.tsx", name = "*.tsx", fg = "#9ece6a" },
+  { url = "*.jsx", name = "*.jsx", fg = "#9ece6a" },
+  { url = "*.lua", name = "*.lua", fg = "#9ece6a" },
+  { url = "*.sh", name = "*.sh", fg = "#9ece6a" },
+  { url = "*.zsh", name = "*.zsh", fg = "#9ece6a" },
+  { url = "*.bash", name = "*.bash", fg = "#9ece6a" },
+  { url = "*.ps1", name = "*.ps1", fg = "#9ece6a" },
 
   # --- config and data → yellow ---
-  { url = "*.json", fg = "#e0af68" },
-  { url = "*.toml", fg = "#e0af68" },
-  { url = "*.yaml", fg = "#e0af68" },
-  { url = "*.yml", fg = "#e0af68" },
-  { url = "*.ini", fg = "#e0af68" },
-  { url = "*.conf", fg = "#e0af68" },
-  { url = "*.cfg", fg = "#e0af68" },
-  { url = "*.xml", fg = "#e0af68" },
+  { url = "*.json", name = "*.json", fg = "#e0af68" },
+  { url = "*.toml", name = "*.toml", fg = "#e0af68" },
+  { url = "*.yaml", name = "*.yaml", fg = "#e0af68" },
+  { url = "*.yml", name = "*.yml", fg = "#e0af68" },
+  { url = "*.ini", name = "*.ini", fg = "#e0af68" },
+  { url = "*.conf", name = "*.conf", fg = "#e0af68" },
+  { url = "*.cfg", name = "*.cfg", fg = "#e0af68" },
+  { url = "*.xml", name = "*.xml", fg = "#e0af68" },
 
   # --- prose → foreground ---
-  { url = "*.md", fg = "#c0caf5" },
-  { url = "*.txt", fg = "#c0caf5" },
-  { url = "*.rst", fg = "#c0caf5" },
+  { url = "*.md", name = "*.md", fg = "#c0caf5" },
+  { url = "*.txt", name = "*.txt", fg = "#c0caf5" },
+  { url = "*.rst", name = "*.rst", fg = "#c0caf5" },
 
   # --- build noise → comment grey ---
-  { url = "*.log", fg = "#565f89" },
-  { url = "*.bak", fg = "#565f89" },
-  { url = "*.tmp", fg = "#565f89" },
-  { url = "*.swp", fg = "#565f89" },
-  { url = "*.o", fg = "#565f89" },
-  { url = "*.pyc", fg = "#565f89" },
-  { url = "*.lock", fg = "#565f89" },
+  { url = "*.log", name = "*.log", fg = "#565f89" },
+  { url = "*.bak", name = "*.bak", fg = "#565f89" },
+  { url = "*.tmp", name = "*.tmp", fg = "#565f89" },
+  { url = "*.swp", name = "*.swp", fg = "#565f89" },
+  { url = "*.o", name = "*.o", fg = "#565f89" },
+  { url = "*.pyc", name = "*.pyc", fg = "#565f89" },
+  { url = "*.lock", name = "*.lock", fg = "#565f89" },
 
   # --- special file kinds, checked after the patterns above ---
-  { url = "*", is = "orphan", fg = "#f7768e", bold = true },
-  { url = "*", is = "link", fg = "#7dcfff" },
-  { url = "*", is = "block", fg = "#e0af68" },
-  { url = "*", is = "char", fg = "#e0af68" },
+  { url = "*", name = "*", is = "orphan", fg = "#f7768e", bold = true },
+  { url = "*", name = "*", is = "link", fg = "#7dcfff" },
+  { url = "*", name = "*", is = "block", fg = "#e0af68" },
+  { url = "*", name = "*", is = "char", fg = "#e0af68" },
   # Yellow, with the block and char devices above and against the magenta
   # socket below. That is what lf and LS_COLORS say, and what `ls` has said
   # since long before either — pi is yellow, so is magenta.
-  { url = "*", is = "fifo", fg = "#e0af68" },
-  { url = "*", is = "sock", fg = "#bb9af7" },
-  { url = "*", is = "sticky", fg = "#c0caf5", bg = "#7aa2f7" },
-  { url = "*", is = "exec", fg = "#9ece6a" },
-  { url = "*", is = "dummy", fg = "#565f89" },
+  { url = "*", name = "*", is = "fifo", fg = "#e0af68" },
+  { url = "*", name = "*", is = "sock", fg = "#bb9af7" },
+  { url = "*", name = "*", is = "sticky", fg = "#c0caf5", bg = "#7aa2f7" },
+  { url = "*", name = "*", is = "exec", fg = "#9ece6a" },
+  { url = "*", name = "*", is = "dummy", fg = "#565f89" },
 
   # --- directories, and finally everything else ---
-  { url = "*/", fg = "#7aa2f7", bold = true },
-  { url = "*", fg = "#c0caf5" },
+  { url = "*/", name = "*/", fg = "#7aa2f7", bold = true },
+  { url = "*", name = "*", fg = "#c0caf5" },
 ]

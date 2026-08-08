@@ -403,11 +403,26 @@ def parse_yazi_filetypes() -> dict[str, dict[str, str]]:
         fields.update(flags)
         if "mime" in fields:
             key = fields["mime"]
+        elif "url" in fields or "name" in fields:
+            # Both spellings are present on purpose — `name` before yazi
+            # v25.12.29, `url` since, so one config works on both sides of
+            # the rename. A rule that carries only one of them is silently
+            # dead on the other side, and a pair that disagrees is two
+            # different rules wearing one colour; both are errors here.
+            url, name = fields.get("url"), fields.get("name")
+            if url is None or name is None:
+                raise RuntimeError(
+                    f"yazi filetype rule {url or name!r} must carry both "
+                    f"`url` and `name` (it has only one spelling)"
+                )
+            if url != name:
+                raise RuntimeError(
+                    f"yazi filetype rule has url={url!r} but name={name!r}; "
+                    f"the two spellings must stay identical"
+                )
+            key = "is:" + fields["is"] if "is" in fields else url
         elif "is" in fields:
             key = "is:" + fields["is"]
-        elif "url" in fields:
-            # `name` before yazi v25.12.29 renamed it.
-            key = fields["url"]
         else:
             continue
         rules.setdefault(key, fields)
@@ -654,9 +669,15 @@ SHARED_ROLES = [
             ("common/.tmux.conf", r"mode-style\s+'bg=(#[0-9a-fA-F]{6})"),
             ("common/.zshrc", r"'ma=48;2;(\d+;\d+;\d+)'"),
             (
-                # [indicator] current — `[mgr] hovered` before yazi v25.12.29.
+                # [indicator] current — read by yazi v25.12.29 and later.
                 "common/.config/yazi/theme.toml",
                 r"^current = \{ fg = \"#[0-9a-fA-F]{6}\", bg = \"(#[0-9a-fA-F]{6})\"",
+            ),
+            (
+                # [mgr] hovered — the same setting as read by older yazi;
+                # both spellings live in the file so both versions get it.
+                "common/.config/yazi/theme.toml",
+                r"\[mgr\.hovered\]\nfg = \"#[0-9a-fA-F]{6}\"\nbg = \"(#[0-9a-fA-F]{6})\"",
             ),
             (
                 "common/.config/btop/themes/tokyo-night.theme",
