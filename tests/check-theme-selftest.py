@@ -447,6 +447,19 @@ MUTATIONS = [
      r'magenta = "#bb9af7"', 'magenta = "#9d7cd8"',
      "the doc's magenta is", None),
 
+    # Each yazi mode is one accent used twice -- as the fill of the solid
+    # badge and as the text of the muted one beside it -- and nothing kept the
+    # halves of a pair together.
+    ("a yazi mode badge whose two halves disagree", "parity", YAZI,
+     r'select_alt = \{ fg = "#9ece6a"', 'select_alt = { fg = "#bb9af7"',
+     "one mode, two accents", None),
+
+    # yazi's permission column and eza's permission bits show the same thing.
+    # eza writes its half symbolically, so the two meet through the palette.
+    ("a permission bit yazi and eza disagree on", "parity", YAZI,
+     r'perm_write = \{ fg = "#f7768e" \}', 'perm_write = { fg = "#ff9e64" }',
+     "eza's uw is", None),
+
     # btop's selection, which appears exactly once in its file. The tmux
     # hostname would have been the obvious choice and is a bad one: #737aa2 is
     # also the pane-number overlay two lines down, so the colour would still be
@@ -528,7 +541,7 @@ def probe_targets(module, sample_per_file=None):
     return targets
 
 
-def report_unpinned(files):
+def report_unpinned(files, only=None):
     """How much of the theme is held in place, per file.
 
     Change a colour to another *documented* colour and see whether anything
@@ -542,7 +555,10 @@ def report_unpinned(files):
     free, total = {}, {}
     with tempfile.TemporaryDirectory() as tmp:
         make_copy(files, tmp)
+        detail = []
         for rel, lineno, colour, _marker in probe_targets(module):
+            if only and only not in rel:
+                continue
             total[rel] = total.get(rel, 0) + 1
             path = os.path.join(tmp, rel)
             original = open(path, encoding="utf-8").read()
@@ -550,6 +566,13 @@ def report_unpinned(files):
             swapped = lines[lineno].replace(colour, _probe_replacement(colour), 1)
             if not _probe_run(tmp, path, lines, lineno, swapped, original):
                 free[rel] = free.get(rel, 0) + 1
+                detail.append("%s:%d %s  %s"
+                              % (rel, lineno + 1, colour,
+                                 lines[lineno].strip()[:64]))
+    if only:
+        for line in detail:
+            print("  " + line)
+        print()
     print("%-52s %6s %6s" % ("file", "unpinned", "all"))
     for rel in sorted(total, key=lambda r: -free.get(r, 0)):
         print("  %-50s %6d %6d" % (rel, free.get(rel, 0), total[rel]))
@@ -763,7 +786,9 @@ def main(argv):
     # tools-off mode exists; the sample keeps the default run honest without
     # making it slow.
     if "--report-unpinned" in argv:
-        return 0 if not report_unpinned(files) else 1
+        at = argv.index("--report-unpinned")
+        only = argv[at + 1] if len(argv) > at + 1 else None
+        return 0 if not report_unpinned(files, only) else 1
 
     if verbose:
         print("\ncomment-decoy probe:")

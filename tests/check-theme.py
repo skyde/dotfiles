@@ -744,6 +744,91 @@ PALETTE_VAR = re.compile(
     r"^_tn_(\w+)='(\d{1,3};\d{1,3};\d{1,3})'\s*#\s*(#[0-9a-fA-F]{6})?")
 
 
+# yazi's permission column and eza's permission bits show the same thing, and
+# eza writes its half symbolically -- `ur=38;2;${_tn_yellow}` -- so the two can
+# be compared through the palette without sourcing anything.
+PERM_PAIRS = [("perm_read", "ur", "the read bit"),
+              ("perm_write", "uw", "the write bit"),
+              ("perm_exec", "ux", "the execute bit")]
+
+# yazi's three mode indicators are each one accent used twice: as the fill of
+# the solid badge, and as the text of the muted one beside it.
+YAZI_MODES = ("normal", "select", "unset")
+
+
+def _check_yazi_roles(doc, verbose):
+    """yazi's mode badges and permission column say what the rest of the tree says.
+
+    Two things, both already true and neither written down anywhere that could
+    hold them. The mode indicators are a pattern -- one accent per mode, dark
+    text on it when solid, the accent as text on a muted fill when not -- and
+    nothing kept the two halves of a pair using the same accent. The permission
+    column is eza's, in another tool's notation.
+    """
+    yazi = os.path.join(REPO, YAZI)
+    theme = os.path.join(REPO, "common/.config/shell/theme.sh")
+    if not (os.path.isfile(yazi) and os.path.isfile(theme)):
+        return []
+    body = uncommented(yazi, open(yazi, encoding="utf-8").read())
+
+    def style(name):
+        m = re.search(r"^\s*%s\s*=\s*\{([^}]*)\}" % re.escape(name),
+                      body, re.M)
+        if not m:
+            return None, None
+        fg = re.search(r'fg\s*=\s*"(#[0-9a-fA-F]{6})"', m.group(1))
+        bg = re.search(r'bg\s*=\s*"(#[0-9a-fA-F]{6})"', m.group(1))
+        return (norm(fg.group(1)) if fg else None,
+                norm(bg.group(1)) if bg else None)
+
+    problems, checked = [], 0
+    mains, alts = [], []
+    for mode in YAZI_MODES:
+        main_fg, main_bg = style(mode + "_main")
+        alt_fg, alt_bg = style(mode + "_alt")
+        if not (main_bg and alt_fg):
+            problems.append(
+                "%s no longer defines both %s_main and %s_alt" % (YAZI, mode, mode))
+            continue
+        checked += 1
+        if main_bg != alt_fg:
+            problems.append(
+                "%s: the %s badge fills with %s and its quiet twin writes in "
+                "%s -- one mode, two accents" % (YAZI, mode, main_bg, alt_fg))
+        mains.append((mode, main_fg))
+        alts.append((mode, alt_bg))
+    for label, seen in (("_main text", mains), ("_alt fill", alts)):
+        values = {v for _m, v in seen if v}
+        if len(values) > 1:
+            problems.append(
+                "%s: %s is %s across the modes, and should be one colour"
+                % (YAZI, label, ", ".join(sorted(values))))
+
+    # eza's half, resolved through the palette rather than through a shell.
+    shell = uncommented(theme, open(theme, encoding="utf-8").read())
+    known = documented_colours(doc)
+    by_name = {}
+    for colour, names in known.items():
+        for name in names:
+            by_name.setdefault(name.lower(), colour)
+    for yazi_key, eza_key, what in PERM_PAIRS:
+        m = re.search(r"%s=38;2;\$\{_tn_(\w+)\}" % re.escape(eza_key), shell)
+        if not m:
+            continue
+        wanted = by_name.get(PALETTE_VAR_ALIASES.get(m.group(1), m.group(1)).lower())
+        got, _bg = style(yazi_key)
+        if not (wanted and got):
+            continue
+        checked += 1
+        if got != norm(wanted):
+            problems.append(
+                "%s paints %s %s and eza's %s is the palette's %s (%s)"
+                % (YAZI, what, got, eza_key, m.group(1), norm(wanted)))
+    if verbose and not problems:
+        print("  %d yazi role(s) agree with the pattern and with eza" % checked)
+    return problems
+
+
 def _check_palette_variables(doc, verbose):
     """theme.sh's palette says the same thing three times; all three agree.
 
@@ -2407,6 +2492,7 @@ def check_parity(doc, verbose):
     problems.extend(run_check(_check_command_line_palette, doc, verbose))
     problems.extend(run_check(_check_diff_tints, doc, verbose))
     problems.extend(run_check(_check_palette_variables, doc, verbose))
+    problems.extend(run_check(_check_yazi_roles, doc, verbose))
 
     yazi_map = {}
     yazi_path = os.path.join(REPO, "common/.config/yazi/theme.toml")
